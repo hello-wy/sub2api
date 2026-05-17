@@ -9,10 +9,12 @@ export interface CcSwitchImportConfig {
   app: string
   endpoint: string
   model?: string
-  /** Extra parameters for cross-platform imports (e.g. openai → claude) */
-  apiFormat?: string
-  authField?: string
-  modelMapping?: Record<string, string>
+  /** Base64-encoded JSON config content for the provider (used via deeplink `config` param) */
+  configJson?: Record<string, unknown>
+  /** Role-based model mapping for Claude (deeplink native params) */
+  haikuModel?: string
+  sonnetModel?: string
+  opusModel?: string
 }
 
 export interface CcSwitchImportDeeplinkInput {
@@ -36,15 +38,16 @@ export function resolveCcSwitchImportConfig(
     return {
       app: 'claude',
       endpoint: baseUrl,
-      apiFormat: 'openai_chat_completions',
-      authField: 'ANTHROPIC_AUTH_TOKEN',
       model: OPENAI_TO_CLAUDE_DEFAULT_MODEL,
-      modelMapping: {
-        default: OPENAI_TO_CLAUDE_DEFAULT_MODEL,
-        thinking: OPENAI_TO_CLAUDE_DEFAULT_MODEL,
-        haiku: OPENAI_TO_CLAUDE_DEFAULT_MODEL,
-        sonnet: OPENAI_TO_CLAUDE_DEFAULT_MODEL,
-        opus: OPENAI_TO_CLAUDE_DEFAULT_MODEL
+      haikuModel: OPENAI_TO_CLAUDE_DEFAULT_MODEL,
+      sonnetModel: OPENAI_TO_CLAUDE_DEFAULT_MODEL,
+      opusModel: OPENAI_TO_CLAUDE_DEFAULT_MODEL,
+      configJson: {
+        env: {
+          ANTHROPIC_AUTH_TOKEN: '__API_KEY__',
+          ANTHROPIC_BASE_URL: baseUrl
+        },
+        api_format: 'openai_chat_completions'
       }
     }
   }
@@ -123,16 +126,22 @@ export function buildCcSwitchImportDeeplink(input: CcSwitchImportDeeplinkInput):
     entries.splice(2, 0, ['model', config.model])
   }
 
-  if (config.apiFormat) {
-    entries.push(['apiFormat', config.apiFormat])
+  if (config.haikuModel) {
+    entries.push(['haikuModel', config.haikuModel])
   }
 
-  if (config.authField) {
-    entries.push(['authField', config.authField])
+  if (config.sonnetModel) {
+    entries.push(['sonnetModel', config.sonnetModel])
   }
 
-  if (config.modelMapping) {
-    entries.push(['modelMapping', JSON.stringify(config.modelMapping)])
+  if (config.opusModel) {
+    entries.push(['opusModel', config.opusModel])
+  }
+
+  if (config.configJson) {
+    // Replace placeholder with actual API key in config JSON
+    const configStr = JSON.stringify(config.configJson).replace('__API_KEY__', input.apiKey)
+    entries.push(['config', btoa(configStr)])
   }
 
   return `ccswitch://v1/import?${new URLSearchParams(entries).toString()}`
