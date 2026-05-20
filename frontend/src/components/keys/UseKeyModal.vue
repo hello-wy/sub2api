@@ -1073,16 +1073,6 @@ function generateOpenCodeConfig(platform: string, baseUrl: string, apiKey: strin
         }
       : undefined
 
-  const content = JSON.stringify(
-    {
-      provider,
-      ...(agent ? { agent } : {}),
-      $schema: 'https://opencode.ai/config.json'
-    },
-    null,
-    2
-  )
-
   return {
     path: pathLabel ?? 'opencode.json',
     content: buildOpenCodeConfig(platform as GroupPlatform | 'antigravity-claude' | 'antigravity-gemini', baseUrl, apiKey),
