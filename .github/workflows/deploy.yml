@@ -1,0 +1,21 @@
+name: Deploy to Server
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: 152.53.55.111
+          username: root
+          password: ${{ secrets.SERVER_PASSWORD }}
+          script: |
+            cd /root/sub2api/deploy
+            git pull
+            docker compose up -d --build
