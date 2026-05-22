@@ -422,6 +422,7 @@ export default {
     registrationFailed: '注册失败，请重试。',
     emailSuffixNotAllowed: '该邮箱域名不在允许注册范围内。',
     emailSuffixNotAllowedWithAllowed: '该邮箱域名不被允许。可用域名：{suffixes}',
+    emailSuffixAllowedMore: '等 {count} 项',
     loginSuccess: '登录成功！欢迎回来。',
     accountCreatedSuccess: '账户创建成功！欢迎使用 {siteName}。',
     reloginRequired: '会话已过期，请重新登录。',
@@ -2437,6 +2438,8 @@ export default {
         webSearchEmulationGlobalDisabled: '请先在系统设置 → 网关 → Web Search 模拟中启用全局开关',
         codexImageGenerationBridge: 'Codex 图片生成桥接',
         codexImageGenerationBridgeHint: '开启后，OpenAI 分组的 Codex /responses 文本请求可能会被自动注入 image_generation 工具。仅在路由账号支持图片生成时开启。',
+        bedrockCCCompat: 'Bedrock CC 兼容',
+        bedrockCCCompatHint: '⚠️ 开启后，该渠道下 Bedrock 账号的请求将进行 Claude Code 兼容处理（thinking 类型转换、tool_use ID 清理）',
         basicSettings: '基础设置',
         addPlatform: '添加平台',
         noPlatforms: '点击"添加平台"开始配置渠道',
@@ -5445,9 +5448,9 @@ export default {
         emailVerificationHint: '新用户注册时需要验证邮箱',
         emailSuffixWhitelist: '邮箱域名白名单',
         emailSuffixWhitelistHint:
-          "仅允许使用指定域名的邮箱注册账号（例如 {'@'}qq.com, {'@'}gmail.com）",
-        emailSuffixWhitelistPlaceholder: 'example.com',
-        emailSuffixWhitelistInputHint: '留空则不限制',
+          "仅允许使用指定域名的邮箱注册账号（例如 {'@'}qq.com, {'@'}gmail.com, *.edu.cn）",
+        emailSuffixWhitelistPlaceholder: '@example.com, *.edu.cn',
+        emailSuffixWhitelistInputHint: '留空则不限制。使用 *.edu.cn 可匹配 edu.cn 及其子域名。',
         promoCode: '优惠码',
         promoCodeHint: '允许用户在注册时使用优惠码',
         invitationCode: '邀请码注册',
@@ -5473,6 +5476,13 @@ export default {
         cloudflareDashboard: 'Cloudflare Dashboard',
         secretKeyHint: '服务端验证密钥（请保密）',
         secretKeyConfiguredHint: '密钥已配置，留空以保留当前值。'
+      },
+      apiKeyAcl: {
+        title: 'API Key IP 访问控制',
+        description: '控制 API Key 白名单和黑名单使用哪个客户端 IP 判断',
+        trustForwardedIp: '信任反代传递的客户端 IP',
+        trustForwardedIpHint:
+          '默认关闭。仅在源站只允许 Cloudflare 或 Nginx 反代访问时开启；开启后 API Key IP 白/黑名单会使用 CF-Connecting-IP、X-Real-IP 或 X-Forwarded-For，与使用记录中的请求 IP 保持一致。'
       },
       linuxdo: {
         title: 'LinuxDo Connect 登录',
@@ -5946,6 +5956,12 @@ export default {
         emailsHint: '留空则不发送通知',
         addEmail: '添加邮箱',
         emailPlaceholder: '输入邮箱地址',
+      },
+      subscriptionExpiryNotify: {
+        title: '订阅到期提醒',
+        description: '控制是否向用户发送订阅即将到期的邮件提醒。',
+        enabled: '启用订阅到期提醒',
+        enabledHint: '开启后，系统会在订阅到期前 7 天、3 天、1 天各发送一次提醒。'
       },
       smtp: {
         title: 'SMTP 设置',
