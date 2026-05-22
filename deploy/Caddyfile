@@ -24,6 +24,27 @@ solidapi.top {
 	}
 
 	# =========================================================================
+	# CORS：全局开放跨域（覆盖所有 API 路径）
+	# =========================================================================
+	@cors_preflight {
+		method OPTIONS
+	}
+	handle @cors_preflight {
+		header Access-Control-Allow-Origin "*"
+		header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, PATCH, OPTIONS"
+		header Access-Control-Allow-Headers "*"
+		header Access-Control-Max-Age "86400"
+		respond 204
+	}
+
+	header {
+		Access-Control-Allow-Origin "*"
+		Access-Control-Allow-Methods "GET, POST, PUT, DELETE, PATCH, OPTIONS"
+		Access-Control-Allow-Headers "*"
+		Access-Control-Expose-Headers "*"
+	}
+
+	# =========================================================================
 	# 反向代理配置
 	# =========================================================================
 	reverse_proxy 127.0.0.1:8080 {
