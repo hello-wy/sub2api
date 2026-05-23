@@ -361,7 +361,7 @@ export default {
     groups: '分组管理',
     channels: '渠道管理',
     availableChannels: '可用渠道',
-    imageGeneration: 'GPT 生图',
+    imageGeneration: '图片生成',
     subscriptions: '订阅管理',
     accounts: '账号管理',
     proxies: 'IP管理',
@@ -392,7 +392,7 @@ export default {
   },
 
   imageGeneration: {
-    title: 'GPT 生图',
+    title: '图片生成',
     description: '在当前控制台中使用 GPT Image Generation',
     loading: '正在加载生图应用...',
     openExternal: '新窗口打开生图应用',
