@@ -447,6 +447,7 @@
                   :key="idx"
                   :entry="entry"
                   :platform="section.platform"
+                  :groups="getSelectedGroupsForSection(section)"
                   @update="updatePricingEntry(sIdx, idx, $event)"
                   @remove="removePricingEntry(sIdx, idx)"
                 />
@@ -577,6 +578,7 @@
                       :key="pIdx"
                       :entry="entry"
                       :platform="section.platform"
+                      :groups="getGroupsByIds(rule.group_ids)"
                       @update="rule.pricing.splice(pIdx, 1, $event)"
                       @remove="removeRulePricingEntry(sIdx, ruleIndex, pIdx)"
                     />
@@ -971,6 +973,15 @@ function removeRulePricingEntry(sectionIdx: number, ruleIndex: number, pricingIn
 function getGroupNameById(groupId: number): string {
   const group = allGroups.value.find(g => g.id === groupId)
   return group ? group.name : `#${groupId}`
+}
+
+function getGroupsByIds(groupIds: number[]): AdminGroup[] {
+  const ids = new Set(groupIds)
+  return allGroups.value.filter(group => ids.has(group.id))
+}
+
+function getSelectedGroupsForSection(section: PlatformSection): AdminGroup[] {
+  return getGroupsByIds(section.group_ids)
 }
 
 // ── Account search for pricing rules ──
