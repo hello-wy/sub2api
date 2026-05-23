@@ -1,8 +1,0 @@
-onlyBuiltDependencies:
-  - esbuild
-  - vue-demi
-
-confirmModulesPurge: false
-
-overrides:
-  js-cookie: 3.0.7
