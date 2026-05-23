@@ -361,7 +361,7 @@ export default {
     groups: 'Groups',
     channels: 'Channels',
     availableChannels: 'Available Channels',
-    imageGeneration: 'GPT Images',
+    imageGeneration: 'Image Generation',
     subscriptions: 'Subscriptions',
     accounts: 'Accounts',
     proxies: 'Proxies',
@@ -392,7 +392,7 @@ export default {
   },
 
   imageGeneration: {
-    title: 'GPT Images',
+    title: 'Image Generation',
     description: 'Use GPT Image Generation inside the current console',
     loading: 'Loading image generation app...',
     openExternal: 'Open image generation app in a new window',
