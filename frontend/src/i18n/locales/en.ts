@@ -361,6 +361,8 @@ export default {
     groups: 'Groups',
     channels: 'Channels',
     availableChannels: 'Available Channels',
+    modelSquare: 'Model Square',
+    rechargeAddress: 'Recharge Address',
     subscriptions: 'Subscriptions',
     accounts: 'Accounts',
     proxies: 'Proxies',
@@ -1049,6 +1051,55 @@ export default {
       unitPerMillion: '/ 1M tokens',
       unitPerRequest: '/ request'
     }
+  },
+
+  modelSquare: {
+    title: 'Model Square',
+    description: 'Browse available models, platforms, group multipliers, and dynamically calculated prices.',
+    eyebrow: 'Model Atlas',
+    searchPlaceholder: 'Search models, platforms, channels, or groups...',
+    empty: 'No matching models',
+    noPricing: 'Pricing not configured',
+    effectiveRate: 'Effective rate',
+    loadFailed: 'Failed to load model square',
+    intervalPricing: '{count} tiered price(s)',
+    intervalHint: 'Tiered prices use the same multiplier. Detailed ranges follow channel pricing configuration.',
+    stats: {
+      models: 'Models',
+      platforms: 'Platforms',
+      groups: 'Groups'
+    },
+    filters: {
+      allPlatforms: 'All platforms',
+      allBillingModes: 'All billing',
+      allGroups: 'All groups'
+    },
+    billing: {
+      token: 'Token',
+      perRequest: 'Per request',
+      image: 'Image'
+    },
+    units: {
+      perMillion: '/ 1M tokens',
+      perRequest: '/ request'
+    },
+    price: {
+      input: 'Input',
+      output: 'Output',
+      cacheWrite: 'Cache write',
+      cacheRead: 'Cache read',
+      imageOutput: 'Image output',
+      perRequest: 'Per request'
+    }
+  },
+
+  rechargeAddress: {
+    title: 'Recharge Address',
+    description: 'Recharge through the embedded LDXP shop with the current login context attached.',
+    eyebrow: 'LDXP Shop',
+    openInNewTab: 'Open in new tab',
+    embedFailedTitle: 'Embedded page failed to load',
+    embedFailedDesc: 'If the browser or payment provider blocks embedding, use the top-right entry to open it in a new window.'
   },
 
   affiliate: {
@@ -2414,6 +2465,8 @@ export default {
         mappingCount: 'mappings',
         pricingEntry: 'Pricing Entry',
         noModels: 'No models added',
+        pricePreview: 'Price Preview',
+        rawPriceSaved: 'Raw prices only are saved',
         applyPricingToAccountStats: 'Apply Pricing to Account Stats',
         applyPricingToAccountStatsDesc: 'When enabled, requests not matched by custom rules will use standard model pricing for account stats calculation',
         accountStatsPricingRules: 'Custom Account Stats Pricing Rules',

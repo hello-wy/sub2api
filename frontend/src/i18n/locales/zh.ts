@@ -361,6 +361,8 @@ export default {
     groups: '分组管理',
     channels: '渠道管理',
     availableChannels: '可用渠道',
+    modelSquare: '模型广场',
+    rechargeAddress: '充值地址',
     subscriptions: '订阅管理',
     accounts: '账号管理',
     proxies: 'IP管理',
@@ -1053,6 +1055,55 @@ export default {
       unitPerMillion: '/ 1M token',
       unitPerRequest: '/ 次'
     }
+  },
+
+  modelSquare: {
+    title: '模型广场',
+    description: '浏览当前可用模型、平台、分组倍率和动态计算后的价格。',
+    eyebrow: 'Model Atlas',
+    searchPlaceholder: '搜索模型、平台、渠道或分组...',
+    empty: '暂无匹配模型',
+    noPricing: '未配置价格',
+    effectiveRate: '有效倍率',
+    loadFailed: '加载模型广场失败',
+    intervalPricing: '{count} 条阶梯价格',
+    intervalHint: '阶梯价格沿用相同倍率计算，详细区间以渠道定价配置为准。',
+    stats: {
+      models: '模型',
+      platforms: '平台',
+      groups: '分组'
+    },
+    filters: {
+      allPlatforms: '全部平台',
+      allBillingModes: '全部计费',
+      allGroups: '全部分组'
+    },
+    billing: {
+      token: 'Token',
+      perRequest: '按次',
+      image: '图片'
+    },
+    units: {
+      perMillion: '/ 1M token',
+      perRequest: '/ 次'
+    },
+    price: {
+      input: '输入',
+      output: '输出',
+      cacheWrite: '缓存写入',
+      cacheRead: '缓存读取',
+      imageOutput: '图片输出',
+      perRequest: '每次请求'
+    }
+  },
+
+  rechargeAddress: {
+    title: '充值地址',
+    description: '通过链动小铺页面完成充值，页面会自动携带当前登录上下文。',
+    eyebrow: '链动小铺',
+    openInNewTab: '新窗口打开',
+    embedFailedTitle: '嵌入页面加载异常',
+    embedFailedDesc: '如果页面被浏览器或支付方限制嵌入，请使用右上角入口在新窗口打开。'
   },
 
   affiliate: {
@@ -2491,6 +2542,8 @@ export default {
         mappingCount: '条映射',
         pricingEntry: '定价配置',
         noModels: '未添加模型',
+        pricePreview: '价格计算预览',
+        rawPriceSaved: '仅保存原始价格',
         applyPricingToAccountStats: '应用模型定价到账号统计',
         applyPricingToAccountStatsDesc: '启用后，未被自定义规则匹配的请求将使用模型定价文件中的标准价格计算账号统计费用',
         accountStatsPricingRules: '自定义账号统计定价规则',

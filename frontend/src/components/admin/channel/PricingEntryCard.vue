@@ -129,6 +129,8 @@
             </div>
           </div>
 
+          <PricingPreview :entry="entry" :groups="groups" />
+
           <!-- Token intervals -->
           <div class="mt-3">
             <div class="flex items-center justify-between">
@@ -153,74 +155,12 @@
           </div>
         </div>
 
-        <!-- Per-request mode -->
-        <div v-else-if="entry.billing_mode === 'per_request'">
-          <!-- Default per-request price -->
-          <label class="mt-3 block text-xs font-medium text-gray-500 dark:text-gray-400">
-            {{ t('admin.channels.form.defaultPerRequestPrice', '默认单次价格（未命中层级时使用）') }}
-            <span class="ml-1 font-normal text-gray-400">$</span>
-          </label>
-          <div class="mt-1 w-48">
-            <input :value="entry.per_request_price" @input="emitField('per_request_price', ($event.target as HTMLInputElement).value)"
-              type="number" step="any" min="0" class="input text-sm" :placeholder="t('admin.channels.form.pricePlaceholder', '默认')" />
-          </div>
-
-          <!-- Tiers -->
-          <div class="mt-3 flex items-center justify-between">
-            <label class="text-xs font-medium text-gray-500 dark:text-gray-400">
-              {{ t('admin.channels.form.requestTiers', '按次计费层级') }}
-            </label>
-            <button type="button" @click="addInterval" class="text-xs text-primary-600 hover:text-primary-700">
-              + {{ t('admin.channels.form.addTier', '添加层级') }}
-            </button>
-          </div>
-          <div v-if="entry.intervals && entry.intervals.length > 0" class="mt-2 space-y-2">
-            <IntervalRow
-              v-for="(iv, idx) in entry.intervals"
-              :key="idx"
-              :interval="iv"
-              :mode="entry.billing_mode"
-              @update="updateInterval(idx, $event)"
-              @remove="removeInterval(idx)"
-            />
-          </div>
-          <div v-else class="mt-2 rounded border border-dashed border-gray-300 p-3 text-center text-xs text-gray-400 dark:border-dark-500">
-            {{ t('admin.channels.form.noTiersYet', '暂无层级，点击添加配置按次计费价格') }}
-          </div>
-        </div>
-
-        <!-- Image mode -->
-        <div v-else-if="entry.billing_mode === 'image'">
-          <!-- Default image price (per-request, same as per_request mode) -->
-          <label class="mt-3 block text-xs font-medium text-gray-500 dark:text-gray-400">
-            {{ t('admin.channels.form.defaultImagePrice', '默认图片价格（未命中层级时使用）') }}
-            <span class="ml-1 font-normal text-gray-400">$</span>
-          </label>
-          <div class="mt-1 w-48">
-            <input :value="entry.per_request_price" @input="emitField('per_request_price', ($event.target as HTMLInputElement).value)"
-              type="number" step="any" min="0" class="input text-sm" :placeholder="t('admin.channels.form.pricePlaceholder', '默认')" />
-          </div>
-
-          <!-- Image tiers -->
-          <div class="mt-3 flex items-center justify-between">
-            <label class="text-xs font-medium text-gray-500 dark:text-gray-400">
-              {{ t('admin.channels.form.imageTiers', '图片计费层级（按次）') }}
-            </label>
-            <button type="button" @click="addImageTier" class="text-xs text-primary-600 hover:text-primary-700">
-              + {{ t('admin.channels.form.addTier', '添加层级') }}
-            </button>
-          </div>
-          <div v-if="entry.intervals && entry.intervals.length > 0" class="mt-2 space-y-2">
-            <IntervalRow
-              v-for="(iv, idx) in entry.intervals"
-              :key="idx"
-              :interval="iv"
-              :mode="entry.billing_mode"
-              @update="updateInterval(idx, $event)"
-              @remove="removeInterval(idx)"
-            />
-          </div>
-        </div>
+        <RequestModePricing
+          v-else-if="entry.billing_mode === 'per_request' || entry.billing_mode === 'image'"
+          :entry="entry"
+          :mode="entry.billing_mode"
+          @update="emit('update', $event)"
+        />
       </div>
     </div>
   </div>
@@ -233,16 +173,20 @@ import Select from '@/components/common/Select.vue'
 import Icon from '@/components/icons/Icon.vue'
 import IntervalRow from './IntervalRow.vue'
 import ModelTagInput from './ModelTagInput.vue'
+import PricingPreview from './PricingPreview.vue'
+import RequestModePricing from './RequestModePricing.vue'
 import type { PricingFormEntry, IntervalFormEntry } from './types'
 import { perTokenToMTok, getPlatformTagClass } from './types'
 import type { BillingMode } from '@/api/admin/channels'
 import channelsAPI from '@/api/admin/channels'
+import type { AdminGroup } from '@/types'
 
 const { t } = useI18n()
 
 const props = defineProps<{
   entry: PricingFormEntry
   platform?: string
+  groups?: readonly AdminGroup[]
 }>()
 
 const emit = defineEmits<{
@@ -272,18 +216,6 @@ function addInterval() {
   const intervals = [...(props.entry.intervals || [])]
   intervals.push({
     min_tokens: 0, max_tokens: null, tier_label: '',
-    input_price: null, output_price: null, cache_write_price: null,
-    cache_read_price: null, per_request_price: null,
-    sort_order: intervals.length
-  })
-  emit('update', { ...props.entry, intervals })
-}
-
-function addImageTier() {
-  const intervals = [...(props.entry.intervals || [])]
-  const labels = ['1K', '2K', '4K', 'HD']
-  intervals.push({
-    min_tokens: 0, max_tokens: null, tier_label: labels[intervals.length] || '',
     input_price: null, output_price: null, cache_write_price: null,
     cache_read_price: null, per_request_price: null,
     sort_order: intervals.length

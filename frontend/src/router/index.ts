@@ -253,6 +253,30 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/models',
+    name: 'ModelSquare',
+    component: () => import('@/views/user/ModelSquareView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: false,
+      title: 'Model Square',
+      titleKey: 'modelSquare.title',
+      descriptionKey: 'modelSquare.description'
+    }
+  },
+  {
+    path: '/recharge-address',
+    name: 'RechargeAddress',
+    component: () => import('@/views/user/RechargeAddressView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: false,
+      title: 'Recharge Address',
+      titleKey: 'rechargeAddress.title',
+      descriptionKey: 'rechargeAddress.description'
+    }
+  },
+  {
     path: '/profile',
     name: 'Profile',
     component: () => import('@/views/user/ProfileView.vue'),
