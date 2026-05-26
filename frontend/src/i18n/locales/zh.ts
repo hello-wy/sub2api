@@ -363,6 +363,7 @@ export default {
     availableChannels: '可用渠道',
     modelSquare: '模型广场',
     rechargeAddress: '充值地址',
+    imageGeneration: '图片生成',
     subscriptions: '订阅管理',
     accounts: '账号管理',
     proxies: 'IP管理',
@@ -390,6 +391,13 @@ export default {
     channelMonitor: '渠道监控',
     channelStatus: '渠道状态',
     riskControl: '风控中心',
+  },
+
+  imageGeneration: {
+    title: '图片生成',
+    description: '在当前控制台中使用 GPT Image Generation',
+    loading: '正在加载生图应用...',
+    openExternal: '新窗口打开生图应用',
   },
 
   // Auth

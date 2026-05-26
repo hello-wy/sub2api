@@ -363,6 +363,7 @@ export default {
     availableChannels: 'Available Channels',
     modelSquare: 'Model Square',
     rechargeAddress: 'Recharge Address',
+    imageGeneration: 'Image Generation',
     subscriptions: 'Subscriptions',
     accounts: 'Accounts',
     proxies: 'Proxies',
@@ -390,6 +391,13 @@ export default {
     channelMonitor: 'Channel Monitor',
     channelStatus: 'Channel Status',
     riskControl: 'Risk Control',
+  },
+
+  imageGeneration: {
+    title: 'Image Generation',
+    description: 'Use GPT Image Generation inside the current console',
+    loading: 'Loading image generation app...',
+    openExternal: 'Open image generation app in a new window',
   },
 
   // Auth
