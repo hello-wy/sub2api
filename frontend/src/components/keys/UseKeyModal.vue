@@ -175,8 +175,6 @@ import {
   ensureV1,
   geminiV1Beta,
   generateClaudeCodeSettings,
-  generateCodexAuth,
-  generateCodexConfig,
   generateOpenCodeConfig as buildOpenCodeConfig,
   generateShellCommand,
   normalizeBaseUrl,
