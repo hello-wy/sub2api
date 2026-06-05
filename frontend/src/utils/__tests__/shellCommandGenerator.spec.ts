@@ -74,9 +74,12 @@ describe('shellCommandGenerator properties', () => {
         expect(contents[0]).toBe(generateOpenCodeConfig(input.platform === 'antigravity' ? 'antigravity-claude' : input.platform, input.baseUrl, input.apiKey))
         expect(JSON.parse(contents[0]).provider).toBeTruthy()
       } else {
+        const expectedAuth = input.shellType === 'bash'
+          ? generateCodexAuth('<YOUR_OPENAI_API_KEY>')
+          : generateCodexAuth(input.apiKey)
         expect(contents[0]).toBe(generateCodexConfig(input.baseUrl, input.clientType === 'codex-ws'))
-        expect(contents[1]).toBe(generateCodexAuth(input.apiKey))
-        expect(JSON.parse(contents[1]).OPENAI_API_KEY).toBe(input.apiKey)
+        expect(contents[1]).toBe(expectedAuth)
+        expect(JSON.parse(contents[1]).OPENAI_API_KEY).toBe(input.shellType === 'bash' ? '<YOUR_OPENAI_API_KEY>' : input.apiKey)
       }
     }))
   })
@@ -93,8 +96,14 @@ describe('shellCommandGenerator properties', () => {
     fc.assert(fc.property(inputArbitrary, (input) => {
       const { command } = generateShellCommand(input)
       if (input.shellType === 'bash') {
-        expect(command).toContain('mkdir -p "')
-        expect(command).toContain('cat > "')
+        if (input.clientType === 'codex' || input.clientType === 'codex-ws') {
+          expect(command).toContain('mkdir -p ~/.codex')
+          expect(command).toContain('cat > ~/.codex/')
+          expect(command).not.toMatch(/^EOF &&/m)
+        } else {
+          expect(command).toContain('mkdir -p "')
+          expect(command).toContain('cat > "')
+        }
       } else if (input.shellType === 'cmd') {
         expect(command).toContain('if not exist "')
         expect(command).toContain(')> "')

@@ -30,6 +30,22 @@ describe('shellCommandGenerator', () => {
     expect(output.command).toContain('sk^&test')
   })
 
+  it('generates safe Codex CLI bash setup command', () => {
+    const output = generateCodexCliCommand('bash', 'https://example.com/v1', 'sk-real-key', false)
+
+    expect(output.command).toContain('mkdir -p ~/.codex')
+    expect(output.command).toContain('cat > ~/.codex/config.toml')
+    expect(output.command).toContain('cat > ~/.codex/auth.json')
+    expect(output.command).toContain('model = "gpt-5.5"')
+    expect(output.command).toContain('"OPENAI_API_KEY": "<YOUR_OPENAI_API_KEY>"')
+    expect(output.command).toContain('chmod 600 ~/.codex/auth.json')
+    expect(output.command).toContain('ls -la ~/.codex')
+    expect(output.command).toContain('cat ~/.codex/config.toml')
+    expect(output.command).not.toContain('"~/.codex"')
+    expect(output.command).not.toContain('sk-real-key')
+    expect(output.command).not.toMatch(/^EOF &&/m)
+  })
+
   it('generates Codex WebSocket config', () => {
     const output = generateShellCommand({
       clientType: 'codex-ws',

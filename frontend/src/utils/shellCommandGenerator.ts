@@ -23,6 +23,8 @@ interface FileToWrite {
   content: string
 }
 
+const CODEX_API_KEY_PLACEHOLDER = '<YOUR_OPENAI_API_KEY>'
+
 export function escapeForBash(value: string): string {
   return value.replace(/[\\$`!\"]/g, '\\$&')
 }
@@ -86,8 +88,8 @@ export function generateClaudeCodeSettings(baseUrl: string, apiKey: string, plat
 
 export function generateCodexConfig(baseUrl: string, isWebSocket = false): string {
   return `model_provider = "OpenAI"
-model = "gpt-5.4"
-review_model = "gpt-5.4"
+model = "gpt-5.5"
+review_model = "gpt-5.5"
 model_reasoning_effort = "xhigh"
 disable_response_storage = true
 network_access = "enabled"
@@ -323,6 +325,27 @@ function bashWrite(files: FileToWrite[], dir: string): string {
   ].join(' && ')
 }
 
+function bashCodexCliWrite(config: string, auth: string): ShellCommandOutput {
+  const configDelimiter = heredocDelimiter(config)
+  const authDelimiter = heredocDelimiter(auth)
+  const command = [
+    'mkdir -p ~/.codex && \\',
+    `cat > ~/.codex/config.toml << '${configDelimiter}'`,
+    config,
+    configDelimiter,
+    '',
+    `cat > ~/.codex/auth.json << '${authDelimiter}'`,
+    auth,
+    authDelimiter,
+    '',
+    'chmod 600 ~/.codex/auth.json && \\',
+    'ls -la ~/.codex && \\',
+    'cat ~/.codex/config.toml'
+  ].join('\n')
+
+  return { command, label: labelForShell('bash') }
+}
+
 function cmdEchoLine(line: string): string {
   return line.length ? `echo ${escapeForCmd(line)}` : 'echo.'
 }
@@ -364,9 +387,16 @@ export function generateCodexCliCommand(shellType: ShellType, baseUrl: string, a
   const dir = shellType === 'cmd' ? '%userprofile%\\.codex' : '~/.codex'
   const configPath = shellType === 'cmd' ? '%userprofile%\\.codex\\config.toml' : '~/.codex/config.toml'
   const authPath = shellType === 'cmd' ? '%userprofile%\\.codex\\auth.json' : '~/.codex/auth.json'
+  const config = generateCodexConfig(baseUrl, isWebSocket)
+  const auth = generateCodexAuth(shellType === 'bash' ? CODEX_API_KEY_PLACEHOLDER : apiKey)
+
+  if (shellType === 'bash') {
+    return bashCodexCliWrite(config, auth)
+  }
+
   return writeCommand(shellType, dir, [
-    { path: configPath, content: generateCodexConfig(baseUrl, isWebSocket) },
-    { path: authPath, content: generateCodexAuth(apiKey) }
+    { path: configPath, content: config },
+    { path: authPath, content: auth }
   ])
 }
 
