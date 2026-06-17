@@ -1111,32 +1111,6 @@ function generateOpenCodeConfig(platform: string, baseUrl: string, apiKey: strin
     provider[platform].models = openaiModels
   }
 
-  const agent =
-    platform === 'openai'
-      ? {
-          build: {
-            options: {
-              store: false
-            }
-          },
-          plan: {
-            options: {
-              store: false
-            }
-          }
-        }
-      : undefined
-
-  const content = JSON.stringify(
-    {
-      provider,
-      ...(agent ? { agent } : {}),
-      $schema: 'https://opencode.ai/config.json'
-    },
-    null,
-    2
-  )
-
   return {
     path: pathLabel ?? 'opencode.json',
     content: buildOpenCodeConfig(platform as GroupPlatform | 'antigravity-claude' | 'antigravity-gemini', baseUrl, apiKey),
