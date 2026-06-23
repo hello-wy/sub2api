@@ -260,7 +260,7 @@ export async function getUserUsageTrend(params?: UserTrendParams): Promise<UserT
 export async function getUserSpendingRanking(
   params?: UserSpendingRankingParams
 ): Promise<UserSpendingRankingResponse> {
-  const { data } = await apiClient.get<UserSpendingRankingResponse>('/admin/dashboard/users-ranking', {
+  const { data } = await apiClient.get<UserSpendingRankingResponse>('/user/dashboard/users-ranking', {
     params
   })
   return data
