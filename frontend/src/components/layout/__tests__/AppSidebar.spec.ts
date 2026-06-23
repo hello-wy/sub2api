@@ -30,3 +30,12 @@ describe('AppSidebar header styles', () => {
     expect(sidebarBrandBlockMatch?.[0]).not.toContain('overflow: hidden;')
   })
 })
+
+describe('AppSidebar user navigation', () => {
+  it('does not include legacy image generation or recharge address menu entries', () => {
+    expect(componentSource).not.toContain("path: '/image-generation'")
+    expect(componentSource).not.toContain("path: '/recharge-address'")
+    expect(componentSource).not.toContain("t('nav.imageGeneration')")
+    expect(componentSource).not.toContain("t('nav.rechargeAddress')")
+  })
+})

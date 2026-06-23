@@ -62,3 +62,16 @@ describe('router WeChat OAuth route', () => {
     expect(route?.meta.title).toBe('WeChat Payment Callback')
   })
 })
+
+describe('router removed user menu routes', () => {
+  it('does not register legacy image generation or recharge address routes', async () => {
+    const { default: router } = await import('@/router')
+    const routeNames = router.getRoutes().map((record) => record.name)
+    const routePaths = router.getRoutes().map((record) => record.path)
+
+    expect(routeNames).not.toContain('ImageGeneration')
+    expect(routeNames).not.toContain('RechargeAddress')
+    expect(routePaths).not.toContain('/image-generation')
+    expect(routePaths).not.toContain('/recharge-address')
+  })
+})

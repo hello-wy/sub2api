@@ -266,30 +266,6 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
-    path: '/recharge-address',
-    name: 'RechargeAddress',
-    component: () => import('@/views/user/RechargeAddressView.vue'),
-    meta: {
-      requiresAuth: true,
-      requiresAdmin: false,
-      title: 'Recharge Address',
-      titleKey: 'rechargeAddress.title',
-      descriptionKey: 'rechargeAddress.description'
-    }
-  },
-  {
-    path: '/image-generation',
-    name: 'ImageGeneration',
-    component: () => import('@/views/user/ImageGenerationEmbedView.vue'),
-    meta: {
-      requiresAuth: true,
-      requiresAdmin: false,
-      title: 'GPT Image Generation',
-      titleKey: 'imageGeneration.title',
-      descriptionKey: 'imageGeneration.description'
-    }
-  },
-  {
     path: '/profile',
     name: 'Profile',
     component: () => import('@/views/user/ProfileView.vue'),
