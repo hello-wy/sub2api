@@ -419,6 +419,7 @@ export default {
     channelMonitor: 'Channel Monitor',
     channelStatus: 'Channel Status',
     riskControl: 'Risk Control',
+    leaderboard: 'Leaderboard',
   },
 
   imageGeneration: {

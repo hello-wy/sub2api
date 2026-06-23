@@ -175,6 +175,15 @@ const routes: RouteRecordRaw[] = [
       title: 'Legal Document'
     }
   },
+  {
+    path: '/leaderboard',
+    name: 'Leaderboard',
+    component: () => import('@/views/public/LeaderboardView.vue'),
+    meta: {
+      requiresAuth: false,
+      title: 'Leaderboard'
+    }
+  },
 
   // ==================== User Routes ====================
   {

@@ -419,6 +419,7 @@ export default {
     channelMonitor: '渠道监控',
     channelStatus: '渠道状态',
     riskControl: '风控中心',
+    leaderboard: '排行榜',
   },
 
   imageGeneration: {
