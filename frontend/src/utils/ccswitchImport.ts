@@ -1,7 +1,7 @@
 import type { GroupPlatform } from '@/types'
 
-export const OPENAI_CC_SWITCH_CODEX_MODEL = 'gpt-5.4'
-export const OPENAI_TO_CLAUDE_DEFAULT_MODEL = 'claude-opus-4-6'
+export const OPENAI_CC_SWITCH_CODEX_MODEL = 'gpt-5.5'
+export const OPENAI_TO_CLAUDE_DEFAULT_MODEL = 'claude-opus-4-8'
 
 export type CcSwitchClientType = 'claude' | 'gemini' | 'codex'
 
