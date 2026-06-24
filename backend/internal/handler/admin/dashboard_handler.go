@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"strconv"
@@ -11,6 +12,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/pkg/timezone"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/usagestats"
 	"github.com/Wei-Shaw/sub2api/internal/service"
+	servermiddleware "github.com/Wei-Shaw/sub2api/internal/server/middleware"
 
 	"github.com/gin-gonic/gin"
 )
@@ -496,14 +498,21 @@ func (h *DashboardHandler) GetUserSpendingRanking(c *gin.Context) {
 	startTime, endTime := parseTimeRange(c)
 	limit := parseRankingLimit(c.DefaultQuery("limit", "12"))
 
+	var userID int64
+	if subject, ok := servermiddleware.GetAuthSubjectFromContext(c); ok {
+		userID = subject.UserID
+	}
+
 	keyRaw, _ := json.Marshal(struct {
-		Start string `json:"start"`
-		End   string `json:"end"`
-		Limit int    `json:"limit"`
+		Start  string `json:"start"`
+		End    string `json:"end"`
+		Limit  int    `json:"limit"`
+		UserID int64  `json:"user_id,omitempty"`
 	}{
-		Start: startTime.UTC().Format(time.RFC3339),
-		End:   endTime.UTC().Format(time.RFC3339),
-		Limit: limit,
+		Start:  startTime.UTC().Format(time.RFC3339),
+		End:    endTime.UTC().Format(time.RFC3339),
+		Limit:  limit,
+		UserID: userID,
 	})
 	cacheKey := string(keyRaw)
 	if cached, ok := dashboardUsersRankingCache.Get(cacheKey); ok {
@@ -512,7 +521,12 @@ func (h *DashboardHandler) GetUserSpendingRanking(c *gin.Context) {
 		return
 	}
 
-	ranking, err := h.dashboardService.GetUserSpendingRanking(c.Request.Context(), startTime, endTime, limit)
+	ctx := c.Request.Context()
+	if userID > 0 {
+		ctx = context.WithValue(ctx, usagestats.ContextKeyRankingUserID, userID)
+	}
+
+	ranking, err := h.dashboardService.GetUserSpendingRanking(ctx, startTime, endTime, limit)
 	if err != nil {
 		response.Error(c, 500, "Failed to get user spending ranking")
 		return
@@ -525,6 +539,9 @@ func (h *DashboardHandler) GetUserSpendingRanking(c *gin.Context) {
 		"total_tokens":      ranking.TotalTokens,
 		"start_date":        startTime.Format("2006-01-02"),
 		"end_date":          endTime.Add(-24 * time.Hour).Format("2006-01-02"),
+	}
+	if ranking.UserRanking != nil {
+		payload["user_ranking"] = ranking.UserRanking
 	}
 	dashboardUsersRankingCache.Set(cacheKey, payload)
 	c.Header("X-Snapshot-Cache", "miss")

@@ -2382,6 +2382,7 @@ func (r *usageLogRepository) GetUserSpendingRanking(ctx context.Context, startTi
 			FROM usage_logs u
 			LEFT JOIN users us ON u.user_id = us.id
 			WHERE u.created_at >= $1 AND u.created_at < $2
+			  AND COALESCE(us.role, 'user') <> 'admin'
 			GROUP BY u.user_id, us.email
 		),
 		ranked AS (
@@ -2431,10 +2432,93 @@ func (r *usageLogRepository) GetUserSpendingRanking(ctx context.Context, startTi
 		if err = rows.Scan(&row.UserID, &row.Email, &row.ActualCost, &row.Requests, &row.Tokens, &totalActualCost, &totalRequests, &totalTokens); err != nil {
 			return nil, err
 		}
+		row.Rank = int64(len(ranking) + 1)
 		ranking = append(ranking, row)
 	}
 	if err = rows.Err(); err != nil {
 		return nil, err
+	}
+
+	var searchUserID int64
+	if val := ctx.Value(usagestats.ContextKeyRankingUserID); val != nil {
+		if uID, ok := val.(int64); ok {
+			searchUserID = uID
+		}
+	}
+
+	var userRanking *UserSpendingRankingItem
+	if searchUserID > 0 {
+		for i, item := range ranking {
+			if item.UserID == searchUserID {
+				userRanking = &UserSpendingRankingItem{
+					UserID:     item.UserID,
+					Email:      item.Email,
+					ActualCost: item.ActualCost,
+					Requests:   item.Requests,
+					Tokens:     item.Tokens,
+					Rank:       int64(i + 1),
+				}
+				break
+			}
+		}
+
+		if userRanking == nil {
+			userQuery := `
+				WITH user_spend AS (
+					SELECT
+						u.user_id,
+						COALESCE(us.email, '') as email,
+						COALESCE(SUM(u.actual_cost), 0) as actual_cost,
+						COUNT(u.user_id) as requests,
+						COALESCE(SUM(u.input_tokens + u.output_tokens + u.cache_creation_tokens + u.cache_read_tokens), 0) as tokens
+					FROM usage_logs u
+					LEFT JOIN users us ON u.user_id = us.id
+					WHERE u.created_at >= $1 AND u.created_at < $2
+					  AND COALESCE(us.role, 'user') <> 'admin'
+					GROUP BY u.user_id, us.email
+				),
+				all_possible_users AS (
+					SELECT user_id, email, actual_cost, requests, tokens FROM user_spend
+					UNION
+					SELECT 
+						$3::bigint as user_id, 
+						COALESCE((SELECT email FROM users WHERE id = $3), '') as email, 
+						0::numeric as actual_cost, 
+						0::bigint as requests, 
+						0::bigint as tokens
+					WHERE NOT EXISTS (SELECT 1 FROM user_spend WHERE user_id = $3)
+					  AND NOT EXISTS (SELECT 1 FROM users WHERE id = $3 AND role = 'admin')
+				),
+				ranked AS (
+					SELECT
+						user_id,
+						email,
+						actual_cost,
+						requests,
+						tokens,
+						ROW_NUMBER() OVER (ORDER BY actual_cost DESC, tokens DESC, user_id ASC) as rank
+					FROM all_possible_users
+				)
+				SELECT rank, user_id, email, actual_cost, requests, tokens
+				FROM ranked
+				WHERE user_id = $3
+			`
+			var row UserSpendingRankingItem
+			err := scanSingleRow(ctx, r.sql, userQuery, []any{startTime, endTime, searchUserID},
+				&row.Rank,
+				&row.UserID,
+				&row.Email,
+				&row.ActualCost,
+				&row.Requests,
+				&row.Tokens,
+			)
+			if err != nil && err != sql.ErrNoRows {
+				return nil, err
+			}
+			if err == nil {
+				userRanking = &row
+			}
+		}
 	}
 
 	return &UserSpendingRankingResponse{
@@ -2442,6 +2526,7 @@ func (r *usageLogRepository) GetUserSpendingRanking(ctx context.Context, startTi
 		TotalActualCost: totalActualCost,
 		TotalRequests:   totalRequests,
 		TotalTokens:     totalTokens,
+		UserRanking:     userRanking,
 	}, nil
 }
 

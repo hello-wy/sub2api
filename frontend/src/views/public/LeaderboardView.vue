@@ -129,6 +129,29 @@
             </div>
           </div>
         </div>
+
+        <!-- Current User Rank (if not in top list) -->
+        <div v-if="showUserRankingAtBottom" class="user-rank-bottom">
+          <div class="divider-line" />
+          <div class="list-item is-me bottom-me-item">
+            <div class="list-rank">#{{ userRanking?.rank }}</div>
+            <img
+              :src="getAvatarUrl(userRanking?.email || '')"
+              :alt="userRanking?.email"
+              class="list-avatar"
+              loading="lazy"
+            />
+            <div class="list-info">
+              <div class="list-email-wrapper">
+                <div class="list-email" :title="userRanking?.email">{{ maskEmail(userRanking?.email || '') }}</div>
+                <span class="list-me">我</span>
+              </div>
+            </div>
+            <div class="list-tokens">
+              <span class="list-token-value">{{ formatCost(userRanking?.actual_cost || 0) }}</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Footer -->
@@ -150,10 +173,19 @@ import { useAuthStore } from '@/stores'
 const authStore = useAuthStore()
 const currentUserId = computed(() => authStore.user?.id)
 const ranking = ref<UserSpendingRankingItem[]>([])
+const userRanking = ref<UserSpendingRankingItem | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
 const hoveredCard = ref<number | null>(null)
 let refreshTimer: ReturnType<typeof setInterval> | null = null
+
+const userInTopList = computed(() => {
+  return ranking.value.some(item => item.user_id === currentUserId.value)
+})
+
+const showUserRankingAtBottom = computed(() => {
+  return !!(userRanking.value && !userInTopList.value)
+})
 
 // Today's date formatted
 const today = computed(() => {
@@ -223,6 +255,7 @@ async function fetchRanking() {
     // Explicitly sort by actual_cost descending
     list.sort((a, b) => b.actual_cost - a.actual_cost)
     ranking.value = list
+    userRanking.value = response.user_ranking || null
   } catch (err: any) {
     error.value = err?.message || 'Failed to load ranking data'
   } finally {
@@ -923,5 +956,20 @@ onUnmounted(() => {
   box-shadow: 0 2px 6px rgba(0, 122, 255, 0.3);
   border: 1px solid rgba(255, 255, 255, 0.15);
   line-height: 1.2;
+}
+
+.user-rank-bottom {
+  margin-top: 1.5rem;
+  width: 100%;
+}
+
+.divider-line {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0, 122, 255, 0.4), transparent);
+  margin-bottom: 1.5rem;
+}
+
+.bottom-me-item {
+  animation: list-enter 0.5s ease backwards;
 }
 </style>

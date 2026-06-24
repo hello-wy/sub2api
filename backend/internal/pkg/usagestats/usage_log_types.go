@@ -145,6 +145,10 @@ type UserUsageTrendPoint struct {
 	ActualCost float64 `json:"actual_cost"` // 实际扣除
 }
 
+type ContextKeyType string
+
+const ContextKeyRankingUserID ContextKeyType = "ranking_user_id"
+
 // UserSpendingRankingItem represents a user spending ranking row.
 type UserSpendingRankingItem struct {
 	UserID     int64   `json:"user_id"`
@@ -152,6 +156,7 @@ type UserSpendingRankingItem struct {
 	ActualCost float64 `json:"actual_cost"` // 实际扣除
 	Requests   int64   `json:"requests"`
 	Tokens     int64   `json:"tokens"`
+	Rank       int64   `json:"rank,omitempty"`
 }
 
 // UserSpendingRankingResponse represents ranking rows plus total spend for the time range.
@@ -160,6 +165,7 @@ type UserSpendingRankingResponse struct {
 	TotalActualCost float64                   `json:"total_actual_cost"`
 	TotalRequests   int64                     `json:"total_requests"`
 	TotalTokens     int64                     `json:"total_tokens"`
+	UserRanking     *UserSpendingRankingItem  `json:"user_ranking,omitempty"`
 }
 
 // UserBreakdownItem represents per-user usage breakdown within a dimension (group, model, endpoint).

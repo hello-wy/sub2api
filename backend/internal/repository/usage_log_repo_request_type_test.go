@@ -518,7 +518,7 @@ func TestUsageLogRepositoryGetUserSpendingRanking(t *testing.T) {
 		AddRow(int64(1), "alpha@example.com", 12.5, int64(8), int64(800), 40.0, int64(30), int64(2600)).
 		AddRow(int64(3), "gamma@example.com", 4.25, int64(5), int64(300), 40.0, int64(30), int64(2600))
 
-	mock.ExpectQuery("WITH user_spend AS \\(").
+	mock.ExpectQuery("WITH user_spend AS \\([\\s\\S]*COALESCE\\(us\\.role, 'user'\\) <> 'admin'").
 		WithArgs(start, end, 12).
 		WillReturnRows(rows)
 

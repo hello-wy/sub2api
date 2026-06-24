@@ -1508,6 +1508,7 @@ export interface UserSpendingRankingItem {
   actual_cost: number
   requests: number
   tokens: number
+  rank?: number
 }
 
 export interface UserSpendingRankingResponse {
@@ -1517,6 +1518,7 @@ export interface UserSpendingRankingResponse {
   total_tokens: number
   start_date: string
   end_date: string
+  user_ranking?: UserSpendingRankingItem
 }
 
 export interface ApiKeyUsageTrendPoint {
