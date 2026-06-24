@@ -598,6 +598,55 @@ var (
 			},
 		},
 	}
+	// DailyCheckinRecordsColumns holds the columns for the "daily_checkin_records" table.
+	DailyCheckinRecordsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "created_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "updated_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "checkin_date", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "date"}},
+		{Name: "timezone", Type: field.TypeString, Size: 64, Default: "UTC"},
+		{Name: "base_reward", Type: field.TypeFloat64, Default: 0, SchemaType: map[string]string{"postgres": "decimal(20,8)"}},
+		{Name: "bonus_reward", Type: field.TypeFloat64, Default: 0, SchemaType: map[string]string{"postgres": "decimal(20,8)"}},
+		{Name: "total_reward", Type: field.TypeFloat64, Default: 0, SchemaType: map[string]string{"postgres": "decimal(20,8)"}},
+		{Name: "streak_days", Type: field.TypeInt, Default: 1},
+		{Name: "user_id", Type: field.TypeInt64},
+	}
+	// DailyCheckinRecordsTable holds the schema information for the "daily_checkin_records" table.
+	DailyCheckinRecordsTable = &schema.Table{
+		Name:       "daily_checkin_records",
+		Columns:    DailyCheckinRecordsColumns,
+		PrimaryKey: []*schema.Column{DailyCheckinRecordsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "daily_checkin_records_users_daily_checkin_records",
+				Columns:    []*schema.Column{DailyCheckinRecordsColumns[9]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "dailycheckinrecord_user_id_checkin_date",
+				Unique:  true,
+				Columns: []*schema.Column{DailyCheckinRecordsColumns[9], DailyCheckinRecordsColumns[3]},
+			},
+			{
+				Name:    "dailycheckinrecord_user_id",
+				Unique:  false,
+				Columns: []*schema.Column{DailyCheckinRecordsColumns[9]},
+			},
+			{
+				Name:    "dailycheckinrecord_checkin_date",
+				Unique:  false,
+				Columns: []*schema.Column{DailyCheckinRecordsColumns[3]},
+			},
+			{
+				Name:    "dailycheckinrecord_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{DailyCheckinRecordsColumns[1]},
+			},
+		},
+	}
 	// ErrorPassthroughRulesColumns holds the columns for the "error_passthrough_rules" table.
 	ErrorPassthroughRulesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt64, Increment: true},
@@ -1818,6 +1867,14 @@ var (
 				Unique:  false,
 				Columns: []*schema.Column{WelfareRecordsColumns[1]},
 			},
+			{
+				Name:    "welfarerecord_remarks",
+				Unique:  true,
+				Columns: []*schema.Column{WelfareRecordsColumns[5]},
+				Annotation: &entsql.IndexAnnotation{
+					Where: "status = 'success'",
+				},
+			},
 		},
 	}
 	// Tables holds all the tables in the schema.
@@ -1833,6 +1890,7 @@ var (
 		ChannelMonitorDailyRollupsTable,
 		ChannelMonitorHistoriesTable,
 		ChannelMonitorRequestTemplatesTable,
+		DailyCheckinRecordsTable,
 		ErrorPassthroughRulesTable,
 		GroupsTable,
 		IdempotencyRecordsTable,
@@ -1906,6 +1964,10 @@ func init() {
 	}
 	ChannelMonitorRequestTemplatesTable.Annotation = &entsql.Annotation{
 		Table: "channel_monitor_request_templates",
+	}
+	DailyCheckinRecordsTable.ForeignKeys[0].RefTable = UsersTable
+	DailyCheckinRecordsTable.Annotation = &entsql.Annotation{
+		Table: "daily_checkin_records",
 	}
 	ErrorPassthroughRulesTable.Annotation = &entsql.Annotation{
 		Table: "error_passthrough_rules",

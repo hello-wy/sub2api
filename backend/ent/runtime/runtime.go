@@ -16,6 +16,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/channelmonitordailyrollup"
 	"github.com/Wei-Shaw/sub2api/ent/channelmonitorhistory"
 	"github.com/Wei-Shaw/sub2api/ent/channelmonitorrequesttemplate"
+	"github.com/Wei-Shaw/sub2api/ent/dailycheckinrecord"
 	"github.com/Wei-Shaw/sub2api/ent/errorpassthroughrule"
 	"github.com/Wei-Shaw/sub2api/ent/group"
 	"github.com/Wei-Shaw/sub2api/ent/idempotencyrecord"
@@ -697,6 +698,43 @@ func init() {
 	channelmonitorrequesttemplate.DefaultBodyOverrideMode = channelmonitorrequesttemplateDescBodyOverrideMode.Default.(string)
 	// channelmonitorrequesttemplate.BodyOverrideModeValidator is a validator for the "body_override_mode" field. It is called by the builders before save.
 	channelmonitorrequesttemplate.BodyOverrideModeValidator = channelmonitorrequesttemplateDescBodyOverrideMode.Validators[0].(func(string) error)
+	dailycheckinrecordMixin := schema.DailyCheckinRecord{}.Mixin()
+	dailycheckinrecordMixinFields0 := dailycheckinrecordMixin[0].Fields()
+	_ = dailycheckinrecordMixinFields0
+	dailycheckinrecordFields := schema.DailyCheckinRecord{}.Fields()
+	_ = dailycheckinrecordFields
+	// dailycheckinrecordDescCreatedAt is the schema descriptor for created_at field.
+	dailycheckinrecordDescCreatedAt := dailycheckinrecordMixinFields0[0].Descriptor()
+	// dailycheckinrecord.DefaultCreatedAt holds the default value on creation for the created_at field.
+	dailycheckinrecord.DefaultCreatedAt = dailycheckinrecordDescCreatedAt.Default.(func() time.Time)
+	// dailycheckinrecordDescUpdatedAt is the schema descriptor for updated_at field.
+	dailycheckinrecordDescUpdatedAt := dailycheckinrecordMixinFields0[1].Descriptor()
+	// dailycheckinrecord.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	dailycheckinrecord.DefaultUpdatedAt = dailycheckinrecordDescUpdatedAt.Default.(func() time.Time)
+	// dailycheckinrecord.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	dailycheckinrecord.UpdateDefaultUpdatedAt = dailycheckinrecordDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// dailycheckinrecordDescTimezone is the schema descriptor for timezone field.
+	dailycheckinrecordDescTimezone := dailycheckinrecordFields[2].Descriptor()
+	// dailycheckinrecord.DefaultTimezone holds the default value on creation for the timezone field.
+	dailycheckinrecord.DefaultTimezone = dailycheckinrecordDescTimezone.Default.(string)
+	// dailycheckinrecord.TimezoneValidator is a validator for the "timezone" field. It is called by the builders before save.
+	dailycheckinrecord.TimezoneValidator = dailycheckinrecordDescTimezone.Validators[0].(func(string) error)
+	// dailycheckinrecordDescBaseReward is the schema descriptor for base_reward field.
+	dailycheckinrecordDescBaseReward := dailycheckinrecordFields[3].Descriptor()
+	// dailycheckinrecord.DefaultBaseReward holds the default value on creation for the base_reward field.
+	dailycheckinrecord.DefaultBaseReward = dailycheckinrecordDescBaseReward.Default.(float64)
+	// dailycheckinrecordDescBonusReward is the schema descriptor for bonus_reward field.
+	dailycheckinrecordDescBonusReward := dailycheckinrecordFields[4].Descriptor()
+	// dailycheckinrecord.DefaultBonusReward holds the default value on creation for the bonus_reward field.
+	dailycheckinrecord.DefaultBonusReward = dailycheckinrecordDescBonusReward.Default.(float64)
+	// dailycheckinrecordDescTotalReward is the schema descriptor for total_reward field.
+	dailycheckinrecordDescTotalReward := dailycheckinrecordFields[5].Descriptor()
+	// dailycheckinrecord.DefaultTotalReward holds the default value on creation for the total_reward field.
+	dailycheckinrecord.DefaultTotalReward = dailycheckinrecordDescTotalReward.Default.(float64)
+	// dailycheckinrecordDescStreakDays is the schema descriptor for streak_days field.
+	dailycheckinrecordDescStreakDays := dailycheckinrecordFields[6].Descriptor()
+	// dailycheckinrecord.DefaultStreakDays holds the default value on creation for the streak_days field.
+	dailycheckinrecord.DefaultStreakDays = dailycheckinrecordDescStreakDays.Default.(int)
 	errorpassthroughruleMixin := schema.ErrorPassthroughRule{}.Mixin()
 	errorpassthroughruleMixinFields0 := errorpassthroughruleMixin[0].Fields()
 	_ = errorpassthroughruleMixinFields0

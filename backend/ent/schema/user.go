@@ -133,6 +133,8 @@ func (User) Edges() []ent.Edge {
 		edge.To("pending_auth_sessions", PendingAuthSession.Type),
 		edge.To("platform_quotas", UserPlatformQuota.Type),
 		edge.To("welfare_records", WelfareRecord.Type),
+		edge.To("daily_checkin_records", DailyCheckinRecord.Type).
+			Annotations(entsql.OnDelete(entsql.Cascade)),
 	}
 }
 

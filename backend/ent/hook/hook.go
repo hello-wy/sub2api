@@ -141,6 +141,18 @@ func (f ChannelMonitorRequestTemplateFunc) Mutate(ctx context.Context, m ent.Mut
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ChannelMonitorRequestTemplateMutation", m)
 }
 
+// The DailyCheckinRecordFunc type is an adapter to allow the use of ordinary
+// function as DailyCheckinRecord mutator.
+type DailyCheckinRecordFunc func(context.Context, *ent.DailyCheckinRecordMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f DailyCheckinRecordFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.DailyCheckinRecordMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DailyCheckinRecordMutation", m)
+}
+
 // The ErrorPassthroughRuleFunc type is an adapter to allow the use of ordinary
 // function as ErrorPassthroughRule mutator.
 type ErrorPassthroughRuleFunc func(context.Context, *ent.ErrorPassthroughRuleMutation) (ent.Value, error)

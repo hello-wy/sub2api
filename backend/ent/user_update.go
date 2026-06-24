@@ -14,6 +14,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/announcementread"
 	"github.com/Wei-Shaw/sub2api/ent/apikey"
 	"github.com/Wei-Shaw/sub2api/ent/authidentity"
+	"github.com/Wei-Shaw/sub2api/ent/dailycheckinrecord"
 	"github.com/Wei-Shaw/sub2api/ent/group"
 	"github.com/Wei-Shaw/sub2api/ent/paymentorder"
 	"github.com/Wei-Shaw/sub2api/ent/pendingauthsession"
@@ -622,6 +623,21 @@ func (_u *UserUpdate) AddWelfareRecords(v ...*WelfareRecord) *UserUpdate {
 	return _u.AddWelfareRecordIDs(ids...)
 }
 
+// AddDailyCheckinRecordIDs adds the "daily_checkin_records" edge to the DailyCheckinRecord entity by IDs.
+func (_u *UserUpdate) AddDailyCheckinRecordIDs(ids ...int64) *UserUpdate {
+	_u.mutation.AddDailyCheckinRecordIDs(ids...)
+	return _u
+}
+
+// AddDailyCheckinRecords adds the "daily_checkin_records" edges to the DailyCheckinRecord entity.
+func (_u *UserUpdate) AddDailyCheckinRecords(v ...*DailyCheckinRecord) *UserUpdate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddDailyCheckinRecordIDs(ids...)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (_u *UserUpdate) Mutation() *UserMutation {
 	return _u.mutation
@@ -919,6 +935,27 @@ func (_u *UserUpdate) RemoveWelfareRecords(v ...*WelfareRecord) *UserUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveWelfareRecordIDs(ids...)
+}
+
+// ClearDailyCheckinRecords clears all "daily_checkin_records" edges to the DailyCheckinRecord entity.
+func (_u *UserUpdate) ClearDailyCheckinRecords() *UserUpdate {
+	_u.mutation.ClearDailyCheckinRecords()
+	return _u
+}
+
+// RemoveDailyCheckinRecordIDs removes the "daily_checkin_records" edge to DailyCheckinRecord entities by IDs.
+func (_u *UserUpdate) RemoveDailyCheckinRecordIDs(ids ...int64) *UserUpdate {
+	_u.mutation.RemoveDailyCheckinRecordIDs(ids...)
+	return _u
+}
+
+// RemoveDailyCheckinRecords removes "daily_checkin_records" edges to DailyCheckinRecord entities.
+func (_u *UserUpdate) RemoveDailyCheckinRecords(v ...*DailyCheckinRecord) *UserUpdate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveDailyCheckinRecordIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -1751,6 +1788,51 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.DailyCheckinRecordsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.DailyCheckinRecordsTable,
+			Columns: []string{user.DailyCheckinRecordsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(dailycheckinrecord.FieldID, field.TypeInt64),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedDailyCheckinRecordsIDs(); len(nodes) > 0 && !_u.mutation.DailyCheckinRecordsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.DailyCheckinRecordsTable,
+			Columns: []string{user.DailyCheckinRecordsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(dailycheckinrecord.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.DailyCheckinRecordsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.DailyCheckinRecordsTable,
+			Columns: []string{user.DailyCheckinRecordsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(dailycheckinrecord.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{user.Label}
@@ -2352,6 +2434,21 @@ func (_u *UserUpdateOne) AddWelfareRecords(v ...*WelfareRecord) *UserUpdateOne {
 	return _u.AddWelfareRecordIDs(ids...)
 }
 
+// AddDailyCheckinRecordIDs adds the "daily_checkin_records" edge to the DailyCheckinRecord entity by IDs.
+func (_u *UserUpdateOne) AddDailyCheckinRecordIDs(ids ...int64) *UserUpdateOne {
+	_u.mutation.AddDailyCheckinRecordIDs(ids...)
+	return _u
+}
+
+// AddDailyCheckinRecords adds the "daily_checkin_records" edges to the DailyCheckinRecord entity.
+func (_u *UserUpdateOne) AddDailyCheckinRecords(v ...*DailyCheckinRecord) *UserUpdateOne {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddDailyCheckinRecordIDs(ids...)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (_u *UserUpdateOne) Mutation() *UserMutation {
 	return _u.mutation
@@ -2649,6 +2746,27 @@ func (_u *UserUpdateOne) RemoveWelfareRecords(v ...*WelfareRecord) *UserUpdateOn
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveWelfareRecordIDs(ids...)
+}
+
+// ClearDailyCheckinRecords clears all "daily_checkin_records" edges to the DailyCheckinRecord entity.
+func (_u *UserUpdateOne) ClearDailyCheckinRecords() *UserUpdateOne {
+	_u.mutation.ClearDailyCheckinRecords()
+	return _u
+}
+
+// RemoveDailyCheckinRecordIDs removes the "daily_checkin_records" edge to DailyCheckinRecord entities by IDs.
+func (_u *UserUpdateOne) RemoveDailyCheckinRecordIDs(ids ...int64) *UserUpdateOne {
+	_u.mutation.RemoveDailyCheckinRecordIDs(ids...)
+	return _u
+}
+
+// RemoveDailyCheckinRecords removes "daily_checkin_records" edges to DailyCheckinRecord entities.
+func (_u *UserUpdateOne) RemoveDailyCheckinRecords(v ...*DailyCheckinRecord) *UserUpdateOne {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveDailyCheckinRecordIDs(ids...)
 }
 
 // Where appends a list predicates to the UserUpdate builder.
@@ -3504,6 +3622,51 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(welfarerecord.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.DailyCheckinRecordsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.DailyCheckinRecordsTable,
+			Columns: []string{user.DailyCheckinRecordsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(dailycheckinrecord.FieldID, field.TypeInt64),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedDailyCheckinRecordsIDs(); len(nodes) > 0 && !_u.mutation.DailyCheckinRecordsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.DailyCheckinRecordsTable,
+			Columns: []string{user.DailyCheckinRecordsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(dailycheckinrecord.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.DailyCheckinRecordsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.DailyCheckinRecordsTable,
+			Columns: []string{user.DailyCheckinRecordsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(dailycheckinrecord.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {

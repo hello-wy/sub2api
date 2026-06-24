@@ -89,6 +89,8 @@ const (
 	EdgePlatformQuotas = "platform_quotas"
 	// EdgeWelfareRecords holds the string denoting the welfare_records edge name in mutations.
 	EdgeWelfareRecords = "welfare_records"
+	// EdgeDailyCheckinRecords holds the string denoting the daily_checkin_records edge name in mutations.
+	EdgeDailyCheckinRecords = "daily_checkin_records"
 	// EdgeUserAllowedGroups holds the string denoting the user_allowed_groups edge name in mutations.
 	EdgeUserAllowedGroups = "user_allowed_groups"
 	// Table holds the table name of the user in the database.
@@ -189,6 +191,13 @@ const (
 	WelfareRecordsInverseTable = "welfare_records"
 	// WelfareRecordsColumn is the table column denoting the welfare_records relation/edge.
 	WelfareRecordsColumn = "user_id"
+	// DailyCheckinRecordsTable is the table that holds the daily_checkin_records relation/edge.
+	DailyCheckinRecordsTable = "daily_checkin_records"
+	// DailyCheckinRecordsInverseTable is the table name for the DailyCheckinRecord entity.
+	// It exists in this package in order to avoid circular dependency with the "dailycheckinrecord" package.
+	DailyCheckinRecordsInverseTable = "daily_checkin_records"
+	// DailyCheckinRecordsColumn is the table column denoting the daily_checkin_records relation/edge.
+	DailyCheckinRecordsColumn = "user_id"
 	// UserAllowedGroupsTable is the table that holds the user_allowed_groups relation/edge.
 	UserAllowedGroupsTable = "user_allowed_groups"
 	// UserAllowedGroupsInverseTable is the table name for the UserAllowedGroup entity.
@@ -615,6 +624,20 @@ func ByWelfareRecords(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	}
 }
 
+// ByDailyCheckinRecordsCount orders the results by daily_checkin_records count.
+func ByDailyCheckinRecordsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newDailyCheckinRecordsStep(), opts...)
+	}
+}
+
+// ByDailyCheckinRecords orders the results by daily_checkin_records terms.
+func ByDailyCheckinRecords(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newDailyCheckinRecordsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByUserAllowedGroupsCount orders the results by user_allowed_groups count.
 func ByUserAllowedGroupsCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -724,6 +747,13 @@ func newWelfareRecordsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(WelfareRecordsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, WelfareRecordsTable, WelfareRecordsColumn),
+	)
+}
+func newDailyCheckinRecordsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(DailyCheckinRecordsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, DailyCheckinRecordsTable, DailyCheckinRecordsColumn),
 	)
 }
 func newUserAllowedGroupsStep() *sqlgraph.Step {

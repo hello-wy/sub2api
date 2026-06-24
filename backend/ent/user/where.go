@@ -1662,6 +1662,29 @@ func HasWelfareRecordsWith(preds ...predicate.WelfareRecord) predicate.User {
 	})
 }
 
+// HasDailyCheckinRecords applies the HasEdge predicate on the "daily_checkin_records" edge.
+func HasDailyCheckinRecords() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, DailyCheckinRecordsTable, DailyCheckinRecordsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasDailyCheckinRecordsWith applies the HasEdge predicate on the "daily_checkin_records" edge with a given conditions (other predicates).
+func HasDailyCheckinRecordsWith(preds ...predicate.DailyCheckinRecord) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := newDailyCheckinRecordsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // HasUserAllowedGroups applies the HasEdge predicate on the "user_allowed_groups" edge.
 func HasUserAllowedGroups() predicate.User {
 	return predicate.User(func(s *sql.Selector) {

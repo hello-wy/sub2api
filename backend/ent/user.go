@@ -99,11 +99,13 @@ type UserEdges struct {
 	PlatformQuotas []*UserPlatformQuota `json:"platform_quotas,omitempty"`
 	// WelfareRecords holds the value of the welfare_records edge.
 	WelfareRecords []*WelfareRecord `json:"welfare_records,omitempty"`
+	// DailyCheckinRecords holds the value of the daily_checkin_records edge.
+	DailyCheckinRecords []*DailyCheckinRecord `json:"daily_checkin_records,omitempty"`
 	// UserAllowedGroups holds the value of the user_allowed_groups edge.
 	UserAllowedGroups []*UserAllowedGroup `json:"user_allowed_groups,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [15]bool
+	loadedTypes [16]bool
 }
 
 // APIKeysOrErr returns the APIKeys value or an error if the edge
@@ -232,10 +234,19 @@ func (e UserEdges) WelfareRecordsOrErr() ([]*WelfareRecord, error) {
 	return nil, &NotLoadedError{edge: "welfare_records"}
 }
 
+// DailyCheckinRecordsOrErr returns the DailyCheckinRecords value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) DailyCheckinRecordsOrErr() ([]*DailyCheckinRecord, error) {
+	if e.loadedTypes[14] {
+		return e.DailyCheckinRecords, nil
+	}
+	return nil, &NotLoadedError{edge: "daily_checkin_records"}
+}
+
 // UserAllowedGroupsOrErr returns the UserAllowedGroups value or an error if the edge
 // was not loaded in eager-loading.
 func (e UserEdges) UserAllowedGroupsOrErr() ([]*UserAllowedGroup, error) {
-	if e.loadedTypes[14] {
+	if e.loadedTypes[15] {
 		return e.UserAllowedGroups, nil
 	}
 	return nil, &NotLoadedError{edge: "user_allowed_groups"}
@@ -502,6 +513,11 @@ func (_m *User) QueryPlatformQuotas() *UserPlatformQuotaQuery {
 // QueryWelfareRecords queries the "welfare_records" edge of the User entity.
 func (_m *User) QueryWelfareRecords() *WelfareRecordQuery {
 	return NewUserClient(_m.config).QueryWelfareRecords(_m)
+}
+
+// QueryDailyCheckinRecords queries the "daily_checkin_records" edge of the User entity.
+func (_m *User) QueryDailyCheckinRecords() *DailyCheckinRecordQuery {
+	return NewUserClient(_m.config).QueryDailyCheckinRecords(_m)
 }
 
 // QueryUserAllowedGroups queries the "user_allowed_groups" edge of the User entity.

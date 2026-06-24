@@ -16,6 +16,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/announcementread"
 	"github.com/Wei-Shaw/sub2api/ent/apikey"
 	"github.com/Wei-Shaw/sub2api/ent/authidentity"
+	"github.com/Wei-Shaw/sub2api/ent/dailycheckinrecord"
 	"github.com/Wei-Shaw/sub2api/ent/group"
 	"github.com/Wei-Shaw/sub2api/ent/paymentorder"
 	"github.com/Wei-Shaw/sub2api/ent/pendingauthsession"
@@ -52,6 +53,7 @@ type UserQuery struct {
 	withPendingAuthSessions   *PendingAuthSessionQuery
 	withPlatformQuotas        *UserPlatformQuotaQuery
 	withWelfareRecords        *WelfareRecordQuery
+	withDailyCheckinRecords   *DailyCheckinRecordQuery
 	withUserAllowedGroups     *UserAllowedGroupQuery
 	modifiers                 []func(*sql.Selector)
 	// intermediate query (i.e. traversal path).
@@ -398,6 +400,28 @@ func (_q *UserQuery) QueryWelfareRecords() *WelfareRecordQuery {
 	return query
 }
 
+// QueryDailyCheckinRecords chains the current query on the "daily_checkin_records" edge.
+func (_q *UserQuery) QueryDailyCheckinRecords() *DailyCheckinRecordQuery {
+	query := (&DailyCheckinRecordClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, selector),
+			sqlgraph.To(dailycheckinrecord.Table, dailycheckinrecord.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.DailyCheckinRecordsTable, user.DailyCheckinRecordsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
 // QueryUserAllowedGroups chains the current query on the "user_allowed_groups" edge.
 func (_q *UserQuery) QueryUserAllowedGroups() *UserAllowedGroupQuery {
 	query := (&UserAllowedGroupClient{config: _q.config}).Query()
@@ -626,6 +650,7 @@ func (_q *UserQuery) Clone() *UserQuery {
 		withPendingAuthSessions:   _q.withPendingAuthSessions.Clone(),
 		withPlatformQuotas:        _q.withPlatformQuotas.Clone(),
 		withWelfareRecords:        _q.withWelfareRecords.Clone(),
+		withDailyCheckinRecords:   _q.withDailyCheckinRecords.Clone(),
 		withUserAllowedGroups:     _q.withUserAllowedGroups.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
@@ -787,6 +812,17 @@ func (_q *UserQuery) WithWelfareRecords(opts ...func(*WelfareRecordQuery)) *User
 	return _q
 }
 
+// WithDailyCheckinRecords tells the query-builder to eager-load the nodes that are connected to
+// the "daily_checkin_records" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *UserQuery) WithDailyCheckinRecords(opts ...func(*DailyCheckinRecordQuery)) *UserQuery {
+	query := (&DailyCheckinRecordClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withDailyCheckinRecords = query
+	return _q
+}
+
 // WithUserAllowedGroups tells the query-builder to eager-load the nodes that are connected to
 // the "user_allowed_groups" edge. The optional arguments are used to configure the query builder of the edge.
 func (_q *UserQuery) WithUserAllowedGroups(opts ...func(*UserAllowedGroupQuery)) *UserQuery {
@@ -876,7 +912,7 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 	var (
 		nodes       = []*User{}
 		_spec       = _q.querySpec()
-		loadedTypes = [15]bool{
+		loadedTypes = [16]bool{
 			_q.withAPIKeys != nil,
 			_q.withRedeemCodes != nil,
 			_q.withSubscriptions != nil,
@@ -891,6 +927,7 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 			_q.withPendingAuthSessions != nil,
 			_q.withPlatformQuotas != nil,
 			_q.withWelfareRecords != nil,
+			_q.withDailyCheckinRecords != nil,
 			_q.withUserAllowedGroups != nil,
 		}
 	)
@@ -1014,6 +1051,15 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 		if err := _q.loadWelfareRecords(ctx, query, nodes,
 			func(n *User) { n.Edges.WelfareRecords = []*WelfareRecord{} },
 			func(n *User, e *WelfareRecord) { n.Edges.WelfareRecords = append(n.Edges.WelfareRecords, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withDailyCheckinRecords; query != nil {
+		if err := _q.loadDailyCheckinRecords(ctx, query, nodes,
+			func(n *User) { n.Edges.DailyCheckinRecords = []*DailyCheckinRecord{} },
+			func(n *User, e *DailyCheckinRecord) {
+				n.Edges.DailyCheckinRecords = append(n.Edges.DailyCheckinRecords, e)
+			}); err != nil {
 			return nil, err
 		}
 	}
@@ -1472,6 +1518,36 @@ func (_q *UserQuery) loadWelfareRecords(ctx context.Context, query *WelfareRecor
 	}
 	query.Where(predicate.WelfareRecord(func(s *sql.Selector) {
 		s.Where(sql.InValues(s.C(user.WelfareRecordsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.UserID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "user_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *UserQuery) loadDailyCheckinRecords(ctx context.Context, query *DailyCheckinRecordQuery, nodes []*User, init func(*User), assign func(*User, *DailyCheckinRecord)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int64]*User)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(dailycheckinrecord.FieldUserID)
+	}
+	query.Where(predicate.DailyCheckinRecord(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(user.DailyCheckinRecordsColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {
