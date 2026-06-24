@@ -155,6 +155,10 @@ type SystemSettings struct {
 	DefaultUserRPMLimit          int
 	DefaultSubscriptions         []DefaultSubscriptionSetting
 
+	// 排行榜福利设置
+	WelfareLeaderboardRankLimit    int
+	WelfareLeaderboardRewardRatios string
+
 	// Model fallback configuration
 	EnableModelFallback      bool   `json:"enable_model_fallback"`
 	FallbackModelAnthropic   string `json:"fallback_model_anthropic"`

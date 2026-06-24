@@ -247,6 +247,12 @@ export function generateOpenCodeConfig(platform: GroupPlatform | 'antigravity-cl
     }
   }
   const claudeModels = {
+    'claude-fable-5': {
+      name: 'Claude Fable 5',
+      limit: { context: 1048576, output: 128000 },
+      modalities: { input: ['text', 'image', 'pdf'], output: ['text'] },
+      options: { thinking: { type: 'adaptive' } }
+    },
     'claude-opus-4-6-thinking': {
       name: 'Claude 4.6 Opus (Thinking)',
       limit: { context: 200000, output: 128000 },

@@ -420,6 +420,7 @@ export default {
     channelStatus: 'Channel Status',
     riskControl: 'Risk Control',
     leaderboard: 'Leaderboard',
+    welfareRecords: 'Welfare Records',
   },
 
   imageGeneration: {
@@ -4657,6 +4658,32 @@ export default {
       failedToLoadUsages: 'Failed to load usage records'
     },
 
+    // Welfare Records
+    welfare: {
+      title: 'Welfare Records',
+      description: 'View and manage daily leaderboard spending welfare records. Support revoking distributed welfare amounts.',
+      searchPlaceholder: 'Search user by email...',
+      table: {
+        email: 'User Email',
+        amount: 'Amount',
+        remarks: 'Remarks',
+        status: 'Status',
+        createdAt: 'Created At',
+        actions: 'Actions',
+      },
+      status: {
+        success: 'Distributed',
+        revoked: 'Revoked',
+      },
+      action: {
+        revoke: 'Revoke Welfare',
+        revokeConfirmTitle: 'Confirm Revoke Welfare',
+        revokeConfirmMessage: 'Are you sure you want to revoke this welfare reward? After revocation, the corresponding amount ({amount}) will be automatically deducted from the user\'s balance, and the status of this record will change to "Revoked".',
+        revokeSuccess: 'Welfare record revoked successfully',
+        revoking: 'Revoking...',
+      }
+    },
+
     // Usage Records
     usage: {
       title: 'Usage Records',
@@ -5501,6 +5528,7 @@ export default {
         email: 'Email',
         backup: 'Backup',
         payment: 'Payment',
+        operations: 'Operations',
       },
       features: {
         channelMonitor: {
@@ -5584,6 +5612,18 @@ export default {
             clearHint: 'Submitting empty will clear the exclusive rate for selected users.',
           },
         },
+      },
+      operations: {
+        title: 'Operations Welfare Config',
+        description: 'Configure rules for the daily leaderboard spending welfare. Rewards are calculated at 23:55 daily (Server Timezone).',
+        rankLimit: 'Leaderboard Rank Limit',
+        rankLimitHint: 'Specify the number of top ranks eligible for welfare rewards. Default is 3.',
+        rewardRatios: 'Reward Ratios by Rank',
+        rewardRatiosHint: 'Welfare ratio for 1st to N-th place (e.g. 1.0 for 100% refund/recharge, 0.5 for 50%, etc.). The number of items must match the limit.',
+        ratioPlaceholder: 'Enter ratio, e.g. 1.0 or 0.5',
+        ratioItem: 'Rank {rank} Ratio',
+        addRatio: 'Add Ratio Config',
+        deleteRatio: 'Delete Ratio',
       },
       emailTabDisabledTitle: 'Email Verification Not Enabled',
       emailTabDisabledHint: 'Enable email verification in the Security tab to configure SMTP settings.',

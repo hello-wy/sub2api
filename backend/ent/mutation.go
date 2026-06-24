@@ -48,6 +48,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/userattributevalue"
 	"github.com/Wei-Shaw/sub2api/ent/userplatformquota"
 	"github.com/Wei-Shaw/sub2api/ent/usersubscription"
+	"github.com/Wei-Shaw/sub2api/ent/welfarerecord"
 	"github.com/Wei-Shaw/sub2api/internal/domain"
 )
 
@@ -95,6 +96,7 @@ const (
 	TypeUserAttributeValue            = "UserAttributeValue"
 	TypeUserPlatformQuota             = "UserPlatformQuota"
 	TypeUserSubscription              = "UserSubscription"
+	TypeWelfareRecord                 = "WelfareRecord"
 )
 
 // APIKeyMutation represents an operation that mutates the APIKey nodes in the graph.
@@ -38746,6 +38748,9 @@ type UserMutation struct {
 	platform_quotas               map[int64]struct{}
 	removedplatform_quotas        map[int64]struct{}
 	clearedplatform_quotas        bool
+	welfare_records               map[int64]struct{}
+	removedwelfare_records        map[int64]struct{}
+	clearedwelfare_records        bool
 	done                          bool
 	oldValue                      func(context.Context) (*User, error)
 	predicates                    []predicate.User
@@ -40558,6 +40563,60 @@ func (m *UserMutation) ResetPlatformQuotas() {
 	m.removedplatform_quotas = nil
 }
 
+// AddWelfareRecordIDs adds the "welfare_records" edge to the WelfareRecord entity by ids.
+func (m *UserMutation) AddWelfareRecordIDs(ids ...int64) {
+	if m.welfare_records == nil {
+		m.welfare_records = make(map[int64]struct{})
+	}
+	for i := range ids {
+		m.welfare_records[ids[i]] = struct{}{}
+	}
+}
+
+// ClearWelfareRecords clears the "welfare_records" edge to the WelfareRecord entity.
+func (m *UserMutation) ClearWelfareRecords() {
+	m.clearedwelfare_records = true
+}
+
+// WelfareRecordsCleared reports if the "welfare_records" edge to the WelfareRecord entity was cleared.
+func (m *UserMutation) WelfareRecordsCleared() bool {
+	return m.clearedwelfare_records
+}
+
+// RemoveWelfareRecordIDs removes the "welfare_records" edge to the WelfareRecord entity by IDs.
+func (m *UserMutation) RemoveWelfareRecordIDs(ids ...int64) {
+	if m.removedwelfare_records == nil {
+		m.removedwelfare_records = make(map[int64]struct{})
+	}
+	for i := range ids {
+		delete(m.welfare_records, ids[i])
+		m.removedwelfare_records[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedWelfareRecords returns the removed IDs of the "welfare_records" edge to the WelfareRecord entity.
+func (m *UserMutation) RemovedWelfareRecordsIDs() (ids []int64) {
+	for id := range m.removedwelfare_records {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// WelfareRecordsIDs returns the "welfare_records" edge IDs in the mutation.
+func (m *UserMutation) WelfareRecordsIDs() (ids []int64) {
+	for id := range m.welfare_records {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetWelfareRecords resets all changes to the "welfare_records" edge.
+func (m *UserMutation) ResetWelfareRecords() {
+	m.welfare_records = nil
+	m.clearedwelfare_records = false
+	m.removedwelfare_records = nil
+}
+
 // Where appends a list predicates to the UserMutation builder.
 func (m *UserMutation) Where(ps ...predicate.User) {
 	m.predicates = append(m.predicates, ps...)
@@ -41167,7 +41226,7 @@ func (m *UserMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *UserMutation) AddedEdges() []string {
-	edges := make([]string, 0, 13)
+	edges := make([]string, 0, 14)
 	if m.api_keys != nil {
 		edges = append(edges, user.EdgeAPIKeys)
 	}
@@ -41206,6 +41265,9 @@ func (m *UserMutation) AddedEdges() []string {
 	}
 	if m.platform_quotas != nil {
 		edges = append(edges, user.EdgePlatformQuotas)
+	}
+	if m.welfare_records != nil {
+		edges = append(edges, user.EdgeWelfareRecords)
 	}
 	return edges
 }
@@ -41292,13 +41354,19 @@ func (m *UserMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case user.EdgeWelfareRecords:
+		ids := make([]ent.Value, 0, len(m.welfare_records))
+		for id := range m.welfare_records {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *UserMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 13)
+	edges := make([]string, 0, 14)
 	if m.removedapi_keys != nil {
 		edges = append(edges, user.EdgeAPIKeys)
 	}
@@ -41337,6 +41405,9 @@ func (m *UserMutation) RemovedEdges() []string {
 	}
 	if m.removedplatform_quotas != nil {
 		edges = append(edges, user.EdgePlatformQuotas)
+	}
+	if m.removedwelfare_records != nil {
+		edges = append(edges, user.EdgeWelfareRecords)
 	}
 	return edges
 }
@@ -41423,13 +41494,19 @@ func (m *UserMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case user.EdgeWelfareRecords:
+		ids := make([]ent.Value, 0, len(m.removedwelfare_records))
+		for id := range m.removedwelfare_records {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *UserMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 13)
+	edges := make([]string, 0, 14)
 	if m.clearedapi_keys {
 		edges = append(edges, user.EdgeAPIKeys)
 	}
@@ -41469,6 +41546,9 @@ func (m *UserMutation) ClearedEdges() []string {
 	if m.clearedplatform_quotas {
 		edges = append(edges, user.EdgePlatformQuotas)
 	}
+	if m.clearedwelfare_records {
+		edges = append(edges, user.EdgeWelfareRecords)
+	}
 	return edges
 }
 
@@ -41502,6 +41582,8 @@ func (m *UserMutation) EdgeCleared(name string) bool {
 		return m.clearedpending_auth_sessions
 	case user.EdgePlatformQuotas:
 		return m.clearedplatform_quotas
+	case user.EdgeWelfareRecords:
+		return m.clearedwelfare_records
 	}
 	return false
 }
@@ -41556,6 +41638,9 @@ func (m *UserMutation) ResetEdge(name string) error {
 		return nil
 	case user.EdgePlatformQuotas:
 		m.ResetPlatformQuotas()
+		return nil
+	case user.EdgeWelfareRecords:
+		m.ResetWelfareRecords()
 		return nil
 	}
 	return fmt.Errorf("unknown User edge %s", name)
@@ -46850,4 +46935,744 @@ func (m *UserSubscriptionMutation) ResetEdge(name string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown UserSubscription edge %s", name)
+}
+
+// WelfareRecordMutation represents an operation that mutates the WelfareRecord nodes in the graph.
+type WelfareRecordMutation struct {
+	config
+	op            Op
+	typ           string
+	id            *int64
+	created_at    *time.Time
+	updated_at    *time.Time
+	user_email    *string
+	amount        *float64
+	addamount     *float64
+	remarks       *string
+	status        *string
+	clearedFields map[string]struct{}
+	user          *int64
+	cleareduser   bool
+	done          bool
+	oldValue      func(context.Context) (*WelfareRecord, error)
+	predicates    []predicate.WelfareRecord
+}
+
+var _ ent.Mutation = (*WelfareRecordMutation)(nil)
+
+// welfarerecordOption allows management of the mutation configuration using functional options.
+type welfarerecordOption func(*WelfareRecordMutation)
+
+// newWelfareRecordMutation creates new mutation for the WelfareRecord entity.
+func newWelfareRecordMutation(c config, op Op, opts ...welfarerecordOption) *WelfareRecordMutation {
+	m := &WelfareRecordMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeWelfareRecord,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withWelfareRecordID sets the ID field of the mutation.
+func withWelfareRecordID(id int64) welfarerecordOption {
+	return func(m *WelfareRecordMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *WelfareRecord
+		)
+		m.oldValue = func(ctx context.Context) (*WelfareRecord, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().WelfareRecord.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withWelfareRecord sets the old WelfareRecord of the mutation.
+func withWelfareRecord(node *WelfareRecord) welfarerecordOption {
+	return func(m *WelfareRecordMutation) {
+		m.oldValue = func(context.Context) (*WelfareRecord, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m WelfareRecordMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m WelfareRecordMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *WelfareRecordMutation) ID() (id int64, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *WelfareRecordMutation) IDs(ctx context.Context) ([]int64, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int64{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().WelfareRecord.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *WelfareRecordMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *WelfareRecordMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the WelfareRecord entity.
+// If the WelfareRecord object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WelfareRecordMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *WelfareRecordMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *WelfareRecordMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *WelfareRecordMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the WelfareRecord entity.
+// If the WelfareRecord object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WelfareRecordMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *WelfareRecordMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// SetUserID sets the "user_id" field.
+func (m *WelfareRecordMutation) SetUserID(i int64) {
+	m.user = &i
+}
+
+// UserID returns the value of the "user_id" field in the mutation.
+func (m *WelfareRecordMutation) UserID() (r int64, exists bool) {
+	v := m.user
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUserID returns the old "user_id" field's value of the WelfareRecord entity.
+// If the WelfareRecord object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WelfareRecordMutation) OldUserID(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUserID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUserID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUserID: %w", err)
+	}
+	return oldValue.UserID, nil
+}
+
+// ResetUserID resets all changes to the "user_id" field.
+func (m *WelfareRecordMutation) ResetUserID() {
+	m.user = nil
+}
+
+// SetUserEmail sets the "user_email" field.
+func (m *WelfareRecordMutation) SetUserEmail(s string) {
+	m.user_email = &s
+}
+
+// UserEmail returns the value of the "user_email" field in the mutation.
+func (m *WelfareRecordMutation) UserEmail() (r string, exists bool) {
+	v := m.user_email
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUserEmail returns the old "user_email" field's value of the WelfareRecord entity.
+// If the WelfareRecord object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WelfareRecordMutation) OldUserEmail(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUserEmail is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUserEmail requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUserEmail: %w", err)
+	}
+	return oldValue.UserEmail, nil
+}
+
+// ResetUserEmail resets all changes to the "user_email" field.
+func (m *WelfareRecordMutation) ResetUserEmail() {
+	m.user_email = nil
+}
+
+// SetAmount sets the "amount" field.
+func (m *WelfareRecordMutation) SetAmount(f float64) {
+	m.amount = &f
+	m.addamount = nil
+}
+
+// Amount returns the value of the "amount" field in the mutation.
+func (m *WelfareRecordMutation) Amount() (r float64, exists bool) {
+	v := m.amount
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAmount returns the old "amount" field's value of the WelfareRecord entity.
+// If the WelfareRecord object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WelfareRecordMutation) OldAmount(ctx context.Context) (v float64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAmount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAmount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAmount: %w", err)
+	}
+	return oldValue.Amount, nil
+}
+
+// AddAmount adds f to the "amount" field.
+func (m *WelfareRecordMutation) AddAmount(f float64) {
+	if m.addamount != nil {
+		*m.addamount += f
+	} else {
+		m.addamount = &f
+	}
+}
+
+// AddedAmount returns the value that was added to the "amount" field in this mutation.
+func (m *WelfareRecordMutation) AddedAmount() (r float64, exists bool) {
+	v := m.addamount
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetAmount resets all changes to the "amount" field.
+func (m *WelfareRecordMutation) ResetAmount() {
+	m.amount = nil
+	m.addamount = nil
+}
+
+// SetRemarks sets the "remarks" field.
+func (m *WelfareRecordMutation) SetRemarks(s string) {
+	m.remarks = &s
+}
+
+// Remarks returns the value of the "remarks" field in the mutation.
+func (m *WelfareRecordMutation) Remarks() (r string, exists bool) {
+	v := m.remarks
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRemarks returns the old "remarks" field's value of the WelfareRecord entity.
+// If the WelfareRecord object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WelfareRecordMutation) OldRemarks(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRemarks is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRemarks requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRemarks: %w", err)
+	}
+	return oldValue.Remarks, nil
+}
+
+// ResetRemarks resets all changes to the "remarks" field.
+func (m *WelfareRecordMutation) ResetRemarks() {
+	m.remarks = nil
+}
+
+// SetStatus sets the "status" field.
+func (m *WelfareRecordMutation) SetStatus(s string) {
+	m.status = &s
+}
+
+// Status returns the value of the "status" field in the mutation.
+func (m *WelfareRecordMutation) Status() (r string, exists bool) {
+	v := m.status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStatus returns the old "status" field's value of the WelfareRecord entity.
+// If the WelfareRecord object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WelfareRecordMutation) OldStatus(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStatus: %w", err)
+	}
+	return oldValue.Status, nil
+}
+
+// ResetStatus resets all changes to the "status" field.
+func (m *WelfareRecordMutation) ResetStatus() {
+	m.status = nil
+}
+
+// ClearUser clears the "user" edge to the User entity.
+func (m *WelfareRecordMutation) ClearUser() {
+	m.cleareduser = true
+	m.clearedFields[welfarerecord.FieldUserID] = struct{}{}
+}
+
+// UserCleared reports if the "user" edge to the User entity was cleared.
+func (m *WelfareRecordMutation) UserCleared() bool {
+	return m.cleareduser
+}
+
+// UserIDs returns the "user" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// UserID instead. It exists only for internal usage by the builders.
+func (m *WelfareRecordMutation) UserIDs() (ids []int64) {
+	if id := m.user; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetUser resets all changes to the "user" edge.
+func (m *WelfareRecordMutation) ResetUser() {
+	m.user = nil
+	m.cleareduser = false
+}
+
+// Where appends a list predicates to the WelfareRecordMutation builder.
+func (m *WelfareRecordMutation) Where(ps ...predicate.WelfareRecord) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the WelfareRecordMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *WelfareRecordMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.WelfareRecord, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *WelfareRecordMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *WelfareRecordMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (WelfareRecord).
+func (m *WelfareRecordMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *WelfareRecordMutation) Fields() []string {
+	fields := make([]string, 0, 7)
+	if m.created_at != nil {
+		fields = append(fields, welfarerecord.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, welfarerecord.FieldUpdatedAt)
+	}
+	if m.user != nil {
+		fields = append(fields, welfarerecord.FieldUserID)
+	}
+	if m.user_email != nil {
+		fields = append(fields, welfarerecord.FieldUserEmail)
+	}
+	if m.amount != nil {
+		fields = append(fields, welfarerecord.FieldAmount)
+	}
+	if m.remarks != nil {
+		fields = append(fields, welfarerecord.FieldRemarks)
+	}
+	if m.status != nil {
+		fields = append(fields, welfarerecord.FieldStatus)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *WelfareRecordMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case welfarerecord.FieldCreatedAt:
+		return m.CreatedAt()
+	case welfarerecord.FieldUpdatedAt:
+		return m.UpdatedAt()
+	case welfarerecord.FieldUserID:
+		return m.UserID()
+	case welfarerecord.FieldUserEmail:
+		return m.UserEmail()
+	case welfarerecord.FieldAmount:
+		return m.Amount()
+	case welfarerecord.FieldRemarks:
+		return m.Remarks()
+	case welfarerecord.FieldStatus:
+		return m.Status()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *WelfareRecordMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case welfarerecord.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case welfarerecord.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	case welfarerecord.FieldUserID:
+		return m.OldUserID(ctx)
+	case welfarerecord.FieldUserEmail:
+		return m.OldUserEmail(ctx)
+	case welfarerecord.FieldAmount:
+		return m.OldAmount(ctx)
+	case welfarerecord.FieldRemarks:
+		return m.OldRemarks(ctx)
+	case welfarerecord.FieldStatus:
+		return m.OldStatus(ctx)
+	}
+	return nil, fmt.Errorf("unknown WelfareRecord field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *WelfareRecordMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case welfarerecord.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case welfarerecord.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	case welfarerecord.FieldUserID:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUserID(v)
+		return nil
+	case welfarerecord.FieldUserEmail:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUserEmail(v)
+		return nil
+	case welfarerecord.FieldAmount:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAmount(v)
+		return nil
+	case welfarerecord.FieldRemarks:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRemarks(v)
+		return nil
+	case welfarerecord.FieldStatus:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStatus(v)
+		return nil
+	}
+	return fmt.Errorf("unknown WelfareRecord field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *WelfareRecordMutation) AddedFields() []string {
+	var fields []string
+	if m.addamount != nil {
+		fields = append(fields, welfarerecord.FieldAmount)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *WelfareRecordMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case welfarerecord.FieldAmount:
+		return m.AddedAmount()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *WelfareRecordMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case welfarerecord.FieldAmount:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddAmount(v)
+		return nil
+	}
+	return fmt.Errorf("unknown WelfareRecord numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *WelfareRecordMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *WelfareRecordMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *WelfareRecordMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown WelfareRecord nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *WelfareRecordMutation) ResetField(name string) error {
+	switch name {
+	case welfarerecord.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case welfarerecord.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	case welfarerecord.FieldUserID:
+		m.ResetUserID()
+		return nil
+	case welfarerecord.FieldUserEmail:
+		m.ResetUserEmail()
+		return nil
+	case welfarerecord.FieldAmount:
+		m.ResetAmount()
+		return nil
+	case welfarerecord.FieldRemarks:
+		m.ResetRemarks()
+		return nil
+	case welfarerecord.FieldStatus:
+		m.ResetStatus()
+		return nil
+	}
+	return fmt.Errorf("unknown WelfareRecord field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *WelfareRecordMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.user != nil {
+		edges = append(edges, welfarerecord.EdgeUser)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *WelfareRecordMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case welfarerecord.EdgeUser:
+		if id := m.user; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *WelfareRecordMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *WelfareRecordMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *WelfareRecordMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.cleareduser {
+		edges = append(edges, welfarerecord.EdgeUser)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *WelfareRecordMutation) EdgeCleared(name string) bool {
+	switch name {
+	case welfarerecord.EdgeUser:
+		return m.cleareduser
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *WelfareRecordMutation) ClearEdge(name string) error {
+	switch name {
+	case welfarerecord.EdgeUser:
+		m.ClearUser()
+		return nil
+	}
+	return fmt.Errorf("unknown WelfareRecord unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *WelfareRecordMutation) ResetEdge(name string) error {
+	switch name {
+	case welfarerecord.EdgeUser:
+		m.ResetUser()
+		return nil
+	}
+	return fmt.Errorf("unknown WelfareRecord edge %s", name)
 }

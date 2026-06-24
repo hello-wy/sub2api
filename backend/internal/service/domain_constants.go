@@ -163,6 +163,10 @@ const (
 	// TOTP 双因素认证设置
 	SettingKeyTotpEnabled = "totp_enabled" // 是否启用 TOTP 2FA 功能
 
+	// 排行榜福利发放设置
+	SettingKeyWelfareLeaderboardRankLimit    = "welfare_leaderboard_rank_limit"    // 排行榜福利前多少名获得福利
+	SettingKeyWelfareLeaderboardRewardRatios = "welfare_leaderboard_reward_ratios" // 排行榜福利每名获得的比例
+
 	// LinuxDo Connect OAuth 登录设置
 	SettingKeyLinuxDoConnectEnabled      = "linuxdo_connect_enabled"
 	SettingKeyLinuxDoConnectClientID     = "linuxdo_connect_client_id"

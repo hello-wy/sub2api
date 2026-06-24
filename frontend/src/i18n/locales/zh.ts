@@ -420,6 +420,7 @@ export default {
     channelStatus: '渠道状态',
     riskControl: '风控中心',
     leaderboard: '排行榜',
+    welfareRecords: '福利发放记录',
   },
 
   imageGeneration: {
@@ -4810,6 +4811,32 @@ export default {
       failedToLoadUsages: '加载使用记录失败'
     },
 
+    // Welfare Records
+    welfare: {
+      title: '福利发放记录',
+      description: '查看并管理每日排行榜消费福利的发放记录。支持撤回已发放的福利金额。',
+      searchPlaceholder: '输入用户邮箱进行搜索...',
+      table: {
+        email: '用户邮箱',
+        amount: '发放金额',
+        remarks: '备注',
+        status: '状态',
+        createdAt: '发放时间',
+        actions: '操作',
+      },
+      status: {
+        success: '已发放',
+        revoked: '已撤回',
+      },
+      action: {
+        revoke: '撤回福利',
+        revokeConfirmTitle: '确认撤回福利',
+        revokeConfirmMessage: '您确定要撤回此笔福利吗？撤回后系统将自动从该用户的余额中扣除对应的发放金额（{amount}），且该条发放记录的状态将变更为「已撤回」。',
+        revokeSuccess: '福利撤回成功',
+        revoking: '撤回中...',
+      }
+    },
+
     // Usage Records
     usage: {
       title: '使用记录',
@@ -5661,6 +5688,7 @@ export default {
         email: '邮件设置',
         backup: '数据备份',
         payment: '支付设置',
+        operations: '运营设置',
       },
       features: {
         channelMonitor: {
@@ -5744,6 +5772,18 @@ export default {
             clearHint: '留空提交将清除所选用户的专属比例。',
           },
         },
+      },
+      operations: {
+        title: '运营福利配置',
+        description: '配置每日排行榜消费福利发放规则。结算时间为每日 23:55 分（服务器时区）。',
+        rankLimit: '排行榜福利人数上限',
+        rankLimitHint: '设置前多少名用户能够获得消费福利，默认是前 3 名',
+        rewardRatios: '各排名福利比例',
+        rewardRatiosHint: '从第 1 名到第 N 名，分别获得的福利额度比例（例如 1.0 表示 100% 退款/充值，0.5 表示 50% 等）。数量与上限必须一致。',
+        ratioPlaceholder: '输入比例，如 1.0 或 0.5',
+        ratioItem: '第 {rank} 名比例',
+        addRatio: '添加比例配置',
+        deleteRatio: '删除比例',
       },
       emailTabDisabledTitle: '邮箱验证未启用',
       emailTabDisabledHint: '请在「安全与认证」选项卡中启用邮箱验证后，再配置 SMTP 设置。',

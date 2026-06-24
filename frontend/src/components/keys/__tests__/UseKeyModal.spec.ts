@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 
@@ -198,7 +198,7 @@ describe('UseKeyModal', () => {
 
     const claudeConfig = wrapper.findAll('pre code')
       .map((code) => code.text())
-      .find((content) => content.includes('"antigravity-claude"'))
+      .find((content) => content.trimStart().startsWith('{') && content.includes('"antigravity-claude"'))
 
     expect(claudeConfig).toBeDefined()
     const parsed = JSON.parse(claudeConfig!)

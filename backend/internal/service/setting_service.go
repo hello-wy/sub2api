@@ -1756,6 +1756,8 @@ func (s *SettingService) buildSystemSettingsUpdates(ctx context.Context, setting
 	updates[SettingKeyFrontendURL] = settings.FrontendURL
 	updates[SettingKeyInvitationCodeEnabled] = strconv.FormatBool(settings.InvitationCodeEnabled)
 	updates[SettingKeyTotpEnabled] = strconv.FormatBool(settings.TotpEnabled)
+	updates[SettingKeyWelfareLeaderboardRankLimit] = strconv.Itoa(settings.WelfareLeaderboardRankLimit)
+	updates[SettingKeyWelfareLeaderboardRewardRatios] = settings.WelfareLeaderboardRewardRatios
 	settings.LoginAgreementMode = normalizeLoginAgreementMode(settings.LoginAgreementMode)
 	settings.LoginAgreementUpdatedAt = strings.TrimSpace(settings.LoginAgreementUpdatedAt)
 	if settings.LoginAgreementUpdatedAt == "" {
@@ -3535,6 +3537,17 @@ func (s *SettingService) parseSettings(settings map[string]string) *SystemSettin
 		} else {
 			result.DefaultPlatformQuotas = parsed
 		}
+	}
+
+	// 排行榜福利设置
+	if limit, err := strconv.Atoi(settings[SettingKeyWelfareLeaderboardRankLimit]); err == nil && limit >= 1 {
+		result.WelfareLeaderboardRankLimit = limit
+	} else {
+		result.WelfareLeaderboardRankLimit = 3
+	}
+	result.WelfareLeaderboardRewardRatios = settings[SettingKeyWelfareLeaderboardRewardRatios]
+	if strings.TrimSpace(result.WelfareLeaderboardRewardRatios) == "" {
+		result.WelfareLeaderboardRewardRatios = "[1.0, 0.5, 0.2]"
 	}
 
 	result.AllowUserViewErrorRequests = settings[SettingKeyAllowUserViewErrorRequests] == "true" // default false

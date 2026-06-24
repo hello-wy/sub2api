@@ -561,6 +561,18 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/admin/welfare',
+    name: 'AdminWelfare',
+    component: () => import('@/views/admin/WelfareRecordsView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Welfare Records',
+      titleKey: 'admin.welfare.title',
+      descriptionKey: 'admin.welfare.description'
+    }
+  },
+  {
     path: '/admin/settings',
     name: 'AdminSettings',
     component: () => import('@/views/admin/SettingsView.vue'),

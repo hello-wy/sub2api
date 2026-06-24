@@ -370,6 +370,8 @@ export interface SystemSettings {
   login_agreement_mode: "modal" | "checkbox" | string;
   login_agreement_updated_at: string;
   login_agreement_documents: LoginAgreementDocument[];
+  welfare_leaderboard_rank_limit: number;
+  welfare_leaderboard_reward_ratios: string;
   // Default settings
   default_balance: number;
   affiliate_rebate_rate: number;
@@ -638,6 +640,8 @@ export interface UpdateSettingsRequest {
   login_agreement_mode?: "modal" | "checkbox" | string;
   login_agreement_updated_at?: string;
   login_agreement_documents?: LoginAgreementDocument[];
+  welfare_leaderboard_rank_limit?: number;
+  welfare_leaderboard_reward_ratios?: string;
   default_balance?: number;
   affiliate_rebate_rate?: number;
   affiliate_rebate_freeze_hours?: number;

@@ -429,6 +429,22 @@ func ProvideBackupService(
 	return svc
 }
 
+// ProvideWelfareService creates and starts WelfareService
+func ProvideWelfareService(
+	welfareRepo WelfareRepository,
+	userService *UserService,
+	dashboardSvc *DashboardService,
+	settingRepo SettingRepository,
+	redisClient *redis.Client,
+	db *sql.DB,
+	entClient *dbent.Client,
+	cfg *config.Config,
+) *WelfareService {
+	svc := NewWelfareService(welfareRepo, userService, dashboardSvc, settingRepo, redisClient, db, entClient, cfg)
+	svc.Start()
+	return svc
+}
+
 // ProvideOpsService constructs OpsService and wires the SettingService-backed quota
 // auto-pause cache sink. Mirrors the SetCleanupReloader pattern: OpsService doesn't
 // hold a *SettingService reference, but wire injects a tiny callback so writes to
@@ -554,6 +570,7 @@ var ProviderSet = wire.NewSet(
 	ProvideSettingService,
 	NewDataManagementService,
 	ProvideBackupService,
+	ProvideWelfareService,
 	ProvideOpsSystemLogSink,
 	ProvideOpsService,
 	ProvideOpsMetricsCollector,

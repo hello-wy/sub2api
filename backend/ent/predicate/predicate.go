@@ -110,3 +110,6 @@ type UserPlatformQuota func(*sql.Selector)
 
 // UserSubscription is the predicate function for usersubscription builders.
 type UserSubscription func(*sql.Selector)
+
+// WelfareRecord is the predicate function for welfarerecord builders.
+type WelfareRecord func(*sql.Selector)

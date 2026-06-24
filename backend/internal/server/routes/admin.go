@@ -103,6 +103,9 @@ func RegisterAdminRoutes(
 
 		// 邀请返利（专属用户管理）
 		registerAffiliateRoutes(admin, h)
+
+		// 福利充值记录
+		registerWelfareRoutes(admin, h)
 	}
 }
 
@@ -665,3 +668,13 @@ func registerAffiliateRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		}
 	}
 }
+
+// registerWelfareRoutes 注册福利发放记录管理路由
+func registerWelfareRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
+	welfare := admin.Group("/welfare-records")
+	{
+		welfare.GET("", h.Admin.Welfare.ListWelfareRecords)
+		welfare.POST("/:id/revoke", h.Admin.Welfare.RevokeWelfareRecord)
+	}
+}
+

@@ -87,6 +87,8 @@ const (
 	EdgePendingAuthSessions = "pending_auth_sessions"
 	// EdgePlatformQuotas holds the string denoting the platform_quotas edge name in mutations.
 	EdgePlatformQuotas = "platform_quotas"
+	// EdgeWelfareRecords holds the string denoting the welfare_records edge name in mutations.
+	EdgeWelfareRecords = "welfare_records"
 	// EdgeUserAllowedGroups holds the string denoting the user_allowed_groups edge name in mutations.
 	EdgeUserAllowedGroups = "user_allowed_groups"
 	// Table holds the table name of the user in the database.
@@ -180,6 +182,13 @@ const (
 	PlatformQuotasInverseTable = "user_platform_quotas"
 	// PlatformQuotasColumn is the table column denoting the platform_quotas relation/edge.
 	PlatformQuotasColumn = "user_id"
+	// WelfareRecordsTable is the table that holds the welfare_records relation/edge.
+	WelfareRecordsTable = "welfare_records"
+	// WelfareRecordsInverseTable is the table name for the WelfareRecord entity.
+	// It exists in this package in order to avoid circular dependency with the "welfarerecord" package.
+	WelfareRecordsInverseTable = "welfare_records"
+	// WelfareRecordsColumn is the table column denoting the welfare_records relation/edge.
+	WelfareRecordsColumn = "user_id"
 	// UserAllowedGroupsTable is the table that holds the user_allowed_groups relation/edge.
 	UserAllowedGroupsTable = "user_allowed_groups"
 	// UserAllowedGroupsInverseTable is the table name for the UserAllowedGroup entity.
@@ -592,6 +601,20 @@ func ByPlatformQuotas(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	}
 }
 
+// ByWelfareRecordsCount orders the results by welfare_records count.
+func ByWelfareRecordsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newWelfareRecordsStep(), opts...)
+	}
+}
+
+// ByWelfareRecords orders the results by welfare_records terms.
+func ByWelfareRecords(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newWelfareRecordsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByUserAllowedGroupsCount orders the results by user_allowed_groups count.
 func ByUserAllowedGroupsCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -694,6 +717,13 @@ func newPlatformQuotasStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(PlatformQuotasInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, PlatformQuotasTable, PlatformQuotasColumn),
+	)
+}
+func newWelfareRecordsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(WelfareRecordsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, WelfareRecordsTable, WelfareRecordsColumn),
 	)
 }
 func newUserAllowedGroupsStep() *sqlgraph.Step {

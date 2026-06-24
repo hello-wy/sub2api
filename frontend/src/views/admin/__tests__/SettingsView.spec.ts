@@ -476,6 +476,16 @@ async function openUsersTab(wrapper: ReturnType<typeof mountView>) {
   await flushPromises();
 }
 
+async function openOperationsTab(wrapper: ReturnType<typeof mountView>) {
+  const operationsTabButton = wrapper
+    .findAll("button")
+    .find((node) => node.text().includes("admin.settings.tabs.operations"));
+
+  expect(operationsTabButton).toBeDefined();
+  await operationsTabButton?.trigger("click");
+  await flushPromises();
+}
+
 describe("admin SettingsView payment visible method controls", () => {
   beforeEach(() => {
     getSettings.mockReset();
@@ -792,6 +802,24 @@ describe("admin SettingsView payment visible method controls", () => {
     expect(paymentHelpImageUpload).toBeDefined();
     expect(paymentHelpImageUpload?.attributes("data-upload-label")).toBe("上传图片");
     expect(paymentHelpImageUpload?.attributes("data-remove-label")).toBe("移除");
+  });
+
+  it("normalizes welfare rank limit before saving operations settings", async () => {
+    const wrapper = mountView();
+
+    await flushPromises();
+    await openOperationsTab(wrapper);
+    await wrapper.get('[data-testid="welfare-rank-limit"]').setValue("0");
+    await wrapper.get('[data-testid="welfare-ratio-0"]').setValue("10");
+    await wrapper.find("form").trigger("submit.prevent");
+    await flushPromises();
+
+    expect(updateSettings).toHaveBeenCalledTimes(1);
+    const payload = updateSettings.mock.calls[0]?.[0];
+    expect(payload).toMatchObject({
+      welfare_leaderboard_rank_limit: 1,
+      welfare_leaderboard_reward_ratios: "[10]",
+    });
   });
 });
 

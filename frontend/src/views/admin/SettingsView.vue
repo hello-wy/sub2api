@@ -6451,6 +6451,81 @@
           />
         </div>
 
+        <!-- Tab: Operations -->
+        <div v-show="activeTab === 'operations'" class="space-y-6">
+          <div class="card">
+            <div class="border-b border-gray-100 px-6 py-4 dark:border-dark-700">
+              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+                {{ t("admin.settings.operations.title") }}
+              </h2>
+              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                {{ t("admin.settings.operations.description") }}
+              </p>
+            </div>
+            <div class="space-y-6 p-6">
+              <!-- Limit Settings -->
+              <div class="max-w-xs">
+                <label
+                  class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                >
+                  {{ t("admin.settings.operations.rankLimit") }}
+                </label>
+                <input
+                  v-model.number="form.welfare_leaderboard_rank_limit"
+                  type="number"
+                  min="1"
+                  max="100"
+                  required
+                  class="input"
+                  data-testid="welfare-rank-limit"
+                  placeholder="3"
+                />
+                <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                  {{ t("admin.settings.operations.rankLimitHint") }}
+                </p>
+              </div>
+
+              <!-- Ratios List Input Settings -->
+              <div>
+                <label
+                  class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                >
+                  {{ t("admin.settings.operations.rewardRatios") }}
+                </label>
+                <p class="mb-4 text-xs text-gray-500 dark:text-gray-400">
+                  {{ t("admin.settings.operations.rewardRatiosHint") }}
+                </p>
+                <div class="space-y-3 max-w-md">
+                  <div
+                    v-for="(_, index) in welfareRatios"
+                    :key="index"
+                    class="flex items-center gap-4 bg-gray-50/50 dark:bg-dark-800/30 p-3 rounded-lg border border-gray-100 dark:border-dark-700/50"
+                  >
+                    <span class="text-sm font-semibold text-primary-600 dark:text-primary-400 w-24">
+                      {{ t("admin.settings.operations.ratioItem", { rank: index + 1 }) }}
+                    </span>
+                    <div class="flex-1 max-w-xs relative rounded-md shadow-sm">
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="10"
+                        v-model.number="welfareRatios[index]"
+                        class="input pr-10"
+                        :data-testid="`welfare-ratio-${index}`"
+                        :placeholder="t('admin.settings.operations.ratioPlaceholder')"
+                      />
+                      <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                        <span class="text-gray-400 text-xs dark:text-gray-500">x</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div v-show="activeTab === 'email'" class="space-y-6">
           <!-- Email disabled hint - show when email_verify_enabled is off -->
           <div v-if="!form.email_verify_enabled" class="card">
@@ -7038,8 +7113,41 @@ type SettingsTab =
   | "gateway"
   | "payment"
   | "email"
-  | "backup";
+  | "backup"
+  | "operations";
 const activeTab = ref<SettingsTab>("general");
+const welfareRatios = ref<number[]>([1.0, 0.5, 0.2]);
+
+function normalizeWelfareRankLimit(value: unknown): number {
+  return Math.max(1, Math.min(100, Math.floor(Number(value) || 1)));
+}
+
+function normalizeWelfareRatios(limit: number, values: unknown): number[] {
+  const source = Array.isArray(values) ? values : [1.0, 0.5, 0.2];
+  const normalized = source.map((value) => Math.max(0, Number(value) || 0));
+  while (normalized.length < limit) {
+    normalized.push(normalized[normalized.length - 1] ?? 0);
+  }
+  return normalized.slice(0, limit);
+}
+
+function normalizeWelfareSettings(): void {
+  const limit = normalizeWelfareRankLimit(form.welfare_leaderboard_rank_limit);
+  form.welfare_leaderboard_rank_limit = limit;
+  welfareRatios.value = normalizeWelfareRatios(limit, welfareRatios.value);
+}
+
+function parseWelfareRatios(raw: unknown): number[] {
+  if (Array.isArray(raw)) return raw.map((value) => Number(value) || 0);
+  if (typeof raw !== "string" || raw.trim() === "") return [1.0, 0.5, 0.2];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.map((value) => Number(value) || 0) : [1.0, 0.5, 0.2];
+  } catch {
+    return [1.0, 0.5, 0.2];
+  }
+}
+
 const settingsTabs = [
   { key: "general" as SettingsTab, icon: "home" as const },
   { key: "agreement" as SettingsTab, icon: "document" as const },
@@ -7050,6 +7158,7 @@ const settingsTabs = [
   { key: "payment" as SettingsTab, icon: "creditCard" as const },
   { key: "email" as SettingsTab, icon: "mail" as const },
   { key: "backup" as SettingsTab, icon: "database" as const },
+  { key: "operations" as SettingsTab, icon: "gift" as const },
 ];
 
 const settingsTabKeyboardActions = {
@@ -7642,6 +7751,8 @@ type SettingsForm = Omit<
 const form = reactive<SettingsForm>({
   registration_enabled: true,
   email_verify_enabled: false,
+  welfare_leaderboard_rank_limit: 3,
+  welfare_leaderboard_reward_ratios: "[1.0, 0.5, 0.2]",
   registration_email_suffix_whitelist: [],
   promo_code_enabled: true,
   invitation_code_enabled: false,
@@ -8456,6 +8567,10 @@ async function loadSettings() {
         (form as Record<string, unknown>)[key] = value;
       }
     }
+    welfareRatios.value = parseWelfareRatios(
+      form.welfare_leaderboard_reward_ratios,
+    );
+    normalizeWelfareSettings();
     if (!form.claude_oauth_system_prompt_blocks?.trim()) {
       form.claude_oauth_system_prompt_blocks =
         defaultClaudeOAuthSystemPromptBlocks;
@@ -8801,6 +8916,7 @@ async function saveSettings() {
     form.claude_oauth_system_prompt_blocks =
       claudeOAuthSystemPromptBlocksJSON;
 
+    normalizeWelfareSettings();
     const payload: UpdateSettingsRequest = {
       registration_enabled: form.registration_enabled,
       email_verify_enabled: form.email_verify_enabled,
@@ -9020,6 +9136,8 @@ async function saveSettings() {
       // Affiliate (邀请返利) feature switch
       affiliate_enabled: form.affiliate_enabled,
       allow_user_view_error_requests: form.allow_user_view_error_requests,
+      welfare_leaderboard_rank_limit: form.welfare_leaderboard_rank_limit,
+      welfare_leaderboard_reward_ratios: JSON.stringify(welfareRatios.value),
     };
 
     // 仅当 openai_fast_policy_settings 已成功从后端加载时才回写，
@@ -9062,6 +9180,10 @@ async function saveSettings() {
     }
     Object.assign(authSourceDefaults, buildAuthSourceDefaultsState(updated));
     form.default_platform_quotas = normalizePlatformQuotasMap(updated.default_platform_quotas);
+    welfareRatios.value = parseWelfareRatios(
+      updated.welfare_leaderboard_reward_ratios,
+    );
+    normalizeWelfareSettings();
     registrationEmailSuffixWhitelistTags.value =
       normalizeRegistrationEmailSuffixDomains(
         updated.registration_email_suffix_whitelist,
@@ -10293,6 +10415,13 @@ watch(
       loadAffiliateUsers();
     }
   },
+);
+
+watch(
+  () => form.welfare_leaderboard_rank_limit,
+  () => {
+    normalizeWelfareSettings();
+  }
 );
 
 // bypass_registration 与身份同步三开关仅在 internal_only 模式下生效。切换 policy 到其它值时，

@@ -24,6 +24,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/userattributevalue"
 	"github.com/Wei-Shaw/sub2api/ent/userplatformquota"
 	"github.com/Wei-Shaw/sub2api/ent/usersubscription"
+	"github.com/Wei-Shaw/sub2api/ent/welfarerecord"
 )
 
 // UserCreate is the builder for creating a User entity.
@@ -533,6 +534,21 @@ func (_c *UserCreate) AddPlatformQuotas(v ...*UserPlatformQuota) *UserCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddPlatformQuotaIDs(ids...)
+}
+
+// AddWelfareRecordIDs adds the "welfare_records" edge to the WelfareRecord entity by IDs.
+func (_c *UserCreate) AddWelfareRecordIDs(ids ...int64) *UserCreate {
+	_c.mutation.AddWelfareRecordIDs(ids...)
+	return _c
+}
+
+// AddWelfareRecords adds the "welfare_records" edges to the WelfareRecord entity.
+func (_c *UserCreate) AddWelfareRecords(v ...*WelfareRecord) *UserCreate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddWelfareRecordIDs(ids...)
 }
 
 // Mutation returns the UserMutation object of the builder.
@@ -1048,6 +1064,22 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(userplatformquota.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.WelfareRecordsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.WelfareRecordsTable,
+			Columns: []string{user.WelfareRecordsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(welfarerecord.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {

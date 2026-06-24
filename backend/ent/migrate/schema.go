@@ -1773,6 +1773,53 @@ var (
 			},
 		},
 	}
+	// WelfareRecordsColumns holds the columns for the "welfare_records" table.
+	WelfareRecordsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "created_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "updated_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "user_email", Type: field.TypeString, Size: 255},
+		{Name: "amount", Type: field.TypeFloat64, SchemaType: map[string]string{"postgres": "decimal(20,8)"}},
+		{Name: "remarks", Type: field.TypeString, Default: "", SchemaType: map[string]string{"postgres": "text"}},
+		{Name: "status", Type: field.TypeString, Size: 30, Default: "success"},
+		{Name: "user_id", Type: field.TypeInt64},
+	}
+	// WelfareRecordsTable holds the schema information for the "welfare_records" table.
+	WelfareRecordsTable = &schema.Table{
+		Name:       "welfare_records",
+		Columns:    WelfareRecordsColumns,
+		PrimaryKey: []*schema.Column{WelfareRecordsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "welfare_records_users_welfare_records",
+				Columns:    []*schema.Column{WelfareRecordsColumns[7]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "welfarerecord_user_id",
+				Unique:  false,
+				Columns: []*schema.Column{WelfareRecordsColumns[7]},
+			},
+			{
+				Name:    "welfarerecord_user_email",
+				Unique:  false,
+				Columns: []*schema.Column{WelfareRecordsColumns[3]},
+			},
+			{
+				Name:    "welfarerecord_status",
+				Unique:  false,
+				Columns: []*schema.Column{WelfareRecordsColumns[6]},
+			},
+			{
+				Name:    "welfarerecord_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{WelfareRecordsColumns[1]},
+			},
+		},
+	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		APIKeysTable,
@@ -1810,6 +1857,7 @@ var (
 		UserAttributeValuesTable,
 		UserPlatformQuotasTable,
 		UserSubscriptionsTable,
+		WelfareRecordsTable,
 	}
 )
 
@@ -1952,5 +2000,9 @@ func init() {
 	UserSubscriptionsTable.ForeignKeys[2].RefTable = UsersTable
 	UserSubscriptionsTable.Annotation = &entsql.Annotation{
 		Table: "user_subscriptions",
+	}
+	WelfareRecordsTable.ForeignKeys[0].RefTable = UsersTable
+	WelfareRecordsTable.Annotation = &entsql.Annotation{
+		Table: "welfare_records",
 	}
 }

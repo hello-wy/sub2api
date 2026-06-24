@@ -1,0 +1,63 @@
+//go:build unit
+
+package service
+
+import (
+	"context"
+	"testing"
+
+	"github.com/Wei-Shaw/sub2api/internal/pkg/pagination"
+	"github.com/stretchr/testify/require"
+)
+
+func TestParseWelfareRewardSettingsUsesDefaultsForInvalidValues(t *testing.T) {
+	limit, ratios := parseWelfareRewardSettings("0", `{"bad":true}`)
+
+	require.Equal(t, welfareDefaultRankLimit, limit)
+	require.Equal(t, welfareDefaultRewardRatios, ratios)
+}
+
+func TestParseWelfareRewardSettingsPadsRatiosToRankLimit(t *testing.T) {
+	limit, ratios := parseWelfareRewardSettings("4", `[1,0.5]`)
+
+	require.Equal(t, 4, limit)
+	require.Equal(t, []float64{1, 0.5, 0.5, 0.5}, ratios)
+}
+
+func TestCreateWelfareRecordSkipsDuplicateRemark(t *testing.T) {
+	repo := &welfareRepoStub{existingRemark: true}
+	userSvc := &UserService{userRepo: &mockUserRepo{}}
+	svc := &WelfareService{welfareRepo: repo, userService: userSvc}
+
+	record, err := svc.CreateWelfareRecord(context.Background(), 7, "u@example.com", 3.5, "2026-06-23 排行榜消费 #1")
+
+	require.NoError(t, err)
+	require.Nil(t, record)
+	require.Zero(t, repo.createCalls)
+}
+
+type welfareRepoStub struct {
+	existingRemark bool
+	createCalls    int
+}
+
+func (r *welfareRepoStub) Create(context.Context, int64, string, float64, string) (*WelfareRecord, error) {
+	r.createCalls++
+	return &WelfareRecord{ID: int64(r.createCalls)}, nil
+}
+
+func (r *welfareRepoStub) GetByID(context.Context, int64) (*WelfareRecord, error) {
+	return nil, nil
+}
+
+func (r *welfareRepoStub) MarkRevoked(context.Context, int64) (bool, error) {
+	return true, nil
+}
+
+func (r *welfareRepoStub) List(context.Context, pagination.PaginationParams, string) ([]WelfareRecord, *pagination.PaginationResult, error) {
+	return nil, nil, nil
+}
+
+func (r *welfareRepoStub) ExistsSuccessByRemarks(context.Context, string) (bool, error) {
+	return r.existingRemark, nil
+}

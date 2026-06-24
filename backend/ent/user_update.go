@@ -25,6 +25,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/userattributevalue"
 	"github.com/Wei-Shaw/sub2api/ent/userplatformquota"
 	"github.com/Wei-Shaw/sub2api/ent/usersubscription"
+	"github.com/Wei-Shaw/sub2api/ent/welfarerecord"
 )
 
 // UserUpdate is the builder for updating User entities.
@@ -606,6 +607,21 @@ func (_u *UserUpdate) AddPlatformQuotas(v ...*UserPlatformQuota) *UserUpdate {
 	return _u.AddPlatformQuotaIDs(ids...)
 }
 
+// AddWelfareRecordIDs adds the "welfare_records" edge to the WelfareRecord entity by IDs.
+func (_u *UserUpdate) AddWelfareRecordIDs(ids ...int64) *UserUpdate {
+	_u.mutation.AddWelfareRecordIDs(ids...)
+	return _u
+}
+
+// AddWelfareRecords adds the "welfare_records" edges to the WelfareRecord entity.
+func (_u *UserUpdate) AddWelfareRecords(v ...*WelfareRecord) *UserUpdate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddWelfareRecordIDs(ids...)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (_u *UserUpdate) Mutation() *UserMutation {
 	return _u.mutation
@@ -882,6 +898,27 @@ func (_u *UserUpdate) RemovePlatformQuotas(v ...*UserPlatformQuota) *UserUpdate 
 		ids[i] = v[i].ID
 	}
 	return _u.RemovePlatformQuotaIDs(ids...)
+}
+
+// ClearWelfareRecords clears all "welfare_records" edges to the WelfareRecord entity.
+func (_u *UserUpdate) ClearWelfareRecords() *UserUpdate {
+	_u.mutation.ClearWelfareRecords()
+	return _u
+}
+
+// RemoveWelfareRecordIDs removes the "welfare_records" edge to WelfareRecord entities by IDs.
+func (_u *UserUpdate) RemoveWelfareRecordIDs(ids ...int64) *UserUpdate {
+	_u.mutation.RemoveWelfareRecordIDs(ids...)
+	return _u
+}
+
+// RemoveWelfareRecords removes "welfare_records" edges to WelfareRecord entities.
+func (_u *UserUpdate) RemoveWelfareRecords(v ...*WelfareRecord) *UserUpdate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveWelfareRecordIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -1669,6 +1706,51 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.WelfareRecordsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.WelfareRecordsTable,
+			Columns: []string{user.WelfareRecordsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(welfarerecord.FieldID, field.TypeInt64),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedWelfareRecordsIDs(); len(nodes) > 0 && !_u.mutation.WelfareRecordsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.WelfareRecordsTable,
+			Columns: []string{user.WelfareRecordsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(welfarerecord.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.WelfareRecordsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.WelfareRecordsTable,
+			Columns: []string{user.WelfareRecordsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(welfarerecord.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{user.Label}
@@ -2255,6 +2337,21 @@ func (_u *UserUpdateOne) AddPlatformQuotas(v ...*UserPlatformQuota) *UserUpdateO
 	return _u.AddPlatformQuotaIDs(ids...)
 }
 
+// AddWelfareRecordIDs adds the "welfare_records" edge to the WelfareRecord entity by IDs.
+func (_u *UserUpdateOne) AddWelfareRecordIDs(ids ...int64) *UserUpdateOne {
+	_u.mutation.AddWelfareRecordIDs(ids...)
+	return _u
+}
+
+// AddWelfareRecords adds the "welfare_records" edges to the WelfareRecord entity.
+func (_u *UserUpdateOne) AddWelfareRecords(v ...*WelfareRecord) *UserUpdateOne {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddWelfareRecordIDs(ids...)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (_u *UserUpdateOne) Mutation() *UserMutation {
 	return _u.mutation
@@ -2531,6 +2628,27 @@ func (_u *UserUpdateOne) RemovePlatformQuotas(v ...*UserPlatformQuota) *UserUpda
 		ids[i] = v[i].ID
 	}
 	return _u.RemovePlatformQuotaIDs(ids...)
+}
+
+// ClearWelfareRecords clears all "welfare_records" edges to the WelfareRecord entity.
+func (_u *UserUpdateOne) ClearWelfareRecords() *UserUpdateOne {
+	_u.mutation.ClearWelfareRecords()
+	return _u
+}
+
+// RemoveWelfareRecordIDs removes the "welfare_records" edge to WelfareRecord entities by IDs.
+func (_u *UserUpdateOne) RemoveWelfareRecordIDs(ids ...int64) *UserUpdateOne {
+	_u.mutation.RemoveWelfareRecordIDs(ids...)
+	return _u
+}
+
+// RemoveWelfareRecords removes "welfare_records" edges to WelfareRecord entities.
+func (_u *UserUpdateOne) RemoveWelfareRecords(v ...*WelfareRecord) *UserUpdateOne {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveWelfareRecordIDs(ids...)
 }
 
 // Where appends a list predicates to the UserUpdate builder.
@@ -3341,6 +3459,51 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(userplatformquota.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.WelfareRecordsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.WelfareRecordsTable,
+			Columns: []string{user.WelfareRecordsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(welfarerecord.FieldID, field.TypeInt64),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedWelfareRecordsIDs(); len(nodes) > 0 && !_u.mutation.WelfareRecordsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.WelfareRecordsTable,
+			Columns: []string{user.WelfareRecordsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(welfarerecord.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.WelfareRecordsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.WelfareRecordsTable,
+			Columns: []string{user.WelfareRecordsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(welfarerecord.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {

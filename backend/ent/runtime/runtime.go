@@ -41,6 +41,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/userattributevalue"
 	"github.com/Wei-Shaw/sub2api/ent/userplatformquota"
 	"github.com/Wei-Shaw/sub2api/ent/usersubscription"
+	"github.com/Wei-Shaw/sub2api/ent/welfarerecord"
 	"github.com/Wei-Shaw/sub2api/internal/domain"
 )
 
@@ -2109,6 +2110,35 @@ func init() {
 	usersubscriptionDescAssignedAt := usersubscriptionFields[12].Descriptor()
 	// usersubscription.DefaultAssignedAt holds the default value on creation for the assigned_at field.
 	usersubscription.DefaultAssignedAt = usersubscriptionDescAssignedAt.Default.(func() time.Time)
+	welfarerecordMixin := schema.WelfareRecord{}.Mixin()
+	welfarerecordMixinFields0 := welfarerecordMixin[0].Fields()
+	_ = welfarerecordMixinFields0
+	welfarerecordFields := schema.WelfareRecord{}.Fields()
+	_ = welfarerecordFields
+	// welfarerecordDescCreatedAt is the schema descriptor for created_at field.
+	welfarerecordDescCreatedAt := welfarerecordMixinFields0[0].Descriptor()
+	// welfarerecord.DefaultCreatedAt holds the default value on creation for the created_at field.
+	welfarerecord.DefaultCreatedAt = welfarerecordDescCreatedAt.Default.(func() time.Time)
+	// welfarerecordDescUpdatedAt is the schema descriptor for updated_at field.
+	welfarerecordDescUpdatedAt := welfarerecordMixinFields0[1].Descriptor()
+	// welfarerecord.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	welfarerecord.DefaultUpdatedAt = welfarerecordDescUpdatedAt.Default.(func() time.Time)
+	// welfarerecord.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	welfarerecord.UpdateDefaultUpdatedAt = welfarerecordDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// welfarerecordDescUserEmail is the schema descriptor for user_email field.
+	welfarerecordDescUserEmail := welfarerecordFields[1].Descriptor()
+	// welfarerecord.UserEmailValidator is a validator for the "user_email" field. It is called by the builders before save.
+	welfarerecord.UserEmailValidator = welfarerecordDescUserEmail.Validators[0].(func(string) error)
+	// welfarerecordDescRemarks is the schema descriptor for remarks field.
+	welfarerecordDescRemarks := welfarerecordFields[3].Descriptor()
+	// welfarerecord.DefaultRemarks holds the default value on creation for the remarks field.
+	welfarerecord.DefaultRemarks = welfarerecordDescRemarks.Default.(string)
+	// welfarerecordDescStatus is the schema descriptor for status field.
+	welfarerecordDescStatus := welfarerecordFields[4].Descriptor()
+	// welfarerecord.DefaultStatus holds the default value on creation for the status field.
+	welfarerecord.DefaultStatus = welfarerecordDescStatus.Default.(string)
+	// welfarerecord.StatusValidator is a validator for the "status" field. It is called by the builders before save.
+	welfarerecord.StatusValidator = welfarerecordDescStatus.Validators[0].(func(string) error)
 }
 
 const (

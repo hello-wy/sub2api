@@ -128,6 +128,8 @@ func (h *SettingHandler) GetSettings(c *gin.Context) {
 		InvitationCodeEnabled:                  settings.InvitationCodeEnabled,
 		TotpEnabled:                            settings.TotpEnabled,
 		TotpEncryptionKeyConfigured:            h.settingService.IsTotpEncryptionKeyConfigured(),
+		WelfareLeaderboardRankLimit:            settings.WelfareLeaderboardRankLimit,
+		WelfareLeaderboardRewardRatios:         settings.WelfareLeaderboardRewardRatios,
 		LoginAgreementEnabled:                  settings.LoginAgreementEnabled,
 		LoginAgreementMode:                     settings.LoginAgreementMode,
 		LoginAgreementUpdatedAt:                settings.LoginAgreementUpdatedAt,
@@ -442,6 +444,10 @@ type UpdateSettingsRequest struct {
 	DingTalkConnectSyncCorpEmailAttrName   string `json:"dingtalk_connect_sync_corp_email_attr_name"`
 	DingTalkConnectSyncDisplayNameAttrName string `json:"dingtalk_connect_sync_display_name_attr_name"`
 	DingTalkConnectSyncDeptAttrName        string `json:"dingtalk_connect_sync_dept_attr_name"`
+
+	// 排行榜福利设置
+	WelfareLeaderboardRankLimit    int    `json:"welfare_leaderboard_rank_limit"`
+	WelfareLeaderboardRewardRatios string `json:"welfare_leaderboard_reward_ratios"`
 
 	// WeChat Connect OAuth 登录
 	WeChatConnectEnabled             bool   `json:"wechat_connect_enabled"`
@@ -1479,6 +1485,11 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		response.BadRequest(c, "cyber_session_block_ttl_seconds must be > 0")
 		return
 	}
+	normalizeWelfareUpdateRequest(&req, previousSettings)
+	if err := validateWelfareSettings(req.WelfareLeaderboardRankLimit, req.WelfareLeaderboardRewardRatios); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
 
 	settings := &service.SystemSettings{
 		// 系统全局 platform quota 默认值（整体替换语义）
@@ -1492,6 +1503,8 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		FrontendURL:                      req.FrontendURL,
 		InvitationCodeEnabled:            req.InvitationCodeEnabled,
 		TotpEnabled:                      req.TotpEnabled,
+		WelfareLeaderboardRankLimit:      req.WelfareLeaderboardRankLimit,
+		WelfareLeaderboardRewardRatios:   req.WelfareLeaderboardRewardRatios,
 		LoginAgreementEnabled:            req.LoginAgreementEnabled,
 		LoginAgreementMode:               loginAgreementMode,
 		LoginAgreementUpdatedAt:          loginAgreementUpdatedAt,
@@ -1970,6 +1983,8 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		InvitationCodeEnabled:                  updatedSettings.InvitationCodeEnabled,
 		TotpEnabled:                            updatedSettings.TotpEnabled,
 		TotpEncryptionKeyConfigured:            h.settingService.IsTotpEncryptionKeyConfigured(),
+		WelfareLeaderboardRankLimit:            updatedSettings.WelfareLeaderboardRankLimit,
+		WelfareLeaderboardRewardRatios:         updatedSettings.WelfareLeaderboardRewardRatios,
 		LoginAgreementEnabled:                  updatedSettings.LoginAgreementEnabled,
 		LoginAgreementMode:                     updatedSettings.LoginAgreementMode,
 		LoginAgreementUpdatedAt:                updatedSettings.LoginAgreementUpdatedAt,
@@ -3751,4 +3766,38 @@ func equalPlatformQuotaSettings(before, after map[string]*service.DefaultPlatfor
 		}
 	}
 	return true
+}
+
+func validateWelfareSettings(rankLimit int, rewardRatios string) error {
+	if rankLimit < 1 {
+		return errors.New("welfare_leaderboard_rank_limit must be >= 1")
+	}
+	var ratios []float64
+	if err := json.Unmarshal([]byte(rewardRatios), &ratios); err != nil {
+		return errors.New("welfare_leaderboard_reward_ratios must be a JSON number array")
+	}
+	if len(ratios) != rankLimit {
+		return errors.New("welfare_leaderboard_reward_ratios length must match welfare_leaderboard_rank_limit")
+	}
+	for _, ratio := range ratios {
+		if ratio < 0 {
+			return errors.New("welfare_leaderboard_reward_ratios must not contain negative values")
+		}
+	}
+	return nil
+}
+
+func normalizeWelfareUpdateRequest(req *UpdateSettingsRequest, previous *service.SystemSettings) {
+	if req.WelfareLeaderboardRankLimit < 1 {
+		req.WelfareLeaderboardRankLimit = previous.WelfareLeaderboardRankLimit
+	}
+	if req.WelfareLeaderboardRankLimit < 1 {
+		req.WelfareLeaderboardRankLimit = 3
+	}
+	if strings.TrimSpace(req.WelfareLeaderboardRewardRatios) == "" {
+		req.WelfareLeaderboardRewardRatios = previous.WelfareLeaderboardRewardRatios
+	}
+	if strings.TrimSpace(req.WelfareLeaderboardRewardRatios) == "" {
+		req.WelfareLeaderboardRewardRatios = "[1.0, 0.5, 0.2]"
+	}
 }

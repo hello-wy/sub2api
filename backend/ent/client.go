@@ -50,6 +50,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/userattributevalue"
 	"github.com/Wei-Shaw/sub2api/ent/userplatformquota"
 	"github.com/Wei-Shaw/sub2api/ent/usersubscription"
+	"github.com/Wei-Shaw/sub2api/ent/welfarerecord"
 
 	stdsql "database/sql"
 )
@@ -129,6 +130,8 @@ type Client struct {
 	UserPlatformQuota *UserPlatformQuotaClient
 	// UserSubscription is the client for interacting with the UserSubscription builders.
 	UserSubscription *UserSubscriptionClient
+	// WelfareRecord is the client for interacting with the WelfareRecord builders.
+	WelfareRecord *WelfareRecordClient
 }
 
 // NewClient creates a new client configured with the given options.
@@ -175,6 +178,7 @@ func (c *Client) init() {
 	c.UserAttributeValue = NewUserAttributeValueClient(c.config)
 	c.UserPlatformQuota = NewUserPlatformQuotaClient(c.config)
 	c.UserSubscription = NewUserSubscriptionClient(c.config)
+	c.WelfareRecord = NewWelfareRecordClient(c.config)
 }
 
 type (
@@ -302,6 +306,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		UserAttributeValue:            NewUserAttributeValueClient(cfg),
 		UserPlatformQuota:             NewUserPlatformQuotaClient(cfg),
 		UserSubscription:              NewUserSubscriptionClient(cfg),
+		WelfareRecord:                 NewWelfareRecordClient(cfg),
 	}, nil
 }
 
@@ -356,6 +361,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		UserAttributeValue:            NewUserAttributeValueClient(cfg),
 		UserPlatformQuota:             NewUserPlatformQuotaClient(cfg),
 		UserSubscription:              NewUserSubscriptionClient(cfg),
+		WelfareRecord:                 NewWelfareRecordClient(cfg),
 	}, nil
 }
 
@@ -394,7 +400,7 @@ func (c *Client) Use(hooks ...Hook) {
 		c.PromoCodeUsage, c.Proxy, c.RedeemCode, c.SecuritySecret, c.Setting,
 		c.SubscriptionPlan, c.TLSFingerprintProfile, c.UsageCleanupTask, c.UsageLog,
 		c.User, c.UserAllowedGroup, c.UserAttributeDefinition, c.UserAttributeValue,
-		c.UserPlatformQuota, c.UserSubscription,
+		c.UserPlatformQuota, c.UserSubscription, c.WelfareRecord,
 	} {
 		n.Use(hooks...)
 	}
@@ -413,7 +419,7 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 		c.PromoCodeUsage, c.Proxy, c.RedeemCode, c.SecuritySecret, c.Setting,
 		c.SubscriptionPlan, c.TLSFingerprintProfile, c.UsageCleanupTask, c.UsageLog,
 		c.User, c.UserAllowedGroup, c.UserAttributeDefinition, c.UserAttributeValue,
-		c.UserPlatformQuota, c.UserSubscription,
+		c.UserPlatformQuota, c.UserSubscription, c.WelfareRecord,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -492,6 +498,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.UserPlatformQuota.mutate(ctx, m)
 	case *UserSubscriptionMutation:
 		return c.UserSubscription.mutate(ctx, m)
+	case *WelfareRecordMutation:
+		return c.WelfareRecord.mutate(ctx, m)
 	default:
 		return nil, fmt.Errorf("ent: unknown mutation type %T", m)
 	}
@@ -5381,6 +5389,22 @@ func (c *UserClient) QueryPlatformQuotas(_m *User) *UserPlatformQuotaQuery {
 	return query
 }
 
+// QueryWelfareRecords queries the welfare_records edge of a User.
+func (c *UserClient) QueryWelfareRecords(_m *User) *WelfareRecordQuery {
+	query := (&WelfareRecordClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, id),
+			sqlgraph.To(welfarerecord.Table, welfarerecord.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.WelfareRecordsTable, user.WelfareRecordsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // QueryUserAllowedGroups queries the user_allowed_groups edge of a User.
 func (c *UserClient) QueryUserAllowedGroups(_m *User) *UserAllowedGroupQuery {
 	query := (&UserAllowedGroupClient{config: c.config}).Query()
@@ -6206,6 +6230,155 @@ func (c *UserSubscriptionClient) mutate(ctx context.Context, m *UserSubscription
 	}
 }
 
+// WelfareRecordClient is a client for the WelfareRecord schema.
+type WelfareRecordClient struct {
+	config
+}
+
+// NewWelfareRecordClient returns a client for the WelfareRecord from the given config.
+func NewWelfareRecordClient(c config) *WelfareRecordClient {
+	return &WelfareRecordClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `welfarerecord.Hooks(f(g(h())))`.
+func (c *WelfareRecordClient) Use(hooks ...Hook) {
+	c.hooks.WelfareRecord = append(c.hooks.WelfareRecord, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `welfarerecord.Intercept(f(g(h())))`.
+func (c *WelfareRecordClient) Intercept(interceptors ...Interceptor) {
+	c.inters.WelfareRecord = append(c.inters.WelfareRecord, interceptors...)
+}
+
+// Create returns a builder for creating a WelfareRecord entity.
+func (c *WelfareRecordClient) Create() *WelfareRecordCreate {
+	mutation := newWelfareRecordMutation(c.config, OpCreate)
+	return &WelfareRecordCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of WelfareRecord entities.
+func (c *WelfareRecordClient) CreateBulk(builders ...*WelfareRecordCreate) *WelfareRecordCreateBulk {
+	return &WelfareRecordCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *WelfareRecordClient) MapCreateBulk(slice any, setFunc func(*WelfareRecordCreate, int)) *WelfareRecordCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &WelfareRecordCreateBulk{err: fmt.Errorf("calling to WelfareRecordClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*WelfareRecordCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &WelfareRecordCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for WelfareRecord.
+func (c *WelfareRecordClient) Update() *WelfareRecordUpdate {
+	mutation := newWelfareRecordMutation(c.config, OpUpdate)
+	return &WelfareRecordUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *WelfareRecordClient) UpdateOne(_m *WelfareRecord) *WelfareRecordUpdateOne {
+	mutation := newWelfareRecordMutation(c.config, OpUpdateOne, withWelfareRecord(_m))
+	return &WelfareRecordUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *WelfareRecordClient) UpdateOneID(id int64) *WelfareRecordUpdateOne {
+	mutation := newWelfareRecordMutation(c.config, OpUpdateOne, withWelfareRecordID(id))
+	return &WelfareRecordUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for WelfareRecord.
+func (c *WelfareRecordClient) Delete() *WelfareRecordDelete {
+	mutation := newWelfareRecordMutation(c.config, OpDelete)
+	return &WelfareRecordDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *WelfareRecordClient) DeleteOne(_m *WelfareRecord) *WelfareRecordDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *WelfareRecordClient) DeleteOneID(id int64) *WelfareRecordDeleteOne {
+	builder := c.Delete().Where(welfarerecord.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &WelfareRecordDeleteOne{builder}
+}
+
+// Query returns a query builder for WelfareRecord.
+func (c *WelfareRecordClient) Query() *WelfareRecordQuery {
+	return &WelfareRecordQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeWelfareRecord},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a WelfareRecord entity by its id.
+func (c *WelfareRecordClient) Get(ctx context.Context, id int64) (*WelfareRecord, error) {
+	return c.Query().Where(welfarerecord.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *WelfareRecordClient) GetX(ctx context.Context, id int64) *WelfareRecord {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryUser queries the user edge of a WelfareRecord.
+func (c *WelfareRecordClient) QueryUser(_m *WelfareRecord) *UserQuery {
+	query := (&UserClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(welfarerecord.Table, welfarerecord.FieldID, id),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, welfarerecord.UserTable, welfarerecord.UserColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *WelfareRecordClient) Hooks() []Hook {
+	return c.hooks.WelfareRecord
+}
+
+// Interceptors returns the client interceptors.
+func (c *WelfareRecordClient) Interceptors() []Interceptor {
+	return c.inters.WelfareRecord
+}
+
+func (c *WelfareRecordClient) mutate(ctx context.Context, m *WelfareRecordMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&WelfareRecordCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&WelfareRecordUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&WelfareRecordUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&WelfareRecordDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown WelfareRecord mutation op: %q", m.Op())
+	}
+}
+
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
@@ -6217,7 +6390,7 @@ type (
 		PromoCodeUsage, Proxy, RedeemCode, SecuritySecret, Setting, SubscriptionPlan,
 		TLSFingerprintProfile, UsageCleanupTask, UsageLog, User, UserAllowedGroup,
 		UserAttributeDefinition, UserAttributeValue, UserPlatformQuota,
-		UserSubscription []ent.Hook
+		UserSubscription, WelfareRecord []ent.Hook
 	}
 	inters struct {
 		APIKey, Account, AccountGroup, Announcement, AnnouncementRead, AuthIdentity,
@@ -6228,7 +6401,7 @@ type (
 		PromoCodeUsage, Proxy, RedeemCode, SecuritySecret, Setting, SubscriptionPlan,
 		TLSFingerprintProfile, UsageCleanupTask, UsageLog, User, UserAllowedGroup,
 		UserAttributeDefinition, UserAttributeValue, UserPlatformQuota,
-		UserSubscription []ent.Interceptor
+		UserSubscription, WelfareRecord []ent.Interceptor
 	}
 )
 

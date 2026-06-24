@@ -44,6 +44,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/userattributevalue"
 	"github.com/Wei-Shaw/sub2api/ent/userplatformquota"
 	"github.com/Wei-Shaw/sub2api/ent/usersubscription"
+	"github.com/Wei-Shaw/sub2api/ent/welfarerecord"
 )
 
 // The Query interface represents an operation that queries a graph.
@@ -1047,6 +1048,33 @@ func (f TraverseUserSubscription) Traverse(ctx context.Context, q ent.Query) err
 	return fmt.Errorf("unexpected query type %T. expect *ent.UserSubscriptionQuery", q)
 }
 
+// The WelfareRecordFunc type is an adapter to allow the use of ordinary function as a Querier.
+type WelfareRecordFunc func(context.Context, *ent.WelfareRecordQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f WelfareRecordFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.WelfareRecordQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.WelfareRecordQuery", q)
+}
+
+// The TraverseWelfareRecord type is an adapter to allow the use of ordinary function as Traverser.
+type TraverseWelfareRecord func(context.Context, *ent.WelfareRecordQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraverseWelfareRecord) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraverseWelfareRecord) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.WelfareRecordQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.WelfareRecordQuery", q)
+}
+
 // NewQuery returns the generic Query interface for the given typed query.
 func NewQuery(q ent.Query) (Query, error) {
 	switch q := q.(type) {
@@ -1120,6 +1148,8 @@ func NewQuery(q ent.Query) (Query, error) {
 		return &query[*ent.UserPlatformQuotaQuery, predicate.UserPlatformQuota, userplatformquota.OrderOption]{typ: ent.TypeUserPlatformQuota, tq: q}, nil
 	case *ent.UserSubscriptionQuery:
 		return &query[*ent.UserSubscriptionQuery, predicate.UserSubscription, usersubscription.OrderOption]{typ: ent.TypeUserSubscription, tq: q}, nil
+	case *ent.WelfareRecordQuery:
+		return &query[*ent.WelfareRecordQuery, predicate.WelfareRecord, welfarerecord.OrderOption]{typ: ent.TypeWelfareRecord, tq: q}, nil
 	default:
 		return nil, fmt.Errorf("unknown query type %T", q)
 	}
