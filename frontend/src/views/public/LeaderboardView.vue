@@ -44,7 +44,8 @@
         <!-- Podium: Top 3 -->
         <div class="podium-section">
           <!-- 2nd place (left) -->
-          <div v-if="ranking.length >= 2" class="podium-card rank-2" @mouseenter="hoveredCard = 2" @mouseleave="hoveredCard = null">
+          <div v-if="ranking.length >= 2" class="podium-card rank-2" :class="{ 'is-me': ranking[1].user_id === currentUserId }" @mouseenter="hoveredCard = 2" @mouseleave="hoveredCard = null">
+            <div v-if="ranking[1].user_id === currentUserId" class="me-badge">我</div>
             <div class="rank-badge silver">2</div>
             <div class="avatar-wrapper silver-glow">
               <img
@@ -62,7 +63,8 @@
           </div>
 
           <!-- 1st place (center) -->
-          <div v-if="ranking.length >= 1" class="podium-card rank-1" @mouseenter="hoveredCard = 1" @mouseleave="hoveredCard = null">
+          <div v-if="ranking.length >= 1" class="podium-card rank-1" :class="{ 'is-me': ranking[0].user_id === currentUserId }" @mouseenter="hoveredCard = 1" @mouseleave="hoveredCard = null">
+            <div v-if="ranking[0].user_id === currentUserId" class="me-badge">我</div>
             <div class="crown">👑</div>
             <div class="rank-badge gold">1</div>
             <div class="avatar-wrapper gold-glow">
@@ -81,7 +83,8 @@
           </div>
 
           <!-- 3rd place (right) -->
-          <div v-if="ranking.length >= 3" class="podium-card rank-3" @mouseenter="hoveredCard = 3" @mouseleave="hoveredCard = null">
+          <div v-if="ranking.length >= 3" class="podium-card rank-3" :class="{ 'is-me': ranking[2].user_id === currentUserId }" @mouseenter="hoveredCard = 3" @mouseleave="hoveredCard = null">
+            <div v-if="ranking[2].user_id === currentUserId" class="me-badge">我</div>
             <div class="rank-badge bronze">3</div>
             <div class="avatar-wrapper bronze-glow">
               <img
@@ -105,6 +108,7 @@
             v-for="(user, index) in ranking.slice(3)"
             :key="user.user_id"
             class="list-item"
+            :class="{ 'is-me': user.user_id === currentUserId }"
             :style="{ animationDelay: `${(index + 3) * 0.08}s` }"
           >
             <div class="list-rank">#{{ index + 4 }}</div>
@@ -115,7 +119,10 @@
               loading="lazy"
             />
             <div class="list-info">
-              <div class="list-email" :title="user.email">{{ maskEmail(user.email) }}</div>
+              <div class="list-email-wrapper">
+                <div class="list-email" :title="user.email">{{ maskEmail(user.email) }}</div>
+                <span v-if="user.user_id === currentUserId" class="list-me">我</span>
+              </div>
             </div>
             <div class="list-tokens">
               <span class="list-token-value">{{ formatCost(user.actual_cost) }}</span>
@@ -137,8 +144,11 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { getUserSpendingRanking } from '@/api/admin/dashboard'
 import type { UserSpendingRankingItem } from '@/types'
 import AppLayout from '@/components/layout/AppLayout.vue'
+import { useAuthStore } from '@/stores'
 
 // State
+const authStore = useAuthStore()
+const currentUserId = computed(() => authStore.user?.id)
 const ranking = ref<UserSpendingRankingItem[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
@@ -244,7 +254,7 @@ onUnmounted(() => {
   color: #e0e0e0;
   font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
   position: relative;
-  overflow-x: hidden;
+  overflow: visible;
   padding: 2rem;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.05);
@@ -259,6 +269,8 @@ onUnmounted(() => {
   height: 100%;
   pointer-events: none;
   z-index: 0;
+  overflow: hidden;
+  border-radius: 1.5rem;
 }
 
 .particle {
@@ -834,5 +846,82 @@ onUnmounted(() => {
   .list-token-value {
     font-size: 0.95rem;
   }
+}
+
+/* ==================== Highlight Current User Styles ==================== */
+.me-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: #007aff;
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 20px;
+  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.4);
+  z-index: 10;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.podium-card.is-me {
+  background: linear-gradient(180deg, rgba(0, 122, 255, 0.15) 0%, rgba(0, 122, 255, 0.04) 100%) !important;
+  border: 1px solid rgba(0, 122, 255, 0.35) !important;
+  box-shadow: 0 0 20px rgba(0, 122, 255, 0.25) !important;
+}
+
+.podium-card.is-me .avatar-wrapper {
+  background: linear-gradient(135deg, #007aff, #00c6ff, #007aff) !important;
+  box-shadow: 0 0 15px rgba(0, 122, 255, 0.4) !important;
+}
+
+.podium-card.is-me .podium-bar {
+  background: linear-gradient(180deg, rgba(0, 122, 255, 0.3), rgba(0, 122, 255, 0.08)) !important;
+}
+
+.podium-card.is-me .token-value {
+  color: #38bdf8 !important;
+  text-shadow: 0 0 20px rgba(0, 122, 255, 0.4) !important;
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  -webkit-text-fill-color: unset !important;
+}
+
+.list-item.is-me {
+  background: rgba(0, 122, 255, 0.08) !important;
+  border-color: rgba(0, 122, 255, 0.3) !important;
+  box-shadow: 0 0 15px rgba(0, 122, 255, 0.15) !important;
+}
+
+.list-item.is-me:hover {
+  background: rgba(0, 122, 255, 0.12) !important;
+  border-color: rgba(0, 122, 255, 0.45) !important;
+}
+
+.list-item.is-me .list-token-value {
+  color: #38bdf8 !important;
+}
+
+.list-item.is-me .list-avatar {
+  border-color: rgba(0, 122, 255, 0.4) !important;
+}
+
+.list-email-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.list-me {
+  background: #007aff;
+  color: #ffffff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 12px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(0, 122, 255, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  line-height: 1.2;
 }
 </style>
