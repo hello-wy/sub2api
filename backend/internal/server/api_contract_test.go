@@ -906,6 +906,8 @@ func TestAPIContracts(t *testing.T) {
 					"wechat_connect_redirect_url": "",
 					"wechat_connect_frontend_redirect_url": "/auth/wechat/callback",
 					"wechat_connect_scopes": "snsapi_login",
+					"welfare_leaderboard_rank_limit": 3,
+					"welfare_leaderboard_reward_ratios": "[1.0, 0.5, 0.2]",
 					"allow_user_view_error_requests": false
 				}
 			}`,
@@ -1147,6 +1149,8 @@ func TestAPIContracts(t *testing.T) {
 					"wechat_connect_redirect_url": "",
 					"wechat_connect_frontend_redirect_url": "/auth/wechat/callback",
 					"wechat_connect_scopes": "snsapi_login",
+					"welfare_leaderboard_rank_limit": 3,
+					"welfare_leaderboard_reward_ratios": "[1.0, 0.5, 0.2]",
 					"auth_source_default_email_balance": 0,
 					"auth_source_default_email_concurrency": 5,
 					"auth_source_default_email_subscriptions": [],
