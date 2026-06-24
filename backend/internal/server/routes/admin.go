@@ -677,4 +677,3 @@ func registerWelfareRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		welfare.POST("/:id/revoke", h.Admin.Welfare.RevokeWelfareRecord)
 	}
 }
-

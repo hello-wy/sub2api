@@ -435,12 +435,12 @@ func ProvideWelfareService(
 	userService *UserService,
 	dashboardSvc *DashboardService,
 	settingRepo SettingRepository,
-	redisClient *redis.Client,
+	lockCache LeaderLockCache,
 	db *sql.DB,
 	entClient *dbent.Client,
 	cfg *config.Config,
 ) *WelfareService {
-	svc := NewWelfareService(welfareRepo, userService, dashboardSvc, settingRepo, redisClient, db, entClient, cfg)
+	svc := NewWelfareService(welfareRepo, userService, dashboardSvc, settingRepo, lockCache, db, entClient, cfg)
 	svc.Start()
 	return svc
 }

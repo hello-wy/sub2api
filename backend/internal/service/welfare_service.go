@@ -19,7 +19,6 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/pkg/usagestats"
 
 	"github.com/google/uuid"
-	"github.com/redis/go-redis/v9"
 	"github.com/robfig/cron/v3"
 )
 
@@ -35,13 +34,6 @@ const (
 var welfareDefaultRewardRatios = []float64{1.0, 0.5, 0.2}
 
 var welfareCronParser = cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
-
-var welfareReleaseScript = redis.NewScript(`
-if redis.call("GET", KEYS[1]) == ARGV[1] then
-  return redis.call("DEL", KEYS[1])
-end
-return 0
-`)
 
 type WelfareRecord struct {
 	ID        int64     `json:"id"`
@@ -67,7 +59,7 @@ type WelfareService struct {
 	userService  *UserService
 	dashboardSvc *DashboardService
 	settingRepo  SettingRepository
-	redisClient  *redis.Client
+	lockCache    LeaderLockCache
 	db           *sql.DB
 	entClient    *dbent.Client
 	cfg          *config.Config
@@ -86,7 +78,7 @@ func NewWelfareService(
 	userService *UserService,
 	dashboardSvc *DashboardService,
 	settingRepo SettingRepository,
-	redisClient *redis.Client,
+	lockCache LeaderLockCache,
 	db *sql.DB,
 	entClient *dbent.Client,
 	cfg *config.Config,
@@ -96,7 +88,7 @@ func NewWelfareService(
 		userService:  userService,
 		dashboardSvc: dashboardSvc,
 		settingRepo:  settingRepo,
-		redisClient:  redisClient,
+		lockCache:    lockCache,
 		db:           db,
 		entClient:    entClient,
 		cfg:          cfg,
@@ -365,24 +357,20 @@ func (s *WelfareService) tryAcquireLeaderLock(ctx context.Context) (func(), bool
 	key := welfareLeaderLockKey
 	ttl := welfareLeaderLockTTL
 
-	if s.redisClient != nil {
-		ok, err := s.redisClient.SetNX(ctx, key, s.instanceID, ttl).Result()
+	if s.lockCache != nil {
+		ok, err := s.lockCache.TryAcquireLeaderLock(ctx, key, s.instanceID, ttl)
 		if err == nil {
 			if !ok {
 				return nil, false
 			}
 			return func() {
-				_, _ = welfareReleaseScript.Run(ctx, s.redisClient, []string{key}, s.instanceID).Result()
+				_ = s.lockCache.ReleaseLeaderLock(context.Background(), key, s.instanceID)
 			}, true
 		}
 		s.warnNoRedisOnce.Do(func() {
-			logger.LegacyPrintf("service.welfare", "[WelfareService] leader lock SetNX failed; falling back to DB advisory lock: %v", err)
+			logger.LegacyPrintf("service.welfare", "[WelfareService] leader lock failed; falling back to DB advisory lock: %v", err)
 		})
 	}
 
-	release, ok := tryAcquireDBAdvisoryLock(ctx, s.db, welfareAdvisoryLockID)
-	if !ok {
-		return nil, false
-	}
-	return release, true
+	return tryAcquireDBAdvisoryLock(ctx, s.db, welfareAdvisoryLockID)
 }

@@ -36,6 +36,33 @@ func TestCreateWelfareRecordSkipsDuplicateRemark(t *testing.T) {
 	require.Zero(t, repo.createCalls)
 }
 
+func TestWelfareServiceLeaderLockSkipsWhenHeldByPeer(t *testing.T) {
+	cache := &fakeLeaderLockCache{}
+	_, _ = cache.TryAcquireLeaderLock(context.Background(), welfareLeaderLockKey, "peer", welfareLeaderLockTTL)
+	svc := &WelfareService{lockCache: cache, instanceID: "welfare"}
+
+	release, ok := svc.tryAcquireLeaderLock(context.Background())
+
+	require.False(t, ok)
+	require.Nil(t, release)
+	require.Equal(t, "peer", cache.heldBy(welfareLeaderLockKey))
+}
+
+func TestWelfareServiceLeaderLockReleasesWhenAcquired(t *testing.T) {
+	cache := &fakeLeaderLockCache{}
+	svc := &WelfareService{lockCache: cache, instanceID: "welfare"}
+
+	release, ok := svc.tryAcquireLeaderLock(context.Background())
+
+	require.True(t, ok)
+	require.NotNil(t, release)
+	require.Equal(t, "welfare", cache.heldBy(welfareLeaderLockKey))
+
+	release()
+
+	require.Empty(t, cache.heldBy(welfareLeaderLockKey))
+}
+
 type welfareRepoStub struct {
 	existingRemark bool
 	createCalls    int
