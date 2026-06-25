@@ -11,9 +11,24 @@
         <div class="header-glow" />
         <h1 class="lb-title">
           <span class="title-icon">🏆</span>
-          <span class="title-text">今日排行榜</span>
+          <span class="title-text">{{ selectedRangeLabel }}排行榜</span>
         </h1>
-        <p class="lb-subtitle">{{ todayFormatted }}</p>
+        <p class="lb-subtitle">{{ selectedDateFormatted }}</p>
+        <div class="range-switcher" role="tablist" aria-label="排行榜日期">
+          <button
+            v-for="option in rangeOptions"
+            :key="option.value"
+            type="button"
+            role="tab"
+            class="range-option"
+            :class="{ active: selectedRange === option.value }"
+            :aria-selected="selectedRange === option.value"
+            :data-testid="`leaderboard-range-${option.value}`"
+            @click="selectRange(option.value)"
+          >
+            {{ option.label }}
+          </button>
+        </div>
       </header>
 
       <!-- Loading state -->
@@ -36,7 +51,7 @@
       <!-- Empty state -->
       <div v-else-if="ranking.length === 0" class="empty-container">
         <div class="empty-icon">📊</div>
-        <p class="empty-text">今日暂无数据</p>
+        <p class="empty-text">{{ selectedRangeLabel }}暂无数据</p>
       </div>
 
       <!-- Leaderboard content -->
@@ -169,6 +184,12 @@ import type { UserSpendingRankingItem } from '@/types'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import { useAuthStore } from '@/stores'
 
+type LeaderboardRange = 'today' | 'yesterday'
+
+const LEADERBOARD_LIMIT = 10
+const REFRESH_INTERVAL_MS = 60_000
+const YESTERDAY_OFFSET_DAYS = -1
+
 // State
 const authStore = useAuthStore()
 const currentUserId = computed(() => authStore.user?.id)
@@ -177,7 +198,13 @@ const userRanking = ref<UserSpendingRankingItem | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
 const hoveredCard = ref<number | null>(null)
+const selectedRange = ref<LeaderboardRange>('today')
 let refreshTimer: ReturnType<typeof setInterval> | null = null
+
+const rangeOptions: ReadonlyArray<{ value: LeaderboardRange; label: string }> = [
+  { value: 'today', label: '今日' },
+  { value: 'yesterday', label: '昨日' }
+]
 
 const userInTopList = computed(() => {
   return ranking.value.some(item => item.user_id === currentUserId.value)
@@ -187,24 +214,43 @@ const showUserRankingAtBottom = computed(() => {
   return !!(userRanking.value && !userInTopList.value)
 })
 
-// Today's date formatted
-const today = computed(() => {
-  const now = new Date()
-  const year = now.getFullYear()
-  const month = String(now.getMonth() + 1).padStart(2, '0')
-  const day = String(now.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
+const selectedRangeLabel = computed(() => {
+  return selectedRange.value === 'today' ? '今日' : '昨日'
 })
 
-const todayFormatted = computed(() => {
-  const now = new Date()
-  return now.toLocaleDateString('zh-CN', {
+const selectedDate = computed(() => {
+  return selectedRange.value === 'today'
+    ? getLocalDate()
+    : getLocalDate(YESTERDAY_OFFSET_DAYS)
+})
+
+const selectedDateFormatted = computed(() => {
+  return selectedDate.value.toLocaleDateString('zh-CN', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
     weekday: 'long'
   })
 })
+
+function getLocalDate(offsetDays = 0): Date {
+  const date = new Date()
+  date.setDate(date.getDate() + offsetDays)
+  return date
+}
+
+function formatLocalDate(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function selectRange(range: LeaderboardRange): void {
+  if (selectedRange.value === range) return
+  selectedRange.value = range
+  fetchRanking()
+}
 
 // DiceBear Notionists avatar URL
 function getAvatarUrl(email: string): string {
@@ -246,10 +292,11 @@ async function fetchRanking() {
   try {
     loading.value = true
     error.value = null
+    const targetDate = formatLocalDate(selectedDate.value)
     const response = await getUserSpendingRanking({
-      start_date: today.value,
-      end_date: today.value,
-      limit: 10
+      start_date: targetDate,
+      end_date: targetDate,
+      limit: LEADERBOARD_LIMIT
     })
     const list = response.ranking || []
     // Explicitly sort by actual_cost descending
@@ -266,7 +313,7 @@ async function fetchRanking() {
 onMounted(() => {
   fetchRanking()
   // Auto-refresh every 60 seconds
-  refreshTimer = setInterval(fetchRanking, 60_000)
+  refreshTimer = setInterval(fetchRanking, REFRESH_INTERVAL_MS)
 })
 
 onUnmounted(() => {
@@ -383,6 +430,43 @@ onUnmounted(() => {
   color: rgba(255, 255, 255, 0.5);
   margin: 0;
   letter-spacing: 0.5px;
+}
+
+.range-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 1rem;
+  padding: 0.25rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  backdrop-filter: blur(10px);
+}
+
+.range-option {
+  min-width: 68px;
+  height: 32px;
+  padding: 0 0.9rem;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.range-option:hover {
+  color: rgba(255, 255, 255, 0.88);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.range-option.active {
+  color: #1a1a2e;
+  background: linear-gradient(135deg, #ffd700, #ffaa00);
+  box-shadow: 0 4px 16px rgba(255, 215, 0, 0.22);
 }
 
 /* ==================== Loading ==================== */
@@ -813,6 +897,17 @@ onUnmounted(() => {
 
   .title-icon {
     font-size: 1.8rem;
+  }
+
+  .range-switcher {
+    margin-top: 0.75rem;
+  }
+
+  .range-option {
+    min-width: 60px;
+    height: 30px;
+    padding: 0 0.7rem;
+    font-size: 0.8rem;
   }
 
   .podium-section {
