@@ -46,12 +46,18 @@ type WelfareRecord struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
+type WelfareListFilter struct {
+	SearchEmail string
+	StartTime   time.Time
+	EndTime     time.Time
+}
+
 type WelfareRepository interface {
 	Create(ctx context.Context, userID int64, email string, amount float64, remarks string) (*WelfareRecord, error)
 	GetByID(ctx context.Context, id int64) (*WelfareRecord, error)
 	MarkRevoked(ctx context.Context, id int64) (bool, error)
 	ExistsSuccessByRemarks(ctx context.Context, remarks string) (bool, error)
-	List(ctx context.Context, params pagination.PaginationParams, searchEmail string) ([]WelfareRecord, *pagination.PaginationResult, error)
+	List(ctx context.Context, params pagination.PaginationParams, filter WelfareListFilter) ([]WelfareRecord, *pagination.PaginationResult, error)
 }
 
 type WelfareService struct {
@@ -190,7 +196,7 @@ func (s *WelfareService) distributeRankingRewards(ctx context.Context, ranking [
 		if rewardAmount <= 0 {
 			continue
 		}
-		remarks := fmt.Sprintf("%s 排行榜消费 #%d", todayStr, i+1)
+		remarks := fmt.Sprintf("%s 消费 $%.2f #%d", todayStr, item.ActualCost, i+1)
 		_, err := s.CreateWelfareRecord(ctx, item.UserID, item.Email, rewardAmount, remarks)
 		if err != nil {
 			slog.Error("[WelfareService] failed to distribute welfare reward", "user_id", item.UserID, "email", item.Email, "amount", rewardAmount, "error", err)
@@ -341,9 +347,9 @@ func (s *WelfareService) revokeWelfareRecordTx(ctx context.Context, record *Welf
 	return nil
 }
 
-// ListWelfareRecords lists all welfare records with paginated parameters and optional email filter.
-func (s *WelfareService) ListWelfareRecords(ctx context.Context, params pagination.PaginationParams, searchEmail string) ([]WelfareRecord, *pagination.PaginationResult, error) {
-	return s.welfareRepo.List(ctx, params, searchEmail)
+// ListWelfareRecords lists all welfare records with paginated parameters and optional filters.
+func (s *WelfareService) ListWelfareRecords(ctx context.Context, params pagination.PaginationParams, filter WelfareListFilter) ([]WelfareRecord, *pagination.PaginationResult, error) {
+	return s.welfareRepo.List(ctx, params, filter)
 }
 
 func (s *WelfareService) tryAcquireLeaderLock(ctx context.Context) (func(), bool) {

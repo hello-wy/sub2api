@@ -3,9 +3,11 @@ package admin
 import (
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/pkg/pagination"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/timezone"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -23,18 +25,54 @@ func NewWelfareHandler(welfareSvc *service.WelfareService) *WelfareHandler {
 // GET /api/v1/admin/welfare-records
 func (h *WelfareHandler) ListWelfareRecords(c *gin.Context) {
 	page, pageSize := response.ParsePagination(c)
-	searchEmail := strings.TrimSpace(c.Query("email"))
+	filter, ok := parseWelfareListFilter(c)
+	if !ok {
+		return
+	}
 
 	records, pagResult, err := h.welfareSvc.ListWelfareRecords(c.Request.Context(), pagination.PaginationParams{
 		Page:     page,
 		PageSize: pageSize,
-	}, searchEmail)
+	}, filter)
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return
 	}
 
 	response.Paginated(c, records, int64(pagResult.Total), page, pageSize)
+}
+
+func parseWelfareListFilter(c *gin.Context) (service.WelfareListFilter, bool) {
+	userTZ := c.Query("timezone")
+	startTime, ok := parseWelfareDate(c, "start_date", userTZ)
+	if !ok {
+		return service.WelfareListFilter{}, false
+	}
+	endTime, ok := parseWelfareDate(c, "end_date", userTZ)
+	if !ok {
+		return service.WelfareListFilter{}, false
+	}
+	if !endTime.IsZero() {
+		endTime = endTime.AddDate(0, 0, 1)
+	}
+	return service.WelfareListFilter{
+		SearchEmail: strings.TrimSpace(c.Query("email")),
+		StartTime:   startTime,
+		EndTime:     endTime,
+	}, true
+}
+
+func parseWelfareDate(c *gin.Context, key string, userTZ string) (time.Time, bool) {
+	raw := strings.TrimSpace(c.Query(key))
+	if raw == "" {
+		return time.Time{}, true
+	}
+	parsed, err := timezone.ParseInUserLocation("2006-01-02", raw, userTZ)
+	if err != nil {
+		response.BadRequest(c, "Invalid "+key)
+		return time.Time{}, false
+	}
+	return parsed, true
 }
 
 // RevokeWelfareRecord handles revoking a welfare record

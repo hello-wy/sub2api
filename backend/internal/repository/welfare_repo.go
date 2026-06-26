@@ -53,10 +53,16 @@ func (r *welfareRepository) ExistsSuccessByRemarks(ctx context.Context, remarks 
 		Exist(ctx)
 }
 
-func (r *welfareRepository) List(ctx context.Context, params pagination.PaginationParams, searchEmail string) ([]service.WelfareRecord, *pagination.PaginationResult, error) {
+func (r *welfareRepository) List(ctx context.Context, params pagination.PaginationParams, filter service.WelfareListFilter) ([]service.WelfareRecord, *pagination.PaginationResult, error) {
 	query := clientFromContext(ctx, r.client).WelfareRecord.Query()
-	if searchEmail != "" {
-		query = query.Where(welfarerecord.UserEmailContains(searchEmail))
+	if filter.SearchEmail != "" {
+		query = query.Where(welfarerecord.UserEmailContains(filter.SearchEmail))
+	}
+	if !filter.StartTime.IsZero() {
+		query = query.Where(welfarerecord.CreatedAtGTE(filter.StartTime))
+	}
+	if !filter.EndTime.IsZero() {
+		query = query.Where(welfarerecord.CreatedAtLT(filter.EndTime))
 	}
 
 	total, err := query.Count(ctx)

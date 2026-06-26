@@ -14,6 +14,17 @@
             />
           </div>
 
+          <div class="flex items-center gap-2">
+            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+              {{ t('admin.dashboard.timeRange') }}:
+            </span>
+            <DateRangePicker
+              v-model:start-date="startDate"
+              v-model:end-date="endDate"
+              @change="onDateRangeChange"
+            />
+          </div>
+
           <!-- Right: Refresh button -->
           <div class="flex flex-1 flex-wrap items-center justify-end gap-2">
             <button
@@ -120,17 +131,22 @@ import TablePageLayout from '@/components/layout/TablePageLayout.vue'
 import DataTable from '@/components/common/DataTable.vue'
 import Pagination from '@/components/common/Pagination.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
+import DateRangePicker from '@/components/common/DateRangePicker.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { useAppStore } from '@/stores/app'
 
 const { t } = useI18n()
 const appStore = useAppStore()
+const DAY_MS = 24 * 60 * 60 * 1000
 
 const loading = ref(false)
 const records = ref<WelfareRecord[]>([])
 const searchQuery = ref('')
 const selectedRecord = ref<WelfareRecord | null>(null)
 const showRevokeConfirm = ref(false)
+const defaultRange = getLast24HoursRangeDates()
+const startDate = ref(defaultRange.start)
+const endDate = ref(defaultRange.end)
 
 const pagination = reactive({
   page: 1,
@@ -153,7 +169,11 @@ async function loadRecords() {
     const res = await adminAPI.welfare.list(
       pagination.page,
       pagination.pageSize,
-      searchQuery.value.trim() || undefined
+      searchQuery.value.trim() || undefined,
+      {
+        startDate: startDate.value,
+        endDate: endDate.value
+      }
     )
     records.value = res.items || []
     pagination.total = res.total || 0
@@ -184,6 +204,11 @@ function handlePageSizeChange(newSize: number) {
   loadRecords()
 }
 
+function onDateRangeChange() {
+  pagination.page = 1
+  loadRecords()
+}
+
 function confirmRevoke(record: WelfareRecord) {
   selectedRecord.value = record
   showRevokeConfirm.value = true
@@ -206,6 +231,19 @@ function formatDateTime(val: string) {
   if (!val) return ''
   const date = new Date(val)
   return date.toLocaleString()
+}
+
+function formatLocalDate(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
+function getLast24HoursRangeDates(): { start: string; end: string } {
+  const end = new Date()
+  const start = new Date(end.getTime() - DAY_MS)
+  return {
+    start: formatLocalDate(start),
+    end: formatLocalDate(end)
+  }
 }
 
 onMounted(() => {

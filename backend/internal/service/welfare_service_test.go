@@ -5,8 +5,10 @@ package service
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/pkg/pagination"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/usagestats"
 	"github.com/stretchr/testify/require"
 )
 
@@ -34,6 +36,18 @@ func TestCreateWelfareRecordSkipsDuplicateRemark(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, record)
 	require.Zero(t, repo.createCalls)
+}
+
+func TestDistributeRankingRewardsRemarkIncludesSpendAndRank(t *testing.T) {
+	repo := &welfareRepoStub{existingRemark: true}
+	svc := &WelfareService{welfareRepo: repo}
+	day := time.Date(2026, time.June, 25, 0, 0, 0, 0, time.UTC)
+
+	svc.distributeRankingRewards(context.Background(), []usagestats.UserSpendingRankingItem{
+		{UserID: 10, Email: "u@example.com", ActualCost: 12.345},
+	}, day, 1, []float64{1})
+
+	require.Equal(t, "2026-06-25 消费 $12.35 #1", repo.lastRemark)
 }
 
 func TestWelfareServiceLeaderLockSkipsWhenHeldByPeer(t *testing.T) {
@@ -66,6 +80,7 @@ func TestWelfareServiceLeaderLockReleasesWhenAcquired(t *testing.T) {
 type welfareRepoStub struct {
 	existingRemark bool
 	createCalls    int
+	lastRemark     string
 }
 
 func (r *welfareRepoStub) Create(context.Context, int64, string, float64, string) (*WelfareRecord, error) {
@@ -81,10 +96,11 @@ func (r *welfareRepoStub) MarkRevoked(context.Context, int64) (bool, error) {
 	return true, nil
 }
 
-func (r *welfareRepoStub) List(context.Context, pagination.PaginationParams, string) ([]WelfareRecord, *pagination.PaginationResult, error) {
+func (r *welfareRepoStub) List(context.Context, pagination.PaginationParams, WelfareListFilter) ([]WelfareRecord, *pagination.PaginationResult, error) {
 	return nil, nil, nil
 }
 
-func (r *welfareRepoStub) ExistsSuccessByRemarks(context.Context, string) (bool, error) {
+func (r *welfareRepoStub) ExistsSuccessByRemarks(_ context.Context, remarks string) (bool, error) {
+	r.lastRemark = remarks
 	return r.existingRemark, nil
 }
