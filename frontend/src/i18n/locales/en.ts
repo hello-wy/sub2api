@@ -9,7 +9,39 @@ export default {
     dashboard: 'Dashboard',
     login: 'Login',
     getStarted: 'Get Started',
-    goToDashboard: 'Go to Dashboard',
+    goToDashboard: 'Dashboard',
+    nav: {
+      products: 'Products',
+      pricing: 'Pricing',
+      docs: 'Docs',
+      help: 'Help Center',
+      about: 'About Us'
+    },
+    heroTitleSubtitle: 'Enterprise Gateway · Subscription API Platform',
+    heroDesc1: 'Connect multiple LLMs with one click, unified API format, fast and easy to use.',
+    heroDesc2: 'Providing cost-effective model calling solutions for developers and teams.',
+    pills: {
+      subApi: 'Subscription API',
+      subApiDesc: 'Flexible plans, pay as needed',
+      sticky: 'Session Sticky',
+      stickyDesc: 'Smart routing, reliable',
+      billing: 'Pay-as-you-go',
+      billingDesc: 'Transparent billing, controllable cost'
+    },
+    console: {
+      title: 'Console',
+      serviceNormal: 'Service Operational',
+      latency: 'Latency',
+      upstream: 'Upstream Providers',
+      available: 'Available',
+      hubFeature: 'Unified Gateway · Smart Route · Load Balance',
+      stable: 'Stable',
+      fast: 'Fast',
+      secure: 'Secure',
+      apiResponse: 'API Response',
+      userClient: 'App Client',
+      footer: 'Unified Output · Compatible with OpenAI Protocol'
+    },
     // User-focused value proposition
     heroSubtitle: 'One Key, All AI Models',
     heroDescription: 'No need to manage multiple subscriptions. Access Claude, GPT, Gemini and more with a single API key',

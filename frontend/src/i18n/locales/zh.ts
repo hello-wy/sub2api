@@ -10,6 +10,38 @@ export default {
     login: '登录',
     getStarted: '立即开始',
     goToDashboard: '进入控制台',
+    nav: {
+      products: '产品',
+      pricing: '价格',
+      docs: '文档',
+      help: '帮助中心',
+      about: '关于我们'
+    },
+    heroTitleSubtitle: '企业级中转 · 订阅式 API 转换平台',
+    heroDesc1: '一键接入多种大模型，统一 API 格式，稳定、快速、易用。',
+    heroDesc2: '为开发者和团队提供高性价比的模型调用解决方案。',
+    pills: {
+      subApi: '订阅 API',
+      subApiDesc: '灵活套餐，按需使用',
+      sticky: '会话保持',
+      stickyDesc: '智能路由，稳定可靠',
+      billing: '按量计费',
+      billingDesc: '透明计费，成本可控'
+    },
+    console: {
+      title: '控制台',
+      serviceNormal: '服务运行正常',
+      latency: '延迟',
+      upstream: '上游供应商',
+      available: '可用',
+      hubFeature: '统一接口 · 智能路由 · 负载均衡',
+      stable: '稳定',
+      fast: '快速',
+      secure: '安全',
+      apiResponse: 'API 响应',
+      userClient: '用户代表',
+      footer: '统一格式输出 · 兼容 OpenAI 协议'
+    },
     // 新增：面向用户的价值主张
     heroSubtitle: '一个密钥，畅用多个 AI 模型',
     heroDescription: '无需管理多个订阅账号，一站式接入 Claude、GPT、Gemini 等主流 AI 服务',
