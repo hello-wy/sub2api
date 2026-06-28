@@ -87,16 +87,13 @@
               @click="handleMenuItemClick(item.path)"
             >
               <span v-if="item.iconSvg" class="h-5 w-5 flex-shrink-0 sidebar-svg-icon" v-html="sanitizeSvg(item.iconSvg)"></span>
-              <span v-else class="relative h-5 w-5 flex-shrink-0">
-                <component :is="item.icon" class="h-5 w-5" />
-                <span v-if="shouldShowCheckinDot(item.path) && sidebarCollapsed" class="checkin-menu-dot checkin-menu-dot-icon"></span>
-              </span>
-              <span class="sidebar-label" :class="{ 'sidebar-label-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'">
-                <span class="relative inline-block max-w-full truncate pr-3">
-                  {{ item.label }}
-                  <span v-if="shouldShowCheckinDot(item.path) && !sidebarCollapsed" class="checkin-menu-dot checkin-menu-dot-label"></span>
-                </span>
-              </span>
+              <component v-else :is="item.icon" class="h-5 w-5 flex-shrink-0" />
+              <span class="sidebar-label" :class="{ 'sidebar-label-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'">{{ item.label }}</span>
+              <span
+                v-if="shouldShowCheckinDot(item.path)"
+                class="checkin-menu-dot"
+                :class="sidebarCollapsed ? 'checkin-menu-dot-icon' : 'checkin-menu-dot-label'"
+              ></span>
             </router-link>
           </template>
         </div>
@@ -120,16 +117,13 @@
             @click="handleMenuItemClick(item.path)"
           >
             <span v-if="item.iconSvg" class="h-5 w-5 flex-shrink-0 sidebar-svg-icon" v-html="sanitizeSvg(item.iconSvg)"></span>
-            <span v-else class="relative h-5 w-5 flex-shrink-0">
-              <component :is="item.icon" class="h-5 w-5" />
-              <span v-if="shouldShowCheckinDot(item.path) && sidebarCollapsed" class="checkin-menu-dot checkin-menu-dot-icon"></span>
-            </span>
-            <span class="sidebar-label" :class="{ 'sidebar-label-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'">
-              <span class="relative inline-block max-w-full truncate pr-3">
-                {{ item.label }}
-                <span v-if="shouldShowCheckinDot(item.path) && !sidebarCollapsed" class="checkin-menu-dot checkin-menu-dot-label"></span>
-              </span>
-            </span>
+            <component v-else :is="item.icon" class="h-5 w-5 flex-shrink-0" />
+            <span class="sidebar-label" :class="{ 'sidebar-label-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'">{{ item.label }}</span>
+            <span
+              v-if="shouldShowCheckinDot(item.path)"
+              class="checkin-menu-dot"
+              :class="sidebarCollapsed ? 'checkin-menu-dot-icon' : 'checkin-menu-dot-label'"
+            ></span>
           </router-link>
         </div>
       </template>
@@ -148,16 +142,13 @@
             @click="handleMenuItemClick(item.path)"
           >
             <span v-if="item.iconSvg" class="h-5 w-5 flex-shrink-0 sidebar-svg-icon" v-html="sanitizeSvg(item.iconSvg)"></span>
-            <span v-else class="relative h-5 w-5 flex-shrink-0">
-              <component :is="item.icon" class="h-5 w-5" />
-              <span v-if="shouldShowCheckinDot(item.path) && sidebarCollapsed" class="checkin-menu-dot checkin-menu-dot-icon"></span>
-            </span>
-            <span class="sidebar-label" :class="{ 'sidebar-label-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'">
-              <span class="relative inline-block max-w-full truncate pr-3">
-                {{ item.label }}
-                <span v-if="shouldShowCheckinDot(item.path) && !sidebarCollapsed" class="checkin-menu-dot checkin-menu-dot-label"></span>
-              </span>
-            </span>
+            <component v-else :is="item.icon" class="h-5 w-5 flex-shrink-0" />
+            <span class="sidebar-label" :class="{ 'sidebar-label-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'">{{ item.label }}</span>
+            <span
+              v-if="shouldShowCheckinDot(item.path)"
+              class="checkin-menu-dot"
+              :class="sidebarCollapsed ? 'checkin-menu-dot-icon' : 'checkin-menu-dot-label'"
+            ></span>
           </router-link>
         </div>
       </template>
@@ -1122,13 +1113,13 @@ watch(
 }
 
 .checkin-menu-dot-label {
-  right: 0;
-  top: 0.125rem;
+  left: 6.625rem;
+  top: 0.625rem;
 }
 
 .checkin-menu-dot-icon {
-  right: -0.0625rem;
-  top: -0.125rem;
+  left: 2.125rem;
+  top: 0.5rem;
 }
 
 .dark .checkin-menu-dot {
