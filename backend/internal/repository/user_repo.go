@@ -779,7 +779,7 @@ func (r *userRepository) HasUserQQ(ctx context.Context, userID int64) (bool, err
 		 FROM user_attribute_values v
 		 JOIN user_attribute_definitions d ON d.id = v.attribute_id
 		 WHERE v.user_id = $1
-		   AND d.key = 'qq'
+		   AND (LOWER(TRIM(d.key)) = 'qq' OR LOWER(TRIM(d.name)) = 'qq')
 		   AND d.deleted_at IS NULL
 		 LIMIT 1`,
 		[]any{userID},

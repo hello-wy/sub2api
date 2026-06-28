@@ -367,7 +367,12 @@ function formatRewardRange(min: number, max: number): string {
   const normalizedMin = Number(min || 0)
   const normalizedMax = Number(max || normalizedMin)
   if (normalizedMin === normalizedMax) return formatDollar(normalizedMin)
-  return `${formatDollar(normalizedMin)} - ${formatDollar(normalizedMax)}`
+  return `$${formatAmountCompact(normalizedMin)}-${formatAmountCompact(normalizedMax)}`
+}
+
+function formatAmountCompact(value: number): string {
+  const n = Number(value || 0)
+  return Number.isInteger(n) ? String(n) : n.toFixed(2)
 }
 
 function formatCalendarDay(date: string): string {

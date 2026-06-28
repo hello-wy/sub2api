@@ -123,6 +123,15 @@ const defaultRewardRules: CheckinRewardRule[] = [
   { day_count: 30, extra_reward: 24 },
 ]
 
+const defaultBaseRewardMin = 1
+const defaultBaseRewardMax = 3
+
+function readNumber(value: unknown): number | undefined {
+  if (value === null || value === undefined || value === '') return undefined
+  const n = Number(value)
+  return Number.isFinite(n) ? n : undefined
+}
+
 function normalizeRewardRules(rules?: RawCheckinRule[]): CheckinRewardRule[] {
   if (!rules?.length) return defaultRewardRules
   return rules.map((rule) => ({
@@ -141,6 +150,11 @@ function normalizeRecord(record: RawCheckinHistoryItem): CheckinHistoryItem {
 function normalizeStatus(raw: RawCheckinStatusResponse): CheckinStatusResponse {
   const summary = raw.summary
   const recentHistory = (raw.recent_history ?? summary?.recent_records ?? []).map(normalizeRecord)
+  const baseRewardMin = readNumber(raw.base_reward_min ?? summary?.base_reward_min) ?? defaultBaseRewardMin
+  const baseRewardMax = readNumber(raw.base_reward_max ?? summary?.base_reward_max) ?? defaultBaseRewardMax
+  const extraReward = readNumber(raw.extra_reward ?? summary?.bonus_reward) ?? 0
+  const todayRewardMin = readNumber(raw.today_reward_min ?? summary?.today_reward_min) ?? baseRewardMin + extraReward
+  const todayRewardMax = readNumber(raw.today_reward_max ?? summary?.today_reward_max) ?? baseRewardMax + extraReward
   return {
     can_checkin: Boolean(raw.can_checkin ?? summary?.can_check_in),
     qq_bound: Boolean(raw.qq_bound ?? summary?.qq_bound),
@@ -152,12 +166,12 @@ function normalizeStatus(raw: RawCheckinStatusResponse): CheckinStatusResponse {
     month_checkins: Number(raw.month_checkins ?? summary?.this_month_count ?? 0),
     total_reward: Number(raw.total_reward ?? summary?.total_reward ?? 0),
     base_reward: Number(raw.base_reward ?? summary?.base_reward ?? 0),
-    base_reward_min: Number(raw.base_reward_min ?? summary?.base_reward_min ?? raw.base_reward ?? summary?.base_reward ?? 0),
-    base_reward_max: Number(raw.base_reward_max ?? summary?.base_reward_max ?? raw.base_reward ?? summary?.base_reward ?? 0),
-    extra_reward: Number(raw.extra_reward ?? summary?.bonus_reward ?? 0),
+    base_reward_min: baseRewardMin,
+    base_reward_max: baseRewardMax,
+    extra_reward: extraReward,
     today_reward: Number(raw.today_reward ?? summary?.today_reward ?? 0),
-    today_reward_min: Number(raw.today_reward_min ?? summary?.today_reward_min ?? raw.today_reward ?? summary?.today_reward ?? 0),
-    today_reward_max: Number(raw.today_reward_max ?? summary?.today_reward_max ?? raw.today_reward ?? summary?.today_reward ?? 0),
+    today_reward_min: todayRewardMin,
+    today_reward_max: todayRewardMax,
     next_reward_day_count: raw.next_reward_day_count ?? null,
     next_reward_extra: raw.next_reward_extra ?? null,
     reward_rules: normalizeRewardRules(raw.reward_rules ?? summary?.reward_rules),
