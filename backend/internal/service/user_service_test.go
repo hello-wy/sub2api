@@ -28,6 +28,7 @@ type mockUserRepo struct {
 	getByIDUser             *User
 	getByIDErr              error
 	identities              []UserAuthIdentityRecord
+	hasQQ                   bool
 	unbindIdentityErr       error
 	unboundProviders        []string
 	updateLastActiveErr     error
@@ -211,6 +212,7 @@ func (m *mockUserRepo) ListUserAuthIdentities(context.Context, int64) ([]UserAut
 	copy(out, m.identities)
 	return out, nil
 }
+func (m *mockUserRepo) HasUserQQ(context.Context, int64) (bool, error) { return m.hasQQ, nil }
 func (m *mockUserRepo) GetLatestUsedAtByUserIDs(context.Context, []int64) (map[int64]*time.Time, error) {
 	return map[int64]*time.Time{}, nil
 }
@@ -428,7 +430,7 @@ func TestUpdateBalance_Success(t *testing.T) {
 	require.Equal(t, []int64{42}, cache.invalidatedUserIDs, "应对 userID=42 失效缓存")
 }
 
-func TestCheckInDailyRequiresWeChatBinding(t *testing.T) {
+func TestCheckInDailyRequiresQQBinding(t *testing.T) {
 	repo := &mockUserRepo{
 		getByIDUser: &User{ID: 42, Balance: 10},
 	}
@@ -436,7 +438,7 @@ func TestCheckInDailyRequiresWeChatBinding(t *testing.T) {
 
 	_, err := svc.CheckInDaily(context.Background(), 42, "Asia/Shanghai")
 
-	require.ErrorIs(t, err, ErrDailyCheckinWechatRequired)
+	require.ErrorIs(t, err, ErrDailyCheckinQQRequired)
 	require.Equal(t, 0, repo.checkinCreateCalls)
 }
 
@@ -446,7 +448,7 @@ func TestCheckInDailyRejectsAlreadyCheckedInToday(t *testing.T) {
 	require.NoError(t, err)
 	repo := &mockUserRepo{
 		getByIDUser: &User{ID: 42, Balance: 10},
-		identities:  []UserAuthIdentityRecord{{ProviderType: "wechat"}},
+		hasQQ:       true,
 		checkinRecords: []DailyCheckinRecord{
 			{UserID: 42, CheckinDate: todayDate, Timezone: "Asia/Shanghai", StreakDays: 1},
 		},
@@ -467,7 +469,7 @@ func TestCheckInDailyComputesStreakAndReward(t *testing.T) {
 	require.NoError(t, err)
 	repo := &mockUserRepo{
 		getByIDUser: &User{ID: 42, Balance: 10},
-		identities:  []UserAuthIdentityRecord{{ProviderType: "wechat"}},
+		hasQQ:       true,
 		checkinRecords: []DailyCheckinRecord{
 			{UserID: 42, CheckinDate: yesterday, Timezone: "Asia/Shanghai", TotalReward: 3, StreakDays: 2},
 			{UserID: 42, CheckinDate: twoDaysAgo, Timezone: "Asia/Shanghai", TotalReward: 3, StreakDays: 1},
@@ -479,10 +481,11 @@ func TestCheckInDailyComputesStreakAndReward(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Equal(t, 3, result.Record.StreakDays)
-	require.Equal(t, 3.0, result.Record.BaseReward)
+	require.GreaterOrEqual(t, result.Record.BaseReward, 1.0)
+	require.LessOrEqual(t, result.Record.BaseReward, 3.0)
 	require.Equal(t, 3.0, result.Record.BonusReward)
-	require.Equal(t, 6.0, result.Record.TotalReward)
-	require.Equal(t, 16.0, result.Balance)
+	require.Equal(t, result.Record.BaseReward+result.Record.BonusReward, result.Record.TotalReward)
+	require.Equal(t, 10.0+result.Record.TotalReward, result.Balance)
 	require.Equal(t, 1, repo.checkinCreateCalls)
 }
 

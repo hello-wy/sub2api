@@ -26,9 +26,14 @@ export interface CheckinHistoryItem {
   created_at?: string
 }
 
+type RawCheckinHistoryItem = CheckinHistoryItem & {
+  bonus_reward?: number
+}
+
 export interface CheckinStatusResponse {
   can_checkin: boolean
-  wechat_bound: boolean
+  qq_bound: boolean
+  wechat_bound?: boolean
   already_checked_in: boolean
   today_date: string
   timezone?: string
@@ -36,8 +41,12 @@ export interface CheckinStatusResponse {
   month_checkins: number
   total_reward: number
   base_reward: number
+  base_reward_min?: number
+  base_reward_max?: number
   extra_reward: number
   today_reward: number
+  today_reward_min?: number
+  today_reward_max?: number
   next_reward_day_count?: number | null
   next_reward_extra?: number | null
   reward_rules: CheckinRewardRule[]
@@ -67,21 +76,131 @@ export interface CheckinHistoryResponse {
   pages: number
 }
 
+interface RawCheckinRule {
+  threshold?: number
+  bonus?: number
+  day_count?: number
+  extra_reward?: number
+}
+
+interface RawCheckinSummary {
+  timezone?: string
+  today?: string
+  qq_bound?: boolean
+  wechat_bound?: boolean
+  can_check_in?: boolean
+  checked_in_today?: boolean
+  streak_days?: number
+  this_month_count?: number
+  total_reward?: number
+  base_reward?: number
+  base_reward_min?: number
+  base_reward_max?: number
+  bonus_reward?: number
+  today_reward?: number
+  today_reward_min?: number
+  today_reward_max?: number
+  balance?: number
+  recent_records?: RawCheckinHistoryItem[]
+  reward_rules?: RawCheckinRule[]
+}
+
+interface RawCheckinStatusResponse extends Partial<CheckinStatusResponse> {
+  summary?: RawCheckinSummary
+  balance?: number
+}
+
+interface RawCheckinClaimResponse extends Partial<CheckinClaimResponse> {
+  summary?: RawCheckinSummary
+  balance?: number
+  record?: RawCheckinHistoryItem
+}
+
+const defaultRewardRules: CheckinRewardRule[] = [
+  { day_count: 3, extra_reward: 3 },
+  { day_count: 7, extra_reward: 6 },
+  { day_count: 14, extra_reward: 12 },
+  { day_count: 30, extra_reward: 24 },
+]
+
+function normalizeRewardRules(rules?: RawCheckinRule[]): CheckinRewardRule[] {
+  if (!rules?.length) return defaultRewardRules
+  return rules.map((rule) => ({
+    day_count: Number(rule.day_count ?? rule.threshold ?? 0),
+    extra_reward: Number(rule.extra_reward ?? rule.bonus ?? 0),
+  })).filter((rule) => rule.day_count > 0)
+}
+
+function normalizeRecord(record: RawCheckinHistoryItem): CheckinHistoryItem {
+  return {
+    ...record,
+    extra_reward: Number(record.extra_reward ?? record.bonus_reward ?? 0),
+  }
+}
+
+function normalizeStatus(raw: RawCheckinStatusResponse): CheckinStatusResponse {
+  const summary = raw.summary
+  const recentHistory = (raw.recent_history ?? summary?.recent_records ?? []).map(normalizeRecord)
+  return {
+    can_checkin: Boolean(raw.can_checkin ?? summary?.can_check_in),
+    qq_bound: Boolean(raw.qq_bound ?? summary?.qq_bound),
+    wechat_bound: Boolean(raw.wechat_bound ?? summary?.wechat_bound),
+    already_checked_in: Boolean(raw.already_checked_in ?? summary?.checked_in_today),
+    today_date: String(raw.today_date ?? summary?.today ?? ''),
+    timezone: raw.timezone ?? summary?.timezone,
+    current_streak: Number(raw.current_streak ?? summary?.streak_days ?? 0),
+    month_checkins: Number(raw.month_checkins ?? summary?.this_month_count ?? 0),
+    total_reward: Number(raw.total_reward ?? summary?.total_reward ?? 0),
+    base_reward: Number(raw.base_reward ?? summary?.base_reward ?? 0),
+    base_reward_min: Number(raw.base_reward_min ?? summary?.base_reward_min ?? raw.base_reward ?? summary?.base_reward ?? 0),
+    base_reward_max: Number(raw.base_reward_max ?? summary?.base_reward_max ?? raw.base_reward ?? summary?.base_reward ?? 0),
+    extra_reward: Number(raw.extra_reward ?? summary?.bonus_reward ?? 0),
+    today_reward: Number(raw.today_reward ?? summary?.today_reward ?? 0),
+    today_reward_min: Number(raw.today_reward_min ?? summary?.today_reward_min ?? raw.today_reward ?? summary?.today_reward ?? 0),
+    today_reward_max: Number(raw.today_reward_max ?? summary?.today_reward_max ?? raw.today_reward ?? summary?.today_reward ?? 0),
+    next_reward_day_count: raw.next_reward_day_count ?? null,
+    next_reward_extra: raw.next_reward_extra ?? null,
+    reward_rules: normalizeRewardRules(raw.reward_rules ?? summary?.reward_rules),
+    recent_days: raw.recent_days ?? [],
+    recent_history: recentHistory,
+  }
+}
+
+function normalizeClaim(raw: RawCheckinClaimResponse): CheckinClaimResponse {
+  const summary = raw.summary
+  return {
+    message: raw.message ?? '签到成功',
+    checked_in: Boolean(raw.checked_in ?? summary?.checked_in_today),
+    today_date: String(raw.today_date ?? summary?.today ?? ''),
+    base_reward: Number(raw.base_reward ?? summary?.base_reward ?? 0),
+    extra_reward: Number(raw.extra_reward ?? summary?.bonus_reward ?? 0),
+    total_reward: Number(raw.total_reward ?? raw.record?.total_reward ?? summary?.today_reward ?? 0),
+    new_balance: Number(raw.new_balance ?? raw.balance ?? summary?.balance ?? 0),
+    current_streak: Number(raw.current_streak ?? summary?.streak_days ?? 0),
+    month_checkins: Number(raw.month_checkins ?? summary?.this_month_count ?? 0),
+    timezone: raw.timezone ?? summary?.timezone,
+    record: raw.record ? normalizeRecord(raw.record) : undefined,
+  }
+}
+
 export async function getCheckinStatus(): Promise<CheckinStatusResponse> {
-  const { data } = await apiClient.get<CheckinStatusResponse>('/user/checkin/status')
-  return data
+  const { data } = await apiClient.get<RawCheckinStatusResponse>('/user/checkin/status')
+  return normalizeStatus(data)
 }
 
 export async function checkin(): Promise<CheckinClaimResponse> {
-  const { data } = await apiClient.post<CheckinClaimResponse>('/user/checkin')
-  return data
+  const { data } = await apiClient.post<RawCheckinClaimResponse>('/user/checkin')
+  return normalizeClaim(data)
 }
 
 export async function getCheckinHistory(page = 1, pageSize = 20): Promise<CheckinHistoryResponse> {
   const { data } = await apiClient.get<CheckinHistoryResponse>('/user/checkin/history', {
     params: { page, page_size: pageSize }
   })
-  return data
+  return {
+    ...data,
+    items: data.items.map(normalizeRecord),
+  }
 }
 
 export const checkinAPI = {

@@ -23,18 +23,8 @@
 
           <div class="flex flex-wrap gap-3">
             <button
-              v-if="!wechatBound"
-              class="btn btn-secondary"
-              :disabled="loading || bindingWechat"
-              @click="bindWechat"
-            >
-              <Icon v-if="bindingWechat" name="refresh" size="sm" class="animate-spin" />
-              <Icon v-else name="link" size="sm" />
-              <span>去绑定微信</span>
-            </button>
-            <button
               class="btn btn-primary"
-              :disabled="!canCheckin || checkingIn || loading"
+              :disabled="alreadyCheckedIn || checkingIn || loading"
               @click="handleCheckin"
             >
               <Icon v-if="checkingIn" name="refresh" size="sm" class="animate-spin" />
@@ -46,27 +36,24 @@
         </div>
       </div>
 
-      <div
-        v-if="!wechatBound"
-        class="card border-amber-200 bg-amber-50 dark:border-amber-900/40 dark:bg-amber-900/20"
+      <BaseDialog
+        :show="showQQBindDialog"
+        title="绑定 QQ 后可签到"
+        width="narrow"
+        @close="showQQBindDialog = false"
       >
-        <div class="flex items-start gap-4 p-5">
-          <div class="rounded-xl bg-amber-100 p-2 text-amber-600 dark:bg-amber-900/40 dark:text-amber-300">
-            <Icon name="shield" size="md" />
+        <div class="space-y-4">
+          <div class="rounded-2xl bg-amber-50 p-4 text-sm text-amber-800 ring-1 ring-amber-200 dark:bg-amber-900/20 dark:text-amber-200 dark:ring-amber-900/40">
+            当前账号还未绑定 QQ。请前往 QQ 群完成平台账号绑定后，再返回每日签到。
           </div>
-          <div class="min-w-0 flex-1">
-            <h3 class="text-sm font-semibold text-amber-800 dark:text-amber-200">请先绑定微信</h3>
-            <p class="mt-1 text-sm text-amber-700 dark:text-amber-300">
-              绑定微信后即可进行每日签到，并解锁连续签到奖励。
-            </p>
-          </div>
-          <button class="btn btn-primary shrink-0" :disabled="bindingWechat" @click="bindWechat">
-            <Icon v-if="bindingWechat" name="refresh" size="sm" class="animate-spin" />
-            <Icon v-else name="link" size="sm" />
-            <span>去绑定微信</span>
-          </button>
+          <p v-if="contactInfo" class="text-sm text-gray-600 dark:text-dark-300">
+            {{ contactInfo }}
+          </p>
         </div>
-      </div>
+        <template #footer>
+          <button class="btn btn-secondary" @click="showQQBindDialog = false">关闭</button>
+        </template>
+      </BaseDialog>
 
       <div v-if="loading" class="flex justify-center py-10">
         <LoadingSpinner size="lg" />
@@ -77,10 +64,10 @@
           <div class="card p-5">
             <p class="text-sm text-gray-500 dark:text-dark-400">今日可领</p>
             <p class="mt-2 text-3xl font-semibold text-primary-600 dark:text-primary-400">
-              {{ formatDollar(status?.today_reward ?? 0) }}
+              {{ formatRewardRange(status?.today_reward_min ?? status?.today_reward ?? 0, status?.today_reward_max ?? status?.today_reward ?? 0) }}
             </p>
             <p class="mt-1 text-xs text-gray-400 dark:text-dark-500">
-              基础奖励 {{ formatDollar(status?.base_reward ?? 0) }}
+              基础奖励 {{ formatRewardRange(status?.base_reward_min ?? status?.base_reward ?? 0, status?.base_reward_max ?? status?.base_reward ?? 0) }}
               <span v-if="(status?.extra_reward ?? 0) > 0">
                 · 额外奖励 {{ formatDollar(status?.extra_reward ?? 0) }}
               </span>
@@ -113,7 +100,7 @@
               {{ formatDollar(status?.total_reward ?? 0) }}
             </p>
             <p class="mt-1 text-xs text-gray-400 dark:text-dark-500">
-              合计可领 {{ formatDollar(status?.today_reward ?? 0) }}
+              合计可领 {{ formatRewardRange(status?.today_reward_min ?? status?.today_reward ?? 0, status?.today_reward_max ?? status?.today_reward ?? 0) }}
             </p>
           </div>
         </div>
@@ -283,9 +270,9 @@
 import { computed, onMounted, ref } from 'vue'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
+import BaseDialog from '@/components/common/BaseDialog.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { checkinAPI, type CheckinHistoryItem, type CheckinRewardRule, type CheckinStatusResponse } from '@/api'
-import { userAPI } from '@/api/user'
 import { useAppStore } from '@/stores/app'
 import { useAuthStore } from '@/stores/auth'
 import { extractApiErrorMessage } from '@/utils/apiError'
@@ -296,7 +283,7 @@ const authStore = useAuthStore()
 
 const loading = ref(true)
 const checkingIn = ref(false)
-const bindingWechat = ref(false)
+const showQQBindDialog = ref(false)
 const showAllHistory = ref(false)
 const status = ref<CheckinStatusResponse | null>(null)
 const history = ref<CheckinHistoryItem[]>([])
@@ -315,9 +302,9 @@ const rewardRules = computed<CheckinRewardRule[]>(() => {
   return [...rules].sort((a, b) => a.day_count - b.day_count)
 })
 
-const canCheckin = computed(() => !!status.value?.can_checkin && !!status.value?.wechat_bound)
-const wechatBound = computed(() => status.value?.wechat_bound ?? authStore.user?.wechat_bound ?? false)
+const qqBound = computed(() => status.value?.qq_bound ?? false)
 const alreadyCheckedIn = computed(() => status.value?.already_checked_in ?? false)
+const contactInfo = computed(() => appStore.contactInfo)
 
 type CalendarDay = {
   date: string
@@ -364,6 +351,13 @@ function formatDateText(date?: string): string {
 
 function formatDollar(value: number): string {
   return `$${Number(value || 0).toFixed(2)}`
+}
+
+function formatRewardRange(min: number, max: number): string {
+  const normalizedMin = Number(min || 0)
+  const normalizedMax = Number(max || normalizedMin)
+  if (normalizedMin === normalizedMax) return formatDollar(normalizedMin)
+  return `${formatDollar(normalizedMin)} - ${formatDollar(normalizedMax)}`
 }
 
 function formatCalendarDay(date: string): string {
@@ -414,7 +408,11 @@ async function refreshAll(): Promise<void> {
 }
 
 async function handleCheckin(): Promise<void> {
-  if (checkingIn.value || !canCheckin.value) return
+  if (checkingIn.value || alreadyCheckedIn.value) return
+  if (!qqBound.value) {
+    showQQBindDialog.value = true
+    return
+  }
   checkingIn.value = true
   message.value = ''
   try {
@@ -438,17 +436,6 @@ async function handleCheckin(): Promise<void> {
     appStore.showError(extractApiErrorMessage(error, '请求失败'))
   } finally {
     checkingIn.value = false
-  }
-}
-
-async function bindWechat(): Promise<void> {
-  if (bindingWechat.value) return
-  bindingWechat.value = true
-  try {
-    await userAPI.startOAuthBinding('wechat', { redirectTo: '/checkin' })
-  } catch (error) {
-    appStore.showError(extractApiErrorMessage(error, '请求失败'))
-    bindingWechat.value = false
   }
 }
 

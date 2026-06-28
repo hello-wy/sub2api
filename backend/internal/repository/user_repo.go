@@ -770,6 +770,30 @@ func (r *userRepository) UpdateBalance(ctx context.Context, id int64, amount flo
 	return nil
 }
 
+func (r *userRepository) HasUserQQ(ctx context.Context, userID int64) (bool, error) {
+	var value string
+	err := scanSingleRow(
+		ctx,
+		txAwareSQLExecutor(ctx, r.sql, r.client),
+		`SELECT COALESCE(v.value, '')
+		 FROM user_attribute_values v
+		 JOIN user_attribute_definitions d ON d.id = v.attribute_id
+		 WHERE v.user_id = $1
+		   AND d.key = 'qq'
+		   AND d.deleted_at IS NULL
+		 LIMIT 1`,
+		[]any{userID},
+		&value,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+		return false, err
+	}
+	return strings.TrimSpace(value) != "", nil
+}
+
 func (r *userRepository) ListRecentDailyCheckinRecords(ctx context.Context, userID int64, limit int) ([]service.DailyCheckinRecord, error) {
 	if limit <= 0 {
 		limit = 7

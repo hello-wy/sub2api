@@ -2,7 +2,9 @@ package service
 
 import (
 	"context"
+	cryptorand "crypto/rand"
 	"fmt"
+	"math/big"
 	"strings"
 	"time"
 
@@ -12,9 +14,9 @@ import (
 )
 
 var (
-	ErrDailyCheckinWechatRequired = infraerrors.Forbidden(
-		"DAILY_CHECKIN_WECHAT_REQUIRED",
-		"wechat account binding is required for daily check-in",
+	ErrDailyCheckinQQRequired = infraerrors.Forbidden(
+		"DAILY_CHECKIN_QQ_REQUIRED",
+		"QQ account binding is required for daily check-in",
 	)
 	ErrDailyCheckinAlreadyDone = infraerrors.Conflict(
 		"DAILY_CHECKIN_ALREADY_DONE",
@@ -27,7 +29,8 @@ var (
 )
 
 const (
-	dailyCheckinBaseReward      = 3.0
+	dailyCheckinBaseRewardMin   = 1.0
+	dailyCheckinBaseRewardMax   = 3.0
 	dailyCheckinCycleDays       = 30
 	dailyCheckinBonus3Days      = 3.0
 	dailyCheckinBonus7Days      = 6.0
@@ -67,6 +70,7 @@ var dailyCheckinRules = []DailyCheckinRule{
 type DailyCheckinSummary struct {
 	Timezone       string               `json:"timezone"`
 	Today          string               `json:"today"`
+	QQBound        bool                 `json:"qq_bound"`
 	WechatBound    bool                 `json:"wechat_bound"`
 	CanCheckIn     bool                 `json:"can_check_in"`
 	CheckedInToday bool                 `json:"checked_in_today"`
@@ -74,8 +78,12 @@ type DailyCheckinSummary struct {
 	ThisMonthCount int                  `json:"this_month_count"`
 	TotalReward    float64              `json:"total_reward"`
 	BaseReward     float64              `json:"base_reward"`
+	BaseRewardMin  float64              `json:"base_reward_min"`
+	BaseRewardMax  float64              `json:"base_reward_max"`
 	BonusReward    float64              `json:"bonus_reward"`
 	TodayReward    float64              `json:"today_reward"`
+	TodayRewardMin float64              `json:"today_reward_min"`
+	TodayRewardMax float64              `json:"today_reward_max"`
 	Balance        float64              `json:"balance"`
 	RecentRecords  []DailyCheckinRecord `json:"recent_records"`
 }
@@ -92,10 +100,10 @@ type DailyCheckinResult struct {
 }
 
 type DailyCheckinHistoryPage struct {
-	Items []DailyCheckinRecord     `json:"items"`
-	Total int64                    `json:"total"`
-	Page  int                      `json:"page"`
-	Pages int                      `json:"pages"`
+	Items []DailyCheckinRecord `json:"items"`
+	Total int64                `json:"total"`
+	Page  int                  `json:"page"`
+	Pages int                  `json:"pages"`
 }
 
 type dailyCheckinTxRunner interface {
@@ -103,7 +111,7 @@ type dailyCheckinTxRunner interface {
 }
 
 type dailyCheckinRepository interface {
-	ListUserAuthIdentities(ctx context.Context, userID int64) ([]UserAuthIdentityRecord, error)
+	HasUserQQ(ctx context.Context, userID int64) (bool, error)
 	GetByID(ctx context.Context, id int64) (*User, error)
 	UpdateBalance(ctx context.Context, id int64, amount float64) error
 	ListRecentDailyCheckinRecords(ctx context.Context, userID int64, limit int) ([]DailyCheckinRecord, error)
@@ -152,8 +160,12 @@ func (s *UserService) checkInDailyInTx(ctx context.Context, repo dailyCheckinRep
 	if err != nil {
 		return nil, fmt.Errorf("get user: %w", err)
 	}
-	if !hasWechatBinding(ctx, repo, userID) {
-		return nil, ErrDailyCheckinWechatRequired
+	qqBound, err := repo.HasUserQQ(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("check user qq binding: %w", err)
+	}
+	if !qqBound {
+		return nil, ErrDailyCheckinQQRequired
 	}
 
 	now := timezone.NowInUserLocation(userTZ)
@@ -170,7 +182,7 @@ func (s *UserService) checkInDailyInTx(ctx context.Context, repo dailyCheckinRep
 	}
 
 	streakDays := computeCheckinStreak(recent, today, userTZ)
-	baseReward := dailyCheckinBaseReward
+	baseReward := randomDailyCheckinBaseReward()
 	bonusReward := computeDailyCheckinBonus(streakDays)
 	totalReward := baseReward + bonusReward
 
@@ -194,15 +206,20 @@ func (s *UserService) checkInDailyInTx(ctx context.Context, repo dailyCheckinRep
 	summary := DailyCheckinSummary{
 		Timezone:       userTZ,
 		Today:          today,
-		WechatBound:    true,
+		QQBound:        true,
+		WechatBound:    false,
 		CanCheckIn:     false,
 		CheckedInToday: true,
 		StreakDays:     streakDays,
 		ThisMonthCount: countCheckinsThisMonth(recent, today, record),
 		TotalReward:    sumCheckinRewards(recent, record),
 		BaseReward:     baseReward,
+		BaseRewardMin:  dailyCheckinBaseRewardMin,
+		BaseRewardMax:  dailyCheckinBaseRewardMax,
 		BonusReward:    bonusReward,
 		TodayReward:    totalReward,
+		TodayRewardMin: dailyCheckinBaseRewardMin + bonusReward,
+		TodayRewardMax: dailyCheckinBaseRewardMax + bonusReward,
 		Balance:        user.Balance + totalReward,
 		RecentRecords:  prependRecord(recent, record, 7),
 	}
@@ -242,25 +259,33 @@ func (s *UserService) GetDailyCheckinStatus(ctx context.Context, userID int64, u
 		return nil, fmt.Errorf("list recent checkin records: %w", err)
 	}
 
-	wechatBound := hasWechatBinding(ctx, repo, userID)
+	qqBound, err := repo.HasUserQQ(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("check user qq binding: %w", err)
+	}
 	checkedInToday := len(recent) > 0 && localDateKey(recent[0].CheckinDate, tz) == today
 	streakDays := computeCheckinStreak(recent, today, tz)
-	baseReward := dailyCheckinBaseReward
+	baseReward := dailyCheckinBaseRewardMin
 	bonusReward := computeDailyCheckinBonus(streakDays)
 	totalReward := baseReward + bonusReward
 
 	summary := DailyCheckinSummary{
 		Timezone:       tz,
 		Today:          today,
-		WechatBound:    wechatBound,
-		CanCheckIn:     wechatBound && !checkedInToday,
+		QQBound:        qqBound,
+		WechatBound:    false,
+		CanCheckIn:     qqBound && !checkedInToday,
 		CheckedInToday: checkedInToday,
 		StreakDays:     streakDays,
 		ThisMonthCount: countCheckinsThisMonth(recent, today, nil),
 		TotalReward:    sumCheckinRewards(recent, nil),
 		BaseReward:     baseReward,
+		BaseRewardMin:  dailyCheckinBaseRewardMin,
+		BaseRewardMax:  dailyCheckinBaseRewardMax,
 		BonusReward:    bonusReward,
 		TodayReward:    totalReward,
+		TodayRewardMin: dailyCheckinBaseRewardMin + bonusReward,
+		TodayRewardMax: dailyCheckinBaseRewardMax + bonusReward,
 		Balance:        user.Balance,
 		RecentRecords:  prependRecord(recent, nil, 7),
 	}
@@ -301,17 +326,18 @@ func (s *UserService) ListDailyCheckinHistory(ctx context.Context, userID int64,
 	return records, pag, nil
 }
 
-func hasWechatBinding(ctx context.Context, repo dailyCheckinRepository, userID int64) bool {
-	records, err := repo.ListUserAuthIdentities(ctx, userID)
+func randomDailyCheckinBaseReward() float64 {
+	min := int64(dailyCheckinBaseRewardMin)
+	max := int64(dailyCheckinBaseRewardMax)
+	span := max - min + 1
+	if span <= 1 {
+		return float64(min)
+	}
+	n, err := cryptorand.Int(cryptorand.Reader, big.NewInt(span))
 	if err != nil {
-		return false
+		return dailyCheckinBaseRewardMin
 	}
-	for _, record := range records {
-		if strings.EqualFold(strings.TrimSpace(record.ProviderType), "wechat") {
-			return true
-		}
-	}
-	return false
+	return float64(min + n.Int64())
 }
 
 func computeDailyCheckinBonus(streakDays int) float64 {

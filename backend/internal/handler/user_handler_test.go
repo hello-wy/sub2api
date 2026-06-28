@@ -22,6 +22,7 @@ import (
 type userHandlerRepoStub struct {
 	user           *service.User
 	identities     []service.UserAuthIdentityRecord
+	hasQQ          bool
 	checkinRecords []service.DailyCheckinRecord
 	unbound        []string
 }
@@ -166,6 +167,7 @@ func (s *userHandlerRepoStub) ListUserAuthIdentities(context.Context, int64) ([]
 	copy(out, s.identities)
 	return out, nil
 }
+func (s *userHandlerRepoStub) HasUserQQ(context.Context, int64) (bool, error) { return s.hasQQ, nil }
 func (s *userHandlerRepoStub) UnbindUserAuthProvider(_ context.Context, _ int64, provider string) error {
 	s.unbound = append(s.unbound, provider)
 	filtered := s.identities[:0]
@@ -436,7 +438,6 @@ func TestUserHandlerGetProfileDoesNotInferEditedProfileSourcesWithoutMatchingIde
 func TestUserHandlerCheckInDailySuccess(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	verifiedAt := time.Date(2026, 6, 23, 8, 30, 0, 0, time.UTC)
 	repo := &userHandlerRepoStub{
 		user: &service.User{
 			ID:       31,
@@ -446,14 +447,7 @@ func TestUserHandlerCheckInDailySuccess(t *testing.T) {
 			Status:   service.StatusActive,
 			Balance:  10,
 		},
-		identities: []service.UserAuthIdentityRecord{
-			{
-				ProviderType:    "wechat",
-				ProviderKey:     "wechat",
-				ProviderSubject: "wechat-subject-31",
-				VerifiedAt:      &verifiedAt,
-			},
-		},
+		hasQQ: true,
 	}
 	repo.checkinRecords = []service.DailyCheckinRecord{}
 	handler := NewUserHandler(service.NewUserService(repo, nil, nil, nil), nil, nil, nil, nil, nil)
@@ -472,7 +466,7 @@ func TestUserHandlerCheckInDailySuccess(t *testing.T) {
 		Data struct {
 			Balance float64 `json:"balance"`
 			Summary struct {
-				WechatBound    bool    `json:"wechat_bound"`
+				QQBound        bool    `json:"qq_bound"`
 				CheckedInToday bool    `json:"checked_in_today"`
 				BaseReward     float64 `json:"base_reward"`
 				TodayReward    float64 `json:"today_reward"`
@@ -482,22 +476,24 @@ func TestUserHandlerCheckInDailySuccess(t *testing.T) {
 	}
 	require.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &resp))
 	require.Equal(t, 0, resp.Code)
-	require.Equal(t, 13.0, resp.Data.Balance)
-	require.True(t, resp.Data.Summary.WechatBound)
+	require.GreaterOrEqual(t, resp.Data.Balance, 11.0)
+	require.LessOrEqual(t, resp.Data.Balance, 13.0)
+	require.True(t, resp.Data.Summary.QQBound)
 	require.True(t, resp.Data.Summary.CheckedInToday)
-	require.Equal(t, 3.0, resp.Data.Summary.BaseReward)
-	require.Equal(t, 3.0, resp.Data.Summary.TodayReward)
+	require.GreaterOrEqual(t, resp.Data.Summary.BaseReward, 1.0)
+	require.LessOrEqual(t, resp.Data.Summary.BaseReward, 3.0)
+	require.Equal(t, resp.Data.Summary.BaseReward, resp.Data.Summary.TodayReward)
 	require.Equal(t, 1, resp.Data.Summary.StreakDays)
 }
 
-func TestUserHandlerCheckInDailyRequiresWeChat(t *testing.T) {
+func TestUserHandlerCheckInDailyRequiresQQ(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	repo := &userHandlerRepoStub{
 		user: &service.User{
 			ID:       32,
-			Email:    "no-wechat@example.com",
-			Username: "no-wechat",
+			Email:    "no-qq@example.com",
+			Username: "no-qq",
 			Role:     service.RoleUser,
 			Status:   service.StatusActive,
 		},
@@ -521,6 +517,8 @@ func TestUserHandlerCheckInDailyRequiresWeChat(t *testing.T) {
 
 func TestUserHandlerGetCheckInStatus(t *testing.T) {
 	gin.SetMode(gin.TestMode)
+	yesterday, err := time.Parse("2006-01-02", time.Now().UTC().AddDate(0, 0, -1).Format("2006-01-02"))
+	require.NoError(t, err)
 
 	repo := &userHandlerRepoStub{
 		user: &service.User{
@@ -531,9 +529,9 @@ func TestUserHandlerGetCheckInStatus(t *testing.T) {
 			Status:   service.StatusActive,
 			Balance:  20,
 		},
-		identities: []service.UserAuthIdentityRecord{{ProviderType: "wechat"}},
+		hasQQ: true,
 		checkinRecords: []service.DailyCheckinRecord{
-			{UserID: 33, CheckinDate: time.Date(2026, 6, 23, 0, 0, 0, 0, time.UTC), Timezone: "UTC", TotalReward: 3, StreakDays: 1},
+			{UserID: 33, CheckinDate: yesterday, Timezone: "UTC", TotalReward: 3, StreakDays: 1},
 		},
 	}
 	handler := NewUserHandler(service.NewUserService(repo, nil, nil, nil), nil, nil, nil, nil, nil)
@@ -551,7 +549,7 @@ func TestUserHandlerGetCheckInStatus(t *testing.T) {
 		Data struct {
 			Balance float64 `json:"balance"`
 			Summary struct {
-				WechatBound    bool `json:"wechat_bound"`
+				QQBound        bool `json:"qq_bound"`
 				CanCheckIn     bool `json:"can_check_in"`
 				CheckedInToday bool `json:"checked_in_today"`
 				StreakDays     int  `json:"streak_days"`
@@ -564,7 +562,7 @@ func TestUserHandlerGetCheckInStatus(t *testing.T) {
 	require.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &resp))
 	require.Equal(t, 0, resp.Code)
 	require.Equal(t, 20.0, resp.Data.Balance)
-	require.True(t, resp.Data.Summary.WechatBound)
+	require.True(t, resp.Data.Summary.QQBound)
 	require.False(t, resp.Data.Summary.CheckedInToday)
 	require.True(t, resp.Data.Summary.CanCheckIn)
 	require.Equal(t, 2, resp.Data.Summary.StreakDays)
