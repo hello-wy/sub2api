@@ -32,7 +32,7 @@ type DailyCheckinResponse struct {
 }
 
 type DailyCheckinStatusResponse struct {
-	Balance float64                    `json:"balance"`
+	Balance float64                     `json:"balance"`
 	Summary service.DailyCheckinSummary `json:"summary"`
 }
 
