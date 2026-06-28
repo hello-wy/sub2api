@@ -299,6 +299,9 @@ func (s *WelfareService) createWelfareRecordInTx(ctx context.Context, userID int
 	if err != nil {
 		return nil, fmt.Errorf("create welfare record: %w", err)
 	}
+	if err := recordTypedBalanceAdjustment(ctx, s.userService.redeemCodeRepo, userID, amount, AdjustmentTypeUsageRebate, balanceAdjustmentNote("用量返利", timezone.Now(), remarks)); err != nil {
+		return nil, err
+	}
 	return record, nil
 }
 

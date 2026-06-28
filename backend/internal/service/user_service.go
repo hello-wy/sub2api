@@ -217,6 +217,7 @@ type ChangePasswordRequest struct {
 type UserService struct {
 	userRepo             UserRepository
 	settingRepo          SettingRepository
+	redeemCodeRepo       RedeemCodeRepository
 	authCacheInvalidator APIKeyAuthCacheInvalidator
 	billingCache         BillingCache
 	lastActiveTouchL1    sync.Map
@@ -230,6 +231,12 @@ func NewUserService(userRepo UserRepository, settingRepo SettingRepository, auth
 		settingRepo:          settingRepo,
 		authCacheInvalidator: authCacheInvalidator,
 		billingCache:         billingCache,
+	}
+}
+
+func (s *UserService) SetRedeemCodeRepository(repo RedeemCodeRepository) {
+	if s != nil {
+		s.redeemCodeRepo = repo
 	}
 }
 

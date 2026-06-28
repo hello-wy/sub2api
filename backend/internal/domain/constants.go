@@ -53,6 +53,8 @@ const (
 const (
 	AdjustmentTypeAdminBalance     = "admin_balance"     // 管理员调整余额
 	AdjustmentTypeAdminConcurrency = "admin_concurrency" // 管理员调整并发数
+	AdjustmentTypeDailyCheckin     = "daily_checkin"     // 每日签到奖励
+	AdjustmentTypeUsageRebate      = "usage_rebate"      // 用量返利奖励
 )
 
 // Group subscription type constants
