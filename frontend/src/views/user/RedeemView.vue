@@ -303,18 +303,25 @@
                 >
                   {{ formatHistoryValue(item) }}
                 </p>
+                <p v-if="isAdminAdjustment(item.type)" class="text-xs text-gray-400 dark:text-dark-500">
+                  {{ t('redeem.adminAdjustment') }}
+                </p>
                 <p
-                  v-if="!isAdminAdjustment(item.type)"
+                  v-else-if="isRewardAdjustment(item.type)"
+                  class="max-w-[200px] truncate text-xs text-gray-400 dark:text-dark-500"
+                  :title="item.notes || getHistoryItemTitle(item)"
+                >
+                  {{ item.notes || getHistoryItemTitle(item) }}
+                </p>
+                <p
+                  v-else
                   class="font-mono text-xs text-gray-400 dark:text-dark-500"
                 >
                   {{ item.code.slice(0, 8) }}...
                 </p>
-                <p v-else class="text-xs text-gray-400 dark:text-dark-500">
-                  {{ t('redeem.adminAdjustment') }}
-                </p>
                 <!-- Display notes for admin adjustments -->
                 <p
-                  v-if="item.notes"
+                  v-if="item.notes && !isRewardAdjustment(item.type)"
                   class="mt-1 text-xs text-gray-500 dark:text-dark-400 italic max-w-[200px] truncate"
                   :title="item.notes"
                 >
@@ -388,6 +395,10 @@ const isSubscriptionType = (type: string) => {
 
 const isAdminAdjustment = (type: string) => {
   return type === 'admin_balance' || type === 'admin_concurrency'
+}
+
+const isRewardAdjustment = (type: string) => {
+  return type === 'daily_checkin' || type === 'usage_rebate'
 }
 
 const getHistoryItemTitle = (item: RedeemHistoryItem) => {

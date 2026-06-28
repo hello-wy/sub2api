@@ -551,13 +551,26 @@ func redeemCodeFromServiceBase(rc *service.RedeemCode) RedeemCode {
 		out.Status = service.StatusExpired
 	}
 
-	// For admin_balance/admin_concurrency types, include notes so users can see
-	// why they were charged or credited by admin
-	if (rc.Type == "admin_balance" || rc.Type == "admin_concurrency") && rc.Notes != "" {
+	if redeemCodeNotesVisibleToUser(rc) {
 		out.Notes = &rc.Notes
 	}
 
 	return out
+}
+
+func redeemCodeNotesVisibleToUser(rc *service.RedeemCode) bool {
+	if rc == nil || rc.Notes == "" {
+		return false
+	}
+	switch rc.Type {
+	case service.AdjustmentTypeAdminBalance,
+		service.AdjustmentTypeAdminConcurrency,
+		service.AdjustmentTypeDailyCheckin,
+		service.AdjustmentTypeUsageRebate:
+		return true
+	default:
+		return false
+	}
 }
 
 // AccountSummaryFromService returns a minimal AccountSummary for usage log display.

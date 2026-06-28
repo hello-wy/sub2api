@@ -130,11 +130,11 @@
               <p :class="['text-sm font-semibold', getValueColor(item)]">
                 {{ formatValue(item) }}
               </p>
-              <p
-                v-if="isAdminType(item.type)"
-                class="text-xs text-gray-400 dark:text-dark-500"
-              >
+              <p v-if="isAdminType(item.type)" class="text-xs text-gray-400 dark:text-dark-500">
                 {{ t('redeem.adminAdjustment') }}
+              </p>
+              <p v-else-if="isRewardType(item.type)" class="max-w-[12rem] truncate text-xs text-gray-400 dark:text-dark-500" :title="item.notes || getItemTitle(item)">
+                {{ item.notes || getItemTitle(item) }}
               </p>
               <p
                 v-else
@@ -239,6 +239,8 @@ const loadHistory = async (page: number) => {
 
 // Helper: check if admin type
 const isAdminType = (type: string) => type === 'admin_balance' || type === 'admin_concurrency'
+
+const isRewardType = (type: string) => type === 'daily_checkin' || type === 'usage_rebate'
 
 // Helper: check if balance type (includes admin_balance)
 const isBalanceType = (type: string) => ['balance', 'admin_balance', 'affiliate_balance', 'daily_checkin', 'usage_rebate'].includes(type)
