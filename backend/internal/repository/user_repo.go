@@ -13,6 +13,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/apikey"
 	"github.com/Wei-Shaw/sub2api/ent/authidentity"
 	"github.com/Wei-Shaw/sub2api/ent/authidentitychannel"
+	"github.com/Wei-Shaw/sub2api/ent/dailycheckinrecord"
 	dbgroup "github.com/Wei-Shaw/sub2api/ent/group"
 	"github.com/Wei-Shaw/sub2api/ent/identityadoptiondecision"
 	"github.com/Wei-Shaw/sub2api/ent/predicate"
@@ -38,6 +39,24 @@ func NewUserRepository(client *dbent.Client, sqlDB *sql.DB) service.UserReposito
 
 func newUserRepositoryWithSQL(client *dbent.Client, sqlq sqlExecutor) *userRepository {
 	return &userRepository{client: client, sql: sqlq}
+}
+
+func (r *userRepository) WithDailyCheckinTx(ctx context.Context, fn func(txCtx context.Context) error) error {
+	if dbent.TxFromContext(ctx) != nil {
+		return fn(ctx)
+	}
+
+	tx, err := r.client.Tx(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	txCtx := dbent.NewTxContext(ctx, tx)
+	if err := fn(txCtx); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func (r *userRepository) Create(ctx context.Context, userIn *service.User) error {
@@ -748,6 +767,126 @@ func (r *userRepository) UpdateBalance(ctx context.Context, id int64, amount flo
 	if n == 0 {
 		return service.ErrUserNotFound
 	}
+	return nil
+}
+
+func (r *userRepository) ListRecentDailyCheckinRecords(ctx context.Context, userID int64, limit int) ([]service.DailyCheckinRecord, error) {
+	if limit <= 0 {
+		limit = 7
+	}
+	records, err := clientFromContext(ctx, r.client).DailyCheckinRecord.Query().
+		Where(dailycheckinrecord.UserIDEQ(userID)).
+		Order(dailycheckinrecord.ByCheckinDate(entsql.OrderDesc()), dailycheckinrecord.ByID(entsql.OrderDesc())).
+		Limit(limit).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]service.DailyCheckinRecord, 0, len(records))
+	for _, record := range records {
+		out = append(out, service.DailyCheckinRecord{
+			ID:          record.ID,
+			UserID:      record.UserID,
+			CheckinDate: record.CheckinDate,
+			Timezone:    record.Timezone,
+			BaseReward:  record.BaseReward,
+			BonusReward: record.BonusReward,
+			TotalReward: record.TotalReward,
+			StreakDays:  record.StreakDays,
+			CreatedAt:   record.CreatedAt,
+			UpdatedAt:   record.UpdatedAt,
+		})
+	}
+	return out, nil
+}
+
+func (r *userRepository) ListDailyCheckinRecords(ctx context.Context, userID int64, page, pageSize int) ([]service.DailyCheckinRecord, int64, error) {
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 20
+	}
+
+	client := clientFromContext(ctx, r.client)
+	query := client.DailyCheckinRecord.Query().Where(dailycheckinrecord.UserIDEQ(userID))
+	total, err := query.Count(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+	records, err := query.
+		Order(dailycheckinrecord.ByCheckinDate(entsql.OrderDesc()), dailycheckinrecord.ByID(entsql.OrderDesc())).
+		Offset((page - 1) * pageSize).
+		Limit(pageSize).
+		All(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	out := make([]service.DailyCheckinRecord, 0, len(records))
+	for _, record := range records {
+		out = append(out, service.DailyCheckinRecord{
+			ID:          record.ID,
+			UserID:      record.UserID,
+			CheckinDate: record.CheckinDate,
+			Timezone:    record.Timezone,
+			BaseReward:  record.BaseReward,
+			BonusReward: record.BonusReward,
+			TotalReward: record.TotalReward,
+			StreakDays:  record.StreakDays,
+			CreatedAt:   record.CreatedAt,
+			UpdatedAt:   record.UpdatedAt,
+		})
+	}
+	return out, int64(total), nil
+}
+
+func (r *userRepository) GetDailyCheckinRecordByDate(ctx context.Context, userID int64, checkinDate time.Time) (*service.DailyCheckinRecord, error) {
+	record, err := clientFromContext(ctx, r.client).DailyCheckinRecord.Query().
+		Where(
+			dailycheckinrecord.UserIDEQ(userID),
+			dailycheckinrecord.CheckinDateEQ(checkinDate),
+		).
+		Only(ctx)
+	if err != nil {
+		if dbent.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &service.DailyCheckinRecord{
+		ID:          record.ID,
+		UserID:      record.UserID,
+		CheckinDate: record.CheckinDate,
+		Timezone:    record.Timezone,
+		BaseReward:  record.BaseReward,
+		BonusReward: record.BonusReward,
+		TotalReward: record.TotalReward,
+		StreakDays:  record.StreakDays,
+		CreatedAt:   record.CreatedAt,
+		UpdatedAt:   record.UpdatedAt,
+	}, nil
+}
+
+func (r *userRepository) CreateDailyCheckinRecord(ctx context.Context, record *service.DailyCheckinRecord) error {
+	if record == nil {
+		return nil
+	}
+	created, err := clientFromContext(ctx, r.client).DailyCheckinRecord.Create().
+		SetUserID(record.UserID).
+		SetCheckinDate(record.CheckinDate).
+		SetTimezone(record.Timezone).
+		SetBaseReward(record.BaseReward).
+		SetBonusReward(record.BonusReward).
+		SetTotalReward(record.TotalReward).
+		SetStreakDays(record.StreakDays).
+		Save(ctx)
+	if err != nil {
+		return translatePersistenceError(err, nil, service.ErrDailyCheckinAlreadyDone)
+	}
+	record.ID = created.ID
+	record.CreatedAt = created.CreatedAt
+	record.UpdatedAt = created.UpdatedAt
 	return nil
 }
 

@@ -372,6 +372,11 @@ export default {
     adminCompliance: 'Deployment and Operation Compliance Commitment'
   },
 
+  checkin: {
+    title: 'Daily Check-in',
+    description: 'Complete your daily check-in and claim today\'s reward'
+  },
+
   // Navigation
   nav: {
     dashboard: 'Dashboard',
@@ -410,6 +415,7 @@ export default {
     buySubscription: 'Recharge / Subscription',
     docs: 'Docs',
     myOrders: 'My Orders',
+    dailyCheckin: 'Daily Check-in',
     orderManagement: 'Orders',
     paymentDashboard: 'Payment Dashboard',
     paymentConfig: 'Payment Config',

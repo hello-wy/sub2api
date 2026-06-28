@@ -41,6 +41,8 @@ type mockUserRepo struct {
 	deleteAvatarIDs         []int64
 	getAvatarFn             func(ctx context.Context, userID int64) (*UserAvatar, error)
 	txCalls                 int
+	checkinRecords          []DailyCheckinRecord
+	checkinCreateCalls      int
 }
 
 type mockUserRepoTxKey struct{}
@@ -49,6 +51,7 @@ type mockUserRepoTxState struct {
 	getByIDUser      *User
 	upsertAvatarArgs []UpsertUserAvatarInput
 	deleteAvatarIDs  []int64
+	checkinRecords   []DailyCheckinRecord
 }
 
 type mockUserSettingRepo struct {
@@ -217,6 +220,64 @@ func (m *mockUserRepo) GetLatestUsedAtByUserID(context.Context, int64) (*time.Ti
 func (m *mockUserRepo) UpdateTotpSecret(context.Context, int64, *string) error { return nil }
 func (m *mockUserRepo) EnableTotp(context.Context, int64) error                { return nil }
 func (m *mockUserRepo) DisableTotp(context.Context, int64) error               { return nil }
+func (m *mockUserRepo) WithDailyCheckinTx(ctx context.Context, fn func(txCtx context.Context) error) error {
+	m.txCalls++
+	txState := &mockUserRepoTxState{
+		upsertAvatarArgs: append([]UpsertUserAvatarInput(nil), m.upsertAvatarArgs...),
+		deleteAvatarIDs:  append([]int64(nil), m.deleteAvatarIDs...),
+		checkinRecords:   append([]DailyCheckinRecord(nil), m.checkinRecords...),
+	}
+	if m.getByIDUser != nil {
+		userCopy := *m.getByIDUser
+		txState.getByIDUser = &userCopy
+	}
+	err := fn(context.WithValue(ctx, mockUserRepoTxKey{}, txState))
+	if err != nil {
+		return err
+	}
+	m.getByIDUser = txState.getByIDUser
+	m.upsertAvatarArgs = txState.upsertAvatarArgs
+	m.deleteAvatarIDs = txState.deleteAvatarIDs
+	m.checkinRecords = txState.checkinRecords
+	return nil
+}
+func (m *mockUserRepo) ListRecentDailyCheckinRecords(context.Context, int64, int) ([]DailyCheckinRecord, error) {
+	out := make([]DailyCheckinRecord, len(m.checkinRecords))
+	copy(out, m.checkinRecords)
+	return out, nil
+}
+func (m *mockUserRepo) ListDailyCheckinRecords(_ context.Context, _ int64, page, pageSize int) ([]DailyCheckinRecord, int64, error) {
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 20
+	}
+	total := int64(len(m.checkinRecords))
+	start := (page - 1) * pageSize
+	if start >= len(m.checkinRecords) {
+		return []DailyCheckinRecord{}, total, nil
+	}
+	end := start + pageSize
+	if end > len(m.checkinRecords) {
+		end = len(m.checkinRecords)
+	}
+	out := make([]DailyCheckinRecord, end-start)
+	copy(out, m.checkinRecords[start:end])
+	return out, total, nil
+}
+func (m *mockUserRepo) GetDailyCheckinRecordByDate(context.Context, int64, time.Time) (*DailyCheckinRecord, error) {
+	return nil, nil
+}
+func (m *mockUserRepo) CreateDailyCheckinRecord(ctx context.Context, record *DailyCheckinRecord) error {
+	m.checkinCreateCalls++
+	if txState, _ := ctx.Value(mockUserRepoTxKey{}).(*mockUserRepoTxState); txState != nil {
+		txState.checkinRecords = append([]DailyCheckinRecord{*record}, txState.checkinRecords...)
+		return nil
+	}
+	m.checkinRecords = append([]DailyCheckinRecord{*record}, m.checkinRecords...)
+	return nil
+}
 func (m *mockUserRepo) RemoveGroupFromUserAllowedGroups(context.Context, int64, int64) error {
 	return nil
 }
@@ -365,6 +426,64 @@ func TestUpdateBalance_Success(t *testing.T) {
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
 	require.Equal(t, []int64{42}, cache.invalidatedUserIDs, "应对 userID=42 失效缓存")
+}
+
+func TestCheckInDailyRequiresWeChatBinding(t *testing.T) {
+	repo := &mockUserRepo{
+		getByIDUser: &User{ID: 42, Balance: 10},
+	}
+	svc := NewUserService(repo, nil, nil, nil)
+
+	_, err := svc.CheckInDaily(context.Background(), 42, "Asia/Shanghai")
+
+	require.ErrorIs(t, err, ErrDailyCheckinWechatRequired)
+	require.Equal(t, 0, repo.checkinCreateCalls)
+}
+
+func TestCheckInDailyRejectsAlreadyCheckedInToday(t *testing.T) {
+	today := time.Now().In(time.FixedZone("CST", 8*3600)).Format("2006-01-02")
+	todayDate, err := time.Parse("2006-01-02", today)
+	require.NoError(t, err)
+	repo := &mockUserRepo{
+		getByIDUser: &User{ID: 42, Balance: 10},
+		identities:  []UserAuthIdentityRecord{{ProviderType: "wechat"}},
+		checkinRecords: []DailyCheckinRecord{
+			{UserID: 42, CheckinDate: todayDate, Timezone: "Asia/Shanghai", StreakDays: 1},
+		},
+	}
+	svc := NewUserService(repo, nil, nil, nil)
+
+	_, err = svc.CheckInDaily(context.Background(), 42, "Asia/Shanghai")
+
+	require.ErrorIs(t, err, ErrDailyCheckinAlreadyDone)
+	require.Equal(t, 0, repo.checkinCreateCalls)
+}
+
+func TestCheckInDailyComputesStreakAndReward(t *testing.T) {
+	now := time.Now().In(time.FixedZone("CST", 8*3600))
+	yesterday, err := time.Parse("2006-01-02", now.AddDate(0, 0, -1).Format("2006-01-02"))
+	require.NoError(t, err)
+	twoDaysAgo, err := time.Parse("2006-01-02", now.AddDate(0, 0, -2).Format("2006-01-02"))
+	require.NoError(t, err)
+	repo := &mockUserRepo{
+		getByIDUser: &User{ID: 42, Balance: 10},
+		identities:  []UserAuthIdentityRecord{{ProviderType: "wechat"}},
+		checkinRecords: []DailyCheckinRecord{
+			{UserID: 42, CheckinDate: yesterday, Timezone: "Asia/Shanghai", TotalReward: 3, StreakDays: 2},
+			{UserID: 42, CheckinDate: twoDaysAgo, Timezone: "Asia/Shanghai", TotalReward: 3, StreakDays: 1},
+		},
+	}
+	svc := NewUserService(repo, nil, nil, nil)
+
+	result, err := svc.CheckInDaily(context.Background(), 42, "Asia/Shanghai")
+
+	require.NoError(t, err)
+	require.Equal(t, 3, result.Record.StreakDays)
+	require.Equal(t, 3.0, result.Record.BaseReward)
+	require.Equal(t, 3.0, result.Record.BonusReward)
+	require.Equal(t, 6.0, result.Record.TotalReward)
+	require.Equal(t, 16.0, result.Balance)
+	require.Equal(t, 1, repo.checkinCreateCalls)
 }
 
 func TestGetProfileIdentitySummaries_AllowsUnbindWhenAnotherLoginMethodRemains(t *testing.T) {

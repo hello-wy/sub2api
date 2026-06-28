@@ -8,6 +8,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/handler/dto"
 	"github.com/Wei-Shaw/sub2api/internal/handler/quotaview"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/timezone"
 	middleware2 "github.com/Wei-Shaw/sub2api/internal/server/middleware"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 
@@ -22,6 +23,17 @@ type UserHandler struct {
 	emailCache            service.EmailCache
 	affiliateService      *service.AffiliateService
 	userPlatformQuotaRepo service.UserPlatformQuotaRepository
+}
+
+type DailyCheckinResponse struct {
+	Record  service.DailyCheckinRecord  `json:"record"`
+	Summary service.DailyCheckinSummary `json:"summary"`
+	Balance float64                     `json:"balance"`
+}
+
+type DailyCheckinStatusResponse struct {
+	Balance float64                    `json:"balance"`
+	Summary service.DailyCheckinSummary `json:"summary"`
 }
 
 // NewUserHandler creates a new UserHandler
@@ -229,6 +241,100 @@ func (h *UserHandler) TransferAffiliateQuota(c *gin.Context) {
 	response.Success(c, gin.H{
 		"transferred_quota": transferred,
 		"balance":           balance,
+	})
+}
+
+// CheckInDaily handles user daily check-in.
+// POST /api/v1/user/checkin
+func (h *UserHandler) CheckInDaily(c *gin.Context) {
+	subject, ok := middleware2.GetAuthSubjectFromContext(c)
+	if !ok {
+		response.Unauthorized(c, "User not authenticated")
+		return
+	}
+
+	userTZ := c.Query("timezone")
+	if userTZ == "" {
+		userTZ = c.GetHeader("X-Timezone")
+	}
+	if userTZ == "" {
+		userTZ = timezone.Name()
+	}
+
+	result, err := h.userService.CheckInDaily(c.Request.Context(), subject.UserID, userTZ)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+
+	response.Success(c, DailyCheckinResponse{
+		Record:  result.Record,
+		Summary: result.Summary,
+		Balance: result.Balance,
+	})
+}
+
+// GetCheckInStatus handles daily check-in summary.
+// GET /api/v1/user/checkin/status
+func (h *UserHandler) GetCheckInStatus(c *gin.Context) {
+	subject, ok := middleware2.GetAuthSubjectFromContext(c)
+	if !ok {
+		response.Unauthorized(c, "User not authenticated")
+		return
+	}
+
+	userTZ := c.Query("timezone")
+	if userTZ == "" {
+		userTZ = c.GetHeader("X-Timezone")
+	}
+	if userTZ == "" {
+		userTZ = timezone.Name()
+	}
+
+	status, err := h.userService.GetDailyCheckinStatus(c.Request.Context(), subject.UserID, userTZ)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+
+	response.Success(c, DailyCheckinStatusResponse{
+		Balance: status.Balance,
+		Summary: status.Summary,
+	})
+}
+
+// ListCheckInHistory handles paginated daily check-in records.
+// GET /api/v1/user/checkin/history
+func (h *UserHandler) ListCheckInHistory(c *gin.Context) {
+	subject, ok := middleware2.GetAuthSubjectFromContext(c)
+	if !ok {
+		response.Unauthorized(c, "User not authenticated")
+		return
+	}
+
+	page, pageSize := response.ParsePagination(c)
+	userTZ := c.Query("timezone")
+	if userTZ == "" {
+		userTZ = c.GetHeader("X-Timezone")
+	}
+	if userTZ == "" {
+		userTZ = timezone.Name()
+	}
+
+	records, pag, err := h.userService.ListDailyCheckinHistory(c.Request.Context(), subject.UserID, page, pageSize, userTZ)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+
+	out := make([]service.DailyCheckinRecord, 0, len(records))
+	out = append(out, records...)
+	response.Success(c, response.PaginatedData{
+		Items:    out,
+		Total:    pag.Total,
+		Page:     pag.Page,
+		PageSize: pag.PageSize,
+		Pages:    pag.Pages,
 	})
 }
 

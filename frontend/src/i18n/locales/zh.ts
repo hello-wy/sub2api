@@ -372,6 +372,11 @@ export default {
     adminCompliance: '部署与运营合规承诺'
   },
 
+  checkin: {
+    title: '每日签到',
+    description: '完成每日签到并领取当日奖励'
+  },
+
   // Navigation
   nav: {
     dashboard: '仪表盘',
@@ -410,6 +415,7 @@ export default {
     buySubscription: '充值/订阅',
     docs: '文档',
     myOrders: '我的订单',
+    dailyCheckin: '每日签到',
     orderManagement: '订单管理',
     paymentDashboard: '支付概览',
     paymentConfig: '支付配置',

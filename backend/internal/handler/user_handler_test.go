@@ -20,9 +20,10 @@ import (
 )
 
 type userHandlerRepoStub struct {
-	user       *service.User
-	identities []service.UserAuthIdentityRecord
-	unbound    []string
+	user           *service.User
+	identities     []service.UserAuthIdentityRecord
+	checkinRecords []service.DailyCheckinRecord
+	unbound        []string
 }
 
 func (s *userHandlerRepoStub) Create(context.Context, *service.User) error { return nil }
@@ -118,6 +119,45 @@ func (s *userHandlerRepoStub) RemoveGroupFromUserAllowedGroups(context.Context, 
 func (s *userHandlerRepoStub) UpdateTotpSecret(context.Context, int64, *string) error { return nil }
 func (s *userHandlerRepoStub) EnableTotp(context.Context, int64) error                { return nil }
 func (s *userHandlerRepoStub) DisableTotp(context.Context, int64) error               { return nil }
+func (s *userHandlerRepoStub) WithDailyCheckinTx(ctx context.Context, fn func(txCtx context.Context) error) error {
+	return fn(ctx)
+}
+func (s *userHandlerRepoStub) ListRecentDailyCheckinRecords(context.Context, int64, int) ([]service.DailyCheckinRecord, error) {
+	out := make([]service.DailyCheckinRecord, len(s.checkinRecords))
+	copy(out, s.checkinRecords)
+	return out, nil
+}
+func (s *userHandlerRepoStub) ListDailyCheckinRecords(_ context.Context, _ int64, page, pageSize int) ([]service.DailyCheckinRecord, int64, error) {
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 20
+	}
+	total := int64(len(s.checkinRecords))
+	start := (page - 1) * pageSize
+	if start >= len(s.checkinRecords) {
+		return []service.DailyCheckinRecord{}, total, nil
+	}
+	end := start + pageSize
+	if end > len(s.checkinRecords) {
+		end = len(s.checkinRecords)
+	}
+	out := make([]service.DailyCheckinRecord, end-start)
+	copy(out, s.checkinRecords[start:end])
+	return out, total, nil
+}
+func (s *userHandlerRepoStub) GetDailyCheckinRecordByDate(context.Context, int64, time.Time) (*service.DailyCheckinRecord, error) {
+	return nil, nil
+}
+func (s *userHandlerRepoStub) CreateDailyCheckinRecord(_ context.Context, record *service.DailyCheckinRecord) error {
+	if s != nil {
+		if record != nil {
+			s.checkinRecords = append([]service.DailyCheckinRecord{*record}, s.checkinRecords...)
+		}
+	}
+	return nil
+}
 func (s *userHandlerRepoStub) GetByIDIncludeDeleted(ctx context.Context, id int64) (*service.User, error) {
 	return s.GetByID(ctx, id)
 }
@@ -391,6 +431,190 @@ func TestUserHandlerGetProfileDoesNotInferEditedProfileSourcesWithoutMatchingIde
 	require.NotContains(t, resp.Data, "avatar_source")
 	require.NotContains(t, resp.Data, "username_source")
 	require.NotContains(t, resp.Data, "profile_sources")
+}
+
+func TestUserHandlerCheckInDailySuccess(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	verifiedAt := time.Date(2026, 6, 23, 8, 30, 0, 0, time.UTC)
+	repo := &userHandlerRepoStub{
+		user: &service.User{
+			ID:       31,
+			Email:    "checkin@example.com",
+			Username: "checkin-user",
+			Role:     service.RoleUser,
+			Status:   service.StatusActive,
+			Balance:  10,
+		},
+		identities: []service.UserAuthIdentityRecord{
+			{
+				ProviderType:    "wechat",
+				ProviderKey:     "wechat",
+				ProviderSubject: "wechat-subject-31",
+				VerifiedAt:      &verifiedAt,
+			},
+		},
+	}
+	repo.checkinRecords = []service.DailyCheckinRecord{}
+	handler := NewUserHandler(service.NewUserService(repo, nil, nil, nil), nil, nil, nil, nil, nil)
+
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+	c.Request = httptest.NewRequest(http.MethodPost, "/api/v1/user/checkin?timezone=Asia/Shanghai", nil)
+	c.Set(string(middleware2.ContextKeyUser), middleware2.AuthSubject{UserID: 31})
+
+	handler.CheckInDaily(c)
+
+	require.Equal(t, http.StatusOK, recorder.Code)
+
+	var resp struct {
+		Code int `json:"code"`
+		Data struct {
+			Balance float64 `json:"balance"`
+			Summary struct {
+				WechatBound    bool    `json:"wechat_bound"`
+				CheckedInToday bool    `json:"checked_in_today"`
+				BaseReward     float64 `json:"base_reward"`
+				TodayReward    float64 `json:"today_reward"`
+				StreakDays     int     `json:"streak_days"`
+			} `json:"summary"`
+		} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &resp))
+	require.Equal(t, 0, resp.Code)
+	require.Equal(t, 13.0, resp.Data.Balance)
+	require.True(t, resp.Data.Summary.WechatBound)
+	require.True(t, resp.Data.Summary.CheckedInToday)
+	require.Equal(t, 3.0, resp.Data.Summary.BaseReward)
+	require.Equal(t, 3.0, resp.Data.Summary.TodayReward)
+	require.Equal(t, 1, resp.Data.Summary.StreakDays)
+}
+
+func TestUserHandlerCheckInDailyRequiresWeChat(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	repo := &userHandlerRepoStub{
+		user: &service.User{
+			ID:       32,
+			Email:    "no-wechat@example.com",
+			Username: "no-wechat",
+			Role:     service.RoleUser,
+			Status:   service.StatusActive,
+		},
+	}
+	handler := NewUserHandler(service.NewUserService(repo, nil, nil, nil), nil, nil, nil, nil, nil)
+
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+	c.Request = httptest.NewRequest(http.MethodPost, "/api/v1/user/checkin", nil)
+	c.Set(string(middleware2.ContextKeyUser), middleware2.AuthSubject{UserID: 32})
+
+	handler.CheckInDaily(c)
+
+	require.Equal(t, http.StatusForbidden, recorder.Code)
+	var resp struct {
+		Code int `json:"code"`
+	}
+	require.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &resp))
+	require.NotEqual(t, 0, resp.Code)
+}
+
+func TestUserHandlerGetCheckInStatus(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	repo := &userHandlerRepoStub{
+		user: &service.User{
+			ID:       33,
+			Email:    "status@example.com",
+			Username: "status-user",
+			Role:     service.RoleUser,
+			Status:   service.StatusActive,
+			Balance:  20,
+		},
+		identities: []service.UserAuthIdentityRecord{{ProviderType: "wechat"}},
+		checkinRecords: []service.DailyCheckinRecord{
+			{UserID: 33, CheckinDate: time.Date(2026, 6, 23, 0, 0, 0, 0, time.UTC), Timezone: "UTC", TotalReward: 3, StreakDays: 1},
+		},
+	}
+	handler := NewUserHandler(service.NewUserService(repo, nil, nil, nil), nil, nil, nil, nil, nil)
+
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+	c.Request = httptest.NewRequest(http.MethodGet, "/api/v1/user/checkin/status?timezone=UTC", nil)
+	c.Set(string(middleware2.ContextKeyUser), middleware2.AuthSubject{UserID: 33})
+
+	handler.GetCheckInStatus(c)
+
+	require.Equal(t, http.StatusOK, recorder.Code)
+	var resp struct {
+		Code int `json:"code"`
+		Data struct {
+			Balance float64 `json:"balance"`
+			Summary struct {
+				WechatBound    bool `json:"wechat_bound"`
+				CanCheckIn     bool `json:"can_check_in"`
+				CheckedInToday bool `json:"checked_in_today"`
+				StreakDays     int  `json:"streak_days"`
+				RecentRecords  []struct {
+					UserID int64 `json:"user_id"`
+				} `json:"recent_records"`
+			} `json:"summary"`
+		} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &resp))
+	require.Equal(t, 0, resp.Code)
+	require.Equal(t, 20.0, resp.Data.Balance)
+	require.True(t, resp.Data.Summary.WechatBound)
+	require.False(t, resp.Data.Summary.CheckedInToday)
+	require.True(t, resp.Data.Summary.CanCheckIn)
+	require.Equal(t, 2, resp.Data.Summary.StreakDays)
+	require.Len(t, resp.Data.Summary.RecentRecords, 1)
+}
+
+func TestUserHandlerListCheckInHistory(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	repo := &userHandlerRepoStub{
+		user: &service.User{
+			ID:       34,
+			Email:    "history@example.com",
+			Username: "history-user",
+			Role:     service.RoleUser,
+			Status:   service.StatusActive,
+		},
+		checkinRecords: []service.DailyCheckinRecord{
+			{UserID: 34, CheckinDate: time.Date(2026, 6, 24, 0, 0, 0, 0, time.UTC), Timezone: "UTC", TotalReward: 3, StreakDays: 1},
+			{UserID: 34, CheckinDate: time.Date(2026, 6, 23, 0, 0, 0, 0, time.UTC), Timezone: "UTC", TotalReward: 3, StreakDays: 1},
+		},
+	}
+	handler := NewUserHandler(service.NewUserService(repo, nil, nil, nil), nil, nil, nil, nil, nil)
+
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+	c.Request = httptest.NewRequest(http.MethodGet, "/api/v1/user/checkin/history?page=1&page_size=1", nil)
+	c.Set(string(middleware2.ContextKeyUser), middleware2.AuthSubject{UserID: 34})
+
+	handler.ListCheckInHistory(c)
+
+	require.Equal(t, http.StatusOK, recorder.Code)
+	var resp struct {
+		Code int `json:"code"`
+		Data struct {
+			Items    []service.DailyCheckinRecord `json:"items"`
+			Total    int64                        `json:"total"`
+			Page     int                          `json:"page"`
+			PageSize int                          `json:"page_size"`
+			Pages    int                          `json:"pages"`
+		} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &resp))
+	require.Equal(t, 0, resp.Code)
+	require.Equal(t, int64(2), resp.Data.Total)
+	require.Equal(t, 1, resp.Data.Page)
+	require.Equal(t, 1, resp.Data.PageSize)
+	require.Equal(t, 2, resp.Data.Pages)
+	require.Len(t, resp.Data.Items, 1)
+	require.Equal(t, int64(34), resp.Data.Items[0].UserID)
 }
 
 type userHandlerEmailCacheStub struct {
