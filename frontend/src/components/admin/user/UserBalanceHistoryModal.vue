@@ -114,7 +114,7 @@
                 </p>
                 <!-- Notes (admin adjustment reason) -->
                 <p
-                  v-if="item.notes"
+                  v-if="item.notes && !isRewardType(item.type)"
                   class="mt-0.5 text-xs text-gray-500 dark:text-dark-400"
                   :title="item.notes"
                 >
@@ -130,11 +130,8 @@
               <p :class="['text-sm font-semibold', getValueColor(item)]">
                 {{ formatValue(item) }}
               </p>
-              <p v-if="isAdminType(item.type)" class="text-xs text-gray-400 dark:text-dark-500">
+              <p v-if="isAdminType(item.type) || isRewardType(item.type)" class="text-xs text-gray-400 dark:text-dark-500">
                 {{ t('redeem.adminAdjustment') }}
-              </p>
-              <p v-else-if="isRewardType(item.type)" class="max-w-[12rem] truncate text-xs text-gray-400 dark:text-dark-500" :title="item.notes || getItemTitle(item)">
-                {{ item.notes || getItemTitle(item) }}
               </p>
               <p
                 v-else

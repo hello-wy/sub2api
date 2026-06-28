@@ -4,7 +4,6 @@ package service
 
 import (
 	"context"
-	"strings"
 	"testing"
 
 	"github.com/Wei-Shaw/sub2api/internal/pkg/pagination"
@@ -29,8 +28,7 @@ func TestCheckInDailyRecordsBalanceHistory(t *testing.T) {
 	require.Equal(t, StatusUsed, created.Status)
 	require.Equal(t, int64(42), *created.UsedBy)
 	require.Equal(t, result.Record.TotalReward, created.Value)
-	require.Contains(t, created.Notes, "每日签到")
-	require.Contains(t, created.Notes, "/")
+	require.Equal(t, "每日签到", created.Notes)
 }
 
 func TestWelfareRewardRecordsBalanceHistory(t *testing.T) {
@@ -50,8 +48,7 @@ func TestWelfareRewardRecordsBalanceHistory(t *testing.T) {
 	require.Equal(t, StatusUsed, created.Status)
 	require.Equal(t, int64(10), *created.UsedBy)
 	require.Equal(t, 2.5, created.Value)
-	require.True(t, strings.Contains(created.Notes, "用量返利"))
-	require.True(t, strings.Contains(created.Notes, "2026-06-25 消费 $12.50 #1"))
+	require.Equal(t, "用量返利", created.Notes)
 }
 
 type balanceAdjustmentRedeemRepoStub struct {

@@ -204,7 +204,7 @@ func (s *UserService) checkInDailyInTx(ctx context.Context, repo dailyCheckinRep
 	if err := repo.CreateDailyCheckinRecord(ctx, record); err != nil {
 		return nil, err
 	}
-	if err := recordTypedBalanceAdjustment(ctx, s.redeemCodeRepo, userID, totalReward, AdjustmentTypeDailyCheckin, balanceAdjustmentNote("每日签到", timezone.NowInUserLocation(userTZ))); err != nil {
+	if err := recordTypedBalanceAdjustment(ctx, s.redeemCodeRepo, userID, totalReward, AdjustmentTypeDailyCheckin, "每日签到"); err != nil {
 		return nil, err
 	}
 
