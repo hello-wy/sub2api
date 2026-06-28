@@ -17,9 +17,9 @@ func TestUserRepositoryHasUserQQMatchesAttributeName(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	repo := newUserRepositoryWithSQL(nil, db)
-	mock.ExpectQuery(`(?s)SELECT COALESCE\(v\.value, ''\).*LOWER\(TRIM\(d\.key\)\) = 'qq'.*LOWER\(TRIM\(d\.name\)\) = 'qq'`).
+	mock.ExpectQuery(`(?s)SELECT EXISTS\(.*LOWER\(d\.key\) LIKE '%qq%'.*LOWER\(d\.name\) LIKE '%qq%'.*NULLIF\(BTRIM\(v\.value\), ''\) IS NOT NULL`).
 		WithArgs(int64(42)).
-		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow("123456"))
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
 
 	bound, err := repo.HasUserQQ(ctx, 42)
 

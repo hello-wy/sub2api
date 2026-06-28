@@ -771,19 +771,21 @@ func (r *userRepository) UpdateBalance(ctx context.Context, id int64, amount flo
 }
 
 func (r *userRepository) HasUserQQ(ctx context.Context, userID int64) (bool, error) {
-	var value string
+	var exists bool
 	err := scanSingleRow(
 		ctx,
 		txAwareSQLExecutor(ctx, r.sql, r.client),
-		`SELECT COALESCE(v.value, '')
+		`SELECT EXISTS(
+		   SELECT 1
 		 FROM user_attribute_values v
 		 JOIN user_attribute_definitions d ON d.id = v.attribute_id
 		 WHERE v.user_id = $1
-		   AND (LOWER(TRIM(d.key)) = 'qq' OR LOWER(TRIM(d.name)) = 'qq')
+		   AND (LOWER(d.key) LIKE '%qq%' OR LOWER(d.name) LIKE '%qq%')
 		   AND d.deleted_at IS NULL
-		 LIMIT 1`,
+		   AND NULLIF(BTRIM(v.value), '') IS NOT NULL
+		)`,
 		[]any{userID},
-		&value,
+		&exists,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -791,7 +793,7 @@ func (r *userRepository) HasUserQQ(ctx context.Context, userID int64) (bool, err
 		}
 		return false, err
 	}
-	return strings.TrimSpace(value) != "", nil
+	return exists, nil
 }
 
 func (r *userRepository) ListRecentDailyCheckinRecords(ctx context.Context, userID int64, limit int) ([]service.DailyCheckinRecord, error) {
