@@ -12,6 +12,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/handler/dto"
 	"github.com/Wei-Shaw/sub2api/internal/handler/quotaview"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/timezone"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -29,6 +30,7 @@ type UserHandler struct {
 	concurrencyService    *service.ConcurrencyService
 	userPlatformQuotaRepo service.UserPlatformQuotaRepository // T13 admin quota view
 	billingCache          service.BillingCache                // T17/T18 缓存失效（PUT/POST 路径）
+	userService           *service.UserService
 }
 
 // NewUserHandler creates a new admin user handler
@@ -37,13 +39,21 @@ func NewUserHandler(
 	concurrencyService *service.ConcurrencyService,
 	userPlatformQuotaRepo service.UserPlatformQuotaRepository,
 	billingCache service.BillingCache,
+	userService *service.UserService,
 ) *UserHandler {
 	return &UserHandler{
 		adminService:          adminService,
 		concurrencyService:    concurrencyService,
 		userPlatformQuotaRepo: userPlatformQuotaRepo,
 		billingCache:          billingCache,
+		userService:           userService,
 	}
+}
+
+type DailyCheckinResponse struct {
+	Record  service.DailyCheckinRecord  `json:"record"`
+	Summary service.DailyCheckinSummary `json:"summary"`
+	Balance float64                     `json:"balance"`
 }
 
 // CreateUserRequest represents admin create user request
@@ -252,6 +262,36 @@ func (h *UserHandler) BindAuthIdentity(c *gin.Context) {
 		return
 	}
 	response.Success(c, result)
+}
+
+// CheckInUser triggers daily check-in for a user by ID.
+// POST /api/v1/admin/users/:id/checkin
+func (h *UserHandler) CheckInUser(c *gin.Context) {
+	userID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || userID <= 0 {
+		response.BadRequest(c, "Invalid user ID")
+		return
+	}
+
+	userTZ := c.Query("timezone")
+	if userTZ == "" {
+		userTZ = c.GetHeader("X-Timezone")
+	}
+	if userTZ == "" {
+		userTZ = timezone.Name()
+	}
+
+	result, err := h.userService.CheckInDaily(c.Request.Context(), userID, userTZ)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+
+	response.Success(c, DailyCheckinResponse{
+		Record:  result.Record,
+		Summary: result.Summary,
+		Balance: result.Balance,
+	})
 }
 
 // Create handles creating a new user
