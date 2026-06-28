@@ -132,6 +132,28 @@ function readNumber(value: unknown): number | undefined {
   return Number.isFinite(n) ? n : undefined
 }
 
+function normalizeDateKey(value: unknown): string {
+  if (value === null || value === undefined || value === '') return ''
+  if (value instanceof Date && Number.isFinite(value.getTime())) {
+    const year = value.getFullYear()
+    const month = String(value.getMonth() + 1).padStart(2, '0')
+    const day = String(value.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+
+  const text = String(value)
+  const match = text.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (match) return `${match[1]}-${match[2]}-${match[3]}`
+
+  const date = new Date(text)
+  if (!Number.isFinite(date.getTime())) return text
+
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 function normalizeRewardRules(rules?: RawCheckinRule[]): CheckinRewardRule[] {
   if (!rules?.length) return defaultRewardRules
   return rules.map((rule) => ({
@@ -143,6 +165,7 @@ function normalizeRewardRules(rules?: RawCheckinRule[]): CheckinRewardRule[] {
 function normalizeRecord(record: RawCheckinHistoryItem): CheckinHistoryItem {
   return {
     ...record,
+    checkin_date: normalizeDateKey(record.checkin_date),
     extra_reward: Number(record.extra_reward ?? record.bonus_reward ?? 0),
   }
 }
@@ -160,7 +183,7 @@ function normalizeStatus(raw: RawCheckinStatusResponse): CheckinStatusResponse {
     qq_bound: Boolean(raw.qq_bound ?? summary?.qq_bound),
     wechat_bound: Boolean(raw.wechat_bound ?? summary?.wechat_bound),
     already_checked_in: Boolean(raw.already_checked_in ?? summary?.checked_in_today),
-    today_date: String(raw.today_date ?? summary?.today ?? ''),
+    today_date: normalizeDateKey(raw.today_date ?? summary?.today),
     timezone: raw.timezone ?? summary?.timezone,
     current_streak: Number(raw.current_streak ?? summary?.streak_days ?? 0),
     month_checkins: Number(raw.month_checkins ?? summary?.this_month_count ?? 0),
@@ -175,7 +198,10 @@ function normalizeStatus(raw: RawCheckinStatusResponse): CheckinStatusResponse {
     next_reward_day_count: raw.next_reward_day_count ?? null,
     next_reward_extra: raw.next_reward_extra ?? null,
     reward_rules: normalizeRewardRules(raw.reward_rules ?? summary?.reward_rules),
-    recent_days: raw.recent_days ?? [],
+    recent_days: (raw.recent_days ?? []).map((day) => ({
+      ...day,
+      date: normalizeDateKey(day.date),
+    })),
     recent_history: recentHistory,
   }
 }
@@ -185,7 +211,7 @@ function normalizeClaim(raw: RawCheckinClaimResponse): CheckinClaimResponse {
   return {
     message: raw.message ?? '签到成功',
     checked_in: Boolean(raw.checked_in ?? summary?.checked_in_today),
-    today_date: String(raw.today_date ?? summary?.today ?? ''),
+    today_date: normalizeDateKey(raw.today_date ?? summary?.today),
     base_reward: Number(raw.base_reward ?? summary?.base_reward ?? 0),
     extra_reward: Number(raw.extra_reward ?? summary?.bonus_reward ?? 0),
     total_reward: Number(raw.total_reward ?? raw.record?.total_reward ?? summary?.today_reward ?? 0),

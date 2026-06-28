@@ -72,7 +72,7 @@
             <router-link
               v-else
               :to="item.path"
-              class="sidebar-link mb-1"
+              class="sidebar-link relative mb-1"
               :class="{ 'sidebar-link-active': isActive(item.path), 'sidebar-link-collapsed': sidebarCollapsed }"
               :title="sidebarCollapsed ? item.label : undefined"
               :id="
@@ -87,8 +87,16 @@
               @click="handleMenuItemClick(item.path)"
             >
               <span v-if="item.iconSvg" class="h-5 w-5 flex-shrink-0 sidebar-svg-icon" v-html="sanitizeSvg(item.iconSvg)"></span>
-              <component v-else :is="item.icon" class="h-5 w-5 flex-shrink-0" />
-              <span class="sidebar-label" :class="{ 'sidebar-label-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'">{{ item.label }}</span>
+              <span v-else class="relative h-5 w-5 flex-shrink-0">
+                <component :is="item.icon" class="h-5 w-5" />
+                <span v-if="shouldShowCheckinDot(item.path) && sidebarCollapsed" class="checkin-menu-dot checkin-menu-dot-icon"></span>
+              </span>
+              <span class="sidebar-label" :class="{ 'sidebar-label-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'">
+                <span class="relative inline-block max-w-full truncate pr-3">
+                  {{ item.label }}
+                  <span v-if="shouldShowCheckinDot(item.path) && !sidebarCollapsed" class="checkin-menu-dot checkin-menu-dot-label"></span>
+                </span>
+              </span>
             </router-link>
           </template>
         </div>
@@ -105,15 +113,23 @@
             v-for="item in personalNavItems"
             :key="item.path"
             :to="item.path"
-            class="sidebar-link mb-1"
+            class="sidebar-link relative mb-1"
             :class="{ 'sidebar-link-active': isActive(item.path), 'sidebar-link-collapsed': sidebarCollapsed }"
             :title="sidebarCollapsed ? item.label : undefined"
             :data-tour="item.path === '/keys' ? 'sidebar-my-keys' : undefined"
             @click="handleMenuItemClick(item.path)"
           >
             <span v-if="item.iconSvg" class="h-5 w-5 flex-shrink-0 sidebar-svg-icon" v-html="sanitizeSvg(item.iconSvg)"></span>
-            <component v-else :is="item.icon" class="h-5 w-5 flex-shrink-0" />
-            <span class="sidebar-label" :class="{ 'sidebar-label-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'">{{ item.label }}</span>
+            <span v-else class="relative h-5 w-5 flex-shrink-0">
+              <component :is="item.icon" class="h-5 w-5" />
+              <span v-if="shouldShowCheckinDot(item.path) && sidebarCollapsed" class="checkin-menu-dot checkin-menu-dot-icon"></span>
+            </span>
+            <span class="sidebar-label" :class="{ 'sidebar-label-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'">
+              <span class="relative inline-block max-w-full truncate pr-3">
+                {{ item.label }}
+                <span v-if="shouldShowCheckinDot(item.path) && !sidebarCollapsed" class="checkin-menu-dot checkin-menu-dot-label"></span>
+              </span>
+            </span>
           </router-link>
         </div>
       </template>
@@ -125,15 +141,23 @@
             v-for="item in userNavItems"
             :key="item.path"
             :to="item.path"
-            class="sidebar-link mb-1"
+            class="sidebar-link relative mb-1"
             :class="{ 'sidebar-link-active': isActive(item.path), 'sidebar-link-collapsed': sidebarCollapsed }"
             :title="sidebarCollapsed ? item.label : undefined"
             :data-tour="item.path === '/keys' ? 'sidebar-my-keys' : undefined"
             @click="handleMenuItemClick(item.path)"
           >
             <span v-if="item.iconSvg" class="h-5 w-5 flex-shrink-0 sidebar-svg-icon" v-html="sanitizeSvg(item.iconSvg)"></span>
-            <component v-else :is="item.icon" class="h-5 w-5 flex-shrink-0" />
-            <span class="sidebar-label" :class="{ 'sidebar-label-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'">{{ item.label }}</span>
+            <span v-else class="relative h-5 w-5 flex-shrink-0">
+              <component :is="item.icon" class="h-5 w-5" />
+              <span v-if="shouldShowCheckinDot(item.path) && sidebarCollapsed" class="checkin-menu-dot checkin-menu-dot-icon"></span>
+            </span>
+            <span class="sidebar-label" :class="{ 'sidebar-label-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'">
+              <span class="relative inline-block max-w-full truncate pr-3">
+                {{ item.label }}
+                <span v-if="shouldShowCheckinDot(item.path) && !sidebarCollapsed" class="checkin-menu-dot checkin-menu-dot-label"></span>
+              </span>
+            </span>
           </router-link>
         </div>
       </template>
@@ -187,6 +211,7 @@ import { useAdminSettingsStore, useAppStore, useAuthStore, useOnboardingStore } 
 import VersionBadge from '@/components/common/VersionBadge.vue'
 import { sanitizeSvg } from '@/utils/sanitize'
 import { FeatureFlags, makeSidebarFlag } from '@/utils/featureFlags'
+import { checkinAPI } from '@/api'
 
 interface NavItem {
   path: string
@@ -237,6 +262,7 @@ const sidebarCollapsed = computed(() => appStore.sidebarCollapsed)
 const mobileOpen = computed(() => appStore.mobileOpen)
 const isAdmin = computed(() => authStore.isAdmin)
 const isDark = ref(document.documentElement.classList.contains('dark'))
+const checkinReminderVisible = ref(false)
 
 // Track which parent nav groups are expanded
 const expandedGroups = ref<Set<string>>(new Set())
@@ -873,6 +899,23 @@ function isGroupExpanded(item: NavItem): boolean {
   return expandedGroups.value.has(item.path) || isGroupActive(item)
 }
 
+function shouldShowCheckinDot(path: string): boolean {
+  return path === '/checkin' && checkinReminderVisible.value
+}
+
+async function refreshCheckinReminder(): Promise<void> {
+  if (!authStore.isAuthenticated || appStore.backendModeEnabled) {
+    checkinReminderVisible.value = false
+    return
+  }
+  try {
+    const status = await checkinAPI.getCheckinStatus()
+    checkinReminderVisible.value = !status.already_checked_in
+  } catch {
+    checkinReminderVisible.value = false
+  }
+}
+
 function toggleGroup(item: NavItem) {
   if (expandedGroups.value.has(item.path)) {
     expandedGroups.value.delete(item.path)
@@ -928,7 +971,15 @@ onMounted(() => {
   if (isAdmin.value) {
     adminSettingsStore.fetch()
   }
+  void refreshCheckinReminder()
 })
+
+watch(
+  () => [authStore.isAuthenticated, route.path],
+  () => {
+    void refreshCheckinReminder()
+  }
+)
 </script>
 
 <style scoped>
@@ -1057,5 +1108,32 @@ onMounted(() => {
   display: block;
   width: 1.25rem;
   height: 1.25rem;
+}
+
+.checkin-menu-dot {
+  position: absolute;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background: #ef4444;
+  box-shadow:
+    0 0 0 2px rgb(255 255 255),
+    0 0 12px rgba(239, 68, 68, 0.55);
+}
+
+.checkin-menu-dot-label {
+  right: 0;
+  top: 0.125rem;
+}
+
+.checkin-menu-dot-icon {
+  right: -0.0625rem;
+  top: -0.125rem;
+}
+
+.dark .checkin-menu-dot {
+  box-shadow:
+    0 0 0 2px rgb(17 24 39),
+    0 0 12px rgba(248, 113, 113, 0.55);
 }
 </style>
