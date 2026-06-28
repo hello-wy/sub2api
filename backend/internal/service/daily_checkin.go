@@ -4,6 +4,7 @@ import (
 	"context"
 	cryptorand "crypto/rand"
 	"fmt"
+	"io"
 	"math/big"
 	"strings"
 	"time"
@@ -31,6 +32,7 @@ var (
 const (
 	dailyCheckinBaseRewardMin   = 1.0
 	dailyCheckinBaseRewardMax   = 3.0
+	dailyCheckinRewardCents     = 100
 	dailyCheckinCycleDays       = 30
 	dailyCheckinBonus3Days      = 3.0
 	dailyCheckinBonus7Days      = 6.0
@@ -327,17 +329,21 @@ func (s *UserService) ListDailyCheckinHistory(ctx context.Context, userID int64,
 }
 
 func randomDailyCheckinBaseReward() float64 {
-	min := int64(dailyCheckinBaseRewardMin)
-	max := int64(dailyCheckinBaseRewardMax)
+	return randomDailyCheckinBaseRewardFromReader(cryptorand.Reader)
+}
+
+func randomDailyCheckinBaseRewardFromReader(reader io.Reader) float64 {
+	min := int64(dailyCheckinBaseRewardMin * dailyCheckinRewardCents)
+	max := int64(dailyCheckinBaseRewardMax * dailyCheckinRewardCents)
 	span := max - min + 1
 	if span <= 1 {
-		return float64(min)
+		return float64(min) / dailyCheckinRewardCents
 	}
-	n, err := cryptorand.Int(cryptorand.Reader, big.NewInt(span))
+	n, err := cryptorand.Int(reader, big.NewInt(span))
 	if err != nil {
 		return dailyCheckinBaseRewardMin
 	}
-	return float64(min + n.Int64())
+	return float64(min+n.Int64()) / dailyCheckinRewardCents
 }
 
 func computeDailyCheckinBonus(streakDays int) float64 {

@@ -489,6 +489,12 @@ func TestCheckInDailyComputesStreakAndReward(t *testing.T) {
 	require.Equal(t, 1, repo.checkinCreateCalls)
 }
 
+func TestRandomDailyCheckinBaseRewardSupportsCents(t *testing.T) {
+	reward := randomDailyCheckinBaseRewardFromReader(bytes.NewReader([]byte{23}))
+
+	require.Equal(t, 1.23, reward)
+}
+
 func TestGetProfileIdentitySummaries_AllowsUnbindWhenAnotherLoginMethodRemains(t *testing.T) {
 	repo := &mockUserRepo{
 		getByIDUser: &User{

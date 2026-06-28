@@ -51,6 +51,15 @@
           </p>
         </div>
         <template #footer>
+          <a
+            class="btn btn-primary"
+            :href="qqGroupJoinUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Icon name="externalLink" size="sm" />
+            <span>加入 QQ 群</span>
+          </a>
           <button class="btn btn-secondary" @click="showQQBindDialog = false">关闭</button>
         </template>
       </BaseDialog>
@@ -289,6 +298,7 @@ const status = ref<CheckinStatusResponse | null>(null)
 const history = ref<CheckinHistoryItem[]>([])
 const lastClaim = ref<{ total_reward: number; current_streak: number; message: string } | null>(null)
 const message = ref('')
+const qqGroupJoinUrl = 'mqqapi://card/show_pslcard?src_type=internal&version=1&uin=927283206&card_type=group&source=qrcode'
 
 const rewardRules = computed<CheckinRewardRule[]>(() => {
   const rules = status.value?.reward_rules?.length
