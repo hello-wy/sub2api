@@ -161,6 +161,20 @@ func (_u *DailyCheckinRecordUpdate) AddStreakDays(v int) *DailyCheckinRecordUpda
 	return _u
 }
 
+// SetStatus sets the "status" field.
+func (_u *DailyCheckinRecordUpdate) SetStatus(v string) *DailyCheckinRecordUpdate {
+	_u.mutation.SetStatus(v)
+	return _u
+}
+
+// SetNillableStatus sets the "status" field if the given value is not nil.
+func (_u *DailyCheckinRecordUpdate) SetNillableStatus(v *string) *DailyCheckinRecordUpdate {
+	if v != nil {
+		_u.SetStatus(*v)
+	}
+	return _u
+}
+
 // SetUser sets the "user" edge to the User entity.
 func (_u *DailyCheckinRecordUpdate) SetUser(v *User) *DailyCheckinRecordUpdate {
 	return _u.SetUserID(v.ID)
@@ -220,6 +234,11 @@ func (_u *DailyCheckinRecordUpdate) check() error {
 			return &ValidationError{Name: "timezone", err: fmt.Errorf(`ent: validator failed for field "DailyCheckinRecord.timezone": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.Status(); ok {
+		if err := dailycheckinrecord.StatusValidator(v); err != nil {
+			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "DailyCheckinRecord.status": %w`, err)}
+		}
+	}
 	if _u.mutation.UserCleared() && len(_u.mutation.UserIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "DailyCheckinRecord.user"`)
 	}
@@ -270,6 +289,9 @@ func (_u *DailyCheckinRecordUpdate) sqlSave(ctx context.Context) (_node int, err
 	}
 	if value, ok := _u.mutation.AddedStreakDays(); ok {
 		_spec.AddField(dailycheckinrecord.FieldStreakDays, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.Status(); ok {
+		_spec.SetField(dailycheckinrecord.FieldStatus, field.TypeString, value)
 	}
 	if _u.mutation.UserCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -452,6 +474,20 @@ func (_u *DailyCheckinRecordUpdateOne) AddStreakDays(v int) *DailyCheckinRecordU
 	return _u
 }
 
+// SetStatus sets the "status" field.
+func (_u *DailyCheckinRecordUpdateOne) SetStatus(v string) *DailyCheckinRecordUpdateOne {
+	_u.mutation.SetStatus(v)
+	return _u
+}
+
+// SetNillableStatus sets the "status" field if the given value is not nil.
+func (_u *DailyCheckinRecordUpdateOne) SetNillableStatus(v *string) *DailyCheckinRecordUpdateOne {
+	if v != nil {
+		_u.SetStatus(*v)
+	}
+	return _u
+}
+
 // SetUser sets the "user" edge to the User entity.
 func (_u *DailyCheckinRecordUpdateOne) SetUser(v *User) *DailyCheckinRecordUpdateOne {
 	return _u.SetUserID(v.ID)
@@ -524,6 +560,11 @@ func (_u *DailyCheckinRecordUpdateOne) check() error {
 			return &ValidationError{Name: "timezone", err: fmt.Errorf(`ent: validator failed for field "DailyCheckinRecord.timezone": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.Status(); ok {
+		if err := dailycheckinrecord.StatusValidator(v); err != nil {
+			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "DailyCheckinRecord.status": %w`, err)}
+		}
+	}
 	if _u.mutation.UserCleared() && len(_u.mutation.UserIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "DailyCheckinRecord.user"`)
 	}
@@ -591,6 +632,9 @@ func (_u *DailyCheckinRecordUpdateOne) sqlSave(ctx context.Context) (_node *Dail
 	}
 	if value, ok := _u.mutation.AddedStreakDays(); ok {
 		_spec.AddField(dailycheckinrecord.FieldStreakDays, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.Status(); ok {
+		_spec.SetField(dailycheckinrecord.FieldStatus, field.TypeString, value)
 	}
 	if _u.mutation.UserCleared() {
 		edge := &sqlgraph.EdgeSpec{

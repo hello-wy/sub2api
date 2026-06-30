@@ -13745,6 +13745,7 @@ type DailyCheckinRecordMutation struct {
 	addtotal_reward *float64
 	streak_days     *int
 	addstreak_days  *int
+	status          *string
 	clearedFields   map[string]struct{}
 	user            *int64
 	cleareduser     bool
@@ -14255,6 +14256,42 @@ func (m *DailyCheckinRecordMutation) ResetStreakDays() {
 	m.addstreak_days = nil
 }
 
+// SetStatus sets the "status" field.
+func (m *DailyCheckinRecordMutation) SetStatus(s string) {
+	m.status = &s
+}
+
+// Status returns the value of the "status" field in the mutation.
+func (m *DailyCheckinRecordMutation) Status() (r string, exists bool) {
+	v := m.status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStatus returns the old "status" field's value of the DailyCheckinRecord entity.
+// If the DailyCheckinRecord object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DailyCheckinRecordMutation) OldStatus(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStatus: %w", err)
+	}
+	return oldValue.Status, nil
+}
+
+// ResetStatus resets all changes to the "status" field.
+func (m *DailyCheckinRecordMutation) ResetStatus() {
+	m.status = nil
+}
+
 // ClearUser clears the "user" edge to the User entity.
 func (m *DailyCheckinRecordMutation) ClearUser() {
 	m.cleareduser = true
@@ -14316,7 +14353,7 @@ func (m *DailyCheckinRecordMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *DailyCheckinRecordMutation) Fields() []string {
-	fields := make([]string, 0, 9)
+	fields := make([]string, 0, 10)
 	if m.created_at != nil {
 		fields = append(fields, dailycheckinrecord.FieldCreatedAt)
 	}
@@ -14344,6 +14381,9 @@ func (m *DailyCheckinRecordMutation) Fields() []string {
 	if m.streak_days != nil {
 		fields = append(fields, dailycheckinrecord.FieldStreakDays)
 	}
+	if m.status != nil {
+		fields = append(fields, dailycheckinrecord.FieldStatus)
+	}
 	return fields
 }
 
@@ -14370,6 +14410,8 @@ func (m *DailyCheckinRecordMutation) Field(name string) (ent.Value, bool) {
 		return m.TotalReward()
 	case dailycheckinrecord.FieldStreakDays:
 		return m.StreakDays()
+	case dailycheckinrecord.FieldStatus:
+		return m.Status()
 	}
 	return nil, false
 }
@@ -14397,6 +14439,8 @@ func (m *DailyCheckinRecordMutation) OldField(ctx context.Context, name string) 
 		return m.OldTotalReward(ctx)
 	case dailycheckinrecord.FieldStreakDays:
 		return m.OldStreakDays(ctx)
+	case dailycheckinrecord.FieldStatus:
+		return m.OldStatus(ctx)
 	}
 	return nil, fmt.Errorf("unknown DailyCheckinRecord field %s", name)
 }
@@ -14468,6 +14512,13 @@ func (m *DailyCheckinRecordMutation) SetField(name string, value ent.Value) erro
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetStreakDays(v)
+		return nil
+	case dailycheckinrecord.FieldStatus:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStatus(v)
 		return nil
 	}
 	return fmt.Errorf("unknown DailyCheckinRecord field %s", name)
@@ -14595,6 +14646,9 @@ func (m *DailyCheckinRecordMutation) ResetField(name string) error {
 		return nil
 	case dailycheckinrecord.FieldStreakDays:
 		m.ResetStreakDays()
+		return nil
+	case dailycheckinrecord.FieldStatus:
+		m.ResetStatus()
 		return nil
 	}
 	return fmt.Errorf("unknown DailyCheckinRecord field %s", name)

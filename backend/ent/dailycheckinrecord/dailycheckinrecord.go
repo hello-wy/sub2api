@@ -32,6 +32,8 @@ const (
 	FieldTotalReward = "total_reward"
 	// FieldStreakDays holds the string denoting the streak_days field in the database.
 	FieldStreakDays = "streak_days"
+	// FieldStatus holds the string denoting the status field in the database.
+	FieldStatus = "status"
 	// EdgeUser holds the string denoting the user edge name in mutations.
 	EdgeUser = "user"
 	// Table holds the table name of the dailycheckinrecord in the database.
@@ -57,6 +59,7 @@ var Columns = []string{
 	FieldBonusReward,
 	FieldTotalReward,
 	FieldStreakDays,
+	FieldStatus,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -88,6 +91,10 @@ var (
 	DefaultTotalReward float64
 	// DefaultStreakDays holds the default value on creation for the "streak_days" field.
 	DefaultStreakDays int
+	// DefaultStatus holds the default value on creation for the "status" field.
+	DefaultStatus string
+	// StatusValidator is a validator for the "status" field. It is called by the builders before save.
+	StatusValidator func(string) error
 )
 
 // OrderOption defines the ordering options for the DailyCheckinRecord queries.
@@ -141,6 +148,11 @@ func ByTotalReward(opts ...sql.OrderTermOption) OrderOption {
 // ByStreakDays orders the results by the streak_days field.
 func ByStreakDays(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldStreakDays, opts...).ToFunc()
+}
+
+// ByStatus orders the results by the status field.
+func ByStatus(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldStatus, opts...).ToFunc()
 }
 
 // ByUserField orders the results by user field.

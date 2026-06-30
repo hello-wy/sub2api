@@ -50,6 +50,22 @@ func TestDistributeRankingRewardsRemarkIncludesSpendAndRank(t *testing.T) {
 	require.Equal(t, "2026-06-25 消费 $12.35 #1", repo.lastRemark)
 }
 
+func TestListWelfareRecordsIncludesSummaryAndTypeFilter(t *testing.T) {
+	repo := &welfareRepoStub{}
+	filter := WelfareListFilter{BenefitType: WelfareBenefitTypeCheckin}
+	svc := &WelfareService{welfareRepo: repo}
+
+	_, summary, _, err := svc.ListWelfareRecords(context.Background(), pagination.PaginationParams{
+		Page: 1, PageSize: 20,
+	}, filter)
+
+	require.NoError(t, err)
+	require.Equal(t, filter, repo.lastFilter)
+	require.Equal(t, 5.25, summary.TotalAmount)
+	require.Equal(t, 3.25, summary.CheckinAmount)
+	require.Equal(t, 2.0, summary.LeaderboardAmount)
+}
+
 func TestWelfareServiceLeaderLockSkipsWhenHeldByPeer(t *testing.T) {
 	cache := &fakeLeaderLockCache{}
 	_, _ = cache.TryAcquireLeaderLock(context.Background(), welfareLeaderLockKey, "peer", welfareLeaderLockTTL)
@@ -81,6 +97,7 @@ type welfareRepoStub struct {
 	existingRemark bool
 	createCalls    int
 	lastRemark     string
+	lastFilter     WelfareListFilter
 }
 
 func (r *welfareRepoStub) Create(context.Context, int64, string, float64, string) (*WelfareRecord, error) {
@@ -88,16 +105,21 @@ func (r *welfareRepoStub) Create(context.Context, int64, string, float64, string
 	return &WelfareRecord{ID: int64(r.createCalls)}, nil
 }
 
-func (r *welfareRepoStub) GetByID(context.Context, int64) (*WelfareRecord, error) {
+func (r *welfareRepoStub) GetByID(context.Context, int64, string) (*WelfareRecord, error) {
 	return nil, nil
 }
 
-func (r *welfareRepoStub) MarkRevoked(context.Context, int64) (bool, error) {
+func (r *welfareRepoStub) MarkRevoked(context.Context, int64, string) (bool, error) {
 	return true, nil
 }
 
-func (r *welfareRepoStub) List(context.Context, pagination.PaginationParams, WelfareListFilter) ([]WelfareRecord, *pagination.PaginationResult, error) {
-	return nil, nil, nil
+func (r *welfareRepoStub) List(_ context.Context, _ pagination.PaginationParams, filter WelfareListFilter) ([]WelfareRecord, *WelfareSummary, *pagination.PaginationResult, error) {
+	r.lastFilter = filter
+	return nil, &WelfareSummary{
+		TotalAmount:       5.25,
+		CheckinAmount:     3.25,
+		LeaderboardAmount: 2.0,
+	}, nil, nil
 }
 
 func (r *welfareRepoStub) ExistsSuccessByRemarks(_ context.Context, remarks string) (bool, error) {

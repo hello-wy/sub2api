@@ -183,6 +183,7 @@ import { getUserSpendingRanking } from '@/api/admin/dashboard'
 import type { UserSpendingRankingItem } from '@/types'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import { useAuthStore } from '@/stores'
+import { maskLeaderboardEmail } from '@/utils/leaderboardEmail'
 
 type LeaderboardRange = 'today' | 'yesterday'
 
@@ -258,13 +259,8 @@ function getAvatarUrl(email: string): string {
   return `https://api.dicebear.com/9.x/notionists/svg?seed=${seed}&backgroundColor=transparent`
 }
 
-// Mask email for privacy: show first 3 chars + ***@domain
 function maskEmail(email: string): string {
-  if (!email) return '***'
-  const [local, domain] = email.split('@')
-  if (!domain) return email
-  const visible = local.slice(0, 3)
-  return `${visible}***@${domain}`
+  return maskLeaderboardEmail(email)
 }
 
 // Format cost to 2 decimal places with $ prefix

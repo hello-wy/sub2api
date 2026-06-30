@@ -100,6 +100,11 @@ func StreakDays(v int) predicate.DailyCheckinRecord {
 	return predicate.DailyCheckinRecord(sql.FieldEQ(FieldStreakDays, v))
 }
 
+// Status applies equality check predicate on the "status" field. It's identical to StatusEQ.
+func Status(v string) predicate.DailyCheckinRecord {
+	return predicate.DailyCheckinRecord(sql.FieldEQ(FieldStatus, v))
+}
+
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.DailyCheckinRecord {
 	return predicate.DailyCheckinRecord(sql.FieldEQ(FieldCreatedAt, v))
@@ -463,6 +468,71 @@ func StreakDaysLT(v int) predicate.DailyCheckinRecord {
 // StreakDaysLTE applies the LTE predicate on the "streak_days" field.
 func StreakDaysLTE(v int) predicate.DailyCheckinRecord {
 	return predicate.DailyCheckinRecord(sql.FieldLTE(FieldStreakDays, v))
+}
+
+// StatusEQ applies the EQ predicate on the "status" field.
+func StatusEQ(v string) predicate.DailyCheckinRecord {
+	return predicate.DailyCheckinRecord(sql.FieldEQ(FieldStatus, v))
+}
+
+// StatusNEQ applies the NEQ predicate on the "status" field.
+func StatusNEQ(v string) predicate.DailyCheckinRecord {
+	return predicate.DailyCheckinRecord(sql.FieldNEQ(FieldStatus, v))
+}
+
+// StatusIn applies the In predicate on the "status" field.
+func StatusIn(vs ...string) predicate.DailyCheckinRecord {
+	return predicate.DailyCheckinRecord(sql.FieldIn(FieldStatus, vs...))
+}
+
+// StatusNotIn applies the NotIn predicate on the "status" field.
+func StatusNotIn(vs ...string) predicate.DailyCheckinRecord {
+	return predicate.DailyCheckinRecord(sql.FieldNotIn(FieldStatus, vs...))
+}
+
+// StatusGT applies the GT predicate on the "status" field.
+func StatusGT(v string) predicate.DailyCheckinRecord {
+	return predicate.DailyCheckinRecord(sql.FieldGT(FieldStatus, v))
+}
+
+// StatusGTE applies the GTE predicate on the "status" field.
+func StatusGTE(v string) predicate.DailyCheckinRecord {
+	return predicate.DailyCheckinRecord(sql.FieldGTE(FieldStatus, v))
+}
+
+// StatusLT applies the LT predicate on the "status" field.
+func StatusLT(v string) predicate.DailyCheckinRecord {
+	return predicate.DailyCheckinRecord(sql.FieldLT(FieldStatus, v))
+}
+
+// StatusLTE applies the LTE predicate on the "status" field.
+func StatusLTE(v string) predicate.DailyCheckinRecord {
+	return predicate.DailyCheckinRecord(sql.FieldLTE(FieldStatus, v))
+}
+
+// StatusContains applies the Contains predicate on the "status" field.
+func StatusContains(v string) predicate.DailyCheckinRecord {
+	return predicate.DailyCheckinRecord(sql.FieldContains(FieldStatus, v))
+}
+
+// StatusHasPrefix applies the HasPrefix predicate on the "status" field.
+func StatusHasPrefix(v string) predicate.DailyCheckinRecord {
+	return predicate.DailyCheckinRecord(sql.FieldHasPrefix(FieldStatus, v))
+}
+
+// StatusHasSuffix applies the HasSuffix predicate on the "status" field.
+func StatusHasSuffix(v string) predicate.DailyCheckinRecord {
+	return predicate.DailyCheckinRecord(sql.FieldHasSuffix(FieldStatus, v))
+}
+
+// StatusEqualFold applies the EqualFold predicate on the "status" field.
+func StatusEqualFold(v string) predicate.DailyCheckinRecord {
+	return predicate.DailyCheckinRecord(sql.FieldEqualFold(FieldStatus, v))
+}
+
+// StatusContainsFold applies the ContainsFold predicate on the "status" field.
+func StatusContainsFold(v string) predicate.DailyCheckinRecord {
+	return predicate.DailyCheckinRecord(sql.FieldContainsFold(FieldStatus, v))
 }
 
 // HasUser applies the HasEdge predicate on the "user" edge.

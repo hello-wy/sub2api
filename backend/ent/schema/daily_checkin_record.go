@@ -58,6 +58,10 @@ func (DailyCheckinRecord) Fields() []ent.Field {
 		field.Int("streak_days").
 			Default(1).
 			Comment("Consecutive check-in days after this check-in"),
+		field.String("status").
+			MaxLen(30).
+			Default("success").
+			Comment("Status (success / revoked)"),
 	}
 }
 
@@ -76,6 +80,7 @@ func (DailyCheckinRecord) Indexes() []ent.Index {
 		index.Fields("user_id", "checkin_date").Unique(),
 		index.Fields("user_id"),
 		index.Fields("checkin_date"),
+		index.Fields("status"),
 		index.Fields("created_at"),
 	}
 }

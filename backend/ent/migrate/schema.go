@@ -609,6 +609,7 @@ var (
 		{Name: "bonus_reward", Type: field.TypeFloat64, Default: 0, SchemaType: map[string]string{"postgres": "decimal(20,8)"}},
 		{Name: "total_reward", Type: field.TypeFloat64, Default: 0, SchemaType: map[string]string{"postgres": "decimal(20,8)"}},
 		{Name: "streak_days", Type: field.TypeInt, Default: 1},
+		{Name: "status", Type: field.TypeString, Size: 30, Default: "success"},
 		{Name: "user_id", Type: field.TypeInt64},
 	}
 	// DailyCheckinRecordsTable holds the schema information for the "daily_checkin_records" table.
@@ -619,7 +620,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "daily_checkin_records_users_daily_checkin_records",
-				Columns:    []*schema.Column{DailyCheckinRecordsColumns[9]},
+				Columns:    []*schema.Column{DailyCheckinRecordsColumns[10]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
 				OnDelete:   schema.Cascade,
 			},
@@ -628,17 +629,22 @@ var (
 			{
 				Name:    "dailycheckinrecord_user_id_checkin_date",
 				Unique:  true,
-				Columns: []*schema.Column{DailyCheckinRecordsColumns[9], DailyCheckinRecordsColumns[3]},
+				Columns: []*schema.Column{DailyCheckinRecordsColumns[10], DailyCheckinRecordsColumns[3]},
 			},
 			{
 				Name:    "dailycheckinrecord_user_id",
 				Unique:  false,
-				Columns: []*schema.Column{DailyCheckinRecordsColumns[9]},
+				Columns: []*schema.Column{DailyCheckinRecordsColumns[10]},
 			},
 			{
 				Name:    "dailycheckinrecord_checkin_date",
 				Unique:  false,
 				Columns: []*schema.Column{DailyCheckinRecordsColumns[3]},
+			},
+			{
+				Name:    "dailycheckinrecord_status",
+				Unique:  false,
+				Columns: []*schema.Column{DailyCheckinRecordsColumns[9]},
 			},
 			{
 				Name:    "dailycheckinrecord_created_at",

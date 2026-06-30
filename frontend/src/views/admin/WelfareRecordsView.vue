@@ -1,42 +1,24 @@
 <template>
   <AppLayout>
     <TablePageLayout>
+      <template #actions>
+        <WelfareSummaryDashboard :summary="summary" />
+      </template>
+
       <template #filters>
-        <div class="flex flex-wrap items-center gap-3">
-          <!-- Left: Search by Email -->
-          <div class="flex-1 sm:max-w-64">
-            <input
-              v-model="searchQuery"
-              type="text"
-              :placeholder="t('admin.welfare.searchPlaceholder')"
-              class="input"
-              @input="handleSearch"
-            />
-          </div>
-
-          <div class="flex items-center gap-2">
-            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
-              {{ t('admin.dashboard.timeRange') }}:
-            </span>
-            <DateRangePicker
-              v-model:start-date="startDate"
-              v-model:end-date="endDate"
-              @change="onDateRangeChange"
-            />
-          </div>
-
-          <!-- Right: Refresh button -->
-          <div class="flex flex-1 flex-wrap items-center justify-end gap-2">
-            <button
-              @click="loadRecords"
-              :disabled="loading"
-              class="btn btn-secondary"
-              :title="t('common.refresh')"
-            >
-              <Icon name="refresh" size="md" :class="loading ? 'animate-spin' : ''" />
-            </button>
-          </div>
-        </div>
+        <WelfareRecordsFilters
+          v-model:search="searchQuery"
+          v-model:type="benefitType"
+          v-model:status="statusFilter"
+          v-model:start-date="startDate"
+          v-model:end-date="endDate"
+          :loading="loading"
+          @search-change="handleSearch"
+          @type-change="onBenefitTypeChange"
+          @status-change="onStatusChange"
+          @date-change="onDateRangeChange"
+          @refresh="loadRecords"
+        />
       </template>
 
       <template #table>
@@ -58,6 +40,19 @@
 
           <template #cell-remarks="{ value }">
             <span class="text-sm text-gray-600 dark:text-gray-300 font-mono">{{ value }}</span>
+          </template>
+
+          <template #cell-type="{ value }">
+            <span
+              :class="[
+                'badge',
+                value === 'checkin'
+                  ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400'
+                  : 'bg-purple-50 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400'
+              ]"
+            >
+              {{ formatBenefitType(value) }}
+            </span>
           </template>
 
           <template #cell-status="{ value }">
@@ -84,10 +79,10 @@
               <button
                 v-if="row.status !== 'revoked'"
                 @click="confirmRevoke(row)"
-                class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
+                class="btn btn-sm btn-danger"
                 :title="t('admin.welfare.action.revoke')"
               >
-                <Icon name="trash" size="sm" />
+                {{ t('admin.welfare.action.revokeButton') }}
               </button>
               <span v-else class="text-xs text-gray-400 dark:text-gray-500 px-1.5 py-1">
                 {{ t('admin.welfare.status.revoked') }}
@@ -125,14 +120,14 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { adminAPI } from '@/api/admin'
-import type { WelfareRecord } from '@/api/admin/welfare'
+import type { WelfareBenefitType, WelfareRecord, WelfareRecordStatus, WelfareSummary } from '@/api/admin/welfare'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import TablePageLayout from '@/components/layout/TablePageLayout.vue'
 import DataTable from '@/components/common/DataTable.vue'
 import Pagination from '@/components/common/Pagination.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
-import DateRangePicker from '@/components/common/DateRangePicker.vue'
-import Icon from '@/components/icons/Icon.vue'
+import WelfareSummaryDashboard from '@/components/admin/welfare/WelfareSummaryDashboard.vue'
+import WelfareRecordsFilters from '@/components/admin/welfare/WelfareRecordsFilters.vue'
 import { useAppStore } from '@/stores/app'
 
 const { t } = useI18n()
@@ -142,6 +137,8 @@ const DAY_MS = 24 * 60 * 60 * 1000
 const loading = ref(false)
 const records = ref<WelfareRecord[]>([])
 const searchQuery = ref('')
+const benefitType = ref<'' | WelfareBenefitType>('')
+const statusFilter = ref<'' | WelfareRecordStatus>('')
 const selectedRecord = ref<WelfareRecord | null>(null)
 const showRevokeConfirm = ref(false)
 const defaultRange = getLast24HoursRangeDates()
@@ -154,9 +151,17 @@ const pagination = reactive({
   total: 0
 })
 
+const summary = reactive<WelfareSummary>({
+  total_count: 0,
+  total_amount: 0,
+  checkin_amount: 0,
+  leaderboard_amount: 0
+})
+
 const columns = [
   { key: 'user_email', label: t('admin.welfare.table.email'), sortable: false },
   { key: 'amount', label: t('admin.welfare.table.amount'), sortable: false },
+  { key: 'type', label: t('admin.welfare.table.type'), sortable: false },
   { key: 'remarks', label: t('admin.welfare.table.remarks'), sortable: false },
   { key: 'status', label: t('admin.welfare.table.status'), sortable: false },
   { key: 'created_at', label: t('admin.welfare.table.createdAt'), sortable: false },
@@ -172,16 +177,26 @@ async function loadRecords() {
       searchQuery.value.trim() || undefined,
       {
         startDate: startDate.value,
-        endDate: endDate.value
+        endDate: endDate.value,
+        type: benefitType.value || undefined,
+        status: statusFilter.value || undefined
       }
     )
     records.value = res.items || []
     pagination.total = res.total || 0
+    applySummary(res.summary)
   } catch (err: unknown) {
     appStore.showError(t('common.unknownError'))
   } finally {
     loading.value = false
   }
+}
+
+function applySummary(nextSummary?: WelfareSummary) {
+  summary.total_count = nextSummary?.total_count || 0
+  summary.total_amount = nextSummary?.total_amount || 0
+  summary.checkin_amount = nextSummary?.checkin_amount || 0
+  summary.leaderboard_amount = nextSummary?.leaderboard_amount || 0
 }
 
 let searchTimeout: ReturnType<typeof setTimeout>
@@ -209,6 +224,16 @@ function onDateRangeChange() {
   loadRecords()
 }
 
+function onBenefitTypeChange() {
+  pagination.page = 1
+  loadRecords()
+}
+
+function onStatusChange() {
+  pagination.page = 1
+  loadRecords()
+}
+
 function confirmRevoke(record: WelfareRecord) {
   selectedRecord.value = record
   showRevokeConfirm.value = true
@@ -218,13 +243,20 @@ async function executeRevoke() {
   if (!selectedRecord.value) return
   showRevokeConfirm.value = false
   const recordId = selectedRecord.value.id
+  const recordType = selectedRecord.value.type
   try {
-    await adminAPI.welfare.revoke(recordId)
+    await adminAPI.welfare.revoke(recordId, recordType)
     appStore.showSuccess(t('admin.welfare.action.revokeSuccess'))
     loadRecords()
   } catch (err: unknown) {
     appStore.showError(t('common.unknownError'))
   }
+}
+
+function formatBenefitType(value: string) {
+  return value === 'checkin'
+    ? t('admin.welfare.type.checkin')
+    : t('admin.welfare.type.leaderboard')
 }
 
 function formatDateTime(val: string) {

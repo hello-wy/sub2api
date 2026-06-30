@@ -36,6 +36,8 @@ type DailyCheckinRecord struct {
 	TotalReward float64 `json:"total_reward,omitempty"`
 	// Consecutive check-in days after this check-in
 	StreakDays int `json:"streak_days,omitempty"`
+	// Status (success / revoked)
+	Status string `json:"status,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the DailyCheckinRecordQuery when eager-loading is set.
 	Edges        DailyCheckinRecordEdges `json:"edges"`
@@ -71,7 +73,7 @@ func (*DailyCheckinRecord) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullFloat64)
 		case dailycheckinrecord.FieldID, dailycheckinrecord.FieldUserID, dailycheckinrecord.FieldStreakDays:
 			values[i] = new(sql.NullInt64)
-		case dailycheckinrecord.FieldTimezone:
+		case dailycheckinrecord.FieldTimezone, dailycheckinrecord.FieldStatus:
 			values[i] = new(sql.NullString)
 		case dailycheckinrecord.FieldCreatedAt, dailycheckinrecord.FieldUpdatedAt, dailycheckinrecord.FieldCheckinDate:
 			values[i] = new(sql.NullTime)
@@ -150,6 +152,12 @@ func (_m *DailyCheckinRecord) assignValues(columns []string, values []any) error
 			} else if value.Valid {
 				_m.StreakDays = int(value.Int64)
 			}
+		case dailycheckinrecord.FieldStatus:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field status", values[i])
+			} else if value.Valid {
+				_m.Status = value.String
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -217,6 +225,9 @@ func (_m *DailyCheckinRecord) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("streak_days=")
 	builder.WriteString(fmt.Sprintf("%v", _m.StreakDays))
+	builder.WriteString(", ")
+	builder.WriteString("status=")
+	builder.WriteString(_m.Status)
 	builder.WriteByte(')')
 	return builder.String()
 }

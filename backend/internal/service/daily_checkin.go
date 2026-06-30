@@ -53,6 +53,7 @@ type DailyCheckinRecord struct {
 	BonusReward float64   `json:"bonus_reward"`
 	TotalReward float64   `json:"total_reward"`
 	StreakDays  int       `json:"streak_days"`
+	Status      string    `json:"status"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }

@@ -248,7 +248,7 @@ func initializeApplication(buildInfo handler.BuildInfo) (*Application, error) {
 	contentModerationHandler := admin.NewContentModerationHandler(contentModerationService)
 	paymentHandler := admin.NewPaymentHandler(paymentService, paymentConfigService)
 	affiliateHandler := admin.NewAffiliateHandler(affiliateService, adminService)
-	welfareRepository := repository.NewWelfareRepository(client)
+	welfareRepository := repository.NewWelfareRepository(client, db)
 	welfareService := service.ProvideWelfareService(welfareRepository, userService, dashboardService, settingRepository, leaderLockCache, db, client, configConfig)
 	welfareHandler := admin.NewWelfareHandler(welfareService)
 	complianceHandler := admin.NewComplianceHandler(settingService)

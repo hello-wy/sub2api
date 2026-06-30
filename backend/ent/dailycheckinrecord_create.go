@@ -133,6 +133,20 @@ func (_c *DailyCheckinRecordCreate) SetNillableStreakDays(v *int) *DailyCheckinR
 	return _c
 }
 
+// SetStatus sets the "status" field.
+func (_c *DailyCheckinRecordCreate) SetStatus(v string) *DailyCheckinRecordCreate {
+	_c.mutation.SetStatus(v)
+	return _c
+}
+
+// SetNillableStatus sets the "status" field if the given value is not nil.
+func (_c *DailyCheckinRecordCreate) SetNillableStatus(v *string) *DailyCheckinRecordCreate {
+	if v != nil {
+		_c.SetStatus(*v)
+	}
+	return _c
+}
+
 // SetUser sets the "user" edge to the User entity.
 func (_c *DailyCheckinRecordCreate) SetUser(v *User) *DailyCheckinRecordCreate {
 	return _c.SetUserID(v.ID)
@@ -201,6 +215,10 @@ func (_c *DailyCheckinRecordCreate) defaults() {
 		v := dailycheckinrecord.DefaultStreakDays
 		_c.mutation.SetStreakDays(v)
 	}
+	if _, ok := _c.mutation.Status(); !ok {
+		v := dailycheckinrecord.DefaultStatus
+		_c.mutation.SetStatus(v)
+	}
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -236,6 +254,14 @@ func (_c *DailyCheckinRecordCreate) check() error {
 	}
 	if _, ok := _c.mutation.StreakDays(); !ok {
 		return &ValidationError{Name: "streak_days", err: errors.New(`ent: missing required field "DailyCheckinRecord.streak_days"`)}
+	}
+	if _, ok := _c.mutation.Status(); !ok {
+		return &ValidationError{Name: "status", err: errors.New(`ent: missing required field "DailyCheckinRecord.status"`)}
+	}
+	if v, ok := _c.mutation.Status(); ok {
+		if err := dailycheckinrecord.StatusValidator(v); err != nil {
+			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "DailyCheckinRecord.status": %w`, err)}
+		}
 	}
 	if len(_c.mutation.UserIDs()) == 0 {
 		return &ValidationError{Name: "user", err: errors.New(`ent: missing required edge "DailyCheckinRecord.user"`)}
@@ -298,6 +324,10 @@ func (_c *DailyCheckinRecordCreate) createSpec() (*DailyCheckinRecord, *sqlgraph
 	if value, ok := _c.mutation.StreakDays(); ok {
 		_spec.SetField(dailycheckinrecord.FieldStreakDays, field.TypeInt, value)
 		_node.StreakDays = value
+	}
+	if value, ok := _c.mutation.Status(); ok {
+		_spec.SetField(dailycheckinrecord.FieldStatus, field.TypeString, value)
+		_node.Status = value
 	}
 	if nodes := _c.mutation.UserIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -488,6 +518,18 @@ func (u *DailyCheckinRecordUpsert) AddStreakDays(v int) *DailyCheckinRecordUpser
 	return u
 }
 
+// SetStatus sets the "status" field.
+func (u *DailyCheckinRecordUpsert) SetStatus(v string) *DailyCheckinRecordUpsert {
+	u.Set(dailycheckinrecord.FieldStatus, v)
+	return u
+}
+
+// UpdateStatus sets the "status" field to the value that was provided on create.
+func (u *DailyCheckinRecordUpsert) UpdateStatus() *DailyCheckinRecordUpsert {
+	u.SetExcluded(dailycheckinrecord.FieldStatus)
+	return u
+}
+
 // UpdateNewValues updates the mutable fields using the new values that were set on create.
 // Using this option is equivalent to using:
 //
@@ -670,6 +712,20 @@ func (u *DailyCheckinRecordUpsertOne) AddStreakDays(v int) *DailyCheckinRecordUp
 func (u *DailyCheckinRecordUpsertOne) UpdateStreakDays() *DailyCheckinRecordUpsertOne {
 	return u.Update(func(s *DailyCheckinRecordUpsert) {
 		s.UpdateStreakDays()
+	})
+}
+
+// SetStatus sets the "status" field.
+func (u *DailyCheckinRecordUpsertOne) SetStatus(v string) *DailyCheckinRecordUpsertOne {
+	return u.Update(func(s *DailyCheckinRecordUpsert) {
+		s.SetStatus(v)
+	})
+}
+
+// UpdateStatus sets the "status" field to the value that was provided on create.
+func (u *DailyCheckinRecordUpsertOne) UpdateStatus() *DailyCheckinRecordUpsertOne {
+	return u.Update(func(s *DailyCheckinRecordUpsert) {
+		s.UpdateStatus()
 	})
 }
 
@@ -1021,6 +1077,20 @@ func (u *DailyCheckinRecordUpsertBulk) AddStreakDays(v int) *DailyCheckinRecordU
 func (u *DailyCheckinRecordUpsertBulk) UpdateStreakDays() *DailyCheckinRecordUpsertBulk {
 	return u.Update(func(s *DailyCheckinRecordUpsert) {
 		s.UpdateStreakDays()
+	})
+}
+
+// SetStatus sets the "status" field.
+func (u *DailyCheckinRecordUpsertBulk) SetStatus(v string) *DailyCheckinRecordUpsertBulk {
+	return u.Update(func(s *DailyCheckinRecordUpsert) {
+		s.SetStatus(v)
+	})
+}
+
+// UpdateStatus sets the "status" field to the value that was provided on create.
+func (u *DailyCheckinRecordUpsertBulk) UpdateStatus() *DailyCheckinRecordUpsertBulk {
+	return u.Update(func(s *DailyCheckinRecordUpsert) {
+		s.UpdateStatus()
 	})
 }
 

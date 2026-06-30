@@ -819,6 +819,7 @@ func (r *userRepository) ListRecentDailyCheckinRecords(ctx context.Context, user
 			BonusReward: record.BonusReward,
 			TotalReward: record.TotalReward,
 			StreakDays:  record.StreakDays,
+			Status:      record.Status,
 			CreatedAt:   record.CreatedAt,
 			UpdatedAt:   record.UpdatedAt,
 		})
@@ -860,6 +861,7 @@ func (r *userRepository) ListDailyCheckinRecords(ctx context.Context, userID int
 			BonusReward: record.BonusReward,
 			TotalReward: record.TotalReward,
 			StreakDays:  record.StreakDays,
+			Status:      record.Status,
 			CreatedAt:   record.CreatedAt,
 			UpdatedAt:   record.UpdatedAt,
 		})
@@ -889,6 +891,7 @@ func (r *userRepository) GetDailyCheckinRecordByDate(ctx context.Context, userID
 		BonusReward: record.BonusReward,
 		TotalReward: record.TotalReward,
 		StreakDays:  record.StreakDays,
+		Status:      record.Status,
 		CreatedAt:   record.CreatedAt,
 		UpdatedAt:   record.UpdatedAt,
 	}, nil
@@ -906,6 +909,7 @@ func (r *userRepository) CreateDailyCheckinRecord(ctx context.Context, record *s
 		SetBonusReward(record.BonusReward).
 		SetTotalReward(record.TotalReward).
 		SetStreakDays(record.StreakDays).
+		SetStatus(service.WelfareStatusSuccess).
 		Save(ctx)
 	if err != nil {
 		return translatePersistenceError(err, nil, service.ErrDailyCheckinAlreadyDone)

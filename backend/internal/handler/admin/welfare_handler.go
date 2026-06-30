@@ -30,7 +30,7 @@ func (h *WelfareHandler) ListWelfareRecords(c *gin.Context) {
 		return
 	}
 
-	records, pagResult, err := h.welfareSvc.ListWelfareRecords(c.Request.Context(), pagination.PaginationParams{
+	records, summary, pagResult, err := h.welfareSvc.ListWelfareRecords(c.Request.Context(), pagination.PaginationParams{
 		Page:     page,
 		PageSize: pageSize,
 	}, filter)
@@ -39,7 +39,21 @@ func (h *WelfareHandler) ListWelfareRecords(c *gin.Context) {
 		return
 	}
 
-	response.Paginated(c, records, int64(pagResult.Total), page, pageSize)
+	response.Success(c, welfareListResponse{
+		PaginatedData: response.PaginatedData{
+			Items:    records,
+			Total:    int64(pagResult.Total),
+			Page:     page,
+			PageSize: pageSize,
+			Pages:    pagResult.Pages,
+		},
+		Summary: summary,
+	})
+}
+
+type welfareListResponse struct {
+	response.PaginatedData
+	Summary *service.WelfareSummary `json:"summary"`
 }
 
 func parseWelfareListFilter(c *gin.Context) (service.WelfareListFilter, bool) {
@@ -59,6 +73,8 @@ func parseWelfareListFilter(c *gin.Context) (service.WelfareListFilter, bool) {
 		SearchEmail: strings.TrimSpace(c.Query("email")),
 		StartTime:   startTime,
 		EndTime:     endTime,
+		BenefitType: strings.TrimSpace(c.Query("type")),
+		Status:      strings.TrimSpace(c.Query("status")),
 	}, true
 }
 
@@ -84,7 +100,8 @@ func (h *WelfareHandler) RevokeWelfareRecord(c *gin.Context) {
 		return
 	}
 
-	err = h.welfareSvc.RevokeWelfareRecord(c.Request.Context(), recordID)
+	benefitType := strings.TrimSpace(c.Query("type"))
+	err = h.welfareSvc.RevokeWelfareRecord(c.Request.Context(), recordID, benefitType)
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return

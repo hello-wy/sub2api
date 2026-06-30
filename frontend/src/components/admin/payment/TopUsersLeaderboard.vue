@@ -24,7 +24,9 @@
           >
             {{ idx + 1 }}
           </span>
-          <span class="text-sm text-gray-700 dark:text-gray-300">{{ user.email }}</span>
+          <span class="text-sm text-gray-700 dark:text-gray-300">
+            {{ maskLeaderboardEmail(user.email) }}
+          </span>
         </div>
         <span class="text-sm font-medium text-gray-900 dark:text-white">
           ${{ user.amount.toFixed(2) }}
@@ -36,6 +38,7 @@
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
+import { maskLeaderboardEmail } from '@/utils/leaderboardEmail'
 
 const { t } = useI18n()
 

@@ -4884,9 +4884,20 @@ export default {
       title: '福利发放记录',
       description: '查看并管理每日排行榜消费福利的发放记录。支持撤回已发放的福利金额。',
       searchPlaceholder: '输入用户邮箱进行搜索...',
+      dashboard: {
+        totalRewards: '福利发放总数',
+        totalAmount: '福利发放总金额',
+        breakdown: '签到奖励 ${checkin} / 排行榜奖励 ${leaderboard}',
+      },
+      type: {
+        all: '全部福利',
+        leaderboard: '排行榜福利',
+        checkin: '签到福利',
+      },
       table: {
         email: '用户邮箱',
         amount: '发放金额',
+        type: '类型',
         remarks: '备注',
         status: '状态',
         createdAt: '发放时间',
@@ -4896,8 +4907,12 @@ export default {
         success: '已发放',
         revoked: '已撤回',
       },
+      statusFilter: {
+        all: '全部状态',
+      },
       action: {
         revoke: '撤回福利',
+        revokeButton: '撤回',
         revokeConfirmTitle: '确认撤回福利',
         revokeConfirmMessage: '您确定要撤回此笔福利吗？撤回后系统将自动从该用户的余额中扣除对应的发放金额（{amount}），且该条发放记录的状态将变更为「已撤回」。',
         revokeSuccess: '福利撤回成功',

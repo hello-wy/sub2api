@@ -735,6 +735,12 @@ func init() {
 	dailycheckinrecordDescStreakDays := dailycheckinrecordFields[6].Descriptor()
 	// dailycheckinrecord.DefaultStreakDays holds the default value on creation for the streak_days field.
 	dailycheckinrecord.DefaultStreakDays = dailycheckinrecordDescStreakDays.Default.(int)
+	// dailycheckinrecordDescStatus is the schema descriptor for status field.
+	dailycheckinrecordDescStatus := dailycheckinrecordFields[7].Descriptor()
+	// dailycheckinrecord.DefaultStatus holds the default value on creation for the status field.
+	dailycheckinrecord.DefaultStatus = dailycheckinrecordDescStatus.Default.(string)
+	// dailycheckinrecord.StatusValidator is a validator for the "status" field. It is called by the builders before save.
+	dailycheckinrecord.StatusValidator = dailycheckinrecordDescStatus.Validators[0].(func(string) error)
 	errorpassthroughruleMixin := schema.ErrorPassthroughRule{}.Mixin()
 	errorpassthroughruleMixinFields0 := errorpassthroughruleMixin[0].Fields()
 	_ = errorpassthroughruleMixinFields0

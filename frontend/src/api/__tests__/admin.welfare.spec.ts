@@ -24,6 +24,8 @@ describe('admin welfare API', () => {
     await list(2, 50, 'user@example.com', {
       startDate: '2026-06-25',
       endDate: '2026-06-26',
+      type: 'checkin',
+      status: 'success',
     })
 
     expect(adapter.mock.calls[0][0].params).toEqual(
@@ -33,7 +35,27 @@ describe('admin welfare API', () => {
         email: 'user@example.com',
         start_date: '2026-06-25',
         end_date: '2026-06-26',
+        type: 'checkin',
+        status: 'success',
       })
     )
+  })
+
+  it('passes benefit type when revoking a record', async () => {
+    const { apiClient } = await import('@/api/client')
+    const { revoke } = await import('@/api/admin/welfare')
+    const adapter = vi.fn().mockResolvedValue({
+      status: 200,
+      data: { code: 0, data: { message: 'ok' } },
+      headers: {},
+      config: {},
+      statusText: 'OK',
+    })
+    apiClient.defaults.adapter = adapter
+
+    await revoke(12, 'leaderboard')
+
+    expect(adapter.mock.calls[0][0].params).toEqual({ type: 'leaderboard' })
+    expect(adapter.mock.calls[0][0].url).toBe('/admin/welfare-records/12/revoke')
   })
 })
