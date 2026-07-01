@@ -10,8 +10,8 @@ vi.mock('vue-i18n', () => ({
   })
 }))
 
-const SelectStub = defineComponent({
-  name: 'Select',
+const WelfareSelectStub = defineComponent({
+  name: 'WelfareSelectStub',
   props: {
     modelValue: {
       type: [String, Number, Boolean, null],
@@ -40,7 +40,7 @@ function mountFilters() {
       stubs: {
         DateRangePicker: true,
         Icon: true,
-        Select: SelectStub
+        Select: WelfareSelectStub
       }
     }
   })
@@ -49,7 +49,7 @@ function mountFilters() {
 describe('WelfareRecordsFilters', () => {
   it('uses shared Select controls for benefit type and status filters', async () => {
     const wrapper = mountFilters()
-    const selects = wrapper.findAllComponents(SelectStub)
+    const selects = wrapper.findAllComponents(WelfareSelectStub)
 
     expect(selects).toHaveLength(2)
     expect(wrapper.findAll('select')).toHaveLength(0)

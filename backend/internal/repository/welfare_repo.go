@@ -192,7 +192,7 @@ FROM (` + baseQuery + `) welfare_union`
 	return summary, err
 }
 
-func (r *welfareRepository) listWelfareRows(ctx context.Context, exec sqlQueryExecutor, baseQuery string, args []any, params pagination.PaginationParams) ([]service.WelfareRecord, error) {
+func (r *welfareRepository) listWelfareRows(ctx context.Context, exec sqlQueryExecutor, baseQuery string, args []any, params pagination.PaginationParams) (records []service.WelfareRecord, err error) {
 	query := `SELECT id, user_id, user_email, amount, remarks, status, type, created_at, updated_at
 FROM (` + baseQuery + `) welfare_union
 ORDER BY created_at DESC, id DESC
@@ -201,7 +201,11 @@ OFFSET $` + fmt.Sprint(len(args)+1) + ` LIMIT $` + fmt.Sprint(len(args)+2)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if closeErr := rows.Close(); closeErr != nil && err == nil {
+			err = closeErr
+		}
+	}()
 	return scanWelfareRows(rows)
 }
 
