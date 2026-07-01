@@ -495,6 +495,29 @@ func TestCheckInDailyComputesStreakAndReward(t *testing.T) {
 	require.Equal(t, 1, repo.checkinCreateCalls)
 }
 
+func TestComputeDailyCheckinBonusOnlyRewardsMilestoneDays(t *testing.T) {
+	tests := []struct {
+		name       string
+		streakDays int
+		want       float64
+	}{
+		{name: "day 1 no bonus", streakDays: 1, want: 0},
+		{name: "day 3 bonus", streakDays: 3, want: 3},
+		{name: "day 4 no bonus", streakDays: 4, want: 0},
+		{name: "day 5 no bonus", streakDays: 5, want: 0},
+		{name: "day 7 bonus", streakDays: 7, want: 6},
+		{name: "day 8 no bonus", streakDays: 8, want: 0},
+		{name: "day 14 bonus", streakDays: 14, want: 12},
+		{name: "day 30 bonus", streakDays: 30, want: 24},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, computeDailyCheckinBonus(tt.streakDays))
+		})
+	}
+}
+
 func TestRandomDailyCheckinBaseRewardSupportsCents(t *testing.T) {
 	reward := randomDailyCheckinBaseRewardFromReader(bytes.NewReader([]byte{23}))
 

@@ -351,13 +351,12 @@ func randomDailyCheckinBaseRewardFromReader(reader io.Reader) float64 {
 }
 
 func computeDailyCheckinBonus(streakDays int) float64 {
-	bonus := 0.0
 	for _, rule := range dailyCheckinRules {
-		if streakDays >= rule.Threshold {
-			bonus += rule.Bonus
+		if streakDays == rule.Threshold {
+			return rule.Bonus
 		}
 	}
-	return bonus
+	return 0
 }
 
 func computeCheckinStreak(records []DailyCheckinRecord, today string, userTZ string) int {
