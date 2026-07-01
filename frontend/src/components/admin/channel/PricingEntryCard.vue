@@ -181,7 +181,7 @@
               v-for="(iv, idx) in entry.intervals"
               :key="idx"
               :interval="iv"
-              :mode="entry.billing_mode"
+              mode="per_request"
               @update="updateInterval(idx, $event)"
               @remove="removeInterval(idx)"
             />
@@ -217,7 +217,7 @@
               v-for="(iv, idx) in entry.intervals"
               :key="idx"
               :interval="iv"
-              :mode="entry.billing_mode"
+              mode="image"
               @update="updateInterval(idx, $event)"
               @remove="removeInterval(idx)"
             />
@@ -236,7 +236,6 @@ import Icon from '@/components/icons/Icon.vue'
 import IntervalRow from './IntervalRow.vue'
 import ModelTagInput from './ModelTagInput.vue'
 import PricingPreview from './PricingPreview.vue'
-import RequestModePricing from './RequestModePricing.vue'
 import type { PricingFormEntry, IntervalFormEntry } from './types'
 import { perTokenToMTok, getPlatformTagClass } from './types'
 import type { BillingMode } from '@/api/admin/channels'
@@ -244,6 +243,7 @@ import channelsAPI from '@/api/admin/channels'
 import type { AdminGroup } from '@/types'
 
 const { t } = useI18n()
+const IMAGE_TIER_LABELS = ['1K', '2K', '4K', 'HD'] as const
 
 const props = defineProps<{
   entry: PricingFormEntry
@@ -281,6 +281,22 @@ function addInterval() {
     input_price: null, output_price: null, cache_write_price: null,
     cache_read_price: null, per_request_price: null,
     sort_order: intervals.length
+  })
+  emit('update', { ...props.entry, intervals })
+}
+
+function addImageTier() {
+  const intervals = [...(props.entry.intervals || [])]
+  intervals.push({
+    min_tokens: 0,
+    max_tokens: null,
+    tier_label: IMAGE_TIER_LABELS[intervals.length] || '',
+    input_price: null,
+    output_price: null,
+    cache_write_price: null,
+    cache_read_price: null,
+    per_request_price: null,
+    sort_order: intervals.length,
   })
   emit('update', { ...props.entry, intervals })
 }
