@@ -1,4 +1,4 @@
--- Seed loyalty point attributes used by the loyalty discount program.
+-- Seed membership point attributes used by the membership discount program.
 -- These are user attribute definitions, not physical columns on users.
 
 INSERT INTO user_attribute_definitions (
@@ -16,7 +16,7 @@ INSERT INTO user_attribute_definitions (
 SELECT
     'loyalty_weekly_points',
     '周积分',
-    '忠诚计划本周累计积分。每周一按服务端时区重新计算有效周期。',
+    '会员计划本周累计积分。每周一按服务端时区重新计算有效周期。',
     'number',
     '[]'::jsonb,
     FALSE,
@@ -46,7 +46,7 @@ INSERT INTO user_attribute_definitions (
 SELECT
     'loyalty_permanent_points',
     '永久积分',
-    '忠诚计划永久累计积分。用于解锁长期充值折扣。',
+    '会员计划永久累计积分。用于解锁长期充值折扣。',
     'number',
     '[]'::jsonb,
     FALSE,

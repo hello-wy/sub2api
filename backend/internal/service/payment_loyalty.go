@@ -73,13 +73,13 @@ var paymentLoyaltyAttributeSpecs = []paymentLoyaltyAttributeSpec{
 	{
 		Key:          LoyaltyWeeklyPointsAttributeKey,
 		Name:         "周积分",
-		Description:  "忠诚计划本周累计积分。每周一按服务端时区重新计算有效周期。",
+		Description:  "会员计划本周累计积分。每周一按服务端时区重新计算有效周期。",
 		DisplayOrder: 900,
 	},
 	{
 		Key:          LoyaltyPermanentPointsAttributeKey,
 		Name:         "永久积分",
-		Description:  "忠诚计划永久累计积分。用于解锁长期充值折扣。",
+		Description:  "会员计划永久累计积分。用于解锁长期充值折扣。",
 		DisplayOrder: 901,
 	},
 }

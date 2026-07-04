@@ -9,17 +9,24 @@ const routerSource = readFileSync(
   'utf8',
 )
 
-describe('loyalty route', () => {
-  it('registers the user loyalty page behind the payment guard', () => {
+describe('membership route', () => {
+  it('registers the user membership page behind the payment guard', () => {
     expect(routerSource).toMatch(
-      /path: '\/loyalty'[\s\S]*name: 'Loyalty'[\s\S]*titleKey: 'loyalty\.title'[\s\S]*requiresPayment: true/
+      /path: '\/membership'[\s\S]*name: 'Membership'[\s\S]*titleKey: 'loyalty\.title'[\s\S]*requiresPayment: true/
     )
   })
 
-  it('keeps loyalty reachable when backend mode allows account pages', () => {
+  it('keeps membership reachable when backend mode allows account pages', () => {
+    expect(routerSource).toContain("'/membership'")
     expect(routerSource).toContain("'/loyalty'")
     expect(routerSource).toMatch(
-      /BACKEND_MODE_ALLOWED_PATHS = \[[^\]]*'\/loyalty'[^\]]*\]/
+      /BACKEND_MODE_ALLOWED_PATHS = \[[^\]]*'\/membership'[^\]]*'\/loyalty'[^\]]*\]/
+    )
+  })
+
+  it('redirects the old loyalty path to membership', () => {
+    expect(routerSource).toMatch(
+      /path: '\/loyalty'[\s\S]*redirect: '\/membership'/
     )
   })
 

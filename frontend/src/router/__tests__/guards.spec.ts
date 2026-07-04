@@ -85,7 +85,7 @@ function simulateGuard(
       return authState.isAdmin ? '/admin/dashboard' : '/dashboard'
     }
     if (authState.backendModeEnabled && !authState.isAuthenticated) {
-      const allowed = ['/login', '/key-usage', '/setup', '/loyalty', '/payment/result']
+      const allowed = ['/login', '/key-usage', '/setup', '/membership', '/loyalty', '/payment/result']
       const callbackPaths = [
         '/auth/callback',
         '/auth/linuxdo/callback',
@@ -141,7 +141,7 @@ function simulateGuard(
     if (authState.isAuthenticated && authState.isAdmin) {
       return null
     }
-    const allowed = ['/login', '/key-usage', '/setup', '/loyalty', '/payment/result']
+    const allowed = ['/login', '/key-usage', '/setup', '/membership', '/loyalty', '/payment/result']
     const callbackPaths = [
       '/auth/callback',
       '/auth/linuxdo/callback',
@@ -478,7 +478,7 @@ describe('路由守卫逻辑', () => {
       expect(redirect).toBeNull()
     })
 
-    it('non-admin authenticated: /loyalty is allowed as an account page', () => {
+    it('non-admin authenticated: /membership is allowed as an account page', () => {
       const authState: MockAuthState = {
         isAuthenticated: true,
         isAdmin: false,
@@ -486,11 +486,11 @@ describe('路由守卫逻辑', () => {
         backendModeEnabled: true,
         hasPendingAuthSession: false,
       }
-      const redirect = simulateGuard('/loyalty', { requiresPayment: true }, authState)
+      const redirect = simulateGuard('/membership', { requiresPayment: true }, authState)
       expect(redirect).toBeNull()
     })
 
-    it('admin: /loyalty is allowed while payment settings are still hydrating', () => {
+    it('admin: /membership is allowed while payment settings are still hydrating', () => {
       const authState: MockAuthState = {
         isAuthenticated: true,
         isAdmin: true,
@@ -498,11 +498,11 @@ describe('路由守卫逻辑', () => {
         backendModeEnabled: false,
         hasPendingAuthSession: false,
       }
-      const redirect = simulateGuard('/loyalty', { requiresPayment: true }, authState)
+      const redirect = simulateGuard('/membership', { requiresPayment: true }, authState)
       expect(redirect).toBeNull()
     })
 
-    it('admin: /loyalty redirects to admin dashboard when payment is explicitly disabled', () => {
+    it('admin: /membership redirects to admin dashboard when payment is explicitly disabled', () => {
       const authState: MockAuthState = {
         isAuthenticated: true,
         isAdmin: true,
@@ -511,7 +511,7 @@ describe('路由守卫逻辑', () => {
         hasPendingAuthSession: false,
         paymentEnabled: false,
       }
-      const redirect = simulateGuard('/loyalty', { requiresPayment: true }, authState)
+      const redirect = simulateGuard('/membership', { requiresPayment: true }, authState)
       expect(redirect).toBe('/admin/dashboard')
     })
 

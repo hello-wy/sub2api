@@ -255,12 +255,16 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/loyalty',
-    name: 'Loyalty',
+    redirect: '/membership'
+  },
+  {
+    path: '/membership',
+    name: 'Membership',
     component: () => import('@/views/user/LoyaltyView.vue'),
     meta: {
       requiresAuth: true,
       requiresAdmin: false,
-      title: 'Loyalty Program',
+      title: 'Membership Program',
       titleKey: 'loyalty.title',
       descriptionKey: 'loyalty.description',
       requiresPayment: true
@@ -751,7 +755,7 @@ let authInitialized = false
 const navigationLoading = useNavigationLoadingState()
 // 延迟初始化预加载，传入 router 实例
 let routePrefetch: ReturnType<typeof useRoutePrefetch> | null = null
-const BACKEND_MODE_ALLOWED_PATHS = ['/login', '/key-usage', '/setup', '/loyalty', '/payment/result', '/payment/airwallex', '/legal']
+const BACKEND_MODE_ALLOWED_PATHS = ['/login', '/key-usage', '/setup', '/membership', '/loyalty', '/payment/result', '/payment/airwallex', '/legal']
 const BACKEND_MODE_CALLBACK_PATHS = [
   '/auth/callback',
   '/auth/linuxdo/callback',

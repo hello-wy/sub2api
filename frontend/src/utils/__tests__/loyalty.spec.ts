@@ -13,7 +13,7 @@ function definition(scope: LoyaltyScope, overrides: Partial<UserAttributeDefinit
   return {
     id: scope === 'weekly' ? 1 : 2,
     key: scope === 'weekly' ? 'loyalty_weekly_points' : 'loyalty_permanent_points',
-    name: '忠诚积分',
+    name: '会员积分',
     description: '',
     type: 'number',
     options: [],
