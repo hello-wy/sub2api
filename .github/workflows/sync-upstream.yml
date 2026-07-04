@@ -3,7 +3,7 @@ name: Sync Upstream
 on:
   workflow_dispatch:
   schedule:
-    - cron: "40 13 * * *"
+    - cron: "20 4 * * *"
 
 permissions:
   contents: write
@@ -39,7 +39,7 @@ jobs:
         with:
           ref: ${{ env.TARGET_BRANCH }}
           fetch-depth: 0
-          token: ${{ secrets.GH_PAT }}
+          persist-credentials: false
 
       - name: Configure git
         run: |
@@ -138,8 +138,11 @@ jobs:
       - name: Push sync branch
         if: steps.upstream.outputs.count != '0' && steps.existing.outputs.number == ''
         env:
+          GH_PAT: ${{ secrets.GH_PAT }}
           BRANCH_NAME: ${{ steps.upstream.outputs.branch }}
-        run: git push origin "$BRANCH_NAME"
+        run: |
+          git remote set-url origin "https://x-access-token:${GH_PAT}@github.com/${GITHUB_REPOSITORY}.git"
+          git push origin "$BRANCH_NAME"
 
       - name: Create sync PR
         if: steps.upstream.outputs.count != '0' && steps.existing.outputs.number == ''

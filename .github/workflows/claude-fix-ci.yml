@@ -97,7 +97,7 @@ jobs:
         with:
           ref: ${{ steps.pr.outputs.head_ref }}
           fetch-depth: 0
-          token: ${{ secrets.GH_PAT }}
+          persist-credentials: false
 
       - name: Capture starting commit
         if: steps.pr.outputs.eligible == 'true'
@@ -183,6 +183,7 @@ jobs:
         run: |
           git config user.name "claude[bot]"
           git config user.email "claude[bot]@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
 
           if [ "$(git rev-parse HEAD)" != "$START_SHA" ]; then
             git push origin "HEAD:$HEAD_REF"
