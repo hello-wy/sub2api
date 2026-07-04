@@ -67,3 +67,43 @@ jobs:
           version: v2.9
           args: --timeout=30m
           working-directory: backend
+
+  auto-merge:
+    needs:
+      - test
+      - frontend
+      - golangci-lint
+    if: >
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.base.ref == 'main' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      (
+        startsWith(github.event.pull_request.head.ref, 'update/upstream-') ||
+        startsWith(github.event.pull_request.head.ref, 'claude/fix-')
+      )
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Validate automation token
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: |
+          if [ -z "$GH_PAT" ]; then
+            echo "GH_PAT is required so merging to main triggers deployment."
+            exit 1
+          fi
+
+      - name: Squash merge and delete PR branch
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          gh pr merge "$PR_URL" \
+            --repo "$GITHUB_REPOSITORY" \
+            --squash \
+            --delete-branch \
+            --subject "chore: merge automated PR #${PR_NUMBER}" \
+            --body "CI passed. Automated squash merge into main."

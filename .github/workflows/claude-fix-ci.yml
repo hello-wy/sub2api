@@ -1,0 +1,201 @@
+name: Claude Fix CI
+
+on:
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
+
+permissions:
+  actions: read
+  contents: write
+  pull-requests: write
+  issues: write
+
+env:
+  MAX_CLAUDE_FIX_ATTEMPTS: "3"
+
+jobs:
+  fix:
+    if: github.event.workflow_run.conclusion == 'failure'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate required secrets
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+          CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY || secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -z "$GH_PAT" ]; then
+            echo "GH_PAT is required so Claude pushes trigger CI."
+            exit 1
+          fi
+
+          if [ -z "$CLAUDE_API_KEY" ]; then
+            echo "CLAUDE_API_KEY or ANTHROPIC_API_KEY is required to run Claude Code Action."
+            exit 1
+          fi
+
+      - name: Resolve failed PR
+        id: pr
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          PR_NUMBER=$(jq -r '.workflow_run.pull_requests[0].number // ""' "$GITHUB_EVENT_PATH")
+          if [ -z "$PR_NUMBER" ]; then
+            echo "The failed CI run is not associated with a pull request."
+            exit 1
+          fi
+
+          gh pr view "$PR_NUMBER" \
+            --repo "$GITHUB_REPOSITORY" \
+            --json number,url,state,baseRefName,headRefName,isCrossRepository \
+            > pr.json
+
+          STATE=$(jq -r '.state' pr.json)
+          BASE_REF=$(jq -r '.baseRefName' pr.json)
+          HEAD_REF=$(jq -r '.headRefName' pr.json)
+          IS_CROSS_REPO=$(jq -r '.isCrossRepository' pr.json)
+          PR_URL=$(jq -r '.url' pr.json)
+
+          if [ "$STATE" != "OPEN" ]; then
+            echo "PR #$PR_NUMBER is $STATE, so Claude will not modify it."
+            echo "eligible=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ "$BASE_REF" != "main" ]; then
+            echo "PR #$PR_NUMBER targets $BASE_REF, not main."
+            echo "eligible=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ "$IS_CROSS_REPO" = "true" ]; then
+            echo "PR #$PR_NUMBER is from a fork and will not be auto-fixed."
+            echo "eligible=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          case "$HEAD_REF" in
+            update/upstream-*|claude/fix-* ) ;;
+            * )
+              echo "PR #$PR_NUMBER branch $HEAD_REF is not eligible for auto-fix."
+              echo "eligible=false" >> "$GITHUB_OUTPUT"
+              exit 0
+              ;;
+          esac
+
+          echo "eligible=true" >> "$GITHUB_OUTPUT"
+          echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "url=$PR_URL" >> "$GITHUB_OUTPUT"
+          echo "head_ref=$HEAD_REF" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout PR branch
+        if: steps.pr.outputs.eligible == 'true'
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.pr.outputs.head_ref }}
+          fetch-depth: 0
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Capture starting commit
+        if: steps.pr.outputs.eligible == 'true'
+        id: start
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Count Claude attempts
+        if: steps.pr.outputs.eligible == 'true'
+        id: attempts
+        run: |
+          COUNT=$(git log \
+            --format=%H \
+            --grep="fix: claude repair CI failure" \
+            | wc -l \
+            | tr -d ' ')
+
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+
+      - name: Stop after too many attempts
+        if: >
+          steps.pr.outputs.eligible == 'true' &&
+          fromJSON(steps.attempts.outputs.count) >= fromJSON(env.MAX_CLAUDE_FIX_ATTEMPTS)
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+        run: |
+          gh pr comment "$PR_NUMBER" \
+            --repo "$GITHUB_REPOSITORY" \
+            --body "Claude Fix CI stopped after ${MAX_CLAUDE_FIX_ATTEMPTS} failed repair attempts. Manual review is required."
+          exit 1
+
+      - name: Download failed CI logs
+        if: steps.pr.outputs.eligible == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          mkdir -p .ci-logs
+          gh run view "$RUN_ID" \
+            --repo "$GITHUB_REPOSITORY" \
+            --log \
+            > .ci-logs/failed-run.log
+
+          awk 'BEGIN { IGNORECASE = 1 }
+            /error|failed|fail|exception|panic|fatal/ { print }
+          ' .ci-logs/failed-run.log > ci-error-summary.txt
+
+      - name: Run Claude to repair CI
+        if: steps.pr.outputs.eligible == 'true'
+        uses: anthropics/claude-code-action@v1
+        env:
+          ANTHROPIC_BASE_URL: ${{ secrets.CLAUDE_BASE_URL || secrets.ANTHROPIC_BASE_URL }}
+        with:
+          anthropic_api_key: ${{ secrets.CLAUDE_API_KEY || secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            The CI workflow failed for PR #${{ steps.pr.outputs.number }}.
+
+            Read `.ci-logs/failed-run.log` and `ci-error-summary.txt`, identify the root cause, and repair the PR branch.
+
+            Requirements:
+            - Fix the root cause. Do not add mock success paths, silent fallbacks, or defensive degradation.
+            - Keep changes minimal and consistent with the existing Go/Vue project style.
+            - Do not modify `.github/workflows/**`, secrets, deployment credentials, or deployment scripts.
+            - For upstream sync conflicts, prefer upstream behavior by default.
+            - Preserve this fork's own automation/deploy modules when they conflict with upstream.
+            - Run the smallest relevant verification command after editing.
+            - Leave failures visible if a real fix cannot be made.
+
+            Useful commands:
+            - Backend unit tests: `timeout 60s make -C backend test-unit`
+            - Backend integration tests: `timeout 60s make -C backend test-integration`
+            - Frontend checks: `make test-frontend`
+          claude_args: |
+            --allowedTools Read,Edit,Write,Bash
+
+      - name: Commit and push Claude changes
+        if: steps.pr.outputs.eligible == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          START_SHA: ${{ steps.start.outputs.sha }}
+          HEAD_REF: ${{ steps.pr.outputs.head_ref }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+        run: |
+          git config user.name "claude[bot]"
+          git config user.email "claude[bot]@users.noreply.github.com"
+
+          if [ "$(git rev-parse HEAD)" != "$START_SHA" ]; then
+            git push origin "HEAD:$HEAD_REF"
+            exit 0
+          fi
+
+          if git diff --quiet && git diff --cached --quiet; then
+            gh pr comment "$PR_NUMBER" \
+              --repo "$GITHUB_REPOSITORY" \
+              --body "Claude inspected the CI failure but produced no code changes. Manual review is required."
+            exit 1
+          fi
+
+          git add -A
+          git commit -m "fix: claude repair CI failure"
+          git push origin "HEAD:$HEAD_REF"
