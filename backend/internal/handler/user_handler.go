@@ -23,6 +23,7 @@ type UserHandler struct {
 	emailCache            service.EmailCache
 	affiliateService      *service.AffiliateService
 	userPlatformQuotaRepo service.UserPlatformQuotaRepository
+	userAttributeService  *service.UserAttributeService
 }
 
 type DailyCheckinResponse struct {
@@ -36,6 +37,36 @@ type DailyCheckinStatusResponse struct {
 	Summary service.DailyCheckinSummary `json:"summary"`
 }
 
+type UserAttributesResponse struct {
+	Definitions []UserAttributeDefinitionResponse `json:"definitions"`
+	Values      []UserAttributeValueResponse      `json:"values"`
+}
+
+type UserAttributeDefinitionResponse struct {
+	ID           int64                           `json:"id"`
+	Key          string                          `json:"key"`
+	Name         string                          `json:"name"`
+	Description  string                          `json:"description"`
+	Type         string                          `json:"type"`
+	Options      []service.UserAttributeOption   `json:"options"`
+	Required     bool                            `json:"required"`
+	Validation   service.UserAttributeValidation `json:"validation"`
+	Placeholder  string                          `json:"placeholder"`
+	DisplayOrder int                             `json:"display_order"`
+	Enabled      bool                            `json:"enabled"`
+	CreatedAt    string                          `json:"created_at"`
+	UpdatedAt    string                          `json:"updated_at"`
+}
+
+type UserAttributeValueResponse struct {
+	ID          int64  `json:"id"`
+	UserID      int64  `json:"user_id"`
+	AttributeID int64  `json:"attribute_id"`
+	Value       string `json:"value"`
+	CreatedAt   string `json:"created_at"`
+	UpdatedAt   string `json:"updated_at"`
+}
+
 // NewUserHandler creates a new UserHandler
 func NewUserHandler(
 	userService *service.UserService,
@@ -44,6 +75,7 @@ func NewUserHandler(
 	emailCache service.EmailCache,
 	affiliateService *service.AffiliateService,
 	userPlatformQuotaRepo service.UserPlatformQuotaRepository,
+	userAttributeService *service.UserAttributeService,
 ) *UserHandler {
 	return &UserHandler{
 		userService:           userService,
@@ -52,6 +84,7 @@ func NewUserHandler(
 		emailCache:            emailCache,
 		affiliateService:      affiliateService,
 		userPlatformQuotaRepo: userPlatformQuotaRepo,
+		userAttributeService:  userAttributeService,
 	}
 }
 
@@ -140,6 +173,56 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 	}
 
 	response.Success(c, profileResp)
+}
+
+// GetAttributes handles getting enabled custom attributes for the current user.
+// GET /api/v1/user/attributes
+func (h *UserHandler) GetAttributes(c *gin.Context) {
+	subject, ok := middleware2.GetAuthSubjectFromContext(c)
+	if !ok {
+		response.Unauthorized(c, "User not authenticated")
+		return
+	}
+
+	if h.userAttributeService == nil {
+		response.Success(c, UserAttributesResponse{
+			Definitions: []UserAttributeDefinitionResponse{},
+			Values:      []UserAttributeValueResponse{},
+		})
+		return
+	}
+
+	defs, err := h.userAttributeService.ListDefinitions(c.Request.Context(), true)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+
+	values, err := h.userAttributeService.GetUserAttributes(c.Request.Context(), subject.UserID)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+
+	enabledIDs := make(map[int64]struct{}, len(defs))
+	defOut := make([]UserAttributeDefinitionResponse, 0, len(defs))
+	for i := range defs {
+		enabledIDs[defs[i].ID] = struct{}{}
+		defOut = append(defOut, userAttributeDefinitionResponseFromService(&defs[i]))
+	}
+
+	valueOut := make([]UserAttributeValueResponse, 0, len(values))
+	for i := range values {
+		if _, ok := enabledIDs[values[i].AttributeID]; !ok {
+			continue
+		}
+		valueOut = append(valueOut, userAttributeValueResponseFromService(&values[i]))
+	}
+
+	response.Success(c, UserAttributesResponse{
+		Definitions: defOut,
+		Values:      valueOut,
+	})
 }
 
 // ChangePassword handles changing user password
@@ -741,5 +824,40 @@ func buildUserProfileSourceContext(provider string) *userProfileSourceContext {
 	return &userProfileSourceContext{
 		Provider: provider,
 		Source:   provider,
+	}
+}
+
+func userAttributeDefinitionResponseFromService(def *service.UserAttributeDefinition) UserAttributeDefinitionResponse {
+	if def == nil {
+		return UserAttributeDefinitionResponse{}
+	}
+	return UserAttributeDefinitionResponse{
+		ID:           def.ID,
+		Key:          def.Key,
+		Name:         def.Name,
+		Description:  def.Description,
+		Type:         string(def.Type),
+		Options:      def.Options,
+		Required:     def.Required,
+		Validation:   def.Validation,
+		Placeholder:  def.Placeholder,
+		DisplayOrder: def.DisplayOrder,
+		Enabled:      def.Enabled,
+		CreatedAt:    def.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		UpdatedAt:    def.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+	}
+}
+
+func userAttributeValueResponseFromService(value *service.UserAttributeValue) UserAttributeValueResponse {
+	if value == nil {
+		return UserAttributeValueResponse{}
+	}
+	return UserAttributeValueResponse{
+		ID:          value.ID,
+		UserID:      value.UserID,
+		AttributeID: value.AttributeID,
+		Value:       value.Value,
+		CreatedAt:   value.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		UpdatedAt:   value.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	}
 }

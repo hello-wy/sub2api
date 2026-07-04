@@ -58,6 +58,19 @@ export interface MethodLimitsResponse {
   global_max: number  // widest max across all methods; 0 = no maximum
 }
 
+export interface PaymentLoyaltyInfo {
+  enabled: boolean
+  definitions_configured: boolean
+  weekly_points: number
+  permanent_points: number
+  weekly_discount: number
+  permanent_discount: number
+  discount_percent: number
+  discount_scope?: 'weekly' | 'permanent' | string
+  discount_level?: string
+  next_weekly_reset_at?: string
+}
+
 /** Response from /payment/checkout-info API — single call for the payment page */
 export interface CheckoutInfoResponse {
   methods: Record<string, MethodLimit>
@@ -72,6 +85,7 @@ export interface CheckoutInfoResponse {
   stripe_publishable_key: string
   /** When true, Alipay payments on mobile always show the QR code instead of redirecting */
   alipay_force_qrcode?: boolean
+  loyalty?: PaymentLoyaltyInfo
 }
 
 // ==================== Orders ====================
@@ -211,6 +225,7 @@ export interface CreateOrderResult {
   oauth?: WechatOAuthInfo
   jsapi?: WechatJSAPIPayload
   jsapi_payload?: WechatJSAPIPayload
+  loyalty?: PaymentLoyaltyInfo
 }
 
 export interface DashboardStats {

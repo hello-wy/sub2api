@@ -181,6 +181,106 @@ func (s *userHandlerRepoStub) UnbindUserAuthProvider(_ context.Context, _ int64,
 	return nil
 }
 
+type userAttributeDefRepoStub struct {
+	defs []service.UserAttributeDefinition
+}
+
+func (s *userAttributeDefRepoStub) Create(context.Context, *service.UserAttributeDefinition) error {
+	return nil
+}
+
+func (s *userAttributeDefRepoStub) GetByID(_ context.Context, id int64) (*service.UserAttributeDefinition, error) {
+	for i := range s.defs {
+		if s.defs[i].ID == id {
+			def := s.defs[i]
+			return &def, nil
+		}
+	}
+	return nil, service.ErrAttributeDefinitionNotFound
+}
+
+func (s *userAttributeDefRepoStub) GetByKey(_ context.Context, key string) (*service.UserAttributeDefinition, error) {
+	for i := range s.defs {
+		if s.defs[i].Key == key {
+			def := s.defs[i]
+			return &def, nil
+		}
+	}
+	return nil, service.ErrAttributeDefinitionNotFound
+}
+
+func (s *userAttributeDefRepoStub) Update(context.Context, *service.UserAttributeDefinition) error {
+	return nil
+}
+
+func (s *userAttributeDefRepoStub) Delete(context.Context, int64) error {
+	return nil
+}
+
+func (s *userAttributeDefRepoStub) List(_ context.Context, enabledOnly bool) ([]service.UserAttributeDefinition, error) {
+	out := make([]service.UserAttributeDefinition, 0, len(s.defs))
+	for _, def := range s.defs {
+		if enabledOnly && !def.Enabled {
+			continue
+		}
+		out = append(out, def)
+	}
+	return out, nil
+}
+
+func (s *userAttributeDefRepoStub) UpdateDisplayOrders(context.Context, map[int64]int) error {
+	return nil
+}
+
+func (s *userAttributeDefRepoStub) ExistsByKey(_ context.Context, key string) (bool, error) {
+	for _, def := range s.defs {
+		if def.Key == key {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+type userAttributeValueRepoStub struct {
+	values []service.UserAttributeValue
+}
+
+func (s *userAttributeValueRepoStub) GetByUserID(_ context.Context, userID int64) ([]service.UserAttributeValue, error) {
+	out := make([]service.UserAttributeValue, 0, len(s.values))
+	for _, value := range s.values {
+		if value.UserID == userID {
+			out = append(out, value)
+		}
+	}
+	return out, nil
+}
+
+func (s *userAttributeValueRepoStub) GetByUserIDs(_ context.Context, userIDs []int64) ([]service.UserAttributeValue, error) {
+	allowed := make(map[int64]struct{}, len(userIDs))
+	for _, id := range userIDs {
+		allowed[id] = struct{}{}
+	}
+	out := make([]service.UserAttributeValue, 0, len(s.values))
+	for _, value := range s.values {
+		if _, ok := allowed[value.UserID]; ok {
+			out = append(out, value)
+		}
+	}
+	return out, nil
+}
+
+func (s *userAttributeValueRepoStub) UpsertBatch(context.Context, int64, []service.UpdateUserAttributeInput) error {
+	return nil
+}
+
+func (s *userAttributeValueRepoStub) DeleteByAttributeID(context.Context, int64) error {
+	return nil
+}
+
+func (s *userAttributeValueRepoStub) DeleteByUserID(context.Context, int64) error {
+	return nil
+}
+
 func TestUserHandlerUpdateProfileReturnsAvatarURL(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -193,7 +293,7 @@ func TestUserHandlerUpdateProfileReturnsAvatarURL(t *testing.T) {
 			Status:   service.StatusActive,
 		},
 	}
-	handler := NewUserHandler(service.NewUserService(repo, nil, nil, nil), nil, nil, nil, nil, nil)
+	handler := NewUserHandler(service.NewUserService(repo, nil, nil, nil), nil, nil, nil, nil, nil, nil)
 
 	body := []byte(`{"avatar_url":"https://cdn.example.com/avatar.png"}`)
 	recorder := httptest.NewRecorder()
@@ -217,6 +317,107 @@ func TestUserHandlerUpdateProfileReturnsAvatarURL(t *testing.T) {
 	require.Equal(t, 0, resp.Code)
 	require.Equal(t, "https://cdn.example.com/avatar.png", resp.Data.AvatarURL)
 	require.Equal(t, "handler-avatar", resp.Data.Username)
+}
+
+func TestUserHandlerGetAttributesReturnsEnabledDefinitionsAndOwnValues(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	now := time.Date(2026, 7, 4, 12, 0, 0, 0, time.UTC)
+	attrService := service.NewUserAttributeService(
+		&userAttributeDefRepoStub{defs: []service.UserAttributeDefinition{
+			{
+				ID:        10,
+				Key:       "loyalty_weekly_points",
+				Name:      "周积分",
+				Type:      service.AttributeTypeNumber,
+				Enabled:   true,
+				CreatedAt: now,
+				UpdatedAt: now,
+			},
+			{
+				ID:        11,
+				Key:       "internal_note",
+				Name:      "内部备注",
+				Type:      service.AttributeTypeText,
+				Enabled:   false,
+				CreatedAt: now,
+				UpdatedAt: now,
+			},
+		}},
+		&userAttributeValueRepoStub{values: []service.UserAttributeValue{
+			{ID: 101, UserID: 42, AttributeID: 10, Value: "880", CreatedAt: now, UpdatedAt: now},
+			{ID: 102, UserID: 42, AttributeID: 11, Value: "hidden", CreatedAt: now, UpdatedAt: now},
+			{ID: 103, UserID: 43, AttributeID: 10, Value: "9999", CreatedAt: now, UpdatedAt: now},
+		}},
+	)
+	handler := NewUserHandler(nil, nil, nil, nil, nil, nil, attrService)
+
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+	c.Request = httptest.NewRequest(http.MethodGet, "/api/v1/user/attributes", nil)
+	c.Set(string(middleware2.ContextKeyUser), middleware2.AuthSubject{UserID: 42})
+
+	handler.GetAttributes(c)
+
+	require.Equal(t, http.StatusOK, recorder.Code)
+	var resp struct {
+		Code int `json:"code"`
+		Data struct {
+			Definitions []UserAttributeDefinitionResponse `json:"definitions"`
+			Values      []UserAttributeValueResponse      `json:"values"`
+		} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &resp))
+	require.Equal(t, 0, resp.Code)
+	require.Len(t, resp.Data.Definitions, 1)
+	require.Equal(t, "loyalty_weekly_points", resp.Data.Definitions[0].Key)
+	require.Len(t, resp.Data.Values, 1)
+	require.Equal(t, int64(42), resp.Data.Values[0].UserID)
+	require.Equal(t, int64(10), resp.Data.Values[0].AttributeID)
+	require.Equal(t, "880", resp.Data.Values[0].Value)
+}
+
+func TestUserHandlerGetAttributesReturnsEmptyArraysWhenNoAttributes(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	attrService := service.NewUserAttributeService(
+		&userAttributeDefRepoStub{},
+		&userAttributeValueRepoStub{},
+	)
+	handler := NewUserHandler(nil, nil, nil, nil, nil, nil, attrService)
+
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+	c.Request = httptest.NewRequest(http.MethodGet, "/api/v1/user/attributes", nil)
+	c.Set(string(middleware2.ContextKeyUser), middleware2.AuthSubject{UserID: 42})
+
+	handler.GetAttributes(c)
+
+	require.Equal(t, http.StatusOK, recorder.Code)
+	var resp struct {
+		Code int `json:"code"`
+		Data struct {
+			Definitions []UserAttributeDefinitionResponse `json:"definitions"`
+			Values      []UserAttributeValueResponse      `json:"values"`
+		} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &resp))
+	require.Equal(t, 0, resp.Code)
+	require.Empty(t, resp.Data.Definitions)
+	require.Empty(t, resp.Data.Values)
+}
+
+func TestUserHandlerGetAttributesRequiresAuth(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	handler := NewUserHandler(nil, nil, nil, nil, nil, nil, nil)
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+	c.Request = httptest.NewRequest(http.MethodGet, "/api/v1/user/attributes", nil)
+
+	handler.GetAttributes(c)
+
+	require.Equal(t, http.StatusUnauthorized, recorder.Code)
 }
 
 func TestUserHandlerGetProfileReturnsIdentitySummaries(t *testing.T) {
@@ -251,7 +452,7 @@ func TestUserHandlerGetProfileReturnsIdentitySummaries(t *testing.T) {
 			},
 		},
 	}
-	handler := NewUserHandler(service.NewUserService(repo, nil, nil, nil), nil, nil, nil, nil, nil)
+	handler := NewUserHandler(service.NewUserService(repo, nil, nil, nil), nil, nil, nil, nil, nil, nil)
 
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
@@ -334,7 +535,7 @@ func TestUserHandlerGetProfileReturnsLegacyCompatibilityFields(t *testing.T) {
 			},
 		},
 	}
-	handler := NewUserHandler(service.NewUserService(repo, nil, nil, nil), nil, nil, nil, nil, nil)
+	handler := NewUserHandler(service.NewUserService(repo, nil, nil, nil), nil, nil, nil, nil, nil, nil)
 
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
@@ -413,7 +614,7 @@ func TestUserHandlerGetProfileDoesNotInferEditedProfileSourcesWithoutMatchingIde
 			},
 		},
 	}
-	handler := NewUserHandler(service.NewUserService(repo, nil, nil, nil), nil, nil, nil, nil, nil)
+	handler := NewUserHandler(service.NewUserService(repo, nil, nil, nil), nil, nil, nil, nil, nil, nil)
 
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
@@ -450,7 +651,7 @@ func TestUserHandlerCheckInDailySuccess(t *testing.T) {
 		hasQQ: true,
 	}
 	repo.checkinRecords = []service.DailyCheckinRecord{}
-	handler := NewUserHandler(service.NewUserService(repo, nil, nil, nil), nil, nil, nil, nil, nil)
+	handler := NewUserHandler(service.NewUserService(repo, nil, nil, nil), nil, nil, nil, nil, nil, nil)
 
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
@@ -498,7 +699,7 @@ func TestUserHandlerCheckInDailyRequiresQQ(t *testing.T) {
 			Status:   service.StatusActive,
 		},
 	}
-	handler := NewUserHandler(service.NewUserService(repo, nil, nil, nil), nil, nil, nil, nil, nil)
+	handler := NewUserHandler(service.NewUserService(repo, nil, nil, nil), nil, nil, nil, nil, nil, nil)
 
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
@@ -534,7 +735,7 @@ func TestUserHandlerGetCheckInStatus(t *testing.T) {
 			{UserID: 33, CheckinDate: yesterday, Timezone: "UTC", TotalReward: 3, StreakDays: 1},
 		},
 	}
-	handler := NewUserHandler(service.NewUserService(repo, nil, nil, nil), nil, nil, nil, nil, nil)
+	handler := NewUserHandler(service.NewUserService(repo, nil, nil, nil), nil, nil, nil, nil, nil, nil)
 
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
@@ -585,7 +786,7 @@ func TestUserHandlerListCheckInHistory(t *testing.T) {
 			{UserID: 34, CheckinDate: time.Date(2026, 6, 23, 0, 0, 0, 0, time.UTC), Timezone: "UTC", TotalReward: 3, StreakDays: 1},
 		},
 	}
-	handler := NewUserHandler(service.NewUserService(repo, nil, nil, nil), nil, nil, nil, nil, nil)
+	handler := NewUserHandler(service.NewUserService(repo, nil, nil, nil), nil, nil, nil, nil, nil, nil)
 
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
@@ -743,7 +944,7 @@ func TestUserHandlerBindEmailIdentityReturnsProfileResponse(t *testing.T) {
 	}
 	emailService := service.NewEmailService(nil, emailCache)
 	authService := service.NewAuthService(nil, repo, nil, nil, cfg, nil, emailService, nil, nil, nil, nil, nil, nil)
-	handler := NewUserHandler(service.NewUserService(repo, nil, nil, nil), authService, nil, nil, nil, nil)
+	handler := NewUserHandler(service.NewUserService(repo, nil, nil, nil), authService, nil, nil, nil, nil, nil)
 
 	body := []byte(`{"email":"new@example.com","verify_code":"123456","password":"new-password"}`)
 	recorder := httptest.NewRecorder()
@@ -797,7 +998,7 @@ func TestUserHandlerUnbindIdentityReturnsUpdatedProfile(t *testing.T) {
 			},
 		},
 	}
-	handler := NewUserHandler(service.NewUserService(repo, nil, nil, nil), nil, nil, nil, nil, nil)
+	handler := NewUserHandler(service.NewUserService(repo, nil, nil, nil), nil, nil, nil, nil, nil, nil)
 
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
@@ -857,7 +1058,7 @@ func TestUserHandlerUnbindIdentityRevokesAllUserSessionsWhenAuthServiceConfigure
 		},
 	}
 	authService := service.NewAuthService(nil, repo, nil, refreshTokenCache, cfg, nil, nil, nil, nil, nil, nil, nil, nil)
-	handler := NewUserHandler(service.NewUserService(repo, nil, nil, nil), authService, nil, nil, nil, nil)
+	handler := NewUserHandler(service.NewUserService(repo, nil, nil, nil), authService, nil, nil, nil, nil, nil)
 
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
@@ -900,7 +1101,7 @@ func TestUserHandlerUnbindIdentityDoesNotRevokeSessionsWhenNothingWasUnbound(t *
 		},
 	}
 	authService := service.NewAuthService(nil, repo, nil, refreshTokenCache, cfg, nil, nil, nil, nil, nil, nil, nil, nil)
-	handler := NewUserHandler(service.NewUserService(repo, nil, nil, nil), authService, nil, nil, nil, nil)
+	handler := NewUserHandler(service.NewUserService(repo, nil, nil, nil), authService, nil, nil, nil, nil, nil)
 
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
@@ -944,7 +1145,7 @@ func TestUserHandlerBindEmailIdentityRejectsWrongCurrentPasswordForBoundEmail(t 
 	}
 	emailService := service.NewEmailService(nil, emailCache)
 	authService := service.NewAuthService(nil, repo, nil, nil, cfg, nil, emailService, nil, nil, nil, nil, nil, nil)
-	handler := NewUserHandler(service.NewUserService(repo, nil, nil, nil), authService, nil, nil, nil, nil)
+	handler := NewUserHandler(service.NewUserService(repo, nil, nil, nil), authService, nil, nil, nil, nil, nil)
 
 	body := []byte(`{"email":"new@example.com","verify_code":"123456","password":"wrong-password"}`)
 	recorder := httptest.NewRecorder()
@@ -981,7 +1182,7 @@ func TestUserHandlerStartIdentityBindingReturnsAuthorizeURL(t *testing.T) {
 			Status:   service.StatusActive,
 		},
 	}
-	handler := NewUserHandler(service.NewUserService(repo, nil, nil, nil), nil, nil, nil, nil, nil)
+	handler := NewUserHandler(service.NewUserService(repo, nil, nil, nil), nil, nil, nil, nil, nil, nil)
 
 	body := []byte(`{"provider":"wechat","redirect_to":"/settings/profile"}`)
 	recorder := httptest.NewRecorder()

@@ -31,6 +31,7 @@ func TestBuildCreateOrderResponseDefaultsToOrderCreated(t *testing.T) {
 			QRCode:  "weixin://wxpay/bizpayurl?pr=test",
 		},
 		payment.CreatePaymentResultOrderCreated,
+		nil,
 	)
 
 	if resp.ResultType != payment.CreatePaymentResultOrderCreated {
@@ -78,6 +79,7 @@ func TestBuildCreateOrderResponseCopiesJSAPIPayload(t *testing.T) {
 			JSAPI:      jsapiPayload,
 		},
 		payment.CreatePaymentResultJSAPIReady,
+		nil,
 	)
 
 	if resp.ResultType != payment.CreatePaymentResultJSAPIReady {
@@ -123,6 +125,23 @@ func TestCalculateCreateOrderPayAmountUsesCurrencyPrecision(t *testing.T) {
 	}
 	if amountStr != "12.469" || amount != 12.469 {
 		t.Fatalf("KWD pay amount = (%q, %v), want (12.469, 12.469)", amountStr, amount)
+	}
+}
+
+func TestApplyPaymentLoyaltyDiscountUsesCurrencyPrecision(t *testing.T) {
+	t.Parallel()
+
+	if got := applyPaymentLoyaltyDiscount(100, 8, "CNY"); got != 92 {
+		t.Fatalf("CNY discounted amount = %v, want 92", got)
+	}
+	if got := applyPaymentLoyaltyDiscount(100, 8, "JPY"); got != 92 {
+		t.Fatalf("JPY discounted amount = %v, want 92", got)
+	}
+	if got := applyPaymentLoyaltyDiscount(12.345, 4, "KWD"); got != 11.851 {
+		t.Fatalf("KWD discounted amount = %v, want 11.851", got)
+	}
+	if got := applyPaymentLoyaltyDiscount(100, 0, "CNY"); got != 100 {
+		t.Fatalf("zero discount amount = %v, want 100", got)
 	}
 }
 
@@ -405,7 +424,7 @@ func TestMaybeBuildWeChatOAuthRequiredResponseForSelectionSkipsEasyPayProvider(t
 		OrderType:       payment.OrderTypeBalance,
 	}, 12.5, 12.88, 0.03, &payment.InstanceSelection{
 		ProviderKey: payment.TypeEasyPay,
-	})
+	}, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

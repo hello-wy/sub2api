@@ -54,6 +54,7 @@ interface MockAuthState {
   isSimpleMode: boolean
   backendModeEnabled: boolean
   hasPendingAuthSession: boolean
+  paymentEnabled?: boolean
   setupNeedsSetup?: boolean
 }
 
@@ -84,7 +85,7 @@ function simulateGuard(
       return authState.isAdmin ? '/admin/dashboard' : '/dashboard'
     }
     if (authState.backendModeEnabled && !authState.isAuthenticated) {
-      const allowed = ['/login', '/key-usage', '/setup', '/payment/result']
+      const allowed = ['/login', '/key-usage', '/setup', '/loyalty', '/payment/result']
       const callbackPaths = [
         '/auth/callback',
         '/auth/linuxdo/callback',
@@ -114,6 +115,13 @@ function simulateGuard(
     return '/dashboard'
   }
 
+  if (toMeta.requiresPayment) {
+    const paymentEnabled = authState.paymentEnabled !== false
+    if (!paymentEnabled) {
+      return authState.isAdmin ? '/admin/dashboard' : '/dashboard'
+    }
+  }
+
   // 简易模式限制
   if (authState.isSimpleMode) {
     const restrictedPaths = [
@@ -133,7 +141,7 @@ function simulateGuard(
     if (authState.isAuthenticated && authState.isAdmin) {
       return null
     }
-    const allowed = ['/login', '/key-usage', '/setup', '/payment/result']
+    const allowed = ['/login', '/key-usage', '/setup', '/loyalty', '/payment/result']
     const callbackPaths = [
       '/auth/callback',
       '/auth/linuxdo/callback',
@@ -468,6 +476,43 @@ describe('路由守卫逻辑', () => {
       }
       const redirect = simulateGuard('/key-usage', { requiresAuth: false }, authState)
       expect(redirect).toBeNull()
+    })
+
+    it('non-admin authenticated: /loyalty is allowed as an account page', () => {
+      const authState: MockAuthState = {
+        isAuthenticated: true,
+        isAdmin: false,
+        isSimpleMode: false,
+        backendModeEnabled: true,
+        hasPendingAuthSession: false,
+      }
+      const redirect = simulateGuard('/loyalty', { requiresPayment: true }, authState)
+      expect(redirect).toBeNull()
+    })
+
+    it('admin: /loyalty is allowed while payment settings are still hydrating', () => {
+      const authState: MockAuthState = {
+        isAuthenticated: true,
+        isAdmin: true,
+        isSimpleMode: false,
+        backendModeEnabled: false,
+        hasPendingAuthSession: false,
+      }
+      const redirect = simulateGuard('/loyalty', { requiresPayment: true }, authState)
+      expect(redirect).toBeNull()
+    })
+
+    it('admin: /loyalty redirects to admin dashboard when payment is explicitly disabled', () => {
+      const authState: MockAuthState = {
+        isAuthenticated: true,
+        isAdmin: true,
+        isSimpleMode: false,
+        backendModeEnabled: false,
+        hasPendingAuthSession: false,
+        paymentEnabled: false,
+      }
+      const redirect = simulateGuard('/loyalty', { requiresPayment: true }, authState)
+      expect(redirect).toBe('/admin/dashboard')
     })
 
     it('unauthenticated: callback routes are allowed', () => {

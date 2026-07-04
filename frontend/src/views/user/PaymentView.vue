@@ -63,15 +63,23 @@
                   <span class="text-gray-500 dark:text-gray-400">{{ t('payment.paymentAmount') }}</span>
                   <span class="text-gray-900 dark:text-white">{{ formatSelectedPaymentAmount(validAmount) }}</span>
                 </div>
+                <div v-if="hasLoyaltyDiscount" class="flex justify-between">
+                  <span class="text-gray-500 dark:text-gray-400">{{ t('payment.loyaltyDiscount', { discount: loyaltyDiscountPercent }) }}</span>
+                  <span class="font-semibold text-emerald-600 dark:text-emerald-300">-{{ formatSelectedPaymentAmount(loyaltyDiscountAmount) }}</span>
+                </div>
+                <div v-if="hasLoyaltyDiscount" class="flex justify-between">
+                  <span class="text-gray-500 dark:text-gray-400">{{ t('payment.discountedPaymentAmount') }}</span>
+                  <span class="text-gray-900 dark:text-white">{{ formatSelectedPaymentAmount(paymentBaseAmount) }}</span>
+                </div>
                 <div v-if="feeRate > 0" class="flex justify-between">
                   <span class="text-gray-500 dark:text-gray-400">{{ t('payment.fee') }} ({{ feeRate }}%)</span>
                   <span class="text-gray-900 dark:text-white">{{ formatSelectedPaymentAmount(feeAmount) }}</span>
                 </div>
-                <div v-if="feeRate > 0" class="flex justify-between border-t border-gray-200 pt-2 dark:border-dark-600">
+                <div v-if="showActualPay" class="flex justify-between border-t border-gray-200 pt-2 dark:border-dark-600">
                   <span class="font-medium text-gray-700 dark:text-gray-300">{{ t('payment.actualPay') }}</span>
                   <span class="text-lg font-bold text-primary-600 dark:text-primary-400">{{ formatSelectedPaymentAmount(totalAmount) }}</span>
                 </div>
-                <div v-if="balanceRechargeMultiplier !== 1" class="flex justify-between" :class="{ 'border-t border-gray-200 pt-2 dark:border-dark-600': feeRate <= 0 }">
+                <div v-if="balanceRechargeMultiplier !== 1" class="flex justify-between" :class="{ 'border-t border-gray-200 pt-2 dark:border-dark-600': !showActualPay }">
                   <span class="text-gray-500 dark:text-gray-400">{{ t('payment.creditedBalance') }}</span>
                   <span class="text-gray-900 dark:text-white">${{ creditedAmount.toFixed(2) }}</span>
                 </div>
@@ -512,6 +520,12 @@ const balanceRechargeMultiplier = computed(() => {
   return Number.isFinite(multiplier) && multiplier > 0 ? multiplier : 1
 })
 const creditedAmount = computed(() => Math.round((validAmount.value * balanceRechargeMultiplier.value) * 100) / 100)
+const loyaltyInfo = computed(() => checkout.value.loyalty)
+const loyaltyDiscountPercent = computed(() => {
+  const raw = loyaltyInfo.value?.discount_percent ?? 0
+  if (!loyaltyInfo.value?.enabled || !Number.isFinite(raw) || raw <= 0) return 0
+  return Math.min(99, Math.max(0, raw))
+})
 
 // Adaptive grid: center single card, 2-col for 2 plans, 3-col for 3+
 const planGridClass = computed(() => {
@@ -587,47 +601,76 @@ function formatSelectedSubscriptionPaymentAmount(value: number): string {
   return formatSelectedPaymentAmount(roundPaymentAmount(value, selectedCurrency.value))
 }
 
+const feeRate = computed(() => checkout.value?.recharge_fee_rate ?? 0)
+
+function balancePaymentBaseForCurrency(value: number, currency: string): number {
+  if (value <= 0) return 0
+  if (loyaltyDiscountPercent.value <= 0) return roundPaymentAmount(value, currency)
+  return roundPaymentAmount(value * (100 - loyaltyDiscountPercent.value) / 100, currency)
+}
+
+function balanceFeeAmountForCurrency(value: number, currency: string): number {
+  if (feeRate.value <= 0 || value <= 0) return 0
+  return ceilPaymentAmount((value * feeRate.value) / 100, currency)
+}
+
+function balanceTotalAmountForCurrency(value: number, currency: string): number {
+  const paymentBase = balancePaymentBaseForCurrency(value, currency)
+  if (paymentBase <= 0) return 0
+  return roundPaymentAmount(paymentBase + balanceFeeAmountForCurrency(paymentBase, currency), currency)
+}
+
+function balanceTotalAmountForMethod(value: number, methodType: string): number {
+  const currency = normalizePaymentCurrency(visibleMethods.value[methodType]?.currency)
+  return balanceTotalAmountForCurrency(value, currency)
+}
+
+const paymentBaseAmount = computed(() => balancePaymentBaseForCurrency(validAmount.value, selectedCurrency.value))
+const loyaltyDiscountAmount = computed(() => roundPaymentAmount(Math.max(0, validAmount.value - paymentBaseAmount.value), selectedCurrency.value))
+const hasLoyaltyDiscount = computed(() => loyaltyDiscountPercent.value > 0 && loyaltyDiscountAmount.value > 0)
+const selectedBalanceTotalAmount = computed(() => balanceTotalAmountForCurrency(validAmount.value, selectedCurrency.value))
+const showActualPay = computed(() => feeRate.value > 0 || hasLoyaltyDiscount.value)
+
 const methodOptions = computed<PaymentMethodOption[]>(() =>
   enabledMethods.value.map((type) => {
     const ml = visibleMethods.value[type]
     return {
       type,
       fee_rate: ml?.fee_rate ?? 0,
-      available: ml?.available !== false && amountFitsMethod(validAmount.value, type),
+      available: ml?.available !== false && amountFitsMethod(balanceTotalAmountForMethod(validAmount.value, type), type),
     }
   })
 )
 
-const feeRate = computed(() => checkout.value?.recharge_fee_rate ?? 0)
 const feeAmount = computed(() =>
-  feeRate.value > 0 && validAmount.value > 0
-    ? Math.ceil(((validAmount.value * feeRate.value) / 100) * 100) / 100
+  feeRate.value > 0 && paymentBaseAmount.value > 0
+    ? balanceFeeAmountForCurrency(paymentBaseAmount.value, selectedCurrency.value)
     : 0
 )
 const totalAmount = computed(() =>
-  feeRate.value > 0 && validAmount.value > 0
-    ? Math.round((validAmount.value + feeAmount.value) * 100) / 100
+  paymentBaseAmount.value > 0
+    ? roundPaymentAmount(paymentBaseAmount.value + feeAmount.value, selectedCurrency.value)
     : validAmount.value
 )
 
 const amountError = computed(() => {
   if (validAmount.value <= 0) return ''
   // No method can handle this amount
-  if (!enabledMethods.value.some((m) => amountFitsMethod(validAmount.value, m))) {
+  if (!enabledMethods.value.some((m) => amountFitsMethod(balanceTotalAmountForMethod(validAmount.value, m), m))) {
     return t('payment.amountNoMethod')
   }
   // Selected method can't handle this amount (but others can)
   const ml = selectedLimit.value
   if (ml) {
-    if (ml.single_min > 0 && validAmount.value < ml.single_min) return t('payment.amountTooLow', { min: formatSelectedPaymentAmount(ml.single_min) })
-    if (ml.single_max > 0 && validAmount.value > ml.single_max) return t('payment.amountTooHigh', { max: formatSelectedPaymentAmount(ml.single_max) })
+    if (ml.single_min > 0 && selectedBalanceTotalAmount.value < ml.single_min) return t('payment.amountTooLow', { min: formatSelectedPaymentAmount(ml.single_min) })
+    if (ml.single_max > 0 && selectedBalanceTotalAmount.value > ml.single_max) return t('payment.amountTooHigh', { max: formatSelectedPaymentAmount(ml.single_max) })
   }
   return ''
 })
 
 const canSubmit = computed(() =>
   validAmount.value > 0
-    && amountFitsMethod(validAmount.value, selectedMethod.value)
+    && amountFitsMethod(selectedBalanceTotalAmount.value, selectedMethod.value)
     && selectedLimit.value?.available !== false
 )
 
@@ -675,8 +718,8 @@ const canSubmitSubscription = computed(() =>
 
 // Auto-switch to first available method when current selection can't handle the amount
 watch(() => [validAmount.value, selectedMethod.value] as const, ([amt, method]) => {
-  if (amt <= 0 || amountFitsMethod(amt, method)) return
-  const available = enabledMethods.value.find((m) => amountFitsMethod(amt, m))
+  if (amt <= 0 || amountFitsMethod(balanceTotalAmountForMethod(amt, method), method)) return
+  const available = enabledMethods.value.find((m) => amountFitsMethod(balanceTotalAmountForMethod(amt, m), m))
   if (available) selectedMethod.value = available
 })
 

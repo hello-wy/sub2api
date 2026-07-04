@@ -67,8 +67,17 @@ func (s *PaymentService) CreateOrder(ctx context.Context, req CreateOrderRequest
 			return nil, err
 		}
 	}
+	gatewayBaseAmount := limitAmount
+	var loyaltyInfo *PaymentLoyaltyInfo
+	if req.OrderType == payment.OrderTypeBalance {
+		loyaltyInfo, err = s.GetLoyaltyInfo(ctx, req.UserID)
+		if err != nil {
+			return nil, fmt.Errorf("get loyalty info: %w", err)
+		}
+		gatewayBaseAmount = applyPaymentLoyaltyDiscount(limitAmount, loyaltyInfo.DiscountPercent, methodCurrency)
+	}
 	// 订阅套餐 price 是直付价，余额充值倍率只影响余额充值到账，不参与订阅 pay_amount 计算。
-	payAmountStr, payAmount, err := calculateCreateOrderPayAmount(limitAmount, feeRate, methodCurrency)
+	payAmountStr, payAmount, err := calculateCreateOrderPayAmount(gatewayBaseAmount, feeRate, methodCurrency)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +93,10 @@ func (s *PaymentService) CreateOrder(ctx context.Context, req CreateOrderRequest
 		selectedCurrency = paymentProviderConfigCurrency(sel.ProviderKey, sel.Config)
 	}
 	if selectedCurrency != methodCurrency {
-		payAmountStr, payAmount, err = calculateCreateOrderPayAmount(limitAmount, feeRate, selectedCurrency)
+		if req.OrderType == payment.OrderTypeBalance {
+			gatewayBaseAmount = applyPaymentLoyaltyDiscount(limitAmount, loyaltyInfo.DiscountPercent, selectedCurrency)
+		}
+		payAmountStr, payAmount, err = calculateCreateOrderPayAmount(gatewayBaseAmount, feeRate, selectedCurrency)
 		if err != nil {
 			return nil, err
 		}
@@ -92,18 +104,19 @@ func (s *PaymentService) CreateOrder(ctx context.Context, req CreateOrderRequest
 	if err := validateSelectedCreateOrderAmountCurrency(payAmountStr, sel); err != nil {
 		return nil, err
 	}
-	oauthResp, err := s.maybeBuildWeChatOAuthRequiredResponseForSelection(ctx, req, limitAmount, payAmount, feeRate, sel)
+	oauthResp, err := s.maybeBuildWeChatOAuthRequiredResponseForSelection(ctx, req, limitAmount, payAmount, feeRate, sel, loyaltyInfo)
 	if err != nil {
 		return nil, err
 	}
 	if oauthResp != nil {
 		return oauthResp, nil
 	}
-	order, err := s.createOrderInTx(ctx, req, user, plan, cfg, orderAmount, limitAmount, feeRate, payAmount, sel)
+	loyaltySnapshot := buildPaymentLoyaltySnapshot(loyaltyInfo, limitAmount, gatewayBaseAmount, limitAmount, selectedCurrency)
+	order, err := s.createOrderInTx(ctx, req, user, plan, cfg, orderAmount, gatewayBaseAmount, feeRate, payAmount, sel, loyaltySnapshot)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := s.invokeProvider(ctx, order, req, cfg, limitAmount, payAmountStr, payAmount, plan, sel)
+	resp, err := s.invokeProvider(ctx, order, req, cfg, limitAmount, payAmountStr, payAmount, plan, sel, loyaltyInfo)
 	if err != nil {
 		_, _ = s.entClient.PaymentOrder.UpdateOneID(order.ID).
 			SetStatus(OrderStatusFailed).
@@ -148,7 +161,7 @@ func (s *PaymentService) validateSubOrder(ctx context.Context, req CreateOrderRe
 	return plan, nil
 }
 
-func (s *PaymentService) createOrderInTx(ctx context.Context, req CreateOrderRequest, user *User, plan *dbent.SubscriptionPlan, cfg *PaymentConfig, orderAmount, limitAmount, feeRate, payAmount float64, sel *payment.InstanceSelection) (*dbent.PaymentOrder, error) {
+func (s *PaymentService) createOrderInTx(ctx context.Context, req CreateOrderRequest, user *User, plan *dbent.SubscriptionPlan, cfg *PaymentConfig, orderAmount, limitAmount, feeRate, payAmount float64, sel *payment.InstanceSelection, loyaltySnapshot map[string]any) (*dbent.PaymentOrder, error) {
 	tx, err := s.entClient.Tx(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("begin transaction: %w", err)
@@ -170,6 +183,12 @@ func (s *PaymentService) createOrderInTx(ctx context.Context, req CreateOrderReq
 		return nil, err
 	}
 	providerSnapshot := buildPaymentOrderProviderSnapshot(sel, req)
+	if len(loyaltySnapshot) > 0 {
+		if providerSnapshot == nil {
+			providerSnapshot = map[string]any{}
+		}
+		providerSnapshot[paymentLoyaltyProviderSnapshot] = loyaltySnapshot
+	}
 	selectedInstanceID := ""
 	selectedProviderKey := ""
 	if sel != nil {
@@ -396,7 +415,7 @@ func (s *PaymentService) usesOfficialWxpayVisibleMethod(ctx context.Context) boo
 	return inst.ProviderKey == payment.TypeWxpay
 }
 
-func (s *PaymentService) invokeProvider(ctx context.Context, order *dbent.PaymentOrder, req CreateOrderRequest, cfg *PaymentConfig, limitAmount float64, payAmountStr string, payAmount float64, plan *dbent.SubscriptionPlan, sel *payment.InstanceSelection) (*CreateOrderResponse, error) {
+func (s *PaymentService) invokeProvider(ctx context.Context, order *dbent.PaymentOrder, req CreateOrderRequest, cfg *PaymentConfig, limitAmount float64, payAmountStr string, payAmount float64, plan *dbent.SubscriptionPlan, sel *payment.InstanceSelection, loyaltyInfo *PaymentLoyaltyInfo) (*CreateOrderResponse, error) {
 	prov, err := provider.CreateProvider(sel.ProviderKey, sel.InstanceID, sel.Config)
 	if err != nil {
 		slog.Error("[PaymentService] CreateProvider failed", "provider", sel.ProviderKey, "instance", sel.InstanceID, "error", err)
@@ -463,19 +482,23 @@ func (s *PaymentService) invokeProvider(ctx context.Context, order *dbent.Paymen
 	if err != nil {
 		return nil, fmt.Errorf("update order with payment details: %w", err)
 	}
-	s.writeAuditLog(ctx, order.ID, "ORDER_CREATED", fmt.Sprintf("user:%d", req.UserID), map[string]any{
+	auditDetail := map[string]any{
 		"paymentAmount":  req.Amount,
 		"creditedAmount": order.Amount,
 		"payAmount":      order.PayAmount,
 		"paymentType":    req.PaymentType,
 		"orderType":      req.OrderType,
 		"paymentSource":  NormalizePaymentSource(req.PaymentSource),
-	})
+	}
+	if loyaltySnapshot := paymentLoyaltySnapshotFromOrder(order); len(loyaltySnapshot) > 0 {
+		auditDetail[paymentLoyaltyProviderSnapshot] = loyaltySnapshot
+	}
+	s.writeAuditLog(ctx, order.ID, "ORDER_CREATED", fmt.Sprintf("user:%d", req.UserID), auditDetail)
 	resultType := pr.ResultType
 	if resultType == "" {
 		resultType = payment.CreatePaymentResultOrderCreated
 	}
-	resp := buildCreateOrderResponse(order, req, payAmount, sel, pr, resultType)
+	resp := buildCreateOrderResponse(order, req, payAmount, sel, pr, resultType, loyaltyInfo)
 	resp.ResumeToken = resumeToken
 	return resp, nil
 }
@@ -539,20 +562,20 @@ func applyPaymentProductNameAffix(productName string, cfg *PaymentConfig) string
 }
 
 func (s *PaymentService) maybeBuildWeChatOAuthRequiredResponse(ctx context.Context, req CreateOrderRequest, amount, payAmount, feeRate float64) (*CreateOrderResponse, error) {
-	return s.maybeBuildWeChatOAuthRequiredResponseForSelection(ctx, req, amount, payAmount, feeRate, nil)
+	return s.maybeBuildWeChatOAuthRequiredResponseForSelection(ctx, req, amount, payAmount, feeRate, nil, nil)
 }
 
-func (s *PaymentService) maybeBuildWeChatOAuthRequiredResponseForSelection(ctx context.Context, req CreateOrderRequest, amount, payAmount, feeRate float64, sel *payment.InstanceSelection) (*CreateOrderResponse, error) {
+func (s *PaymentService) maybeBuildWeChatOAuthRequiredResponseForSelection(ctx context.Context, req CreateOrderRequest, amount, payAmount, feeRate float64, sel *payment.InstanceSelection, loyaltyInfo *PaymentLoyaltyInfo) (*CreateOrderResponse, error) {
 	if sel != nil && sel.ProviderKey != "" && sel.ProviderKey != payment.TypeWxpay {
 		return nil, nil
 	}
 	if strings.TrimSpace(req.OpenID) != "" || !req.IsWeChatBrowser || payment.GetBasePaymentType(req.PaymentType) != payment.TypeWxpay {
 		return nil, nil
 	}
-	return s.buildWeChatOAuthRequiredResponse(ctx, req, amount, payAmount, feeRate)
+	return s.buildWeChatOAuthRequiredResponse(ctx, req, amount, payAmount, feeRate, loyaltyInfo)
 }
 
-func (s *PaymentService) buildWeChatOAuthRequiredResponse(ctx context.Context, req CreateOrderRequest, amount, payAmount, feeRate float64) (*CreateOrderResponse, error) {
+func (s *PaymentService) buildWeChatOAuthRequiredResponse(ctx context.Context, req CreateOrderRequest, amount, payAmount, feeRate float64, loyaltyInfo *PaymentLoyaltyInfo) (*CreateOrderResponse, error) {
 	appID, _, err := s.getWeChatPaymentOAuthCredential(ctx)
 	if err != nil {
 		return nil, err
@@ -572,6 +595,7 @@ func (s *PaymentService) buildWeChatOAuthRequiredResponse(ctx context.Context, r
 		FeeRate:     feeRate,
 		ResultType:  payment.CreatePaymentResultOAuthRequired,
 		PaymentType: req.PaymentType,
+		Loyalty:     loyaltyInfo,
 		OAuth: &payment.WechatOAuthInfo{
 			AuthorizeURL: authorizeURL,
 			AppID:        appID,
@@ -677,7 +701,7 @@ func classifyCreatePaymentError(req CreateOrderRequest, providerKey string, err 
 	return infraerrors.ServiceUnavailable("PAYMENT_GATEWAY_ERROR", fmt.Sprintf("payment gateway error: %s", err.Error()))
 }
 
-func buildCreateOrderResponse(order *dbent.PaymentOrder, req CreateOrderRequest, payAmount float64, sel *payment.InstanceSelection, pr *payment.CreatePaymentResponse, resultType payment.CreatePaymentResultType) *CreateOrderResponse {
+func buildCreateOrderResponse(order *dbent.PaymentOrder, req CreateOrderRequest, payAmount float64, sel *payment.InstanceSelection, pr *payment.CreatePaymentResponse, resultType payment.CreatePaymentResultType, loyaltyInfo *PaymentLoyaltyInfo) *CreateOrderResponse {
 	return &CreateOrderResponse{
 		OrderID:      order.ID,
 		Amount:       order.Amount,
@@ -699,6 +723,7 @@ func buildCreateOrderResponse(order *dbent.PaymentOrder, req CreateOrderRequest,
 		JSAPIPayload: pr.JSAPI,
 		ExpiresAt:    order.ExpiresAt,
 		PaymentMode:  sel.PaymentMode,
+		Loyalty:      loyaltyInfo,
 	}
 }
 

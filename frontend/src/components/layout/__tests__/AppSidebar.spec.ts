@@ -38,4 +38,22 @@ describe('AppSidebar user navigation', () => {
     expect(componentSource).not.toContain("t('nav.imageGeneration')")
     expect(componentSource).not.toContain("t('nav.rechargeAddress')")
   })
+
+  it('includes the loyalty page behind the payment feature flag', () => {
+    expect(componentSource).toMatch(
+      /\{ path: '\/loyalty', label: t\('nav\.loyalty'\), icon: GiftIcon, hideInSimpleMode: true, featureFlag: flagPayment \}/
+    )
+  })
+
+  it('places loyalty in the shared My Account navigation used by admins', () => {
+    expect(componentSource).toMatch(
+      /{{ t\('nav\.myAccount'\) }}[\s\S]*v-for="item in personalNavItems"/
+    )
+    expect(componentSource).toContain(
+      'const personalNavItems = computed((): NavItem[] => finalizeNav(buildSelfNavItems(false)))'
+    )
+    expect(componentSource).toMatch(
+      /function buildSelfNavItems\(withDashboard: boolean\): NavItem\[] \{[\s\S]*path: '\/loyalty'/
+    )
+  })
 })

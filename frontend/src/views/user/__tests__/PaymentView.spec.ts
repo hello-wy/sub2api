@@ -235,6 +235,109 @@ async function mountSubscriptionConfirm(options: Parameters<typeof checkoutInfoW
   return wrapper
 }
 
+async function mountRecharge(options: {
+  checkout?: Partial<CheckoutInfoResponse>
+  method?: Partial<MethodLimit>
+} = {}) {
+  vi.useRealTimers()
+  routeState.path = '/purchase'
+  routeState.query = {}
+  routerReplace.mockReset().mockResolvedValue(undefined)
+  routerPush.mockReset().mockResolvedValue(undefined)
+  routerResolve.mockClear()
+  createOrder.mockReset()
+  refreshUser.mockReset()
+  fetchActiveSubscriptions.mockReset().mockResolvedValue(undefined)
+  showError.mockReset()
+  showInfo.mockReset()
+  showWarning.mockReset()
+  const base = checkoutInfoFixture(options.checkout).data
+  getCheckoutInfo.mockReset().mockResolvedValue({
+    data: {
+      ...base,
+      methods: {
+        wxpay: {
+          ...base.methods.wxpay,
+          currency: 'CNY',
+          ...options.method,
+        },
+      },
+    },
+  })
+  bridgeInvoke.mockReset()
+  window.localStorage.clear()
+  ;(window as Window & { WeixinJSBridge?: { invoke: typeof bridgeInvoke } }).WeixinJSBridge = undefined
+
+  const wrapper = shallowMount(PaymentView, {
+    global: {
+      stubs: {
+        AppLayout: {
+          template: '<div><slot /></div>',
+        },
+        Teleport: true,
+        Transition: false,
+      },
+    },
+  })
+  await flushPromises()
+  await flushPromises()
+  return wrapper
+}
+
+describe('PaymentView balance loyalty discount', () => {
+  it('discounts the actual payment while submitting the original recharge amount', async () => {
+    createOrder.mockResolvedValue({
+      order_id: 321,
+      amount: 100,
+      pay_amount: 93.84,
+      fee_rate: 2,
+      expires_at: '2099-01-01T00:10:00.000Z',
+      payment_type: 'wxpay',
+      qr_code: 'weixin://wxpay/bizpayurl?pr=loyalty',
+      out_trade_no: 'sub2_loyalty_321',
+      payment_mode: 'qrcode',
+    })
+
+    const wrapper = await mountRecharge({
+      checkout: {
+        recharge_fee_rate: 2,
+        loyalty: {
+          enabled: true,
+          definitions_configured: true,
+          weekly_points: 900,
+          permanent_points: 1200,
+          weekly_discount: 8,
+          permanent_discount: 4,
+          discount_percent: 8,
+          discount_scope: 'weekly',
+          discount_level: 'L4',
+        },
+      },
+    })
+
+    wrapper.findComponent({ name: 'AmountInput' }).vm.$emit('update:modelValue', 100)
+    await flushPromises()
+
+    const text = wrapper.text()
+    expect(text).toContain('payment.loyaltyDiscount')
+    expect(text).toContain(formatPaymentAmount(100, 'CNY'))
+    expect(text).toContain(formatPaymentAmount(92, 'CNY'))
+    expect(text).toContain(formatPaymentAmount(1.84, 'CNY'))
+    expect(text).toContain(formatPaymentAmount(93.84, 'CNY'))
+
+    const submitButton = wrapper.findAll('button').find(button => button.text().includes('payment.createOrder'))
+    expect(submitButton).toBeTruthy()
+    await submitButton?.trigger('click')
+    await flushPromises()
+
+    expect(createOrder).toHaveBeenCalledWith(expect.objectContaining({
+      amount: 100,
+      payment_type: 'wxpay',
+      order_type: 'balance',
+    }))
+  })
+})
+
 describe('PaymentView subscription confirmation amounts', () => {
   it('keeps subscription plan price independent from balance recharge multiplier', async () => {
     const wrapper = await mountSubscriptionConfirm({
