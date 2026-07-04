@@ -88,14 +88,19 @@ jobs:
       - name: Validate automation write token
         if: steps.pr.outputs.eligible == 'true'
         env:
-          GH_PAT: ${{ secrets.GH_PAT }}
+          GH_TOKEN: ${{ secrets.GH_PAT }}
         run: |
-          if [ -z "$GH_PAT" ]; then
+          if [ -z "$GH_TOKEN" ]; then
             echo "GH_PAT is required so Claude pushes trigger CI."
             exit 1
           fi
 
-          git ls-remote "https://x-access-token:${GH_PAT}@github.com/${GITHUB_REPOSITORY}.git" HEAD >/dev/null
+          CAN_PUSH=$(gh api "repos/${GITHUB_REPOSITORY}" --jq '.permissions.push')
+          if [ "$CAN_PUSH" != "true" ]; then
+            echo "GH_PAT is valid but cannot push to ${GITHUB_REPOSITORY}."
+            echo "Create a new PAT with Contents: Read and write for this repository."
+            exit 1
+          fi
 
       - name: Checkout PR branch
         if: steps.pr.outputs.eligible == 'true'
