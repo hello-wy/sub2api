@@ -38,7 +38,7 @@
         </div>
 
         <template v-else>
-          <div v-if="!pointsDefinition" class="loyalty-panel border-amber-200 bg-amber-50/90 p-5 dark:border-amber-900/50 dark:bg-amber-900/20">
+          <div v-if="!pointsDefinition" class="loyalty-panel loyalty-alert-panel p-5">
             <div class="flex items-start gap-3">
               <div class="loyalty-alert-icon">
                 <Icon name="exclamationTriangle" size="md" />
@@ -469,6 +469,12 @@ onMounted(() => {
   box-shadow: 0 14px 34px rgba(15, 23, 42, 0.065);
 }
 
+.loyalty-alert-panel {
+  border-color: rgba(245, 158, 11, 0.38);
+  background: rgba(255, 251, 235, 0.94);
+  box-shadow: 0 10px 30px rgba(146, 64, 14, 0.08);
+}
+
 .loyalty-mascot {
   position: relative;
   display: flex;
@@ -725,95 +731,124 @@ onMounted(() => {
 
 :global(.dark) .loyalty-shell {
   background:
-    linear-gradient(120deg, rgba(2, 44, 34, 0.98) 0%, rgba(2, 6, 23, 0.98) 44%, rgba(8, 47, 73, 0.96) 100%);
+    linear-gradient(120deg, rgba(4, 32, 28, 0.98) 0%, rgba(7, 15, 31, 0.99) 48%, rgba(12, 36, 52, 0.98) 100%);
 }
 
 :global(.dark) .loyalty-panel,
 :global(.dark) .loyalty-stat-card {
-  border-color: rgba(51, 65, 85, 0.82);
-  background: rgba(15, 23, 42, 0.86);
-  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.22);
+  border-color: rgba(71, 85, 105, 0.74);
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(17, 24, 39, 0.86));
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.32);
 }
 
 :global(.dark) .loyalty-hero {
-  background: rgba(15, 23, 42, 0.86);
+  background:
+    linear-gradient(135deg, rgba(15, 23, 42, 0.94), rgba(19, 78, 74, 0.32)),
+    rgba(15, 23, 42, 0.9);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.34);
 }
 
 :global(.dark) .loyalty-mascot {
-  border-color: rgba(6, 95, 70, 0.78);
-  background: rgba(6, 78, 59, 0.5);
+  border-color: rgba(52, 211, 153, 0.34);
+  background: rgba(6, 78, 59, 0.36);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.26);
+}
+
+:global(.dark) .loyalty-mascot-inner {
+  background: linear-gradient(135deg, #10b981, #059669);
+  box-shadow: 0 12px 24px rgba(16, 185, 129, 0.22);
+}
+
+:global(.dark) .loyalty-alert-panel {
+  border-color: rgba(245, 158, 11, 0.42);
+  background: linear-gradient(135deg, rgba(120, 53, 15, 0.34), rgba(15, 23, 42, 0.9));
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.28);
+}
+
+:global(.dark) .loyalty-alert-icon {
+  background: rgba(120, 53, 15, 0.42);
+  color: #fbbf24;
+  box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.46);
 }
 
 :global(.dark) .loyalty-plan-badge,
 :global(.dark) .loyalty-table-action {
-  background: rgba(15, 23, 42, 0.76);
+  background: rgba(30, 41, 59, 0.7);
   color: #cbd5e1;
-  box-shadow: inset 0 0 0 1px rgba(51, 65, 85, 0.9);
+  box-shadow: inset 0 0 0 1px rgba(71, 85, 105, 0.82);
+}
+
+:global(.dark) .loyalty-table-action:hover {
+  background: rgba(6, 78, 59, 0.36);
+  color: #86efac;
+  box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.42);
 }
 
 :global(.dark) .loyalty-section-icon,
 :global(.dark) .loyalty-note-icon,
 :global(.dark) .loyalty-table-plan-icon,
 :global(.dark) .loyalty-stat-icon {
-  background: rgba(6, 78, 59, 0.45);
+  background: rgba(6, 78, 59, 0.38);
   color: #6ee7b7;
-  box-shadow: inset 0 0 0 1px rgba(6, 95, 70, 0.72);
+  box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.34);
 }
 
 :global(.dark) .loyalty-tier-tile.is-current {
-  border-color: rgba(16, 185, 129, 0.76);
-  background: rgba(6, 78, 59, 0.28);
+  border-color: rgba(52, 211, 153, 0.62);
+  background: linear-gradient(180deg, rgba(6, 78, 59, 0.44), rgba(15, 23, 42, 0.66));
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.22);
 }
 
 :global(.dark) .loyalty-tier-tile.is-unlocked {
-  border-color: rgba(20, 184, 166, 0.52);
-  background: rgba(19, 78, 74, 0.24);
+  border-color: rgba(45, 212, 191, 0.4);
+  background: rgba(19, 78, 74, 0.26);
 }
 
 :global(.dark) .loyalty-tier-tile.is-locked {
-  border-color: rgba(51, 65, 85, 0.92);
-  background: rgba(15, 23, 42, 0.62);
+  border-color: rgba(71, 85, 105, 0.78);
+  background: rgba(15, 23, 42, 0.54);
 }
 
 :global(.dark) .loyalty-discount-pill {
-  background: rgba(6, 78, 59, 0.45);
+  background: rgba(6, 78, 59, 0.4);
   color: #6ee7b7;
-  box-shadow: inset 0 0 0 1px rgba(6, 95, 70, 0.72);
+  box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.38);
 }
 
 :global(.dark) .loyalty-table th {
-  background: rgba(15, 23, 42, 0.58);
+  background: rgba(30, 41, 59, 0.44);
+  color: #94a3b8;
 }
 
 :global(.dark) .loyalty-table th,
 :global(.dark) .loyalty-table td {
-  border-color: rgba(51, 65, 85, 0.76);
+  border-color: rgba(51, 65, 85, 0.7);
 }
 
 :global(.dark) .loyalty-table tbody tr:hover {
-  background: rgba(6, 78, 59, 0.18);
+  background: rgba(6, 78, 59, 0.2);
 }
 
 :global(.dark) .loyalty-note-item {
-  border-color: rgba(20, 184, 166, 0.3);
-  background: rgba(15, 23, 42, 0.42);
+  border-color: rgba(45, 212, 191, 0.26);
+  background: rgba(15, 23, 42, 0.46);
 }
 
 :global(.dark) .loyalty-status-pill.is-current {
-  background: rgba(6, 78, 59, 0.42);
+  background: rgba(6, 78, 59, 0.44);
   color: #6ee7b7;
-  box-shadow: inset 0 0 0 1px rgba(6, 95, 70, 0.86);
+  box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.44);
 }
 
 :global(.dark) .loyalty-status-pill.is-unlocked {
   background: rgba(19, 78, 74, 0.42);
   color: #5eead4;
-  box-shadow: inset 0 0 0 1px rgba(20, 184, 166, 0.72);
+  box-shadow: inset 0 0 0 1px rgba(45, 212, 191, 0.42);
 }
 
 :global(.dark) .loyalty-status-pill.is-locked {
-  background: rgba(120, 53, 15, 0.36);
+  background: rgba(120, 53, 15, 0.34);
   color: #fbbf24;
-  box-shadow: inset 0 0 0 1px rgba(180, 83, 9, 0.72);
+  box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.38);
 }
 </style>
