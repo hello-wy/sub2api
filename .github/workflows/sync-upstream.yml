@@ -25,15 +25,6 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - name: Validate automation token
-        env:
-          GH_PAT: ${{ secrets.GH_PAT }}
-        run: |
-          if [ -z "$GH_PAT" ]; then
-            echo "GH_PAT is required so sync pushes and PRs trigger downstream workflows."
-            exit 1
-          fi
-
       - name: Checkout target branch
         uses: actions/checkout@v6
         with:
@@ -70,7 +61,7 @@ jobs:
         if: steps.upstream.outputs.count != '0'
         id: existing
         env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
+          GH_TOKEN: ${{ github.token }}
           BRANCH_NAME: ${{ steps.upstream.outputs.branch }}
         run: |
           PR_NUMBER=$(gh pr list \
@@ -85,6 +76,18 @@ jobs:
       - name: Stop when PR already exists
         if: steps.upstream.outputs.count != '0' && steps.existing.outputs.number != ''
         run: echo "Sync PR #${{ steps.existing.outputs.number }} already exists."
+
+      - name: Validate automation write token
+        if: steps.upstream.outputs.count != '0' && steps.existing.outputs.number == ''
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: |
+          if [ -z "$GH_PAT" ]; then
+            echo "GH_PAT is required so sync pushes and PRs trigger downstream workflows."
+            exit 1
+          fi
+
+          git ls-remote "https://x-access-token:${GH_PAT}@github.com/${GITHUB_REPOSITORY}.git" HEAD >/dev/null
 
       - name: Create sync branch
         if: steps.upstream.outputs.count != '0' && steps.existing.outputs.number == ''

@@ -23,14 +23,8 @@ jobs:
     steps:
       - name: Validate required secrets
         env:
-          GH_PAT: ${{ secrets.GH_PAT }}
           CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY || secrets.ANTHROPIC_API_KEY }}
         run: |
-          if [ -z "$GH_PAT" ]; then
-            echo "GH_PAT is required so Claude pushes trigger CI."
-            exit 1
-          fi
-
           if [ -z "$CLAUDE_API_KEY" ]; then
             echo "CLAUDE_API_KEY or ANTHROPIC_API_KEY is required to run Claude Code Action."
             exit 1
@@ -39,7 +33,7 @@ jobs:
       - name: Resolve failed PR
         id: pr
         env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
+          GH_TOKEN: ${{ github.token }}
           RUN_ID: ${{ github.event.workflow_run.id }}
         run: |
           PR_NUMBER=$(jq -r '.workflow_run.pull_requests[0].number // ""' "$GITHUB_EVENT_PATH")
@@ -91,6 +85,18 @@ jobs:
           echo "url=$PR_URL" >> "$GITHUB_OUTPUT"
           echo "head_ref=$HEAD_REF" >> "$GITHUB_OUTPUT"
 
+      - name: Validate automation write token
+        if: steps.pr.outputs.eligible == 'true'
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: |
+          if [ -z "$GH_PAT" ]; then
+            echo "GH_PAT is required so Claude pushes trigger CI."
+            exit 1
+          fi
+
+          git ls-remote "https://x-access-token:${GH_PAT}@github.com/${GITHUB_REPOSITORY}.git" HEAD >/dev/null
+
       - name: Checkout PR branch
         if: steps.pr.outputs.eligible == 'true'
         uses: actions/checkout@v6
@@ -132,7 +138,7 @@ jobs:
       - name: Download failed CI logs
         if: steps.pr.outputs.eligible == 'true'
         env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
+          GH_TOKEN: ${{ github.token }}
           RUN_ID: ${{ github.event.workflow_run.id }}
         run: |
           mkdir -p .ci-logs
