@@ -22,11 +22,10 @@ const (
 	LoyaltyWeeklyPointsAttributeKey    = "loyalty_weekly_points"
 	LoyaltyPermanentPointsAttributeKey = "loyalty_permanent_points"
 
-	paymentLoyaltyAuditAction       = "LOYALTY_POINTS_APPLIED"
-	paymentLoyaltyProviderSnapshot  = "loyalty"
-	paymentLoyaltyDefaultCurrency   = payment.DefaultPaymentCurrency
-	paymentLoyaltyDefinitionType    = "number"
-	paymentLoyaltyDefinitionEnabled = true
+	paymentLoyaltyAuditAction      = "LOYALTY_POINTS_APPLIED"
+	paymentLoyaltyProviderSnapshot = "loyalty"
+	paymentLoyaltyDefaultCurrency  = payment.DefaultPaymentCurrency
+	paymentLoyaltyDefinitionType   = "number"
 )
 
 type paymentLoyaltyRule struct {
@@ -212,7 +211,7 @@ func (s *PaymentService) ensureLoyaltyAttributeDefinitions(ctx context.Context) 
 		if err != nil {
 			return nil, false, err
 		}
-		if def != nil && def.Type == paymentLoyaltyDefinitionType && def.Enabled == paymentLoyaltyDefinitionEnabled {
+		if def != nil && def.Type == paymentLoyaltyDefinitionType && def.Enabled {
 			defs[spec.Key] = def
 		}
 	}
