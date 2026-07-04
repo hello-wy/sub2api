@@ -95,7 +95,10 @@ jobs:
             exit 1
           fi
 
+          echo "GH_PAT user: $(gh api user --jq '.login')"
           CAN_PUSH=$(gh api "repos/${GITHUB_REPOSITORY}" --jq '.permissions.push')
+          echo "GH_PAT can push to ${GITHUB_REPOSITORY}: ${CAN_PUSH}"
+
           if [ "$CAN_PUSH" != "true" ]; then
             echo "GH_PAT is valid but cannot push to ${GITHUB_REPOSITORY}."
             echo "Create a new PAT with Contents: Read and write for this repository."
@@ -194,7 +197,8 @@ jobs:
         run: |
           git config user.name "claude[bot]"
           git config user.email "claude[bot]@users.noreply.github.com"
-          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          gh auth setup-git
+          git remote set-url origin "https://github.com/${GITHUB_REPOSITORY}.git"
 
           if [ "$(git rev-parse HEAD)" != "$START_SHA" ]; then
             git push origin "HEAD:$HEAD_REF"
