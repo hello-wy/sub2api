@@ -1,7 +1,10 @@
 package admin
 
 import (
+	"bytes"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -55,7 +58,7 @@ type ReorderRequest struct {
 
 // UpdateUserAttributesRequest represents update user attributes request
 type UpdateUserAttributesRequest struct {
-	Values map[int64]string `json:"values" binding:"required"`
+	Values map[int64]json.RawMessage `json:"values" binding:"required"`
 }
 
 // BatchGetUserAttributesRequest represents batch get user attributes request
@@ -295,7 +298,12 @@ func (h *UserAttributeHandler) UpdateUserAttributes(c *gin.Context) {
 	}
 
 	inputs := make([]service.UpdateUserAttributeInput, 0, len(req.Values))
-	for attrID, value := range req.Values {
+	for attrID, rawValue := range req.Values {
+		value, err := userAttributeValueFromRequest(rawValue)
+		if err != nil {
+			response.BadRequest(c, fmt.Sprintf("Invalid attribute value for %d", attrID))
+			return
+		}
 		inputs = append(inputs, service.UpdateUserAttributeInput{
 			AttributeID: attrID,
 			Value:       value,
@@ -359,4 +367,25 @@ func (h *UserAttributeHandler) GetBatchUserAttributes(c *gin.Context) {
 	userAttributesBatchCache.Set(cacheKey, payload)
 	c.Header("X-Snapshot-Cache", "miss")
 	response.Success(c, payload)
+}
+
+func userAttributeValueFromRequest(raw json.RawMessage) (string, error) {
+	trimmed := bytes.TrimSpace(raw)
+	if len(trimmed) == 0 || bytes.Equal(trimmed, []byte("null")) {
+		return "", nil
+	}
+
+	var value string
+	if err := json.Unmarshal(trimmed, &value); err == nil {
+		return value, nil
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(trimmed))
+	decoder.UseNumber()
+	var number json.Number
+	if err := decoder.Decode(&number); err == nil {
+		return number.String(), nil
+	}
+
+	return "", errors.New("unsupported attribute value")
 }

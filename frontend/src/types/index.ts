@@ -1863,8 +1863,10 @@ export interface UpdateUserAttributeRequest {
   enabled?: boolean
 }
 
+export type UserAttributeInputValue = string | number
+
 export interface UserAttributeValuesMap {
-  [attributeId: number]: string
+  [attributeId: number]: UserAttributeInputValue
 }
 
 // ==================== Promo Code Types ====================

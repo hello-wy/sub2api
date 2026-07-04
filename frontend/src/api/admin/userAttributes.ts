@@ -89,9 +89,12 @@ export async function updateUserAttributeValues(
   userId: number,
   values: UserAttributeValuesMap
 ): Promise<{ message: string }> {
+  const serializedValues = Object.fromEntries(
+    Object.entries(values).map(([attributeId, value]) => [attributeId, String(value)])
+  )
   const { data } = await apiClient.put<{ message: string }>(
     `/admin/users/${userId}/attributes`,
-    { values }
+    { values: serializedValues }
   )
   return data
 }

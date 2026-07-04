@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"regexp"
 	"strconv"
 	"strings"
@@ -229,14 +230,14 @@ func (s *UserAttributeService) validateValue(def *UserAttributeDefinition, value
 
 	// Number validation
 	if def.Type == AttributeTypeNumber && value != "" {
-		num, err := strconv.Atoi(value)
-		if err != nil {
+		num, err := strconv.ParseFloat(value, 64)
+		if err != nil || math.IsNaN(num) || math.IsInf(num, 0) {
 			return validationError(fmt.Sprintf("%s must be a number", def.Name))
 		}
-		if v.Min != nil && num < *v.Min {
+		if v.Min != nil && num < float64(*v.Min) {
 			return validationError(fmt.Sprintf("%s must be at least %d", def.Name, *v.Min))
 		}
-		if v.Max != nil && num > *v.Max {
+		if v.Max != nil && num > float64(*v.Max) {
 			return validationError(fmt.Sprintf("%s must be at most %d", def.Name, *v.Max))
 		}
 	}

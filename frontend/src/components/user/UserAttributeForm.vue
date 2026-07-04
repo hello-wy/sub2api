@@ -145,7 +145,8 @@ const emitChange = () => {
 }
 
 const isOptionSelected = (attrId: number, optionValue: string): boolean => {
-  const value = localValues.value[attrId]
+  const rawValue = localValues.value[attrId]
+  const value = typeof rawValue === 'string' ? rawValue : ''
   if (!value) return false
   try {
     const arr = JSON.parse(value)
@@ -157,7 +158,8 @@ const isOptionSelected = (attrId: number, optionValue: string): boolean => {
 
 const toggleMultiSelectOption = (attrId: number, optionValue: string) => {
   let arr: string[] = []
-  const value = localValues.value[attrId]
+  const rawValue = localValues.value[attrId]
+  const value = typeof rawValue === 'string' ? rawValue : ''
   if (value) {
     try {
       arr = JSON.parse(value)
