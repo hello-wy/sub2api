@@ -119,7 +119,6 @@ func TestRateLimitService_HandleUpstreamError_OAuth401SetsTempUnschedulable(t *t
 	})
 
 	t.Run("antigravity_401_sets_temp_unschedulable", func(t *testing.T) {
-	t.Run("antigravity_401_sets_temp_unschedulable", func(t *testing.T) {
 		repo := &rateLimitAccountRepoStub{}
 		invalidator := &tokenCacheInvalidatorRecorder{}
 		service := NewRateLimitService(repo, nil, &config.Config{}, nil, nil)
@@ -128,11 +127,6 @@ func TestRateLimitService_HandleUpstreamError_OAuth401SetsTempUnschedulable(t *t
 			ID:       100,
 			Platform: PlatformAntigravity,
 			Type:     AccountTypeOAuth,
-			Status:   StatusActive,
-			Credentials: map[string]any{
-				"access_token":  "expired-at",
-				"refresh_token": "rt-100",
-			},
 			Status:   StatusActive,
 			Credentials: map[string]any{
 				"access_token":  "expired-at",
