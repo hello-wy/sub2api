@@ -155,7 +155,6 @@ func (s *AccountTestService) buildAnthropicUpstreamModelsRequest(ctx context.Con
 	authHeaderName := ""
 	authHeaderValue := ""
 	apiKeyAuthToken := ""
-	apiKeyAuthToken := ""
 	betaHeader := ""
 
 	if account.IsOAuth() {
@@ -182,7 +181,6 @@ func (s *AccountTestService) buildAnthropicUpstreamModelsRequest(ctx context.Con
 		if strings.TrimSpace(baseURL) == "" {
 			baseURL = "https://api.anthropic.com"
 		}
-		apiKeyAuthToken = apiKey
 		apiKeyAuthToken = apiKey
 		betaHeader = claude.APIKeyBetaHeader
 	} else {
