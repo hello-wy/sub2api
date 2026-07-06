@@ -180,23 +180,6 @@ func TestApplyPaymentLoyaltyDiscountUsesCurrencyPrecision(t *testing.T) {
 	}
 }
 
-func TestApplyPaymentLoyaltyDiscountUsesCurrencyPrecision(t *testing.T) {
-	t.Parallel()
-
-	if got := applyPaymentLoyaltyDiscount(100, 8, "CNY"); got != 92 {
-		t.Fatalf("CNY discounted amount = %v, want 92", got)
-	}
-	if got := applyPaymentLoyaltyDiscount(100, 8, "JPY"); got != 92 {
-		t.Fatalf("JPY discounted amount = %v, want 92", got)
-	}
-	if got := applyPaymentLoyaltyDiscount(12.345, 4, "KWD"); got != 11.851 {
-		t.Fatalf("KWD discounted amount = %v, want 11.851", got)
-	}
-	if got := applyPaymentLoyaltyDiscount(100, 0, "CNY"); got != 100 {
-		t.Fatalf("zero discount amount = %v, want 100", got)
-	}
-}
-
 func TestCalculateCreateOrderPayAmountForSubscriptionConvertsCNYPriceWhenRateConfigured(t *testing.T) {
 	t.Parallel()
 
