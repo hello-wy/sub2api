@@ -11,6 +11,7 @@ import { useAdminComplianceStore } from '@/stores/adminCompliance'
 import { useNavigationLoadingState } from '@/composables/useNavigationLoading'
 import { useRoutePrefetch } from '@/composables/useRoutePrefetch'
 import { getSetupStatus } from '@/api/setup'
+import { FeatureFlags, isFeatureFlagEnabled } from '@/utils/featureFlags'
 import { resolveCompletedSetupRedirectPath } from './setupRedirect'
 import { resolveRouteDocumentTitle } from './title'
 
@@ -250,6 +251,23 @@ const routes: RouteRecordRaw[] = [
       title: 'Daily Check-in',
       titleKey: 'checkin.title',
       descriptionKey: 'checkin.description'
+    }
+  },
+  {
+    path: '/loyalty',
+    redirect: '/membership'
+  },
+  {
+    path: '/membership',
+    name: 'Membership',
+    component: () => import('@/views/user/LoyaltyView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: false,
+      title: 'Membership Program',
+      titleKey: 'loyalty.title',
+      descriptionKey: 'loyalty.description',
+      requiresPayment: true
     }
   },
   {
@@ -737,7 +755,7 @@ let authInitialized = false
 const navigationLoading = useNavigationLoadingState()
 // 延迟初始化预加载，传入 router 实例
 let routePrefetch: ReturnType<typeof useRoutePrefetch> | null = null
-const BACKEND_MODE_ALLOWED_PATHS = ['/login', '/key-usage', '/setup', '/payment/result', '/payment/airwallex', '/legal']
+const BACKEND_MODE_ALLOWED_PATHS = ['/login', '/key-usage', '/setup', '/membership', '/loyalty', '/payment/result', '/payment/airwallex', '/legal']
 const BACKEND_MODE_CALLBACK_PATHS = [
   '/auth/callback',
   '/auth/linuxdo/callback',
@@ -862,7 +880,7 @@ router.beforeEach(async (to, _from, next) => {
 
   // Check payment requirement (internal payment system only)
   if (to.meta.requiresPayment) {
-    const paymentEnabled = appStore.cachedPublicSettings?.payment_enabled
+    const paymentEnabled = isFeatureFlagEnabled(FeatureFlags.payment)
     if (!paymentEnabled) {
       next(authStore.isAdmin ? '/admin/dashboard' : '/dashboard')
       return

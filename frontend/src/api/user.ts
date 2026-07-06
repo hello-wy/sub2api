@@ -17,7 +17,14 @@ import type {
   UserAffiliateDetail,
   AffiliateTransferResponse,
   PlatformQuotasResponse,
+  UserAttributeDefinition,
+  UserAttributeValue,
 } from '@/types'
+
+export interface MyUserAttributesResponse {
+  definitions: UserAttributeDefinition[]
+  values: UserAttributeValue[]
+}
 
 /**
  * Get current user profile
@@ -194,6 +201,14 @@ export async function getMyPlatformQuotas(): Promise<PlatformQuotasResponse> {
   return data
 }
 
+export async function getMyAttributes(): Promise<MyUserAttributesResponse> {
+  const { data } = await apiClient.get<MyUserAttributesResponse>('/user/attributes')
+  return {
+    definitions: data.definitions ?? [],
+    values: data.values ?? [],
+  }
+}
+
 export const userAPI = {
   getProfile,
   updateProfile,
@@ -210,6 +225,7 @@ export const userAPI = {
   getAffiliateDetail,
   transferAffiliateQuota,
   getMyPlatformQuotas,
+  getMyAttributes,
 }
 
 export default userAPI

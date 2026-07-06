@@ -23,6 +23,7 @@ func RegisterUserRoutes(
 		user := authenticated.Group("/user")
 		{
 			user.GET("/profile", h.User.GetProfile)
+			user.GET("/attributes", h.User.GetAttributes)
 			user.GET("/dashboard/users-ranking", h.Admin.Dashboard.GetUserSpendingRanking)
 			user.PUT("/password", h.User.ChangePassword)
 			user.PUT("", h.User.UpdateProfile)

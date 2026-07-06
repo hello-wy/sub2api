@@ -107,6 +107,10 @@ func (h *PaymentHandler) GetChannels(c *gin.Context) {
 // GET /api/v1/payment/checkout-info
 func (h *PaymentHandler) GetCheckoutInfo(c *gin.Context) {
 	ctx := c.Request.Context()
+	subject, ok := requireAuth(c)
+	if !ok {
+		return
+	}
 
 	// Fetch limits (methods + global range)
 	limitsResp, err := h.configService.GetAvailableMethodLimits(ctx)
@@ -143,6 +147,12 @@ func (h *PaymentHandler) GetCheckoutInfo(c *gin.Context) {
 		})
 	}
 
+	loyalty, err := h.paymentService.GetLoyaltyInfo(ctx, subject.UserID)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+
 	response.Success(c, checkoutInfoResponse{
 		Methods:                   limitsResp.Methods,
 		GlobalMin:                 limitsResp.GlobalMin,
@@ -150,11 +160,13 @@ func (h *PaymentHandler) GetCheckoutInfo(c *gin.Context) {
 		Plans:                     planList,
 		BalanceDisabled:           cfg.BalanceDisabled,
 		BalanceRechargeMultiplier: cfg.BalanceRechargeMultiplier,
+		SubscriptionUSDToCNYRate:  cfg.SubscriptionUSDToCNYRate,
 		RechargeFeeRate:           cfg.RechargeFeeRate,
 		HelpText:                  cfg.HelpText,
 		HelpImageURL:              cfg.HelpImageURL,
 		StripePublishableKey:      cfg.StripePublishableKey,
 		AlipayForceQRCode:         cfg.AlipayForceQRCode,
+		Loyalty:                   loyalty,
 	})
 }
 
@@ -165,11 +177,13 @@ type checkoutInfoResponse struct {
 	Plans                     []checkoutPlan                  `json:"plans"`
 	BalanceDisabled           bool                            `json:"balance_disabled"`
 	BalanceRechargeMultiplier float64                         `json:"balance_recharge_multiplier"`
+	SubscriptionUSDToCNYRate  float64                         `json:"subscription_usd_to_cny_rate"`
 	RechargeFeeRate           float64                         `json:"recharge_fee_rate"`
 	HelpText                  string                          `json:"help_text"`
 	HelpImageURL              string                          `json:"help_image_url"`
 	StripePublishableKey      string                          `json:"stripe_publishable_key"`
 	AlipayForceQRCode         bool                            `json:"alipay_force_qrcode"`
+	Loyalty                   *service.PaymentLoyaltyInfo     `json:"loyalty,omitempty"`
 }
 
 type checkoutPlan struct {

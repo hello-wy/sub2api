@@ -12,7 +12,7 @@ export { authAPI, isTotp2FARequired, type LoginResponse } from './auth'
 // User APIs
 export { keysAPI } from './keys'
 export { usageAPI } from './usage'
-export { userAPI } from './user'
+export { userAPI, type MyUserAttributesResponse } from './user'
 export { checkinAPI, type CheckinStatusResponse, type CheckinClaimResponse, type CheckinHistoryResponse, type CheckinHistoryItem, type CheckinDayStatus, type CheckinRewardRule } from './checkin'
 export { redeemAPI, type RedeemHistoryItem } from './redeem'
 export { paymentAPI } from './payment'
