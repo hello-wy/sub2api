@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -28,37 +29,147 @@ const (
 	paymentLoyaltyDefinitionType   = "number"
 )
 
-type paymentLoyaltyRule struct {
-	Scope    string
-	Level    string
-	Points   float64
-	Discount int
+type PaymentLoyaltyRule struct {
+	Scope    string  `json:"scope"`
+	Level    string  `json:"level"`
+	Points   float64 `json:"points"`
+	Discount float64 `json:"discount"`
 }
 
-var paymentWeeklyLoyaltyRules = []paymentLoyaltyRule{
+var paymentWeeklyLoyaltyRules = []PaymentLoyaltyRule{
 	{Scope: "weekly", Level: "L1", Points: 20, Discount: 2},
 	{Scope: "weekly", Level: "L2", Points: 200, Discount: 4},
 	{Scope: "weekly", Level: "L3", Points: 400, Discount: 6},
 	{Scope: "weekly", Level: "L4", Points: 800, Discount: 8},
 }
 
-var paymentPermanentLoyaltyRules = []paymentLoyaltyRule{
+var paymentPermanentLoyaltyRules = []PaymentLoyaltyRule{
 	{Scope: "permanent", Level: "L2", Points: 800, Discount: 4},
 	{Scope: "permanent", Level: "L3", Points: 4000, Discount: 6},
 	{Scope: "permanent", Level: "L4", Points: 8000, Discount: 8},
 }
 
+func clonePaymentLoyaltyRules(rules []PaymentLoyaltyRule) []PaymentLoyaltyRule {
+	return append([]PaymentLoyaltyRule(nil), rules...)
+}
+
+func defaultPaymentLoyaltyRules(scope string) []PaymentLoyaltyRule {
+	if normalizePaymentLoyaltyScope(scope) == "permanent" {
+		return clonePaymentLoyaltyRules(paymentPermanentLoyaltyRules)
+	}
+	return clonePaymentLoyaltyRules(paymentWeeklyLoyaltyRules)
+}
+
+func DefaultPaymentLoyaltyRulesJSON(scope string) string {
+	data, err := json.Marshal(defaultPaymentLoyaltyRules(scope))
+	if err != nil {
+		return "[]"
+	}
+	return string(data)
+}
+
+func normalizePaymentLoyaltyScope(scope string) string {
+	if strings.TrimSpace(scope) == "permanent" {
+		return "permanent"
+	}
+	return "weekly"
+}
+
+func NormalizePaymentLoyaltyRulesJSON(scope string, raw string) (string, error) {
+	rules, err := parsePaymentLoyaltyRulesJSON(scope, raw)
+	if err != nil {
+		return "", err
+	}
+	data, err := json.Marshal(rules)
+	if err != nil {
+		return "", fmt.Errorf("marshal loyalty %s rules: %w", normalizePaymentLoyaltyScope(scope), err)
+	}
+	return string(data), nil
+}
+
+func parsePaymentLoyaltyRulesJSON(scope string, raw string) ([]PaymentLoyaltyRule, error) {
+	scope = normalizePaymentLoyaltyScope(scope)
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return defaultPaymentLoyaltyRules(scope), nil
+	}
+	var rules []PaymentLoyaltyRule
+	if err := json.Unmarshal([]byte(raw), &rules); err != nil {
+		return nil, fmt.Errorf("loyalty_%s_rules must be valid JSON array", scope)
+	}
+	return normalizePaymentLoyaltyRules(scope, rules)
+}
+
+func normalizePaymentLoyaltyRules(scope string, rules []PaymentLoyaltyRule) ([]PaymentLoyaltyRule, error) {
+	scope = normalizePaymentLoyaltyScope(scope)
+	normalized := make([]PaymentLoyaltyRule, 0, len(rules))
+	for _, rule := range rules {
+		if rule.Points <= 0 || math.IsNaN(rule.Points) || math.IsInf(rule.Points, 0) {
+			return nil, fmt.Errorf("loyalty_%s_rules points must be greater than 0", scope)
+		}
+		if rule.Discount < 0 || rule.Discount > 100 || math.IsNaN(rule.Discount) || math.IsInf(rule.Discount, 0) {
+			return nil, fmt.Errorf("loyalty_%s_rules discount must be between 0 and 100", scope)
+		}
+		normalized = append(normalized, PaymentLoyaltyRule{
+			Scope:    scope,
+			Level:    strings.TrimSpace(rule.Level),
+			Points:   rule.Points,
+			Discount: rule.Discount,
+		})
+	}
+	if len(normalized) == 0 {
+		return nil, fmt.Errorf("loyalty_%s_rules must include at least one rule", scope)
+	}
+	sort.SliceStable(normalized, func(i, j int) bool {
+		return normalized[i].Points < normalized[j].Points
+	})
+	for i := range normalized {
+		if normalized[i].Level == "" {
+			normalized[i].Level = "L" + strconv.Itoa(i+1)
+		}
+	}
+	return normalized, nil
+}
+
+func parsePaymentLoyaltyRulesJSONOrDefault(scope string, raw string) []PaymentLoyaltyRule {
+	rules, err := parsePaymentLoyaltyRulesJSON(scope, raw)
+	if err != nil {
+		return defaultPaymentLoyaltyRules(scope)
+	}
+	return rules
+}
+
+func (s *PaymentService) loadPaymentLoyaltyRules(ctx context.Context) ([]PaymentLoyaltyRule, []PaymentLoyaltyRule) {
+	weeklyRules := defaultPaymentLoyaltyRules("weekly")
+	permanentRules := defaultPaymentLoyaltyRules("permanent")
+	if s == nil || s.configService == nil || s.configService.settingRepo == nil {
+		return weeklyRules, permanentRules
+	}
+	values, err := s.configService.settingRepo.GetMultiple(ctx, []string{
+		SettingKeyLoyaltyWeeklyRules,
+		SettingKeyLoyaltyPermanentRules,
+	})
+	if err != nil {
+		return weeklyRules, permanentRules
+	}
+	weeklyRules = parsePaymentLoyaltyRulesJSONOrDefault("weekly", values[SettingKeyLoyaltyWeeklyRules])
+	permanentRules = parsePaymentLoyaltyRulesJSONOrDefault("permanent", values[SettingKeyLoyaltyPermanentRules])
+	return weeklyRules, permanentRules
+}
+
 type PaymentLoyaltyInfo struct {
-	Enabled               bool       `json:"enabled"`
-	DefinitionsConfigured bool       `json:"definitions_configured"`
-	WeeklyPoints          float64    `json:"weekly_points"`
-	PermanentPoints       float64    `json:"permanent_points"`
-	WeeklyDiscount        int        `json:"weekly_discount"`
-	PermanentDiscount     int        `json:"permanent_discount"`
-	DiscountPercent       int        `json:"discount_percent"`
-	DiscountScope         string     `json:"discount_scope,omitempty"`
-	DiscountLevel         string     `json:"discount_level,omitempty"`
-	NextWeeklyResetAt     *time.Time `json:"next_weekly_reset_at,omitempty"`
+	Enabled               bool                 `json:"enabled"`
+	DefinitionsConfigured bool                 `json:"definitions_configured"`
+	WeeklyPoints          float64              `json:"weekly_points"`
+	PermanentPoints       float64              `json:"permanent_points"`
+	WeeklyDiscount        float64              `json:"weekly_discount"`
+	PermanentDiscount     float64              `json:"permanent_discount"`
+	DiscountPercent       float64              `json:"discount_percent"`
+	DiscountScope         string               `json:"discount_scope,omitempty"`
+	DiscountLevel         string               `json:"discount_level,omitempty"`
+	NextWeeklyResetAt     *time.Time           `json:"next_weekly_reset_at,omitempty"`
+	WeeklyRules           []PaymentLoyaltyRule `json:"weekly_rules"`
+	PermanentRules        []PaymentLoyaltyRule `json:"permanent_rules"`
 }
 
 type paymentLoyaltyAttributeSpec struct {
@@ -88,7 +199,11 @@ func (s *PaymentService) GetLoyaltyInfo(ctx context.Context, userID int64) (*Pay
 }
 
 func (s *PaymentService) getLoyaltyInfoAt(ctx context.Context, userID int64, now time.Time) (*PaymentLoyaltyInfo, error) {
-	info := &PaymentLoyaltyInfo{}
+	weeklyRules, permanentRules := s.loadPaymentLoyaltyRules(ctx)
+	info := &PaymentLoyaltyInfo{
+		WeeklyRules:    weeklyRules,
+		PermanentRules: permanentRules,
+	}
 	if s == nil || s.entClient == nil || userID <= 0 {
 		return info, nil
 	}
@@ -121,8 +236,8 @@ func (s *PaymentService) getLoyaltyInfoAt(ctx context.Context, userID int64, now
 		info.PermanentPoints = points
 	}
 
-	weeklyRule := resolvePaymentLoyaltyRule(info.WeeklyPoints, paymentWeeklyLoyaltyRules)
-	permanentRule := resolvePaymentLoyaltyRule(info.PermanentPoints, paymentPermanentLoyaltyRules)
+	weeklyRule := resolvePaymentLoyaltyRule(info.WeeklyPoints, weeklyRules)
+	permanentRule := resolvePaymentLoyaltyRule(info.PermanentPoints, permanentRules)
 	if weeklyRule != nil {
 		info.WeeklyDiscount = weeklyRule.Discount
 	}
@@ -139,11 +254,11 @@ func (s *PaymentService) getLoyaltyInfoAt(ctx context.Context, userID int64, now
 	return info, nil
 }
 
-func resolvePaymentLoyaltyRule(points float64, rules []paymentLoyaltyRule) *paymentLoyaltyRule {
+func resolvePaymentLoyaltyRule(points float64, rules []PaymentLoyaltyRule) *PaymentLoyaltyRule {
 	if points <= 0 || math.IsNaN(points) || math.IsInf(points, 0) {
 		return nil
 	}
-	var current *paymentLoyaltyRule
+	var current *PaymentLoyaltyRule
 	for i := range rules {
 		rule := &rules[i]
 		if points >= rule.Points && (current == nil || rule.Points > current.Points) {
@@ -153,7 +268,7 @@ func resolvePaymentLoyaltyRule(points float64, rules []paymentLoyaltyRule) *paym
 	return current
 }
 
-func betterPaymentLoyaltyRule(a, b *paymentLoyaltyRule) *paymentLoyaltyRule {
+func betterPaymentLoyaltyRule(a, b *PaymentLoyaltyRule) *PaymentLoyaltyRule {
 	if a == nil {
 		return b
 	}
@@ -169,7 +284,7 @@ func betterPaymentLoyaltyRule(a, b *paymentLoyaltyRule) *paymentLoyaltyRule {
 	return a
 }
 
-func applyPaymentLoyaltyDiscount(amount float64, discountPercent int, currency string) float64 {
+func applyPaymentLoyaltyDiscount(amount float64, discountPercent float64, currency string) float64 {
 	if amount <= 0 || discountPercent <= 0 {
 		return amount
 	}
@@ -181,7 +296,7 @@ func applyPaymentLoyaltyDiscount(amount float64, discountPercent int, currency s
 	}
 	fractionDigits := int32(payment.CurrencyMaxFractionDigits(currency))
 	return decimal.NewFromFloat(amount).
-		Mul(decimal.NewFromInt(int64(100 - discountPercent))).
+		Mul(decimal.NewFromFloat(100 - discountPercent)).
 		Div(decimal.NewFromInt(100)).
 		Round(fractionDigits).
 		InexactFloat64()

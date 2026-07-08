@@ -317,6 +317,16 @@ const baseSettingsResponse = {
   totp_encryption_key_configured: false,
   default_balance: 0,
   default_concurrency: 1,
+  welfare_leaderboard_rank_limit: 3,
+  welfare_leaderboard_reward_ratios: "[1,0.5,0.2]",
+  loyalty_weekly_rules: JSON.stringify([
+    { scope: "weekly", level: "L1", points: 20, discount: 2 },
+    { scope: "weekly", level: "L2", points: 200, discount: 4 },
+  ]),
+  loyalty_permanent_rules: JSON.stringify([
+    { scope: "permanent", level: "L2", points: 800, discount: 4 },
+    { scope: "permanent", level: "L3", points: 4000, discount: 6 },
+  ]),
   default_subscriptions: [],
   site_name: "Sub2API",
   site_logo: "",
@@ -524,6 +534,11 @@ async function openOperationsTab(wrapper: ReturnType<typeof mountView>) {
 
   expect(operationsTabButton).toBeDefined();
   await operationsTabButton?.trigger("click");
+  await flushPromises();
+}
+
+async function openOperationsMembershipSubtab(wrapper: ReturnType<typeof mountView>) {
+  await wrapper.get('[data-testid="operations-subtab-membership"]').trigger("click");
   await flushPromises();
 }
 
@@ -925,6 +940,31 @@ describe("admin SettingsView payment visible method controls", () => {
       welfare_leaderboard_rank_limit: 1,
       welfare_leaderboard_reward_ratios: "[10]",
     });
+  });
+
+  it("submits membership plan rules from operations settings", async () => {
+    const wrapper = mountView();
+
+    await flushPromises();
+    await openOperationsTab(wrapper);
+    await openOperationsMembershipSubtab(wrapper);
+    await wrapper.get('[data-testid="loyalty-weekly-points-0"]').setValue("60");
+    await wrapper.get('[data-testid="loyalty-weekly-discount-0"]').setValue("3.5");
+    await wrapper.get('[data-testid="loyalty-permanent-points-0"]').setValue("900");
+    await wrapper.get('[data-testid="loyalty-permanent-discount-0"]').setValue("5");
+    await wrapper.find("form").trigger("submit.prevent");
+    await flushPromises();
+
+    expect(updateSettings).toHaveBeenCalledTimes(1);
+    const payload = updateSettings.mock.calls[0]?.[0];
+    expect(JSON.parse(payload.loyalty_weekly_rules)).toEqual([
+      { scope: "weekly", level: "L1", points: 60, discount: 3.5 },
+      { scope: "weekly", level: "L2", points: 200, discount: 4 },
+    ]);
+    expect(JSON.parse(payload.loyalty_permanent_rules)).toEqual([
+      { scope: "permanent", level: "L2", points: 900, discount: 5 },
+      { scope: "permanent", level: "L3", points: 4000, discount: 6 },
+    ]);
   });
 });
 

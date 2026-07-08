@@ -1978,6 +1978,16 @@ func (s *SettingService) buildSystemSettingsUpdates(ctx context.Context, setting
 	updates[SettingKeyTotpEnabled] = strconv.FormatBool(settings.TotpEnabled)
 	updates[SettingKeyWelfareLeaderboardRankLimit] = strconv.Itoa(settings.WelfareLeaderboardRankLimit)
 	updates[SettingKeyWelfareLeaderboardRewardRatios] = settings.WelfareLeaderboardRewardRatios
+	loyaltyWeeklyRulesJSON, err := NormalizePaymentLoyaltyRulesJSON("weekly", settings.LoyaltyWeeklyRules)
+	if err != nil {
+		return nil, infraerrors.BadRequest("INVALID_LOYALTY_WEEKLY_RULES", err.Error())
+	}
+	loyaltyPermanentRulesJSON, err := NormalizePaymentLoyaltyRulesJSON("permanent", settings.LoyaltyPermanentRules)
+	if err != nil {
+		return nil, infraerrors.BadRequest("INVALID_LOYALTY_PERMANENT_RULES", err.Error())
+	}
+	updates[SettingKeyLoyaltyWeeklyRules] = loyaltyWeeklyRulesJSON
+	updates[SettingKeyLoyaltyPermanentRules] = loyaltyPermanentRulesJSON
 	settings.LoginAgreementMode = normalizeLoginAgreementMode(settings.LoginAgreementMode)
 	settings.LoginAgreementUpdatedAt = strings.TrimSpace(settings.LoginAgreementUpdatedAt)
 	if settings.LoginAgreementUpdatedAt == "" {
@@ -3145,6 +3155,8 @@ func (s *SettingService) InitializeDefaultSettings(ctx context.Context) error {
 		SettingKeyAffiliateRebateFreezeHours:                strconv.Itoa(AffiliateRebateFreezeHoursDefault),
 		SettingKeyAffiliateRebateDurationDays:               strconv.Itoa(AffiliateRebateDurationDaysDefault),
 		SettingKeyAffiliateRebatePerInviteeCap:              strconv.FormatFloat(AffiliateRebatePerInviteeCapDefault, 'f', 2, 64),
+		SettingKeyLoyaltyWeeklyRules:                        DefaultPaymentLoyaltyRulesJSON("weekly"),
+		SettingKeyLoyaltyPermanentRules:                     DefaultPaymentLoyaltyRulesJSON("permanent"),
 		SettingKeyDefaultUserRPMLimit:                       "0",
 		SettingKeyDefaultSubscriptions:                      "[]",
 		SettingKeyAuthSourceDefaultEmailBalance:             "0",
@@ -3876,6 +3888,16 @@ func (s *SettingService) parseSettings(settings map[string]string) *SystemSettin
 	result.WelfareLeaderboardRewardRatios = settings[SettingKeyWelfareLeaderboardRewardRatios]
 	if strings.TrimSpace(result.WelfareLeaderboardRewardRatios) == "" {
 		result.WelfareLeaderboardRewardRatios = "[1.0, 0.5, 0.2]"
+	}
+	if weeklyRules, err := NormalizePaymentLoyaltyRulesJSON("weekly", settings[SettingKeyLoyaltyWeeklyRules]); err == nil {
+		result.LoyaltyWeeklyRules = weeklyRules
+	} else {
+		result.LoyaltyWeeklyRules = DefaultPaymentLoyaltyRulesJSON("weekly")
+	}
+	if permanentRules, err := NormalizePaymentLoyaltyRulesJSON("permanent", settings[SettingKeyLoyaltyPermanentRules]); err == nil {
+		result.LoyaltyPermanentRules = permanentRules
+	} else {
+		result.LoyaltyPermanentRules = DefaultPaymentLoyaltyRulesJSON("permanent")
 	}
 
 	result.AllowUserViewErrorRequests = settings[SettingKeyAllowUserViewErrorRequests] == "true" // default false

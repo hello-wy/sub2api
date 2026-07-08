@@ -6818,7 +6818,27 @@
 
         <!-- Tab: Operations -->
         <div v-show="activeTab === 'operations'" class="space-y-6">
-          <div class="card">
+          <div class="operations-subtabs" role="tablist" :aria-label="t('admin.settings.operations.subtabsLabel')">
+            <button
+              v-for="tab in operationsSubTabs"
+              :id="`operations-subtab-${tab.key}`"
+              :key="tab.key"
+              type="button"
+              role="tab"
+              :aria-selected="activeOperationsSubTab === tab.key"
+              :class="[
+                'operations-subtab',
+                activeOperationsSubTab === tab.key && 'operations-subtab-active',
+              ]"
+              :data-testid="`operations-subtab-${tab.key}`"
+              @click="activeOperationsSubTab = tab.key"
+            >
+              <Icon :name="tab.icon" size="sm" />
+              <span>{{ t(`admin.settings.operations.subtabs.${tab.key}`) }}</span>
+            </button>
+          </div>
+
+          <div v-show="activeOperationsSubTab === 'welfare'" class="card">
             <div class="border-b border-gray-100 px-6 py-4 dark:border-dark-700">
               <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
                 {{ t("admin.settings.operations.title") }}
@@ -6860,16 +6880,21 @@
                 <p class="mb-4 text-xs text-gray-500 dark:text-gray-400">
                   {{ t("admin.settings.operations.rewardRatiosHint") }}
                 </p>
-                <div class="space-y-3 max-w-md">
+                <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                   <div
                     v-for="(_, index) in welfareRatios"
                     :key="index"
-                    class="flex items-center gap-4 bg-gray-50/50 dark:bg-dark-800/30 p-3 rounded-lg border border-gray-100 dark:border-dark-700/50"
+                    class="rounded-lg border border-gray-100 bg-gray-50/60 p-3 dark:border-dark-700/50 dark:bg-dark-800/30"
                   >
-                    <span class="text-sm font-semibold text-primary-600 dark:text-primary-400 w-24">
-                      {{ t("admin.settings.operations.ratioItem", { rank: index + 1 }) }}
-                    </span>
-                    <div class="flex-1 max-w-xs relative rounded-md shadow-sm">
+                    <div class="mb-2 flex items-center justify-between gap-2">
+                      <span class="min-w-0 truncate text-sm font-semibold text-gray-700 dark:text-gray-200">
+                        {{ t("admin.settings.operations.ratioItem", { rank: index + 1 }) }}
+                      </span>
+                      <span class="rounded-full bg-primary-50 px-2 py-0.5 text-xs font-semibold text-primary-700 dark:bg-primary-400/10 dark:text-primary-300">
+                        #{{ index + 1 }}
+                      </span>
+                    </div>
+                    <div class="relative rounded-md shadow-sm">
                       <input
                         type="number"
                         step="0.01"
@@ -6887,6 +6912,167 @@
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+
+          <div v-show="activeOperationsSubTab === 'membership'" class="card">
+            <div class="border-b border-gray-100 px-6 py-4 dark:border-dark-700">
+              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+                {{ t("admin.settings.operations.membership.title") }}
+              </h2>
+              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                {{ t("admin.settings.operations.membership.description") }}
+              </p>
+            </div>
+            <div class="space-y-6 p-6">
+              <div class="grid gap-5 xl:grid-cols-2">
+                <section class="rounded-lg border border-gray-200 p-4 dark:border-dark-700">
+                  <div class="mb-4 flex items-start justify-between gap-3">
+                    <div>
+                      <h3 class="text-base font-semibold text-gray-900 dark:text-white">
+                        {{ t("admin.settings.operations.membership.weeklyPlan") }}
+                      </h3>
+                      <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        {{ t("admin.settings.operations.membership.weeklyPlanHint") }}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      class="btn btn-secondary btn-sm shrink-0"
+                      @click="addLoyaltyRule('weekly')"
+                    >
+                      + {{ t("admin.settings.operations.membership.addRule") }}
+                    </button>
+                  </div>
+                  <div class="space-y-3">
+                    <div
+                      v-for="(rule, index) in loyaltyWeeklyRules"
+                      :key="`weekly-${index}`"
+                      class="grid gap-3 rounded-lg bg-gray-50/70 p-3 dark:bg-dark-800/40 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]"
+                    >
+                      <div>
+                        <label class="input-label">
+                          {{ t("admin.settings.operations.membership.rechargeAmount") }}
+                        </label>
+                        <div class="relative">
+                          <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">¥</span>
+                          <input
+                            v-model.number="rule.points"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            class="input pl-7"
+                            :data-testid="`loyalty-weekly-points-${index}`"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label class="input-label">
+                          {{ t("admin.settings.operations.membership.rebateRate") }}
+                        </label>
+                        <div class="relative">
+                          <input
+                            v-model.number="rule.discount"
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.01"
+                            class="input pr-8"
+                            :data-testid="`loyalty-weekly-discount-${index}`"
+                          />
+                          <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">%</span>
+                        </div>
+                      </div>
+                      <div class="flex items-end">
+                        <button
+                          type="button"
+                          class="btn btn-secondary h-[42px] px-2"
+                          :disabled="loyaltyWeeklyRules.length <= 1"
+                          :title="t('admin.settings.operations.membership.removeRule')"
+                          @click="removeLoyaltyRule('weekly', index)"
+                        >
+                          <Icon name="x" size="xs" class="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="rounded-lg border border-gray-200 p-4 dark:border-dark-700">
+                  <div class="mb-4 flex items-start justify-between gap-3">
+                    <div>
+                      <h3 class="text-base font-semibold text-gray-900 dark:text-white">
+                        {{ t("admin.settings.operations.membership.permanentPlan") }}
+                      </h3>
+                      <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        {{ t("admin.settings.operations.membership.permanentPlanHint") }}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      class="btn btn-secondary btn-sm shrink-0"
+                      @click="addLoyaltyRule('permanent')"
+                    >
+                      + {{ t("admin.settings.operations.membership.addRule") }}
+                    </button>
+                  </div>
+                  <div class="space-y-3">
+                    <div
+                      v-for="(rule, index) in loyaltyPermanentRules"
+                      :key="`permanent-${index}`"
+                      class="grid gap-3 rounded-lg bg-gray-50/70 p-3 dark:bg-dark-800/40 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]"
+                    >
+                      <div>
+                        <label class="input-label">
+                          {{ t("admin.settings.operations.membership.rechargeAmount") }}
+                        </label>
+                        <div class="relative">
+                          <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">¥</span>
+                          <input
+                            v-model.number="rule.points"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            class="input pl-7"
+                            :data-testid="`loyalty-permanent-points-${index}`"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label class="input-label">
+                          {{ t("admin.settings.operations.membership.rebateRate") }}
+                        </label>
+                        <div class="relative">
+                          <input
+                            v-model.number="rule.discount"
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.01"
+                            class="input pr-8"
+                            :data-testid="`loyalty-permanent-discount-${index}`"
+                          />
+                          <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">%</span>
+                        </div>
+                      </div>
+                      <div class="flex items-end">
+                        <button
+                          type="button"
+                          class="btn btn-secondary h-[42px] px-2"
+                          :disabled="loyaltyPermanentRules.length <= 1"
+                          :title="t('admin.settings.operations.membership.removeRule')"
+                          @click="removeLoyaltyRule('permanent', index)"
+                        >
+                          <Icon name="x" size="xs" class="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              </div>
+              <p class="text-xs text-gray-500 dark:text-gray-400">
+                {{ t("admin.settings.operations.membership.saveHint") }}
+              </p>
             </div>
           </div>
         </div>
@@ -7409,6 +7595,7 @@ import type {
   UpdateSettingsRequest,
   DefaultSubscriptionSetting,
   DefaultPlatformQuotasMap,
+  LoyaltyRuleSetting,
   OpenAIFastPolicyRule,
   WeChatConnectMode,
   WebSearchEmulationConfig,
@@ -7488,6 +7675,24 @@ type SettingsTab =
   | "operations";
 const activeTab = ref<SettingsTab>("general");
 const welfareRatios = ref<number[]>([1.0, 0.5, 0.2]);
+type OperationsSubTab = "welfare" | "membership";
+const activeOperationsSubTab = ref<OperationsSubTab>("welfare");
+const loyaltyWeeklyRules = ref<LoyaltyRuleSetting[]>([
+  { scope: "weekly", level: "L1", points: 20, discount: 2 },
+  { scope: "weekly", level: "L2", points: 200, discount: 4 },
+  { scope: "weekly", level: "L3", points: 400, discount: 6 },
+  { scope: "weekly", level: "L4", points: 800, discount: 8 },
+]);
+const loyaltyPermanentRules = ref<LoyaltyRuleSetting[]>([
+  { scope: "permanent", level: "L2", points: 800, discount: 4 },
+  { scope: "permanent", level: "L3", points: 4000, discount: 6 },
+  { scope: "permanent", level: "L4", points: 8000, discount: 8 },
+]);
+
+const operationsSubTabs = [
+  { key: "welfare" as OperationsSubTab, icon: "gift" as const },
+  { key: "membership" as OperationsSubTab, icon: "badge" as const },
+];
 
 function normalizeWelfareRankLimit(value: unknown): number {
   return Math.max(1, Math.min(100, Math.floor(Number(value) || 1)));
@@ -7517,6 +7722,76 @@ function parseWelfareRatios(raw: unknown): number[] {
   } catch {
     return [1.0, 0.5, 0.2];
   }
+}
+
+function defaultLoyaltyRules(scope: "weekly" | "permanent"): LoyaltyRuleSetting[] {
+  return scope === "weekly"
+    ? [
+        { scope: "weekly", level: "L1", points: 20, discount: 2 },
+        { scope: "weekly", level: "L2", points: 200, discount: 4 },
+        { scope: "weekly", level: "L3", points: 400, discount: 6 },
+        { scope: "weekly", level: "L4", points: 800, discount: 8 },
+      ]
+    : [
+        { scope: "permanent", level: "L2", points: 800, discount: 4 },
+        { scope: "permanent", level: "L3", points: 4000, discount: 6 },
+        { scope: "permanent", level: "L4", points: 8000, discount: 8 },
+      ];
+}
+
+function normalizeLoyaltyRules(
+  scope: "weekly" | "permanent",
+  rules: LoyaltyRuleSetting[],
+): LoyaltyRuleSetting[] {
+  const normalized = rules
+    .map((rule, index) => ({
+      scope,
+      level: String(rule.level || `L${index + 1}`).trim() || `L${index + 1}`,
+      points: Math.max(0, Number(rule.points) || 0),
+      discount: Math.min(100, Math.max(0, Number(rule.discount) || 0)),
+    }))
+    .filter((rule) => rule.points > 0)
+    .sort((a, b) => a.points - b.points);
+
+  return normalized.length > 0 ? normalized : defaultLoyaltyRules(scope);
+}
+
+function parseLoyaltyRules(raw: unknown, scope: "weekly" | "permanent"): LoyaltyRuleSetting[] {
+  if (Array.isArray(raw)) {
+    return normalizeLoyaltyRules(scope, raw as LoyaltyRuleSetting[]);
+  }
+  if (typeof raw !== "string" || raw.trim() === "") {
+    return defaultLoyaltyRules(scope);
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed)
+      ? normalizeLoyaltyRules(scope, parsed as LoyaltyRuleSetting[])
+      : defaultLoyaltyRules(scope);
+  } catch {
+    return defaultLoyaltyRules(scope);
+  }
+}
+
+function serializeLoyaltyRules(scope: "weekly" | "permanent", rules: LoyaltyRuleSetting[]): string {
+  return JSON.stringify(normalizeLoyaltyRules(scope, rules));
+}
+
+function addLoyaltyRule(scope: "weekly" | "permanent"): void {
+  const target = scope === "weekly" ? loyaltyWeeklyRules.value : loyaltyPermanentRules.value;
+  const previous = target[target.length - 1];
+  target.push({
+    scope,
+    level: `L${target.length + 1}`,
+    points: Math.max(1, Math.round((previous?.points || (scope === "weekly" ? 20 : 800)) * 2)),
+    discount: Math.min(100, Math.max(0, Number(previous?.discount || 0) + 2)),
+  });
+}
+
+function removeLoyaltyRule(scope: "weekly" | "permanent", index: number): void {
+  const target = scope === "weekly" ? loyaltyWeeklyRules.value : loyaltyPermanentRules.value;
+  if (target.length <= 1) return;
+  target.splice(index, 1);
 }
 
 const settingsTabs = [
@@ -8136,6 +8411,8 @@ const form = reactive<SettingsForm>({
   email_verify_enabled: false,
   welfare_leaderboard_rank_limit: 3,
   welfare_leaderboard_reward_ratios: "[1.0, 0.5, 0.2]",
+  loyalty_weekly_rules: serializeLoyaltyRules("weekly", loyaltyWeeklyRules.value),
+  loyalty_permanent_rules: serializeLoyaltyRules("permanent", loyaltyPermanentRules.value),
   registration_email_suffix_whitelist: [],
   promo_code_enabled: true,
   invitation_code_enabled: false,
@@ -9133,6 +9410,11 @@ async function loadSettings() {
       form.welfare_leaderboard_reward_ratios,
     );
     normalizeWelfareSettings();
+    loyaltyWeeklyRules.value = parseLoyaltyRules(form.loyalty_weekly_rules, "weekly");
+    loyaltyPermanentRules.value = parseLoyaltyRules(
+      form.loyalty_permanent_rules,
+      "permanent",
+    );
     if (!form.claude_oauth_system_prompt_blocks?.trim()) {
       form.claude_oauth_system_prompt_blocks =
         defaultClaudeOAuthSystemPromptBlocks;
@@ -9749,6 +10031,8 @@ async function saveSettings() {
       allow_user_view_error_requests: form.allow_user_view_error_requests,
       welfare_leaderboard_rank_limit: form.welfare_leaderboard_rank_limit,
       welfare_leaderboard_reward_ratios: JSON.stringify(welfareRatios.value),
+      loyalty_weekly_rules: serializeLoyaltyRules("weekly", loyaltyWeeklyRules.value),
+      loyalty_permanent_rules: serializeLoyaltyRules("permanent", loyaltyPermanentRules.value),
     };
 
     // 仅当 openai_fast_policy_settings 已成功从后端加载时才回写，
@@ -9795,6 +10079,14 @@ async function saveSettings() {
       updated.welfare_leaderboard_reward_ratios,
     );
     normalizeWelfareSettings();
+    loyaltyWeeklyRules.value = parseLoyaltyRules(
+      updated.loyalty_weekly_rules,
+      "weekly",
+    );
+    loyaltyPermanentRules.value = parseLoyaltyRules(
+      updated.loyalty_permanent_rules,
+      "permanent",
+    );
     registrationEmailSuffixWhitelistTags.value =
       normalizeRegistrationEmailSuffixDomains(
         updated.registration_email_suffix_whitelist,
@@ -11164,6 +11456,22 @@ watch(
 
 .settings-tab-label {
   @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap leading-none;
+}
+
+.operations-subtabs {
+  @apply inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-lg border border-gray-200 bg-white p-1 shadow-sm dark:border-dark-700 dark:bg-dark-900;
+}
+
+.operations-subtab {
+  @apply inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md px-3 text-sm font-medium text-gray-600 transition-colors dark:text-gray-300;
+}
+
+.operations-subtab:hover {
+  @apply bg-gray-50 text-gray-900 dark:bg-dark-800 dark:text-white;
+}
+
+.operations-subtab-active {
+  @apply bg-primary-50 text-primary-700 dark:bg-primary-400/10 dark:text-primary-200;
 }
 </style>
 

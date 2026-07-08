@@ -130,6 +130,8 @@ func (h *SettingHandler) GetSettings(c *gin.Context) {
 		TotpEncryptionKeyConfigured:                            h.settingService.IsTotpEncryptionKeyConfigured(),
 		WelfareLeaderboardRankLimit:                            settings.WelfareLeaderboardRankLimit,
 		WelfareLeaderboardRewardRatios:                         settings.WelfareLeaderboardRewardRatios,
+		LoyaltyWeeklyRules:                                     settings.LoyaltyWeeklyRules,
+		LoyaltyPermanentRules:                                  settings.LoyaltyPermanentRules,
 		LoginAgreementEnabled:                                  settings.LoginAgreementEnabled,
 		LoginAgreementMode:                                     settings.LoginAgreementMode,
 		LoginAgreementUpdatedAt:                                settings.LoginAgreementUpdatedAt,
@@ -477,6 +479,8 @@ type UpdateSettingsRequest struct {
 	// 排行榜福利设置
 	WelfareLeaderboardRankLimit    int    `json:"welfare_leaderboard_rank_limit"`
 	WelfareLeaderboardRewardRatios string `json:"welfare_leaderboard_reward_ratios"`
+	LoyaltyWeeklyRules             string `json:"loyalty_weekly_rules"`
+	LoyaltyPermanentRules          string `json:"loyalty_permanent_rules"`
 
 	// WeChat Connect OAuth 登录
 	WeChatConnectEnabled             bool   `json:"wechat_connect_enabled"`
@@ -1568,6 +1572,15 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		response.BadRequest(c, err.Error())
 		return
 	}
+	normalizeLoyaltyUpdateRequest(&req, previousSettings)
+	if _, err := service.NormalizePaymentLoyaltyRulesJSON("weekly", req.LoyaltyWeeklyRules); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+	if _, err := service.NormalizePaymentLoyaltyRulesJSON("permanent", req.LoyaltyPermanentRules); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
 
 	settings := &service.SystemSettings{
 		// 系统全局 platform quota 默认值（整体替换语义）
@@ -1583,6 +1596,8 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		TotpEnabled:                      req.TotpEnabled,
 		WelfareLeaderboardRankLimit:      req.WelfareLeaderboardRankLimit,
 		WelfareLeaderboardRewardRatios:   req.WelfareLeaderboardRewardRatios,
+		LoyaltyWeeklyRules:               req.LoyaltyWeeklyRules,
+		LoyaltyPermanentRules:            req.LoyaltyPermanentRules,
 		LoginAgreementEnabled:            req.LoginAgreementEnabled,
 		LoginAgreementMode:               loginAgreementMode,
 		LoginAgreementUpdatedAt:          loginAgreementUpdatedAt,
@@ -2097,6 +2112,8 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		TotpEncryptionKeyConfigured:                            h.settingService.IsTotpEncryptionKeyConfigured(),
 		WelfareLeaderboardRankLimit:                            updatedSettings.WelfareLeaderboardRankLimit,
 		WelfareLeaderboardRewardRatios:                         updatedSettings.WelfareLeaderboardRewardRatios,
+		LoyaltyWeeklyRules:                                     updatedSettings.LoyaltyWeeklyRules,
+		LoyaltyPermanentRules:                                  updatedSettings.LoyaltyPermanentRules,
 		LoginAgreementEnabled:                                  updatedSettings.LoginAgreementEnabled,
 		LoginAgreementMode:                                     updatedSettings.LoginAgreementMode,
 		LoginAgreementUpdatedAt:                                updatedSettings.LoginAgreementUpdatedAt,
@@ -2642,6 +2659,12 @@ func diffSettings(before *service.SystemSettings, after *service.SystemSettings,
 	}
 	if before.AffiliateRebatePerInviteeCap != after.AffiliateRebatePerInviteeCap {
 		changed = append(changed, "affiliate_rebate_per_invitee_cap")
+	}
+	if before.LoyaltyWeeklyRules != after.LoyaltyWeeklyRules {
+		changed = append(changed, "loyalty_weekly_rules")
+	}
+	if before.LoyaltyPermanentRules != after.LoyaltyPermanentRules {
+		changed = append(changed, "loyalty_permanent_rules")
 	}
 	if !equalDefaultSubscriptions(before.DefaultSubscriptions, after.DefaultSubscriptions) {
 		changed = append(changed, "default_subscriptions")
@@ -3995,6 +4018,21 @@ func normalizeWelfareUpdateRequest(req *UpdateSettingsRequest, previous *service
 	}
 	if strings.TrimSpace(req.WelfareLeaderboardRewardRatios) == "" {
 		req.WelfareLeaderboardRewardRatios = "[1.0, 0.5, 0.2]"
+	}
+}
+
+func normalizeLoyaltyUpdateRequest(req *UpdateSettingsRequest, previous *service.SystemSettings) {
+	if strings.TrimSpace(req.LoyaltyWeeklyRules) == "" {
+		req.LoyaltyWeeklyRules = previous.LoyaltyWeeklyRules
+	}
+	if strings.TrimSpace(req.LoyaltyWeeklyRules) == "" {
+		req.LoyaltyWeeklyRules = service.DefaultPaymentLoyaltyRulesJSON("weekly")
+	}
+	if strings.TrimSpace(req.LoyaltyPermanentRules) == "" {
+		req.LoyaltyPermanentRules = previous.LoyaltyPermanentRules
+	}
+	if strings.TrimSpace(req.LoyaltyPermanentRules) == "" {
+		req.LoyaltyPermanentRules = service.DefaultPaymentLoyaltyRulesJSON("permanent")
 	}
 }
 

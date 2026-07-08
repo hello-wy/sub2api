@@ -79,6 +79,8 @@ type SystemSettings struct {
 	// 排行榜福利设置
 	WelfareLeaderboardRankLimit    int    `json:"welfare_leaderboard_rank_limit"`
 	WelfareLeaderboardRewardRatios string `json:"welfare_leaderboard_reward_ratios"`
+	LoyaltyWeeklyRules             string `json:"loyalty_weekly_rules"`
+	LoyaltyPermanentRules          string `json:"loyalty_permanent_rules"`
 
 	WeChatConnectEnabled                   bool   `json:"wechat_connect_enabled"`
 	WeChatConnectAppID                     string `json:"wechat_connect_app_id"`

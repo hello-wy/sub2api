@@ -71,6 +71,15 @@ export interface PaymentLoyaltyInfo {
   discount_scope?: 'weekly' | 'permanent' | string
   discount_level?: string
   next_weekly_reset_at?: string
+  weekly_rules?: PaymentLoyaltyRule[]
+  permanent_rules?: PaymentLoyaltyRule[]
+}
+
+export interface PaymentLoyaltyRule {
+  scope: 'weekly' | 'permanent' | string
+  level: string
+  points: number
+  discount: number
 }
 
 /** Response from /payment/checkout-info API — single call for the payment page */

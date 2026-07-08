@@ -95,6 +95,13 @@ export interface PaymentVisibleMethodSourceOption {
   labelEn: string;
 }
 
+export interface LoyaltyRuleSetting {
+  scope: "weekly" | "permanent" | string;
+  level: string;
+  points: number;
+  discount: number;
+}
+
 export interface WeChatConnectModeOption {
   value: WeChatConnectMode;
   labelZh: string;
@@ -372,6 +379,8 @@ export interface SystemSettings {
   login_agreement_documents: LoginAgreementDocument[];
   welfare_leaderboard_rank_limit: number;
   welfare_leaderboard_reward_ratios: string;
+  loyalty_weekly_rules: string;
+  loyalty_permanent_rules: string;
   // Default settings
   default_balance: number;
   affiliate_rebate_rate: number;
@@ -672,6 +681,8 @@ export interface UpdateSettingsRequest {
   login_agreement_documents?: LoginAgreementDocument[];
   welfare_leaderboard_rank_limit?: number;
   welfare_leaderboard_reward_ratios?: string;
+  loyalty_weekly_rules?: string;
+  loyalty_permanent_rules?: string;
   default_balance?: number;
   affiliate_rebate_rate?: number;
   affiliate_rebate_freeze_hours?: number;

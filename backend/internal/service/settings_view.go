@@ -158,6 +158,8 @@ type SystemSettings struct {
 	// 排行榜福利设置
 	WelfareLeaderboardRankLimit    int
 	WelfareLeaderboardRewardRatios string
+	LoyaltyWeeklyRules             string
+	LoyaltyPermanentRules          string
 
 	// Model fallback configuration
 	EnableModelFallback      bool   `json:"enable_model_fallback"`

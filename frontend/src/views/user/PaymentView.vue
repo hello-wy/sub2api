@@ -529,7 +529,7 @@ const loyaltyInfo = computed(() => checkout.value.loyalty)
 const loyaltyDiscountPercent = computed(() => {
   const raw = loyaltyInfo.value?.discount_percent ?? 0
   if (!loyaltyInfo.value?.enabled || !Number.isFinite(raw) || raw <= 0) return 0
-  return Math.min(99, Math.max(0, raw))
+  return Math.min(100, Math.max(0, raw))
 })
 
 // Adaptive grid: center single card, 2-col for 2 plans, 3-col for 3+

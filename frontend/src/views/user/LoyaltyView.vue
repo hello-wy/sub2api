@@ -198,7 +198,7 @@ import { useRouter } from 'vue-router'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import Icon from '@/components/icons/Icon.vue'
-import { userAPI } from '@/api'
+import { paymentAPI, userAPI } from '@/api'
 import { useAppStore } from '@/stores/app'
 import { extractApiErrorMessage } from '@/utils/apiError'
 import {
@@ -212,6 +212,7 @@ import {
   type LoyaltyRule,
 } from '@/utils/loyalty'
 import type { UserAttributeDefinition, UserAttributeValue } from '@/types'
+import type { PaymentLoyaltyInfo, PaymentLoyaltyRule } from '@/types/payment'
 
 type IconName =
   | 'badge'
@@ -263,16 +264,17 @@ const appStore = useAppStore()
 const loading = ref(true)
 const definitions = ref<UserAttributeDefinition[]>([])
 const values = ref<UserAttributeValue[]>([])
+const paymentLoyalty = ref<PaymentLoyaltyInfo | null>(null)
 
-const weeklyRules = weeklyLoyaltyRules
-const permanentRules = permanentLoyaltyRules
+const weeklyRules = computed(() => normalizeRuleSettings(paymentLoyalty.value?.weekly_rules, weeklyLoyaltyRules, 'weekly'))
+const permanentRules = computed(() => normalizeRuleSettings(paymentLoyalty.value?.permanent_rules, permanentLoyaltyRules, 'permanent'))
 
 const pointDefinitions = computed(() => findLoyaltyPointsDefinitions(definitions.value))
 const pointsDefinition = computed(() => Boolean(pointDefinitions.value.weekly && pointDefinitions.value.permanent))
 const weeklyPoints = computed(() => readLoyaltyPoints(definitions.value, values.value, 'weekly'))
 const permanentPoints = computed(() => readLoyaltyPoints(definitions.value, values.value, 'permanent'))
-const weeklyProgress = computed(() => resolveLoyaltyProgress(weeklyPoints.value, weeklyRules))
-const permanentProgress = computed(() => resolveLoyaltyProgress(permanentPoints.value, permanentRules))
+const weeklyProgress = computed(() => resolveLoyaltyProgress(weeklyPoints.value, weeklyRules.value))
+const permanentProgress = computed(() => resolveLoyaltyProgress(permanentPoints.value, permanentRules.value))
 const bestDiscount = computed(() => Math.max(
   weeklyProgress.value.current?.discount ?? 0,
   permanentProgress.value.current?.discount ?? 0,
@@ -320,7 +322,7 @@ const planCards = computed<PlanCard[]>(() => [
     hint: t('loyalty.weeklyHint'),
     badge: t('loyalty.weeklyBadge'),
     icon: 'calendar',
-    tiers: buildTierCards(weeklyRules, weeklyProgress.value, weeklyPoints.value),
+    tiers: buildTierCards(weeklyRules.value, weeklyProgress.value, weeklyPoints.value),
   },
   {
     key: 'permanent',
@@ -328,7 +330,7 @@ const planCards = computed<PlanCard[]>(() => [
     hint: t('loyalty.permanentHint'),
     badge: t('loyalty.permanentBadge'),
     icon: 'link',
-    tiers: buildTierCards(permanentRules, permanentProgress.value, permanentPoints.value),
+    tiers: buildTierCards(permanentRules.value, permanentProgress.value, permanentPoints.value),
   },
 ])
 
@@ -356,9 +358,27 @@ const ruleNotes = computed(() => [
 ])
 
 const benefitRows = computed<BenefitRow[]>(() => [
-  ...buildBenefitRows('weekly', weeklyRules, weeklyProgress.value, weeklyPoints.value),
-  ...buildBenefitRows('permanent', permanentRules, permanentProgress.value, permanentPoints.value),
+  ...buildBenefitRows('weekly', weeklyRules.value, weeklyProgress.value, weeklyPoints.value),
+  ...buildBenefitRows('permanent', permanentRules.value, permanentProgress.value, permanentPoints.value),
 ])
+
+function normalizeRuleSettings(
+  source: PaymentLoyaltyRule[] | undefined,
+  fallback: LoyaltyRule[],
+  scope: LoyaltyRule['scope'],
+): LoyaltyRule[] {
+  if (!Array.isArray(source) || source.length === 0) return fallback
+  const rules = source
+    .map((rule, index) => ({
+      scope,
+      level: rule.level || `L${index + 1}`,
+      points: Number(rule.points) || 0,
+      discount: Number(rule.discount) || 0,
+    }))
+    .filter((rule) => rule.points > 0 && rule.discount >= 0)
+    .sort((a, b) => a.points - b.points)
+  return rules.length > 0 ? rules : fallback
+}
 
 function buildTierCards(rules: LoyaltyRule[], progress: LoyaltyProgress, points: number): TierCard[] {
   return rules.map((rule) => ({
@@ -417,9 +437,13 @@ function statusLabel(state: RuleState): string {
 async function loadAttributes(): Promise<void> {
   loading.value = true
   try {
-    const resp = await userAPI.getMyAttributes()
+    const [resp, checkoutResp] = await Promise.all([
+      userAPI.getMyAttributes(),
+      paymentAPI.getCheckoutInfo().catch(() => null),
+    ])
     definitions.value = resp.definitions
     values.value = resp.values
+    paymentLoyalty.value = checkoutResp?.data.loyalty ?? null
   } catch (error) {
     appStore.showError(extractApiErrorMessage(error, t('common.error')))
   } finally {

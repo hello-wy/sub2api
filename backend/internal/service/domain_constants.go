@@ -172,6 +172,8 @@ const (
 	// 排行榜福利发放设置
 	SettingKeyWelfareLeaderboardRankLimit    = "welfare_leaderboard_rank_limit"    // 排行榜福利前多少名获得福利
 	SettingKeyWelfareLeaderboardRewardRatios = "welfare_leaderboard_reward_ratios" // 排行榜福利每名获得的比例
+	SettingKeyLoyaltyWeeklyRules             = "loyalty_weekly_rules"              // 会员周计划规则（JSON）
+	SettingKeyLoyaltyPermanentRules          = "loyalty_permanent_rules"           // 会员永久计划规则（JSON）
 
 	// LinuxDo Connect OAuth 登录设置
 	SettingKeyLinuxDoConnectEnabled      = "linuxdo_connect_enabled"

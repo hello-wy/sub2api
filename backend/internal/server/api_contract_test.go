@@ -946,6 +946,8 @@ func TestAPIContracts(t *testing.T) {
 					"wechat_connect_scopes": "snsapi_login",
 					"welfare_leaderboard_rank_limit": 3,
 					"welfare_leaderboard_reward_ratios": "[1.0, 0.5, 0.2]",
+					"loyalty_weekly_rules": "[{\"scope\":\"weekly\",\"level\":\"L1\",\"points\":20,\"discount\":2},{\"scope\":\"weekly\",\"level\":\"L2\",\"points\":200,\"discount\":4},{\"scope\":\"weekly\",\"level\":\"L3\",\"points\":400,\"discount\":6},{\"scope\":\"weekly\",\"level\":\"L4\",\"points\":800,\"discount\":8}]",
+					"loyalty_permanent_rules": "[{\"scope\":\"permanent\",\"level\":\"L2\",\"points\":800,\"discount\":4},{\"scope\":\"permanent\",\"level\":\"L3\",\"points\":4000,\"discount\":6},{\"scope\":\"permanent\",\"level\":\"L4\",\"points\":8000,\"discount\":8}]",
 					"allow_user_view_error_requests": false
 				}
 			}`,
@@ -1218,6 +1220,8 @@ func TestAPIContracts(t *testing.T) {
 					"wechat_connect_scopes": "snsapi_login",
 					"welfare_leaderboard_rank_limit": 3,
 					"welfare_leaderboard_reward_ratios": "[1.0, 0.5, 0.2]",
+					"loyalty_weekly_rules": "[{\"scope\":\"weekly\",\"level\":\"L1\",\"points\":20,\"discount\":2},{\"scope\":\"weekly\",\"level\":\"L2\",\"points\":200,\"discount\":4},{\"scope\":\"weekly\",\"level\":\"L3\",\"points\":400,\"discount\":6},{\"scope\":\"weekly\",\"level\":\"L4\",\"points\":800,\"discount\":8}]",
+					"loyalty_permanent_rules": "[{\"scope\":\"permanent\",\"level\":\"L2\",\"points\":800,\"discount\":4},{\"scope\":\"permanent\",\"level\":\"L3\",\"points\":4000,\"discount\":6},{\"scope\":\"permanent\",\"level\":\"L4\",\"points\":8000,\"discount\":8}]",
 					"auth_source_default_email_balance": 0,
 					"auth_source_default_email_concurrency": 5,
 					"auth_source_default_email_subscriptions": [],
