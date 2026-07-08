@@ -18,11 +18,11 @@ func TestResolvePaymentLoyaltyRuleBoundaries(t *testing.T) {
 	if got := resolvePaymentLoyaltyRule(800, paymentWeeklyLoyaltyRules); got == nil || got.Level != "L4" || got.Discount != 8 {
 		t.Fatalf("weekly 800 points rule = %+v, want L4 8%%", got)
 	}
-	if got := resolvePaymentLoyaltyRule(999, paymentPermanentLoyaltyRules); got != nil {
-		t.Fatalf("permanent 999 points rule = %+v, want nil", got)
+	if got := resolvePaymentLoyaltyRule(799, paymentPermanentLoyaltyRules); got != nil {
+		t.Fatalf("permanent 799 points rule = %+v, want nil", got)
 	}
-	if got := resolvePaymentLoyaltyRule(1000, paymentPermanentLoyaltyRules); got == nil || got.Level != "L2" || got.Discount != 4 {
-		t.Fatalf("permanent 1000 points rule = %+v, want L2 4%%", got)
+	if got := resolvePaymentLoyaltyRule(800, paymentPermanentLoyaltyRules); got == nil || got.Level != "L2" || got.Discount != 4 {
+		t.Fatalf("permanent 800 points rule = %+v, want L2 4%%", got)
 	}
 }
 
@@ -30,7 +30,7 @@ func TestBetterPaymentLoyaltyRulePrefersHigherDiscount(t *testing.T) {
 	t.Parallel()
 
 	weekly := resolvePaymentLoyaltyRule(800, paymentWeeklyLoyaltyRules)
-	permanent := resolvePaymentLoyaltyRule(1000, paymentPermanentLoyaltyRules)
+	permanent := resolvePaymentLoyaltyRule(800, paymentPermanentLoyaltyRules)
 
 	if got := betterPaymentLoyaltyRule(weekly, permanent); got != weekly {
 		t.Fatalf("best rule = %+v, want weekly L4", got)

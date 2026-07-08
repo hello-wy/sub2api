@@ -100,10 +100,9 @@
                   class="loyalty-tier-tile"
                   :class="tierTileClass(tier.state)"
                 >
-                  <div class="text-center">
-                    <p class="text-base font-black text-slate-950 dark:text-white">{{ tier.rule.level }}</p>
-                    <span class="loyalty-tier-emoji">{{ tier.icon }}</span>
-                    <p class="mt-3 text-sm font-semibold text-slate-500 dark:text-dark-400">
+                  <div class="loyalty-tier-main">
+                    <p class="loyalty-tier-level">{{ tier.rule.level }}</p>
+                    <p class="loyalty-tier-condition">
                       {{ ruleCondition(tier.rule) }}
                     </p>
                   </div>
@@ -115,22 +114,22 @@
             </article>
           </section>
 
-          <section class="loyalty-panel p-5 sm:p-6">
-            <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-              <div
+          <section class="loyalty-panel loyalty-rules-panel p-5 sm:p-6">
+            <div>
+              <h3 class="text-lg font-black tracking-normal text-slate-950 dark:text-white">{{ t('loyalty.rulesTitle') }}</h3>
+            </div>
+            <ul class="loyalty-rules-list mt-4">
+              <li
                 v-for="item in ruleNotes"
                 :key="item.title"
-                class="loyalty-note-item"
+                class="loyalty-rule-item"
               >
-                <div class="loyalty-note-icon">
-                  <Icon :name="item.icon" size="md" />
-                </div>
                 <div class="min-w-0">
                   <h4 class="text-base font-black tracking-normal text-slate-950 dark:text-white">{{ item.title }}</h4>
                   <p class="mt-1 text-sm font-medium leading-6 text-slate-500 dark:text-dark-400">{{ item.description }}</p>
                 </div>
-              </div>
-            </div>
+              </li>
+            </ul>
           </section>
 
           <section class="loyalty-panel overflow-hidden p-5 sm:p-6">
@@ -153,12 +152,15 @@
                     <th>{{ t('loyalty.tableLevel') }}</th>
                     <th>{{ t('loyalty.tableCondition') }}</th>
                     <th>{{ t('loyalty.tableDiscount') }}</th>
-                    <th>{{ t('loyalty.tableDescription') }}</th>
                     <th class="text-right">{{ t('loyalty.tableStatus') }}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="row in benefitRows" :key="`${row.scope}-${row.level}`">
+                  <tr
+                    v-for="row in benefitRows"
+                    :key="`${row.scope}-${row.level}`"
+                    :class="statusClass(row.state)"
+                  >
                     <td v-if="row.showPlan" :rowspan="row.rowSpan" class="min-w-[150px]">
                       <div class="flex items-center gap-3">
                         <div class="loyalty-table-plan-icon">
@@ -173,7 +175,6 @@
                     <td class="font-semibold text-slate-600 dark:text-dark-300">{{ row.level }}</td>
                     <td class="font-semibold text-slate-600 dark:text-dark-300">{{ row.condition }}</td>
                     <td class="text-base font-black text-emerald-600 dark:text-emerald-300">{{ row.discount }}</td>
-                    <td class="min-w-[280px] text-slate-500 dark:text-dark-400">{{ row.description }}</td>
                     <td class="text-right">
                       <span class="loyalty-status-pill" :class="statusClass(row.state)">
                         {{ statusLabel(row.state) }}
@@ -231,7 +232,6 @@ type RuleState = 'current' | 'unlocked' | 'locked'
 interface TierCard {
   rule: LoyaltyRule
   state: RuleState
-  icon: string
 }
 
 interface PlanCard {
@@ -253,7 +253,6 @@ interface BenefitRow {
   level: string
   condition: string
   discount: string
-  description: string
   state: RuleState
 }
 
@@ -337,27 +336,22 @@ const ruleNotes = computed(() => [
   {
     title: t('loyalty.ruleHigherTitle'),
     description: t('loyalty.ruleHigherDesc'),
-    icon: 'trendingUp' as IconName,
   },
   {
     title: t('loyalty.weeklyResetTitle'),
     description: t('loyalty.weeklyResetDesc'),
-    icon: 'calendar' as IconName,
   },
   {
     title: t('loyalty.permanentStableTitle'),
     description: t('loyalty.permanentStableDesc'),
-    icon: 'shield' as IconName,
   },
   {
     title: t('loyalty.earnTitle'),
     description: t('loyalty.earnRechargeDesc'),
-    icon: 'gift' as IconName,
   },
   {
     title: t('loyalty.bonusTitle'),
     description: t('loyalty.bonusDesc'),
-    icon: 'users' as IconName,
   },
 ])
 
@@ -367,16 +361,9 @@ const benefitRows = computed<BenefitRow[]>(() => [
 ])
 
 function buildTierCards(rules: LoyaltyRule[], progress: LoyaltyProgress, points: number): TierCard[] {
-  const iconsByLevel: Record<string, string> = {
-    L1: '🌱',
-    L2: '⭐',
-    L3: '👑',
-    L4: '🏆',
-  }
   return rules.map((rule) => ({
     rule,
     state: ruleState(rule, progress, points),
-    icon: iconsByLevel[rule.level] ?? '⭐',
   }))
 }
 
@@ -396,7 +383,6 @@ function buildBenefitRows(
     level: rule.level,
     condition: ruleCondition(rule),
     discount: `${rule.discount}%`,
-    description: scope === 'weekly' ? t('loyalty.weeklyRuleDescription') : t('loyalty.permanentRuleDescription'),
     state: ruleState(rule, progress, points),
   }))
 }
@@ -529,7 +515,6 @@ onMounted(() => {
 
 .loyalty-alert-icon,
 .loyalty-section-icon,
-.loyalty-note-icon,
 .loyalty-table-plan-icon,
 .loyalty-stat-icon {
   display: flex;
@@ -548,7 +533,6 @@ onMounted(() => {
 }
 
 .loyalty-section-icon,
-.loyalty-note-icon,
 .loyalty-table-plan-icon {
   height: 2.75rem;
   width: 2.75rem;
@@ -587,21 +571,24 @@ onMounted(() => {
 
 .loyalty-tier-tile {
   display: flex;
-  min-height: 8rem;
+  min-height: 7rem;
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
   border-radius: 0.5rem;
   border: 1px solid rgba(204, 251, 241, 0.98);
   background: rgba(255, 255, 255, 0.7);
-  padding: 1rem 0.75rem;
+  padding: 0.95rem 0.75rem;
   text-align: center;
 }
 
 .loyalty-tier-tile.is-current {
   border-color: rgba(52, 211, 153, 0.86);
-  background: rgba(236, 253, 245, 0.96);
-  box-shadow: 0 14px 30px rgba(16, 185, 129, 0.12);
+  background:
+    linear-gradient(180deg, rgba(236, 253, 245, 0.98), rgba(209, 250, 229, 0.78));
+  box-shadow:
+    inset 0 0 0 1px rgba(16, 185, 129, 0.18),
+    0 16px 34px rgba(16, 185, 129, 0.18);
 }
 
 .loyalty-tier-tile.is-unlocked {
@@ -610,18 +597,56 @@ onMounted(() => {
 }
 
 .loyalty-tier-tile.is-locked {
-  border-color: rgba(226, 232, 240, 0.96);
-  background: rgba(255, 255, 255, 0.72);
+  border-color: rgba(226, 232, 240, 0.98);
+  background: rgba(248, 250, 252, 0.76);
 }
 
-.loyalty-tier-emoji {
+.loyalty-tier-main {
   display: flex;
-  height: 2.2rem;
+  min-height: 3.75rem;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  margin-top: 0.45rem;
-  font-size: 1.55rem;
-  line-height: 1;
+}
+
+.loyalty-tier-level {
+  font-size: 1.125rem;
+  font-weight: 950;
+  line-height: 1.1;
+  color: #0f172a;
+}
+
+.loyalty-tier-condition {
+  margin-top: 0.6rem;
+  font-size: 0.8125rem;
+  font-weight: 750;
+  line-height: 1.35;
+  color: #64748b;
+}
+
+.loyalty-tier-tile.is-current .loyalty-tier-level {
+  color: #047857;
+}
+
+.loyalty-tier-tile.is-current .loyalty-tier-condition {
+  color: #0f766e;
+}
+
+.loyalty-tier-tile.is-current .loyalty-discount-pill {
+  background: #10b981;
+  color: white;
+  box-shadow: 0 8px 18px rgba(16, 185, 129, 0.24);
+}
+
+.loyalty-tier-tile.is-locked .loyalty-tier-level,
+.loyalty-tier-tile.is-locked .loyalty-tier-condition {
+  color: #94a3b8;
+}
+
+.loyalty-tier-tile.is-locked .loyalty-discount-pill {
+  background: rgba(241, 245, 249, 0.9);
+  color: #94a3b8;
+  box-shadow: inset 0 0 0 1px rgba(226, 232, 240, 0.95);
 }
 
 .loyalty-discount-pill {
@@ -637,14 +662,39 @@ onMounted(() => {
   box-shadow: inset 0 0 0 1px rgba(167, 243, 208, 0.95);
 }
 
-.loyalty-note-item {
-  display: flex;
-  min-height: 7.5rem;
-  gap: 1rem;
-  border: 1px solid rgba(204, 251, 241, 0.86);
+.loyalty-rules-panel {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.88));
+}
+
+.loyalty-rules-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11.5rem, 1fr));
+  gap: 0.75rem;
+  list-style: none;
+  padding: 0;
+}
+
+.loyalty-rule-item {
+  position: relative;
+  min-height: 7rem;
+  border: 1px solid rgba(204, 251, 241, 0.78);
   border-radius: 0.5rem;
   background: rgba(255, 255, 255, 0.62);
-  padding: 1rem;
+  padding: 1rem 1rem 1rem 2.25rem;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.035);
+}
+
+.loyalty-rule-item::before {
+  position: absolute;
+  top: 1.52rem;
+  left: 1rem;
+  height: 0.45rem;
+  width: 0.45rem;
+  border-radius: 9999px;
+  background: #10b981;
+  box-shadow: 0 0 0 0.25rem rgba(16, 185, 129, 0.12);
+  content: "";
 }
 
 .loyalty-table-action {
@@ -669,7 +719,7 @@ onMounted(() => {
 
 .loyalty-table {
   width: 100%;
-  min-width: 900px;
+  min-width: 680px;
   border-collapse: collapse;
   font-size: 0.875rem;
 }
@@ -698,6 +748,19 @@ onMounted(() => {
   background: rgba(240, 253, 250, 0.42);
 }
 
+.loyalty-table tbody tr.is-current {
+  background: rgba(236, 253, 245, 0.82);
+}
+
+.loyalty-table tbody tr.is-current td {
+  border-color: rgba(167, 243, 208, 0.9);
+  color: #047857;
+}
+
+.loyalty-table tbody tr.is-locked td {
+  color: #94a3b8;
+}
+
 .loyalty-table tbody tr:last-child td {
   border-bottom: 0;
 }
@@ -724,9 +787,9 @@ onMounted(() => {
 }
 
 .loyalty-status-pill.is-locked {
-  background: rgba(254, 243, 199, 0.9);
-  color: #d97706;
-  box-shadow: inset 0 0 0 1px rgba(252, 211, 77, 0.86);
+  background: rgba(241, 245, 249, 0.9);
+  color: #94a3b8;
+  box-shadow: inset 0 0 0 1px rgba(226, 232, 240, 0.95);
 }
 </style>
 
@@ -788,7 +851,6 @@ onMounted(() => {
 }
 
 .dark .loyalty-section-icon,
-.dark .loyalty-note-icon,
 .dark .loyalty-table-plan-icon,
 .dark .loyalty-stat-icon {
   background: rgba(6, 78, 59, 0.38);
@@ -798,8 +860,10 @@ onMounted(() => {
 
 .dark .loyalty-tier-tile.is-current {
   border-color: rgba(52, 211, 153, 0.62);
-  background: linear-gradient(180deg, rgba(6, 78, 59, 0.44), rgba(15, 23, 42, 0.66));
-  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.22);
+  background: linear-gradient(180deg, rgba(6, 95, 70, 0.58), rgba(15, 23, 42, 0.66));
+  box-shadow:
+    inset 0 0 0 1px rgba(16, 185, 129, 0.24),
+    0 14px 30px rgba(0, 0, 0, 0.22);
 }
 
 .dark .loyalty-tier-tile.is-unlocked {
@@ -808,14 +872,62 @@ onMounted(() => {
 }
 
 .dark .loyalty-tier-tile.is-locked {
-  border-color: rgba(71, 85, 105, 0.78);
-  background: rgba(15, 23, 42, 0.54);
+  border-color: rgba(71, 85, 105, 0.82);
+  background: rgba(15, 23, 42, 0.42);
 }
 
 .dark .loyalty-discount-pill {
   background: rgba(6, 78, 59, 0.4);
   color: #6ee7b7;
   box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.38);
+}
+
+.dark .loyalty-tier-level {
+  color: #f8fafc;
+}
+
+.dark .loyalty-tier-condition {
+  color: #94a3b8;
+}
+
+.dark .loyalty-tier-tile.is-current .loyalty-tier-level {
+  color: #d1fae5;
+}
+
+.dark .loyalty-tier-tile.is-current .loyalty-tier-condition {
+  color: #a7f3d0;
+}
+
+.dark .loyalty-tier-tile.is-current .loyalty-discount-pill {
+  background: #10b981;
+  color: white;
+  box-shadow: 0 8px 18px rgba(16, 185, 129, 0.22);
+}
+
+.dark .loyalty-tier-tile.is-locked .loyalty-tier-level,
+.dark .loyalty-tier-tile.is-locked .loyalty-tier-condition {
+  color: #64748b;
+}
+
+.dark .loyalty-tier-tile.is-locked .loyalty-discount-pill {
+  background: rgba(30, 41, 59, 0.72);
+  color: #64748b;
+  box-shadow: inset 0 0 0 1px rgba(71, 85, 105, 0.78);
+}
+
+.dark .loyalty-rules-panel {
+  background:
+    linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(17, 24, 39, 0.82));
+}
+
+.dark .loyalty-rule-item {
+  border-color: rgba(45, 212, 191, 0.26);
+  background: rgba(15, 23, 42, 0.46);
+}
+
+.dark .loyalty-rule-item::before {
+  background: #6ee7b7;
+  box-shadow: 0 0 0 0.25rem rgba(16, 185, 129, 0.2);
 }
 
 .dark .loyalty-table th {
@@ -832,9 +944,17 @@ onMounted(() => {
   background: rgba(6, 78, 59, 0.2);
 }
 
-.dark .loyalty-note-item {
-  border-color: rgba(45, 212, 191, 0.26);
-  background: rgba(15, 23, 42, 0.46);
+.dark .loyalty-table tbody tr.is-current {
+  background: rgba(6, 78, 59, 0.3);
+}
+
+.dark .loyalty-table tbody tr.is-current td {
+  border-color: rgba(16, 185, 129, 0.34);
+  color: #a7f3d0;
+}
+
+.dark .loyalty-table tbody tr.is-locked td {
+  color: #64748b;
 }
 
 .dark .loyalty-status-pill.is-current {
@@ -850,8 +970,8 @@ onMounted(() => {
 }
 
 .dark .loyalty-status-pill.is-locked {
-  background: rgba(120, 53, 15, 0.34);
-  color: #fbbf24;
-  box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.38);
+  background: rgba(30, 41, 59, 0.68);
+  color: #64748b;
+  box-shadow: inset 0 0 0 1px rgba(71, 85, 105, 0.78);
 }
 </style>

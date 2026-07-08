@@ -27,9 +27,9 @@ export const weeklyLoyaltyRules: LoyaltyRule[] = [
 ]
 
 export const permanentLoyaltyRules: LoyaltyRule[] = [
-  { scope: 'permanent', level: 'L2', points: 1000, discount: 4 },
-  { scope: 'permanent', level: 'L3', points: 5000, discount: 6 },
-  { scope: 'permanent', level: 'L4', points: 20000, discount: 8 },
+  { scope: 'permanent', level: 'L2', points: 800, discount: 4 },
+  { scope: 'permanent', level: 'L3', points: 4000, discount: 6 },
+  { scope: 'permanent', level: 'L4', points: 8000, discount: 8 },
 ]
 
 export function loyaltyAttributeKeyForScope(scope: LoyaltyScope): string {

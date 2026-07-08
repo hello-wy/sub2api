@@ -43,9 +43,9 @@ var paymentWeeklyLoyaltyRules = []paymentLoyaltyRule{
 }
 
 var paymentPermanentLoyaltyRules = []paymentLoyaltyRule{
-	{Scope: "permanent", Level: "L2", Points: 1000, Discount: 4},
-	{Scope: "permanent", Level: "L3", Points: 5000, Discount: 6},
-	{Scope: "permanent", Level: "L4", Points: 20000, Discount: 8},
+	{Scope: "permanent", Level: "L2", Points: 800, Discount: 4},
+	{Scope: "permanent", Level: "L3", Points: 4000, Discount: 6},
+	{Scope: "permanent", Level: "L4", Points: 8000, Discount: 8},
 }
 
 type PaymentLoyaltyInfo struct {

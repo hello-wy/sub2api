@@ -93,10 +93,10 @@ describe('loyalty progress', () => {
   })
 
   it('resolves permanent tier boundaries', () => {
-    expect(resolveLoyaltyProgress(999, permanentLoyaltyRules).current).toBeNull()
-    expect(resolveLoyaltyProgress(1000, permanentLoyaltyRules).current?.level).toBe('L2')
-    expect(resolveLoyaltyProgress(5000, permanentLoyaltyRules).current?.level).toBe('L3')
-    expect(resolveLoyaltyProgress(20000, permanentLoyaltyRules).current?.level).toBe('L4')
+    expect(resolveLoyaltyProgress(799, permanentLoyaltyRules).current).toBeNull()
+    expect(resolveLoyaltyProgress(800, permanentLoyaltyRules).current?.level).toBe('L2')
+    expect(resolveLoyaltyProgress(4000, permanentLoyaltyRules).current?.level).toBe('L3')
+    expect(resolveLoyaltyProgress(8000, permanentLoyaltyRules).current?.level).toBe('L4')
   })
 
   it('reports remaining points and max-level progress', () => {
@@ -105,7 +105,7 @@ describe('loyalty progress', () => {
     expect(weekly.remainingPoints).toBe(100)
     expect(Math.round(weekly.progressPercent)).toBe(44)
 
-    const maxed = resolveLoyaltyProgress(21000, permanentLoyaltyRules)
+    const maxed = resolveLoyaltyProgress(9000, permanentLoyaltyRules)
     expect(maxed.next).toBeNull()
     expect(maxed.progressPercent).toBe(100)
     expect(maxed.remainingPoints).toBe(0)
