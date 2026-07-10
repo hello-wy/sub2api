@@ -412,6 +412,20 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 	req.AuthSourceDefaultOIDCSubscriptions = normalizeOptionalDefaultSubscriptions(req.AuthSourceDefaultOIDCSubscriptions)
 	req.AuthSourceDefaultWeChatSubscriptions = normalizeOptionalDefaultSubscriptions(req.AuthSourceDefaultWeChatSubscriptions)
 	req.AuthSourceDefaultDingTalkSubscriptions = normalizeOptionalDefaultSubscriptions(req.AuthSourceDefaultDingTalkSubscriptions)
+	normalizeWelfareUpdateRequest(&req, previousSettings)
+	if err := validateWelfareSettings(req.WelfareLeaderboardRankLimit, req.WelfareLeaderboardRewardRatios); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+	normalizeLoyaltyUpdateRequest(&req, previousSettings)
+	if _, err := service.NormalizePaymentLoyaltyRulesJSON("weekly", req.LoyaltyWeeklyRules); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+	if _, err := service.NormalizePaymentLoyaltyRulesJSON("permanent", req.LoyaltyPermanentRules); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
 
 	// SMTP 配置保护：如果请求中 smtp_host 为空但数据库中已有配置，则保留已有 SMTP 配置
 	// 防止前端加载设置失败时空表单覆盖已保存的 SMTP 配置
@@ -1171,6 +1185,10 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		FrontendURL:                      req.FrontendURL,
 		InvitationCodeEnabled:            req.InvitationCodeEnabled,
 		TotpEnabled:                      req.TotpEnabled,
+		WelfareLeaderboardRankLimit:      req.WelfareLeaderboardRankLimit,
+		WelfareLeaderboardRewardRatios:   req.WelfareLeaderboardRewardRatios,
+		LoyaltyWeeklyRules:               req.LoyaltyWeeklyRules,
+		LoyaltyPermanentRules:            req.LoyaltyPermanentRules,
 		LoginAgreementEnabled:            req.LoginAgreementEnabled,
 		LoginAgreementMode:               loginAgreementMode,
 		LoginAgreementUpdatedAt:          loginAgreementUpdatedAt,
@@ -1683,6 +1701,10 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		InvitationCodeEnabled:                                  updatedSettings.InvitationCodeEnabled,
 		TotpEnabled:                                            updatedSettings.TotpEnabled,
 		TotpEncryptionKeyConfigured:                            h.settingService.IsTotpEncryptionKeyConfigured(),
+		WelfareLeaderboardRankLimit:                            updatedSettings.WelfareLeaderboardRankLimit,
+		WelfareLeaderboardRewardRatios:                         updatedSettings.WelfareLeaderboardRewardRatios,
+		LoyaltyWeeklyRules:                                     updatedSettings.LoyaltyWeeklyRules,
+		LoyaltyPermanentRules:                                  updatedSettings.LoyaltyPermanentRules,
 		LoginAgreementEnabled:                                  updatedSettings.LoginAgreementEnabled,
 		LoginAgreementMode:                                     updatedSettings.LoginAgreementMode,
 		LoginAgreementUpdatedAt:                                updatedSettings.LoginAgreementUpdatedAt,
@@ -1901,6 +1923,55 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		payload.DefaultPlatformQuotas = platformQuotas
 	}
 	response.Success(c, systemSettingsResponseData(payload, updatedAuthSourceDefaults))
+}
+
+func validateWelfareSettings(rankLimit int, rewardRatios string) error {
+	if rankLimit < 1 {
+		return errors.New("welfare_leaderboard_rank_limit must be >= 1")
+	}
+	var ratios []float64
+	if err := json.Unmarshal([]byte(rewardRatios), &ratios); err != nil {
+		return errors.New("welfare_leaderboard_reward_ratios must be a JSON number array")
+	}
+	if len(ratios) != rankLimit {
+		return errors.New("welfare_leaderboard_reward_ratios length must match welfare_leaderboard_rank_limit")
+	}
+	for _, ratio := range ratios {
+		if ratio < 0 {
+			return errors.New("welfare_leaderboard_reward_ratios must not contain negative values")
+		}
+	}
+	return nil
+}
+
+func normalizeWelfareUpdateRequest(req *UpdateSettingsRequest, previous *service.SystemSettings) {
+	if req.WelfareLeaderboardRankLimit < 1 {
+		req.WelfareLeaderboardRankLimit = previous.WelfareLeaderboardRankLimit
+	}
+	if req.WelfareLeaderboardRankLimit < 1 {
+		req.WelfareLeaderboardRankLimit = 3
+	}
+	if strings.TrimSpace(req.WelfareLeaderboardRewardRatios) == "" {
+		req.WelfareLeaderboardRewardRatios = previous.WelfareLeaderboardRewardRatios
+	}
+	if strings.TrimSpace(req.WelfareLeaderboardRewardRatios) == "" {
+		req.WelfareLeaderboardRewardRatios = "[1.0, 0.5, 0.2]"
+	}
+}
+
+func normalizeLoyaltyUpdateRequest(req *UpdateSettingsRequest, previous *service.SystemSettings) {
+	if strings.TrimSpace(req.LoyaltyWeeklyRules) == "" {
+		req.LoyaltyWeeklyRules = previous.LoyaltyWeeklyRules
+	}
+	if strings.TrimSpace(req.LoyaltyWeeklyRules) == "" {
+		req.LoyaltyWeeklyRules = service.DefaultPaymentLoyaltyRulesJSON("weekly")
+	}
+	if strings.TrimSpace(req.LoyaltyPermanentRules) == "" {
+		req.LoyaltyPermanentRules = previous.LoyaltyPermanentRules
+	}
+	if strings.TrimSpace(req.LoyaltyPermanentRules) == "" {
+		req.LoyaltyPermanentRules = service.DefaultPaymentLoyaltyRulesJSON("permanent")
+	}
 }
 
 // hasPaymentFields returns true if any payment-related field was explicitly provided.
