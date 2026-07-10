@@ -8,8 +8,10 @@ const LOCALE_KEY = 'sub2api_locale'
 const DEFAULT_LOCALE: LocaleCode = 'en'
 
 const localeLoaders: Record<LocaleCode, () => Promise<{ default: LocaleMessages }>> = {
-  en: () => import('./locales/en'),
-  zh: () => import('./locales/zh')
+  // Use explicit directory entry points. During development, Vite can otherwise
+  // retain the pre-merge `locales/<locale>.ts` resolution in its module graph.
+  en: () => import('./locales/en/index'),
+  zh: () => import('./locales/zh/index')
 }
 
 function isLocaleCode(value: string): value is LocaleCode {

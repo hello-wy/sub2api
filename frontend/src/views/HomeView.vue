@@ -91,11 +91,24 @@
         aria-hidden="true"
       />
 
-      <RevealLayer
-        :image="currentHeroImage"
-        :image-filter="revealImageFilter"
-        :cursor-x="cursorPos.x"
-        :cursor-y="cursorPos.y"
+      <img
+        :key="`reveal-${currentHeroImage}`"
+        :src="currentHeroImage"
+        alt=""
+        class="hero-zoom pointer-events-none absolute inset-0 z-30 h-full w-full object-cover object-center"
+        :style="{
+          filter: revealImageFilter,
+          maskImage: spotlightMask,
+          WebkitMaskImage: spotlightMask
+        }"
+        decoding="async"
+        aria-hidden="true"
+      />
+
+      <div
+        class="pointer-events-none absolute inset-0 z-[31]"
+        :style="{ background: spotlightGlow }"
+        aria-hidden="true"
       />
 
       <div class="pointer-events-none absolute inset-0 z-40" :style="{ background: primaryOverlay }"></div>
@@ -177,7 +190,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineComponent, h, onBeforeUnmount, onMounted, ref, watchEffect } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useAuthStore, useAppStore } from '@/stores'
 import LogoLoop, { type LogoItem } from '@/components/home/LogoLoop.vue'
 import ProviderLogo from '@/components/home/ProviderLogo.vue'
@@ -189,107 +202,6 @@ type IconName = InstanceType<typeof Icon>['$props']['name']
 const HERO_IMAGE_DARK = '/home/solid-api-blue-core.jpg'
 const HERO_IMAGE_LIGHT = '/home/solid-api-blue-core-light.jpg'
 const SPOTLIGHT_R = 260
-
-const RevealLayer = defineComponent({
-  name: 'RevealLayer',
-  props: {
-    image: {
-      type: String,
-      required: true
-    },
-    cursorX: {
-      type: Number,
-      required: true
-    },
-    cursorY: {
-      type: Number,
-      required: true
-    },
-    imageFilter: {
-      type: String,
-      default: ''
-    }
-  },
-  setup(props) {
-    const canvasRef = ref<HTMLCanvasElement | null>(null)
-    const maskImage = ref('none')
-
-    function sizeCanvas() {
-      const canvas = canvasRef.value
-      if (!canvas) return
-
-      canvas.width = window.innerWidth
-      canvas.height = window.innerHeight
-    }
-
-    function drawMask() {
-      const canvas = canvasRef.value
-      const context = canvas?.getContext('2d')
-      if (!canvas || !context) return
-
-      context.clearRect(0, 0, canvas.width, canvas.height)
-
-      const gradient = context.createRadialGradient(
-        props.cursorX,
-        props.cursorY,
-        0,
-        props.cursorX,
-        props.cursorY,
-        SPOTLIGHT_R
-      )
-
-      gradient.addColorStop(0, 'rgba(255,255,255,1)')
-      gradient.addColorStop(0.4, 'rgba(255,255,255,1)')
-      gradient.addColorStop(0.6, 'rgba(255,255,255,0.75)')
-      gradient.addColorStop(0.75, 'rgba(255,255,255,0.4)')
-      gradient.addColorStop(0.88, 'rgba(255,255,255,0.12)')
-      gradient.addColorStop(1, 'rgba(255,255,255,0)')
-
-      context.fillStyle = gradient
-      context.beginPath()
-      context.arc(props.cursorX, props.cursorY, SPOTLIGHT_R, 0, Math.PI * 2)
-      context.fill()
-
-      maskImage.value = `url(${canvas.toDataURL('image/png')})`
-    }
-
-    onMounted(() => {
-      sizeCanvas()
-      drawMask()
-      window.addEventListener('resize', sizeCanvas)
-    })
-
-    onBeforeUnmount(() => {
-      window.removeEventListener('resize', sizeCanvas)
-    })
-
-    watchEffect(() => {
-      drawMask()
-    })
-
-    return () => [
-      h('canvas', {
-        ref: canvasRef,
-        class: 'absolute inset-0 pointer-events-none',
-        style: { display: 'none' }
-      }),
-      h('img', {
-        src: props.image,
-        alt: '',
-        'aria-hidden': 'true',
-        decoding: 'async',
-        class: 'pointer-events-none absolute inset-0 z-30 h-full w-full object-cover object-center',
-        style: {
-          filter: props.imageFilter,
-          maskImage: maskImage.value,
-          WebkitMaskImage: maskImage.value,
-          maskSize: '100% 100%',
-          WebkitMaskSize: '100% 100%'
-        }
-      })
-    ]
-  }
-})
 const authStore = useAuthStore()
 const appStore = useAppStore()
 
@@ -340,8 +252,18 @@ const baseImageFilter = computed(() => (
 const revealImageFilter = computed(() => (
   isDark.value
     ? 'brightness(1.16) saturate(1.16) contrast(1.08)'
-    : 'brightness(1.08) saturate(1.08) contrast(1.02)'
+    : 'brightness(1.04) saturate(1.08) contrast(1.04)'
 ))
+const spotlightMask = computed(() => {
+  const { x, y } = cursorPos.value
+  return `radial-gradient(circle ${SPOTLIGHT_R}px at ${x}px ${y}px, black 0%, black 40%, rgba(0, 0, 0, 0.75) 60%, rgba(0, 0, 0, 0.4) 75%, rgba(0, 0, 0, 0.12) 88%, transparent 100%)`
+})
+const spotlightGlow = computed(() => {
+  const { x, y } = cursorPos.value
+  return isDark.value
+    ? `radial-gradient(circle ${SPOTLIGHT_R}px at ${x}px ${y}px, rgba(102, 185, 255, 0.10) 0%, rgba(40, 132, 255, 0.05) 48%, transparent 100%)`
+    : `radial-gradient(circle ${SPOTLIGHT_R}px at ${x}px ${y}px, rgba(22, 119, 255, 0.18) 0%, rgba(22, 119, 255, 0.10) 48%, rgba(22, 119, 255, 0.03) 74%, transparent 100%)`
+})
 const primaryOverlay = computed(() => (
   isDark.value
     ? 'radial-gradient(circle at 72% 38%, rgba(0,119,255,0.09), transparent 34%), linear-gradient(90deg, rgba(5,11,20,0.72) 0%, rgba(5,11,20,0.54) 34%, rgba(5,11,20,0.08) 68%, rgba(5,11,20,0.18) 100%)'
