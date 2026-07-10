@@ -182,6 +182,7 @@ import { useAuthStore, useAppStore } from '@/stores'
 import LogoLoop, { type LogoItem } from '@/components/home/LogoLoop.vue'
 import ProviderLogo from '@/components/home/ProviderLogo.vue'
 import Icon from '@/components/icons/Icon.vue'
+import { sanitizeUrl } from '@/utils/url'
 
 type IconName = InstanceType<typeof Icon>['$props']['name']
 
