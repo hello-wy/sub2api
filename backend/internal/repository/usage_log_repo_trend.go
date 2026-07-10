@@ -206,6 +206,7 @@ func (r *usageLogRepository) GetUserSpendingRanking(ctx context.Context, startTi
 		if err = rows.Scan(&row.UserID, &row.Email, &row.ActualCost, &row.Requests, &row.Tokens, &totalActualCost, &totalRequests, &totalTokens); err != nil {
 			return nil, err
 		}
+		row.Rank = int64(len(ranking) + 1)
 		ranking = append(ranking, row)
 	}
 	if err = rows.Err(); err != nil {
