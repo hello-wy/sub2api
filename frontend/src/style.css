@@ -99,6 +99,16 @@
   }
 }
 
+@keyframes heroCrystalFloat {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(-0.16%, -1.15%, 0) scale(1.012);
+  }
+}
+
 @keyframes solidapiTextSweep {
   0%,
   100% {
@@ -142,7 +152,8 @@
 }
 
 .hero-zoom {
-  animation: heroZoom 1.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: heroZoom 1.8s cubic-bezier(0.16, 1, 0.3, 1) forwards, heroCrystalFloat 8s cubic-bezier(0.45, 0, 0.55, 1) 1.8s infinite;
+  will-change: transform;
 }
 
 .solidapi-wordmark {
@@ -151,12 +162,12 @@
   color: transparent;
   background-image: linear-gradient(
     112deg,
-    #03101f 0%,
-    #06111f 28%,
-    #1677ff 48%,
-    #0d2c55 58%,
-    #06111f 78%,
-    #03101f 100%
+    #0b3667 0%,
+    #0b3667 28%,
+    #1574f9 48%,
+    #0b4b92 58%,
+    #0b3667 78%,
+    #0b3667 100%
   );
   background-size: 220% 100%;
   background-clip: text;
@@ -215,6 +226,7 @@
     animation: none;
     opacity: 1;
   }
+
 }
 
 @keyframes home-copy-in {

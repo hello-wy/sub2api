@@ -77,7 +77,6 @@
     <section
       id="home-hero"
       class="relative min-h-[100dvh] w-full overflow-hidden bg-[#f4f8ff] dark:bg-[#050b14]"
-      @mouseleave="hideSpotlight"
     >
       <img
         :key="`base-${currentHeroImage}`"
@@ -91,19 +90,17 @@
         aria-hidden="true"
       />
 
-      <RevealLayer
-        :image="currentHeroImage"
-        :image-filter="revealImageFilter"
-        :cursor-x="cursorPos.x"
-        :cursor-y="cursorPos.y"
-      />
+      <div class="pointer-events-none absolute inset-0 z-30" :style="{ background: primaryOverlay }"></div>
+      <div class="pointer-events-none absolute inset-0 z-30" :style="{ background: verticalOverlay }"></div>
 
-      <div class="pointer-events-none absolute inset-0 z-40" :style="{ background: primaryOverlay }"></div>
-      <div class="pointer-events-none absolute inset-0 z-40" :style="{ background: verticalOverlay }"></div>
-
-      <div class="absolute left-0 top-[18%] z-50 w-full px-5 sm:px-8 lg:px-14">
-        <div class="max-w-[720px]">
-          <div class="solidapi-vuebits-line hero-anim hero-fade mb-8" :style="{ animationDelay: '0.12s' }"></div>
+      <div class="absolute left-0 top-[23%] z-50 w-full px-7 sm:top-[20%] sm:px-10 lg:top-1/2 lg:-translate-y-[46%] lg:pr-14 lg:pl-[clamp(4rem,6vw,7rem)]">
+        <div class="max-w-[840px]">
+          <p
+            class="hero-anim hero-fade mb-6 text-sm font-semibold tracking-[0.08em] text-[#1677ff] dark:text-[#a6d3ff]"
+            :style="{ animationDelay: '0.12s' }"
+          >
+            AI API Gateway · 企业级中转
+          </p>
 
           <h1 class="relative max-w-[720px] text-[64px] font-semibold leading-[0.86] tracking-[-0.08em] [text-shadow:0_2px_24px_rgba(255,255,255,0.55)] sm:text-[96px] md:text-[124px] lg:text-[150px] dark:[text-shadow:0_2px_30px_rgba(0,0,0,0.58)]">
             <span
@@ -117,7 +114,7 @@
             class="hero-anim hero-fade mt-7 max-w-[560px] text-[15px] font-semibold leading-7 text-[#22344a] sm:text-base dark:text-white"
             :style="{ animationDelay: '0.58s' }"
           >
-            统一模型接入、稳定转发、余额与用量统计，收在一个清楚可信的蓝黑色入口里。
+            一站式大模型 API 聚合与中转平台
           </p>
 
           <div
@@ -139,25 +136,31 @@
               <Icon name="creditCard" size="sm" :stroke-width="1.8" />
             </router-link>
           </div>
-        </div>
-      </div>
 
-      <div
-        class="hero-anim hero-fade absolute bottom-8 left-5 right-5 z-50 hidden gap-3 sm:bottom-10 sm:left-8 sm:right-8 sm:grid sm:grid-cols-3 lg:left-14 lg:right-auto lg:w-[680px]"
-        :style="{ animationDelay: '0.9s' }"
-      >
-        <div
-          v-for="item in featureItems"
-          :key="item.label"
-          class="flex min-h-[76px] items-center gap-3 rounded-[22px] border border-[#1677ff]/12 bg-white/82 px-4 py-3 text-[#06111f] shadow-[0_18px_55px_rgba(20,68,140,0.12)] backdrop-blur-2xl dark:border-[#83c5ff]/20 dark:bg-[#081a2f]/92 dark:text-white dark:shadow-[0_18px_55px_rgba(0,0,0,0.26)]"
-        >
-          <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#1677ff]/12 text-[#1677ff] ring-1 ring-[#1677ff]/20 dark:bg-[#1677ff]/20 dark:text-[#a6d3ff] dark:ring-[#1677ff]/28">
-            <Icon :name="item.icon" size="md" :stroke-width="1.9" />
-          </span>
-          <span>
-            <span class="block text-sm font-semibold">{{ item.label }}</span>
-            <span class="mt-0.5 block text-xs font-medium leading-5 text-[#3f536b] dark:text-[#dbeafe]">{{ item.description }}</span>
-          </span>
+          <div
+            class="hero-anim hero-fade mt-10 max-w-[620px]"
+            :style="{ animationDelay: '0.9s' }"
+          >
+            <LogoLoop
+              :logos="providerLogos"
+              :speed="42"
+              direction="right"
+              :logo-height="28"
+              :gap="32"
+              :hover-speed="0"
+              :scale-on-hover="true"
+              :fade-out="true"
+              :fade-out-color="isDark ? '#050b14' : '#f4f8ff'"
+              aria-label="Supported LLM providers"
+            >
+              <template #renderItem="{ item }">
+                <div class="group/item inline-flex items-center justify-center transition-transform duration-300 group-hover/item:scale-110">
+                  <ProviderLogo :provider="item.title || ''" />
+                  <span class="sr-only">{{ item.title }}</span>
+                </div>
+              </template>
+            </LogoLoop>
+          </div>
         </div>
       </div>
 
@@ -166,117 +169,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineComponent, h, onBeforeUnmount, onMounted, ref, watchEffect } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useAuthStore, useAppStore } from '@/stores'
+import LogoLoop, { type LogoItem } from '@/components/home/LogoLoop.vue'
+import ProviderLogo from '@/components/home/ProviderLogo.vue'
 import Icon from '@/components/icons/Icon.vue'
 
 type IconName = InstanceType<typeof Icon>['$props']['name']
 
 const HERO_IMAGE_DARK = '/home/solid-api-blue-core.jpg'
 const HERO_IMAGE_LIGHT = '/home/solid-api-blue-core-light.jpg'
-const SPOTLIGHT_R = 260
-
-const RevealLayer = defineComponent({
-  name: 'RevealLayer',
-  props: {
-    image: {
-      type: String,
-      required: true
-    },
-    cursorX: {
-      type: Number,
-      required: true
-    },
-    cursorY: {
-      type: Number,
-      required: true
-    },
-    imageFilter: {
-      type: String,
-      default: ''
-    }
-  },
-  setup(props) {
-    const canvasRef = ref<HTMLCanvasElement | null>(null)
-    const maskImage = ref('none')
-
-    function sizeCanvas() {
-      const canvas = canvasRef.value
-      if (!canvas) return
-
-      canvas.width = window.innerWidth
-      canvas.height = window.innerHeight
-    }
-
-    function drawMask() {
-      const canvas = canvasRef.value
-      const context = canvas?.getContext('2d')
-      if (!canvas || !context) return
-
-      context.clearRect(0, 0, canvas.width, canvas.height)
-
-      const gradient = context.createRadialGradient(
-        props.cursorX,
-        props.cursorY,
-        0,
-        props.cursorX,
-        props.cursorY,
-        SPOTLIGHT_R
-      )
-
-      gradient.addColorStop(0, 'rgba(255,255,255,1)')
-      gradient.addColorStop(0.4, 'rgba(255,255,255,1)')
-      gradient.addColorStop(0.6, 'rgba(255,255,255,0.75)')
-      gradient.addColorStop(0.75, 'rgba(255,255,255,0.4)')
-      gradient.addColorStop(0.88, 'rgba(255,255,255,0.12)')
-      gradient.addColorStop(1, 'rgba(255,255,255,0)')
-
-      context.fillStyle = gradient
-      context.beginPath()
-      context.arc(props.cursorX, props.cursorY, SPOTLIGHT_R, 0, Math.PI * 2)
-      context.fill()
-
-      maskImage.value = `url(${canvas.toDataURL('image/png')})`
-    }
-
-    onMounted(() => {
-      sizeCanvas()
-      drawMask()
-      window.addEventListener('resize', sizeCanvas)
-    })
-
-    onBeforeUnmount(() => {
-      window.removeEventListener('resize', sizeCanvas)
-    })
-
-    watchEffect(() => {
-      drawMask()
-    })
-
-    return () => [
-      h('canvas', {
-        ref: canvasRef,
-        class: 'absolute inset-0 pointer-events-none',
-        style: { display: 'none' }
-      }),
-      h('img', {
-        src: props.image,
-        alt: '',
-        'aria-hidden': 'true',
-        decoding: 'async',
-        class: 'pointer-events-none absolute inset-0 z-30 h-full w-full object-cover object-center',
-        style: {
-          filter: props.imageFilter,
-          maskImage: maskImage.value,
-          WebkitMaskImage: maskImage.value,
-          maskSize: '100% 100%',
-          WebkitMaskSize: '100% 100%'
-        }
-      })
-    ]
-  }
-})
-
 const authStore = useAuthStore()
 const appStore = useAppStore()
 
@@ -291,10 +193,16 @@ const navItems = computed<Array<{ label: string, href: string, icon: IconName, e
   { label: '文档', href: docUrl.value || '#docs', icon: 'book', external: Boolean(docUrl.value) }
 ])
 
-const featureItems: Array<{ label: string, description: string, icon: IconName }> = [
-  { label: '统一接入', description: '一次配置，多模型调用', icon: 'server' },
-  { label: '余额清楚', description: '充值、折扣和消费可追踪', icon: 'creditCard' },
-  { label: '稳定转发', description: '为开发者保持调用连续', icon: 'shield' }
+const providerLogos: LogoItem[] = [
+  { node: 'OpenAI', title: 'OpenAI' },
+  { node: 'Anthropic', title: 'Anthropic' },
+  { node: 'Gemini', title: 'Gemini' },
+  { node: 'DeepSeek', title: 'DeepSeek' },
+  { node: 'Grok', title: 'Grok' },
+  { node: 'MiniMax', title: 'MiniMax' },
+  { node: 'Claude', title: 'Claude' },
+  { node: 'Kimi', title: 'Kimi' },
+  { node: 'Qwen', title: 'Qwen' }
 ]
 
 const isHomeContentUrl = computed(() => {
@@ -303,10 +211,6 @@ const isHomeContentUrl = computed(() => {
 })
 
 const isDark = ref(document.documentElement.classList.contains('dark'))
-const cursorPos = ref({ x: -999, y: -999 })
-const mouse = { x: -999, y: -999 }
-const smooth = { x: -999, y: -999 }
-const rafRef = ref<number | null>(null)
 let themeObserver: MutationObserver | null = null
 
 const currentHeroImage = computed(() => isDark.value ? HERO_IMAGE_DARK : HERO_IMAGE_LIGHT)
@@ -314,11 +218,6 @@ const baseImageFilter = computed(() => (
   isDark.value
     ? 'brightness(0.88) saturate(1.08) contrast(1.08)'
     : 'brightness(1.03) saturate(1.02) contrast(1.02)'
-))
-const revealImageFilter = computed(() => (
-  isDark.value
-    ? 'brightness(1.16) saturate(1.16) contrast(1.08)'
-    : 'brightness(1.08) saturate(1.08) contrast(1.02)'
 ))
 const primaryOverlay = computed(() => (
   isDark.value
@@ -334,23 +233,6 @@ const verticalOverlay = computed(() => (
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 const isAdmin = computed(() => authStore.isAdmin)
 const dashboardPath = computed(() => isAdmin.value ? '/admin/dashboard' : '/dashboard')
-
-function handleMouseMove(event: MouseEvent) {
-  mouse.x = event.clientX
-  mouse.y = event.clientY
-}
-
-function animateSpotlight() {
-  smooth.x += (mouse.x - smooth.x) * 0.1
-  smooth.y += (mouse.y - smooth.y) * 0.1
-  cursorPos.value = { x: smooth.x, y: smooth.y }
-  rafRef.value = requestAnimationFrame(animateSpotlight)
-}
-
-function hideSpotlight() {
-  mouse.x = -999
-  mouse.y = -999
-}
 
 function toggleTheme() {
   const nextIsDark = !isDark.value
@@ -391,15 +273,9 @@ onMounted(() => {
     appStore.fetchPublicSettings()
   }
 
-  window.addEventListener('mousemove', handleMouseMove, { passive: true })
-  rafRef.value = requestAnimationFrame(animateSpotlight)
 })
 
 onBeforeUnmount(() => {
-  window.removeEventListener('mousemove', handleMouseMove)
   themeObserver?.disconnect()
-  if (rafRef.value !== null) {
-    cancelAnimationFrame(rafRef.value)
-  }
 })
 </script>
