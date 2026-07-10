@@ -77,6 +77,8 @@
     <section
       id="home-hero"
       class="relative min-h-[100dvh] w-full overflow-hidden bg-[#f4f8ff] dark:bg-[#050b14]"
+      @pointermove="moveHeroGlow"
+      @pointerleave="hideHeroGlow"
     >
       <img
         :key="`base-${currentHeroImage}`"
@@ -92,6 +94,11 @@
 
       <div class="pointer-events-none absolute inset-0 z-30" :style="{ background: primaryOverlay }"></div>
       <div class="pointer-events-none absolute inset-0 z-30" :style="{ background: verticalOverlay }"></div>
+      <div
+        ref="heroGlowRef"
+        aria-hidden="true"
+        class="hero-pointer-glow pointer-events-none absolute inset-0 z-40"
+      ></div>
 
       <div class="absolute left-0 top-[23%] z-50 w-full px-7 sm:top-[20%] sm:px-10 lg:top-1/2 lg:-translate-y-[46%] lg:pr-14 lg:pl-[clamp(4rem,6vw,7rem)]">
         <div class="max-w-[840px]">
@@ -211,6 +218,7 @@ const isHomeContentUrl = computed(() => {
 })
 
 const isDark = ref(document.documentElement.classList.contains('dark'))
+const heroGlowRef = ref<HTMLDivElement | null>(null)
 let themeObserver: MutationObserver | null = null
 
 const currentHeroImage = computed(() => isDark.value ? HERO_IMAGE_DARK : HERO_IMAGE_LIGHT)
@@ -233,6 +241,19 @@ const verticalOverlay = computed(() => (
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 const isAdmin = computed(() => authStore.isAdmin)
 const dashboardPath = computed(() => isAdmin.value ? '/admin/dashboard' : '/dashboard')
+
+function moveHeroGlow(event: PointerEvent) {
+  if (event.pointerType === 'touch' || !heroGlowRef.value) return
+
+  const bounds = (event.currentTarget as HTMLElement).getBoundingClientRect()
+  heroGlowRef.value.style.setProperty('--hero-glow-x', `${event.clientX - bounds.left}px`)
+  heroGlowRef.value.style.setProperty('--hero-glow-y', `${event.clientY - bounds.top}px`)
+  heroGlowRef.value.style.setProperty('--hero-glow-opacity', '1')
+}
+
+function hideHeroGlow() {
+  heroGlowRef.value?.style.setProperty('--hero-glow-opacity', '0')
+}
 
 function toggleTheme() {
   const nextIsDark = !isDark.value

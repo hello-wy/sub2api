@@ -156,6 +156,29 @@
   will-change: transform;
 }
 
+.hero-pointer-glow {
+  opacity: var(--hero-glow-opacity, 0);
+  background: radial-gradient(
+    circle 280px at var(--hero-glow-x, -999px) var(--hero-glow-y, -999px),
+    rgba(21, 116, 249, 0.2) 0%,
+    rgba(21, 116, 249, 0.1) 36%,
+    rgba(21, 116, 249, 0.025) 60%,
+    transparent 74%
+  );
+  transition: opacity 220ms ease-out;
+  will-change: opacity;
+}
+
+.dark .hero-pointer-glow {
+  background: radial-gradient(
+    circle 280px at var(--hero-glow-x, -999px) var(--hero-glow-y, -999px),
+    rgba(84, 166, 255, 0.22) 0%,
+    rgba(21, 116, 249, 0.12) 38%,
+    rgba(21, 116, 249, 0.03) 62%,
+    transparent 76%
+  );
+}
+
 .solidapi-wordmark {
   display: inline-block;
   opacity: 0;
@@ -227,6 +250,16 @@
     opacity: 1;
   }
 
+  .hero-pointer-glow {
+    transition: none;
+  }
+
+}
+
+@media (hover: none) {
+  .hero-pointer-glow {
+    display: none;
+  }
 }
 
 @keyframes home-copy-in {
