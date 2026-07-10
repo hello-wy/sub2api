@@ -293,8 +293,11 @@ const RevealLayer = defineComponent({
 const authStore = useAuthStore()
 const appStore = useAppStore()
 
-const siteLogo = computed(() => appStore.cachedPublicSettings?.site_logo || appStore.siteLogo || '')
-const docUrl = computed(() => appStore.cachedPublicSettings?.doc_url || appStore.docUrl || '')
+const siteLogo = computed(() => sanitizeUrl(appStore.cachedPublicSettings?.site_logo || appStore.siteLogo || '', {
+  allowRelative: true,
+  allowDataUrl: true
+}))
+const docUrl = computed(() => sanitizeUrl(appStore.cachedPublicSettings?.doc_url || appStore.docUrl || ''))
 const homeContent = computed(() => appStore.cachedPublicSettings?.home_content || '')
 
 const navItems = computed<Array<{ label: string, href: string, icon: IconName, external?: boolean }>>(() => [

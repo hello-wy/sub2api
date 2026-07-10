@@ -121,6 +121,18 @@ func (s *SettingService) buildSystemSettingsUpdates(ctx context.Context, setting
 	updates[SettingKeyFrontendURL] = settings.FrontendURL
 	updates[SettingKeyInvitationCodeEnabled] = strconv.FormatBool(settings.InvitationCodeEnabled)
 	updates[SettingKeyTotpEnabled] = strconv.FormatBool(settings.TotpEnabled)
+	updates[SettingKeyWelfareLeaderboardRankLimit] = strconv.Itoa(settings.WelfareLeaderboardRankLimit)
+	updates[SettingKeyWelfareLeaderboardRewardRatios] = settings.WelfareLeaderboardRewardRatios
+	loyaltyWeeklyRulesJSON, err := NormalizePaymentLoyaltyRulesJSON("weekly", settings.LoyaltyWeeklyRules)
+	if err != nil {
+		return nil, infraerrors.BadRequest("INVALID_LOYALTY_WEEKLY_RULES", err.Error())
+	}
+	loyaltyPermanentRulesJSON, err := NormalizePaymentLoyaltyRulesJSON("permanent", settings.LoyaltyPermanentRules)
+	if err != nil {
+		return nil, infraerrors.BadRequest("INVALID_LOYALTY_PERMANENT_RULES", err.Error())
+	}
+	updates[SettingKeyLoyaltyWeeklyRules] = loyaltyWeeklyRulesJSON
+	updates[SettingKeyLoyaltyPermanentRules] = loyaltyPermanentRulesJSON
 	settings.LoginAgreementMode = normalizeLoginAgreementMode(settings.LoginAgreementMode)
 	settings.LoginAgreementUpdatedAt = strings.TrimSpace(settings.LoginAgreementUpdatedAt)
 	if settings.LoginAgreementUpdatedAt == "" {

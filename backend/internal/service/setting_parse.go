@@ -117,6 +117,8 @@ func (s *SettingService) InitializeDefaultSettings(ctx context.Context) error {
 		SettingKeyAffiliateRebateFreezeHours:                strconv.Itoa(AffiliateRebateFreezeHoursDefault),
 		SettingKeyAffiliateRebateDurationDays:               strconv.Itoa(AffiliateRebateDurationDaysDefault),
 		SettingKeyAffiliateRebatePerInviteeCap:              strconv.FormatFloat(AffiliateRebatePerInviteeCapDefault, 'f', 2, 64),
+		SettingKeyLoyaltyWeeklyRules:                        DefaultPaymentLoyaltyRulesJSON("weekly"),
+		SettingKeyLoyaltyPermanentRules:                     DefaultPaymentLoyaltyRulesJSON("permanent"),
 		SettingKeyDefaultUserRPMLimit:                       "0",
 		SettingKeyDefaultSubscriptions:                      "[]",
 		SettingKeyAuthSourceDefaultEmailBalance:             "0",
@@ -837,6 +839,27 @@ func (s *SettingService) parseSettings(settings map[string]string) *SystemSettin
 		} else {
 			result.DefaultPlatformQuotas = parsed
 		}
+	}
+
+	// 排行榜福利与会员计划设置
+	if limit, err := strconv.Atoi(settings[SettingKeyWelfareLeaderboardRankLimit]); err == nil && limit >= 1 {
+		result.WelfareLeaderboardRankLimit = limit
+	} else {
+		result.WelfareLeaderboardRankLimit = 3
+	}
+	result.WelfareLeaderboardRewardRatios = settings[SettingKeyWelfareLeaderboardRewardRatios]
+	if strings.TrimSpace(result.WelfareLeaderboardRewardRatios) == "" {
+		result.WelfareLeaderboardRewardRatios = "[1.0, 0.5, 0.2]"
+	}
+	if weeklyRules, err := NormalizePaymentLoyaltyRulesJSON("weekly", settings[SettingKeyLoyaltyWeeklyRules]); err == nil {
+		result.LoyaltyWeeklyRules = weeklyRules
+	} else {
+		result.LoyaltyWeeklyRules = DefaultPaymentLoyaltyRulesJSON("weekly")
+	}
+	if permanentRules, err := NormalizePaymentLoyaltyRulesJSON("permanent", settings[SettingKeyLoyaltyPermanentRules]); err == nil {
+		result.LoyaltyPermanentRules = permanentRules
+	} else {
+		result.LoyaltyPermanentRules = DefaultPaymentLoyaltyRulesJSON("permanent")
 	}
 
 	result.AllowUserViewErrorRequests = settings[SettingKeyAllowUserViewErrorRequests] == "true" // default false
