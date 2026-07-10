@@ -77,8 +77,7 @@
     <section
       id="home-hero"
       class="relative min-h-[100dvh] w-full overflow-hidden bg-[#f4f8ff] dark:bg-[#050b14]"
-      @pointermove="moveHeroGlow"
-      @pointerleave="hideHeroGlow"
+      @mouseleave="hideSpotlight"
     >
       <img
         :key="`base-${currentHeroImage}`"
@@ -92,13 +91,15 @@
         aria-hidden="true"
       />
 
-      <div class="pointer-events-none absolute inset-0 z-30" :style="{ background: primaryOverlay }"></div>
-      <div class="pointer-events-none absolute inset-0 z-30" :style="{ background: verticalOverlay }"></div>
-      <div
-        ref="heroGlowRef"
-        aria-hidden="true"
-        class="hero-pointer-glow pointer-events-none absolute inset-0 z-40"
-      ></div>
+      <RevealLayer
+        :image="currentHeroImage"
+        :image-filter="revealImageFilter"
+        :cursor-x="cursorPos.x"
+        :cursor-y="cursorPos.y"
+      />
+
+      <div class="pointer-events-none absolute inset-0 z-40" :style="{ background: primaryOverlay }"></div>
+      <div class="pointer-events-none absolute inset-0 z-40" :style="{ background: verticalOverlay }"></div>
 
       <div class="absolute left-0 top-[23%] z-50 w-full px-7 sm:top-[20%] sm:px-10 lg:top-1/2 lg:-translate-y-[46%] lg:pr-14 lg:pl-[clamp(4rem,6vw,7rem)]">
         <div class="max-w-[840px]">
@@ -176,7 +177,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, defineComponent, h, onBeforeUnmount, onMounted, ref, watchEffect } from 'vue'
 import { useAuthStore, useAppStore } from '@/stores'
 import LogoLoop, { type LogoItem } from '@/components/home/LogoLoop.vue'
 import ProviderLogo from '@/components/home/ProviderLogo.vue'
@@ -186,6 +187,108 @@ type IconName = InstanceType<typeof Icon>['$props']['name']
 
 const HERO_IMAGE_DARK = '/home/solid-api-blue-core.jpg'
 const HERO_IMAGE_LIGHT = '/home/solid-api-blue-core-light.jpg'
+const SPOTLIGHT_R = 260
+
+const RevealLayer = defineComponent({
+  name: 'RevealLayer',
+  props: {
+    image: {
+      type: String,
+      required: true
+    },
+    cursorX: {
+      type: Number,
+      required: true
+    },
+    cursorY: {
+      type: Number,
+      required: true
+    },
+    imageFilter: {
+      type: String,
+      default: ''
+    }
+  },
+  setup(props) {
+    const canvasRef = ref<HTMLCanvasElement | null>(null)
+    const maskImage = ref('none')
+
+    function sizeCanvas() {
+      const canvas = canvasRef.value
+      if (!canvas) return
+
+      canvas.width = window.innerWidth
+      canvas.height = window.innerHeight
+    }
+
+    function drawMask() {
+      const canvas = canvasRef.value
+      const context = canvas?.getContext('2d')
+      if (!canvas || !context) return
+
+      context.clearRect(0, 0, canvas.width, canvas.height)
+
+      const gradient = context.createRadialGradient(
+        props.cursorX,
+        props.cursorY,
+        0,
+        props.cursorX,
+        props.cursorY,
+        SPOTLIGHT_R
+      )
+
+      gradient.addColorStop(0, 'rgba(255,255,255,1)')
+      gradient.addColorStop(0.4, 'rgba(255,255,255,1)')
+      gradient.addColorStop(0.6, 'rgba(255,255,255,0.75)')
+      gradient.addColorStop(0.75, 'rgba(255,255,255,0.4)')
+      gradient.addColorStop(0.88, 'rgba(255,255,255,0.12)')
+      gradient.addColorStop(1, 'rgba(255,255,255,0)')
+
+      context.fillStyle = gradient
+      context.beginPath()
+      context.arc(props.cursorX, props.cursorY, SPOTLIGHT_R, 0, Math.PI * 2)
+      context.fill()
+
+      maskImage.value = `url(${canvas.toDataURL('image/png')})`
+    }
+
+    onMounted(() => {
+      sizeCanvas()
+      drawMask()
+      window.addEventListener('resize', sizeCanvas)
+    })
+
+    onBeforeUnmount(() => {
+      window.removeEventListener('resize', sizeCanvas)
+    })
+
+    watchEffect(() => {
+      drawMask()
+    })
+
+    return () => [
+      h('canvas', {
+        ref: canvasRef,
+        class: 'absolute inset-0 pointer-events-none',
+        style: { display: 'none' }
+      }),
+      h('img', {
+        src: props.image,
+        alt: '',
+        'aria-hidden': 'true',
+        decoding: 'async',
+        class: 'pointer-events-none absolute inset-0 z-30 h-full w-full object-cover object-center',
+        style: {
+          filter: props.imageFilter,
+          maskImage: maskImage.value,
+          WebkitMaskImage: maskImage.value,
+          maskSize: '100% 100%',
+          WebkitMaskSize: '100% 100%'
+        }
+      })
+    ]
+  }
+})
 const authStore = useAuthStore()
 const appStore = useAppStore()
 
@@ -218,7 +321,10 @@ const isHomeContentUrl = computed(() => {
 })
 
 const isDark = ref(document.documentElement.classList.contains('dark'))
-const heroGlowRef = ref<HTMLDivElement | null>(null)
+const cursorPos = ref({ x: -999, y: -999 })
+const mouse = { x: -999, y: -999 }
+const smooth = { x: -999, y: -999 }
+const rafRef = ref<number | null>(null)
 let themeObserver: MutationObserver | null = null
 
 const currentHeroImage = computed(() => isDark.value ? HERO_IMAGE_DARK : HERO_IMAGE_LIGHT)
@@ -226,6 +332,11 @@ const baseImageFilter = computed(() => (
   isDark.value
     ? 'brightness(0.88) saturate(1.08) contrast(1.08)'
     : 'brightness(1.03) saturate(1.02) contrast(1.02)'
+))
+const revealImageFilter = computed(() => (
+  isDark.value
+    ? 'brightness(1.16) saturate(1.16) contrast(1.08)'
+    : 'brightness(1.08) saturate(1.08) contrast(1.02)'
 ))
 const primaryOverlay = computed(() => (
   isDark.value
@@ -242,17 +353,21 @@ const isAuthenticated = computed(() => authStore.isAuthenticated)
 const isAdmin = computed(() => authStore.isAdmin)
 const dashboardPath = computed(() => isAdmin.value ? '/admin/dashboard' : '/dashboard')
 
-function moveHeroGlow(event: PointerEvent) {
-  if (event.pointerType === 'touch' || !heroGlowRef.value) return
-
-  const bounds = (event.currentTarget as HTMLElement).getBoundingClientRect()
-  heroGlowRef.value.style.setProperty('--hero-glow-x', `${event.clientX - bounds.left}px`)
-  heroGlowRef.value.style.setProperty('--hero-glow-y', `${event.clientY - bounds.top}px`)
-  heroGlowRef.value.style.setProperty('--hero-glow-opacity', '1')
+function handleMouseMove(event: MouseEvent) {
+  mouse.x = event.clientX
+  mouse.y = event.clientY
 }
 
-function hideHeroGlow() {
-  heroGlowRef.value?.style.setProperty('--hero-glow-opacity', '0')
+function animateSpotlight() {
+  smooth.x += (mouse.x - smooth.x) * 0.1
+  smooth.y += (mouse.y - smooth.y) * 0.1
+  cursorPos.value = { x: smooth.x, y: smooth.y }
+  rafRef.value = requestAnimationFrame(animateSpotlight)
+}
+
+function hideSpotlight() {
+  mouse.x = -999
+  mouse.y = -999
 }
 
 function toggleTheme() {
@@ -294,9 +409,15 @@ onMounted(() => {
     appStore.fetchPublicSettings()
   }
 
+  window.addEventListener('mousemove', handleMouseMove, { passive: true })
+  rafRef.value = requestAnimationFrame(animateSpotlight)
 })
 
 onBeforeUnmount(() => {
+  window.removeEventListener('mousemove', handleMouseMove)
   themeObserver?.disconnect()
+  if (rafRef.value !== null) {
+    cancelAnimationFrame(rafRef.value)
+  }
 })
 </script>
