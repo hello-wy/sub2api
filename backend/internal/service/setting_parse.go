@@ -284,6 +284,8 @@ func (s *SettingService) parseSettings(settings map[string]string) *SystemSettin
 		CustomEndpoints:                  settings[SettingKeyCustomEndpoints],
 		BackendModeEnabled:               settings[SettingKeyBackendModeEnabled] == "true",
 	}
+	applyRewardSettings(result, settings)
+
 	result.TableDefaultPageSize, result.TablePageSizeOptions = parseTablePreferences(
 		settings[SettingKeyTableDefaultPageSize],
 		settings[SettingKeyTablePageSizeOptions],
@@ -1154,4 +1156,41 @@ func normalizeTablePreferences(defaultPageSize int, options []int) (int, []int) 
 	}
 
 	return defaultPageSize, normalizedOptions
+}
+
+func applyRewardSettings(result *SystemSettings, settings map[string]string) {
+	rankLimit, rewardRatios := parseWelfareRewardSettings(
+		settings[SettingKeyWelfareLeaderboardRankLimit],
+		settings[SettingKeyWelfareLeaderboardRewardRatios],
+	)
+	result.WelfareLeaderboardRankLimit = rankLimit
+	result.WelfareLeaderboardRewardRatios = formatWelfareRewardRatios(rewardRatios)
+	result.LoyaltyWeeklyRules = normalizedPaymentLoyaltyRulesJSON("weekly", settings[SettingKeyLoyaltyWeeklyRules])
+	result.LoyaltyPermanentRules = normalizedPaymentLoyaltyRulesJSON("permanent", settings[SettingKeyLoyaltyPermanentRules])
+}
+
+func formatWelfareRewardRatios(ratios []float64) string {
+	const decimalSuffix = ".0"
+
+	values := make([]string, 0, len(ratios))
+	for _, ratio := range ratios {
+		value := strconv.FormatFloat(ratio, 'f', -1, 64)
+		if !strings.Contains(value, ".") {
+			value += decimalSuffix
+		}
+		values = append(values, value)
+	}
+	return "[" + strings.Join(values, ", ") + "]"
+}
+
+func normalizedPaymentLoyaltyRulesJSON(scope, raw string) string {
+	return mustMarshalSettingJSON(parsePaymentLoyaltyRulesJSONOrDefault(scope, raw))
+}
+
+func mustMarshalSettingJSON(value any) string {
+	data, err := json.Marshal(value)
+	if err != nil {
+		panic(fmt.Sprintf("marshal setting JSON: %v", err))
+	}
+	return string(data)
 }
