@@ -186,6 +186,8 @@ export default {
       description: 'Please select the client type to import to CC-Switch:',
       claudeCode: 'Claude Code',
       claudeCodeDesc: 'Import as Claude Code configuration',
+      codex: 'Codex',
+      codexDesc: 'Import as Codex CLI configuration',
       geminiCli: 'Gemini CLI',
       geminiCliDesc: 'Import as Gemini CLI configuration',
     },

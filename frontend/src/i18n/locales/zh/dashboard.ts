@@ -191,6 +191,8 @@ export default {
       description: '请选择您要导入到 CC-Switch 的客户端类型：',
       claudeCode: 'Claude Code',
       claudeCodeDesc: '导入为 Claude Code 配置',
+      codex: 'Codex',
+      codexDesc: '导入为 Codex CLI 配置',
       geminiCli: 'Gemini CLI',
       geminiCliDesc: '导入为 Gemini CLI 配置'
     },
