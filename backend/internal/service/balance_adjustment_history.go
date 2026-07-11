@@ -11,10 +11,6 @@ import (
 
 const balanceAdjustmentTimeLayout = "2006/01/02 15:04:05"
 
-func recordBalanceAdjustment(ctx context.Context, repo RedeemCodeRepository, userID int64, amount float64, note string) error {
-	return recordTypedBalanceAdjustment(ctx, repo, userID, amount, AdjustmentTypeAdminBalance, note)
-}
-
 func recordTypedBalanceAdjustment(ctx context.Context, repo RedeemCodeRepository, userID int64, amount float64, recordType string, note string) error {
 	if repo == nil || amount == 0 {
 		return nil
