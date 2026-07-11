@@ -143,14 +143,15 @@ type UpdateSettingsRequest struct {
 	CustomEndpoints             *[]dto.CustomEndpoint `json:"custom_endpoints"`
 
 	// 默认配置
-	DefaultConcurrency                        int                               `json:"default_concurrency"`
-	DefaultBalance                            float64                           `json:"default_balance"`
-	AffiliateRebateRate                       *float64                          `json:"affiliate_rebate_rate"`
-	AffiliateRebateFreezeHours                *int                              `json:"affiliate_rebate_freeze_hours"`
-	AffiliateRebateDurationDays               *int                              `json:"affiliate_rebate_duration_days"`
-	AffiliateRebatePerInviteeCap              *float64                          `json:"affiliate_rebate_per_invitee_cap"`
-	DefaultUserRPMLimit                       int                               `json:"default_user_rpm_limit"`
-	DefaultSubscriptions                      []dto.DefaultSubscriptionSetting  `json:"default_subscriptions"`
+	DefaultConcurrency           int                              `json:"default_concurrency"`
+	DefaultBalance               float64                          `json:"default_balance"`
+	AffiliateRebateRate          *float64                         `json:"affiliate_rebate_rate"`
+	AffiliateRebateFreezeHours   *int                             `json:"affiliate_rebate_freeze_hours"`
+	AffiliateRebateDurationDays  *int                             `json:"affiliate_rebate_duration_days"`
+	AffiliateRebatePerInviteeCap *float64                         `json:"affiliate_rebate_per_invitee_cap"`
+	DefaultUserRPMLimit          int                              `json:"default_user_rpm_limit"`
+	DefaultSubscriptions         []dto.DefaultSubscriptionSetting `json:"default_subscriptions"`
+	// 排行榜福利设置
 	WelfareLeaderboardRankLimit               int                               `json:"welfare_leaderboard_rank_limit"`
 	WelfareLeaderboardRewardRatios            string                            `json:"welfare_leaderboard_reward_ratios"`
 	LoyaltyWeeklyRules                        string                            `json:"loyalty_weekly_rules"`
@@ -1189,6 +1190,10 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		FrontendURL:                      req.FrontendURL,
 		InvitationCodeEnabled:            req.InvitationCodeEnabled,
 		TotpEnabled:                      req.TotpEnabled,
+		WelfareLeaderboardRankLimit:      req.WelfareLeaderboardRankLimit,
+		WelfareLeaderboardRewardRatios:   req.WelfareLeaderboardRewardRatios,
+		LoyaltyWeeklyRules:               req.LoyaltyWeeklyRules,
+		LoyaltyPermanentRules:            req.LoyaltyPermanentRules,
 		LoginAgreementEnabled:            req.LoginAgreementEnabled,
 		LoginAgreementMode:               loginAgreementMode,
 		LoginAgreementUpdatedAt:          loginAgreementUpdatedAt,
@@ -1705,6 +1710,10 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		InvitationCodeEnabled:                                  updatedSettings.InvitationCodeEnabled,
 		TotpEnabled:                                            updatedSettings.TotpEnabled,
 		TotpEncryptionKeyConfigured:                            h.settingService.IsTotpEncryptionKeyConfigured(),
+		WelfareLeaderboardRankLimit:                            updatedSettings.WelfareLeaderboardRankLimit,
+		WelfareLeaderboardRewardRatios:                         updatedSettings.WelfareLeaderboardRewardRatios,
+		LoyaltyWeeklyRules:                                     updatedSettings.LoyaltyWeeklyRules,
+		LoyaltyPermanentRules:                                  updatedSettings.LoyaltyPermanentRules,
 		LoginAgreementEnabled:                                  updatedSettings.LoginAgreementEnabled,
 		LoginAgreementMode:                                     updatedSettings.LoginAgreementMode,
 		LoginAgreementUpdatedAt:                                updatedSettings.LoginAgreementUpdatedAt,

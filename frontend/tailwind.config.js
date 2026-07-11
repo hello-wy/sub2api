@@ -50,7 +50,7 @@ export default {
       },
       fontFamily: {
         sans: [
-          'system-ui',
+          'Inter',
           '-apple-system',
           'BlinkMacSystemFont',
           'Segoe UI',
@@ -59,6 +59,16 @@ export default {
           'Arial',
           'PingFang SC',
           'Hiragino Sans GB',
+          'Microsoft YaHei',
+          'sans-serif'
+        ],
+        display: [
+          'Outfit',
+          'Inter',
+          '-apple-system',
+          'BlinkMacSystemFont',
+          'Segoe UI',
+          'PingFang SC',
           'Microsoft YaHei',
           'sans-serif'
         ],
