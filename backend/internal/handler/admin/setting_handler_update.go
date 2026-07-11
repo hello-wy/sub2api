@@ -151,6 +151,10 @@ type UpdateSettingsRequest struct {
 	AffiliateRebatePerInviteeCap              *float64                          `json:"affiliate_rebate_per_invitee_cap"`
 	DefaultUserRPMLimit                       int                               `json:"default_user_rpm_limit"`
 	DefaultSubscriptions                      []dto.DefaultSubscriptionSetting  `json:"default_subscriptions"`
+	WelfareLeaderboardRankLimit               int                               `json:"welfare_leaderboard_rank_limit"`
+	WelfareLeaderboardRewardRatios            string                            `json:"welfare_leaderboard_reward_ratios"`
+	LoyaltyWeeklyRules                        string                            `json:"loyalty_weekly_rules"`
+	LoyaltyPermanentRules                     string                            `json:"loyalty_permanent_rules"`
 	AuthSourceDefaultEmailBalance             *float64                          `json:"auth_source_default_email_balance"`
 	AuthSourceDefaultEmailConcurrency         *int                              `json:"auth_source_default_email_concurrency"`
 	AuthSourceDefaultEmailSubscriptions       *[]dto.DefaultSubscriptionSetting `json:"auth_source_default_email_subscriptions"`
@@ -412,6 +416,20 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 	req.AuthSourceDefaultOIDCSubscriptions = normalizeOptionalDefaultSubscriptions(req.AuthSourceDefaultOIDCSubscriptions)
 	req.AuthSourceDefaultWeChatSubscriptions = normalizeOptionalDefaultSubscriptions(req.AuthSourceDefaultWeChatSubscriptions)
 	req.AuthSourceDefaultDingTalkSubscriptions = normalizeOptionalDefaultSubscriptions(req.AuthSourceDefaultDingTalkSubscriptions)
+	normalizeWelfareUpdateRequest(&req, previousSettings)
+	if err := validateWelfareSettings(req.WelfareLeaderboardRankLimit, req.WelfareLeaderboardRewardRatios); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+	normalizeLoyaltyUpdateRequest(&req, previousSettings)
+	if _, err := service.NormalizePaymentLoyaltyRulesJSON("weekly", req.LoyaltyWeeklyRules); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+	if _, err := service.NormalizePaymentLoyaltyRulesJSON("permanent", req.LoyaltyPermanentRules); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
 
 	// SMTP 配置保护：如果请求中 smtp_host 为空但数据库中已有配置，则保留已有 SMTP 配置
 	// 防止前端加载设置失败时空表单覆盖已保存的 SMTP 配置
@@ -1281,6 +1299,10 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		AffiliateRebatePerInviteeCap:           affiliateRebatePerInviteeCap,
 		DefaultUserRPMLimit:                    req.DefaultUserRPMLimit,
 		DefaultSubscriptions:                   defaultSubscriptions,
+		WelfareLeaderboardRankLimit:            req.WelfareLeaderboardRankLimit,
+		WelfareLeaderboardRewardRatios:         req.WelfareLeaderboardRewardRatios,
+		LoyaltyWeeklyRules:                     req.LoyaltyWeeklyRules,
+		LoyaltyPermanentRules:                  req.LoyaltyPermanentRules,
 		EnableModelFallback:                    req.EnableModelFallback,
 		FallbackModelAnthropic:                 req.FallbackModelAnthropic,
 		FallbackModelOpenAI:                    req.FallbackModelOpenAI,
@@ -1788,6 +1810,10 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		AffiliateRebatePerInviteeCap:                           updatedSettings.AffiliateRebatePerInviteeCap,
 		DefaultUserRPMLimit:                                    updatedSettings.DefaultUserRPMLimit,
 		DefaultSubscriptions:                                   updatedDefaultSubscriptions,
+		WelfareLeaderboardRankLimit:                            updatedSettings.WelfareLeaderboardRankLimit,
+		WelfareLeaderboardRewardRatios:                         updatedSettings.WelfareLeaderboardRewardRatios,
+		LoyaltyWeeklyRules:                                     updatedSettings.LoyaltyWeeklyRules,
+		LoyaltyPermanentRules:                                  updatedSettings.LoyaltyPermanentRules,
 		EnableModelFallback:                                    updatedSettings.EnableModelFallback,
 		FallbackModelAnthropic:                                 updatedSettings.FallbackModelAnthropic,
 		FallbackModelOpenAI:                                    updatedSettings.FallbackModelOpenAI,
@@ -1901,6 +1927,55 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		payload.DefaultPlatformQuotas = platformQuotas
 	}
 	response.Success(c, systemSettingsResponseData(payload, updatedAuthSourceDefaults))
+}
+
+func validateWelfareSettings(rankLimit int, rewardRatios string) error {
+	if rankLimit < 1 {
+		return errors.New("welfare_leaderboard_rank_limit must be >= 1")
+	}
+	var ratios []float64
+	if err := json.Unmarshal([]byte(rewardRatios), &ratios); err != nil {
+		return errors.New("welfare_leaderboard_reward_ratios must be a JSON number array")
+	}
+	if len(ratios) != rankLimit {
+		return errors.New("welfare_leaderboard_reward_ratios length must match welfare_leaderboard_rank_limit")
+	}
+	for _, ratio := range ratios {
+		if ratio < 0 {
+			return errors.New("welfare_leaderboard_reward_ratios must not contain negative values")
+		}
+	}
+	return nil
+}
+
+func normalizeWelfareUpdateRequest(req *UpdateSettingsRequest, previous *service.SystemSettings) {
+	if req.WelfareLeaderboardRankLimit < 1 {
+		req.WelfareLeaderboardRankLimit = previous.WelfareLeaderboardRankLimit
+	}
+	if req.WelfareLeaderboardRankLimit < 1 {
+		req.WelfareLeaderboardRankLimit = 3
+	}
+	if strings.TrimSpace(req.WelfareLeaderboardRewardRatios) == "" {
+		req.WelfareLeaderboardRewardRatios = previous.WelfareLeaderboardRewardRatios
+	}
+	if strings.TrimSpace(req.WelfareLeaderboardRewardRatios) == "" {
+		req.WelfareLeaderboardRewardRatios = "[1.0, 0.5, 0.2]"
+	}
+}
+
+func normalizeLoyaltyUpdateRequest(req *UpdateSettingsRequest, previous *service.SystemSettings) {
+	if strings.TrimSpace(req.LoyaltyWeeklyRules) == "" {
+		req.LoyaltyWeeklyRules = previous.LoyaltyWeeklyRules
+	}
+	if strings.TrimSpace(req.LoyaltyWeeklyRules) == "" {
+		req.LoyaltyWeeklyRules = service.DefaultPaymentLoyaltyRulesJSON("weekly")
+	}
+	if strings.TrimSpace(req.LoyaltyPermanentRules) == "" {
+		req.LoyaltyPermanentRules = previous.LoyaltyPermanentRules
+	}
+	if strings.TrimSpace(req.LoyaltyPermanentRules) == "" {
+		req.LoyaltyPermanentRules = service.DefaultPaymentLoyaltyRulesJSON("permanent")
+	}
 }
 
 // hasPaymentFields returns true if any payment-related field was explicitly provided.

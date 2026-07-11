@@ -304,6 +304,20 @@ func (s *SettingService) buildSystemSettingsUpdates(ctx context.Context, setting
 	}
 	updates[SettingKeyDefaultSubscriptions] = string(defaultSubsJSON)
 
+	// 排行榜福利与会员计划设置
+	updates[SettingKeyWelfareLeaderboardRankLimit] = strconv.Itoa(settings.WelfareLeaderboardRankLimit)
+	updates[SettingKeyWelfareLeaderboardRewardRatios] = settings.WelfareLeaderboardRewardRatios
+	loyaltyWeeklyRulesJSON, err := NormalizePaymentLoyaltyRulesJSON("weekly", settings.LoyaltyWeeklyRules)
+	if err != nil {
+		return nil, infraerrors.BadRequest("INVALID_LOYALTY_WEEKLY_RULES", err.Error())
+	}
+	loyaltyPermanentRulesJSON, err := NormalizePaymentLoyaltyRulesJSON("permanent", settings.LoyaltyPermanentRules)
+	if err != nil {
+		return nil, infraerrors.BadRequest("INVALID_LOYALTY_PERMANENT_RULES", err.Error())
+	}
+	updates[SettingKeyLoyaltyWeeklyRules] = loyaltyWeeklyRulesJSON
+	updates[SettingKeyLoyaltyPermanentRules] = loyaltyPermanentRulesJSON
+
 	// Model fallback configuration
 	updates[SettingKeyEnableModelFallback] = strconv.FormatBool(settings.EnableModelFallback)
 	updates[SettingKeyFallbackModelAnthropic] = settings.FallbackModelAnthropic

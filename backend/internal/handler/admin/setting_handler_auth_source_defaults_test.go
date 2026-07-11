@@ -264,6 +264,8 @@ func TestSettingHandler_UpdateSettings_EchoesWelfareSettings(t *testing.T) {
 	body := map[string]any{
 		"welfare_leaderboard_rank_limit":    3,
 		"welfare_leaderboard_reward_ratios": `[1,0.5,0.2]`,
+		"loyalty_weekly_rules":              `[{"level":"W1","points":10,"discount":1}]`,
+		"loyalty_permanent_rules":           `[{"level":"P1","points":100,"discount":2}]`,
 	}
 	rawBody, err := json.Marshal(body)
 	require.NoError(t, err)
@@ -278,13 +280,17 @@ func TestSettingHandler_UpdateSettings_EchoesWelfareSettings(t *testing.T) {
 	require.Equal(t, http.StatusOK, rec.Code)
 	require.Equal(t, "3", repo.values[service.SettingKeyWelfareLeaderboardRankLimit])
 	require.Equal(t, `[1,0.5,0.2]`, repo.values[service.SettingKeyWelfareLeaderboardRewardRatios])
+	require.Equal(t, `[{"scope":"weekly","level":"W1","points":10,"discount":1}]`, repo.values[service.SettingKeyLoyaltyWeeklyRules])
+	require.Equal(t, `[{"scope":"permanent","level":"P1","points":100,"discount":2}]`, repo.values[service.SettingKeyLoyaltyPermanentRules])
 
 	var resp response.Response
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
 	data, ok := resp.Data.(map[string]any)
 	require.True(t, ok)
 	require.Equal(t, float64(3), data["welfare_leaderboard_rank_limit"])
-	require.Equal(t, `[1,0.5,0.2]`, data["welfare_leaderboard_reward_ratios"])
+	require.Equal(t, `[1.0, 0.5, 0.2]`, data["welfare_leaderboard_reward_ratios"])
+	require.Equal(t, `[{"scope":"weekly","level":"W1","points":10,"discount":1}]`, data["loyalty_weekly_rules"])
+	require.Equal(t, `[{"scope":"permanent","level":"P1","points":100,"discount":2}]`, data["loyalty_permanent_rules"])
 }
 
 func TestSettingHandler_UpdateSettings_PreservesLegacyBlankPaymentVisibleMethodSource(t *testing.T) {
