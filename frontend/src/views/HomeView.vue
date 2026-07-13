@@ -199,8 +199,8 @@ import { sanitizeUrl } from '@/utils/url'
 
 type IconName = InstanceType<typeof Icon>['$props']['name']
 
-const HERO_IMAGE_DARK = '/home/solid-api-blue-core.jpg'
-const HERO_IMAGE_LIGHT = '/home/solid-api-blue-core-light.jpg'
+const HERO_IMAGE_DARK = '/home/solid-api-blue-core.webp'
+const HERO_IMAGE_LIGHT = '/home/solid-api-blue-core-light.webp'
 const SPOTLIGHT_R = 260
 const authStore = useAuthStore()
 const appStore = useAppStore()
