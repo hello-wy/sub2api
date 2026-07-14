@@ -31,7 +31,7 @@
         v-if="priceLines.length"
         data-test="price-grid"
         class="mt-4 grid min-w-0 grid-cols-2 gap-x-3 gap-y-3 border-t border-gray-100 pt-3 dark:border-dark-700 sm:grid-cols-4"
-        :class="viewMode === 'list' && 'lg:mt-0 lg:min-w-[460px] lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0'"
+        :class="viewMode === 'list' && 'lg:mt-0 lg:w-[clamp(380px,36vw,420px)] lg:flex-none lg:grid-cols-[repeat(4,max-content)] lg:justify-between lg:gap-x-0 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0'"
       >
         <div v-for="line in priceLines" :key="line.key" class="min-w-0">
           <div class="truncate text-[10px] text-gray-400">{{ line.label }}</div>
@@ -42,7 +42,7 @@
         </div>
         <div v-if="intervals.length" class="col-span-full text-[10px] text-gray-400" :title="t('modelSquare.intervalHint')">{{ t('modelSquare.intervalPricing', { count: intervals.length }) }}</div>
       </div>
-      <div v-else class="mt-4 border-t border-gray-100 pt-3 text-sm text-gray-400 dark:border-dark-700" :class="viewMode === 'list' && 'lg:mt-0 lg:min-w-[460px] lg:border-l lg:border-t-0 lg:pl-5 lg:pt-2'">{{ t('modelSquare.noPricing') }}</div>
+      <div v-else class="mt-4 border-t border-gray-100 pt-3 text-sm text-gray-400 dark:border-dark-700" :class="viewMode === 'list' && 'lg:mt-0 lg:w-[clamp(380px,36vw,420px)] lg:flex-none lg:border-l lg:border-t-0 lg:pl-5 lg:pt-2'">{{ t('modelSquare.noPricing') }}</div>
     </div>
 
     <template v-if="monitor">
