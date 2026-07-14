@@ -4,8 +4,8 @@
     class="min-w-0 rounded-xl border border-gray-200 bg-white px-4 py-4 dark:border-dark-700 dark:bg-dark-800"
     :class="viewMode === 'list' && 'lg:px-5'"
   >
-    <div :class="viewMode === 'list' ? 'flex min-w-0 flex-col gap-4 lg:flex-row lg:items-start' : ''">
-      <div :class="viewMode === 'list' ? 'flex min-w-0 flex-1 items-start justify-between gap-4' : 'flex min-w-0 items-start justify-between gap-3'">
+    <div data-test="card-content" :class="viewMode === 'list' ? 'flex min-w-0 flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,11fr)_minmax(0,9fr)] lg:items-start lg:gap-0' : ''">
+      <div data-test="card-identity" :class="viewMode === 'list' ? 'flex min-w-0 flex-1 items-start justify-between gap-4 lg:pr-4 xl:pr-6' : 'flex min-w-0 items-start justify-between gap-3'">
         <div class="flex min-w-0 items-start gap-3">
           <span class="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-gray-50 ring-1 ring-black/5 dark:bg-dark-700 dark:ring-white/10">
             <PlatformIcon :platform="card.platform" size="lg" :class="platformIconClass(card.platform)" />
@@ -30,19 +30,19 @@
       <div
         v-if="priceLines.length"
         data-test="price-grid"
-        class="mt-4 grid min-w-0 grid-cols-2 gap-x-3 gap-y-3 border-t border-gray-100 pt-3 dark:border-dark-700 sm:grid-cols-4"
-        :class="viewMode === 'list' && 'lg:mt-0 lg:w-[clamp(380px,36vw,420px)] lg:flex-none lg:grid-cols-[repeat(4,max-content)] lg:justify-between lg:gap-x-0 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0'"
+        class="mt-4 grid min-w-0 grid-cols-2 gap-x-3 gap-y-3 border-t border-gray-100 pt-3 dark:border-dark-700"
+        :class="viewMode === 'list' && 'sm:grid-cols-4 lg:mt-0 lg:grid-cols-2 lg:gap-x-[clamp(0.75rem,2vw,2rem)] lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0 xl:grid-cols-4'"
       >
         <div v-for="line in priceLines" :key="line.key" class="min-w-0">
           <div class="truncate text-[10px] text-gray-400">{{ line.label }}</div>
-          <div class="numeric mt-1 truncate text-sm font-medium text-gray-800 dark:text-gray-200" :title="`$${line.value} ${line.unit}`">
+          <div data-test="price-value" class="numeric mt-1 whitespace-nowrap text-sm font-medium text-gray-800 dark:text-gray-200" :title="`$${line.value} ${line.unit}`">
             ${{ line.value }}
           </div>
           <div class="mt-0.5 truncate text-[10px] text-gray-400">{{ line.unit }}</div>
         </div>
         <div v-if="intervals.length" class="col-span-full text-[10px] text-gray-400" :title="t('modelSquare.intervalHint')">{{ t('modelSquare.intervalPricing', { count: intervals.length }) }}</div>
       </div>
-      <div v-else class="mt-4 border-t border-gray-100 pt-3 text-sm text-gray-400 dark:border-dark-700" :class="viewMode === 'list' && 'lg:mt-0 lg:w-[clamp(380px,36vw,420px)] lg:flex-none lg:border-l lg:border-t-0 lg:pl-5 lg:pt-2'">{{ t('modelSquare.noPricing') }}</div>
+      <div v-else data-test="no-pricing" class="mt-4 border-t border-gray-100 pt-3 text-sm text-gray-400 dark:border-dark-700" :class="viewMode === 'list' && 'lg:mt-0 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-2'">{{ t('modelSquare.noPricing') }}</div>
     </div>
 
     <template v-if="monitor">

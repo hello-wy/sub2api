@@ -44,7 +44,8 @@ describe('ModelSquareCard', () => {
     expect(wrapper.text()).toContain('Codex')
     expect(wrapper.text()).toContain('$1')
     expect(wrapper.text()).toContain('$6')
-    expect(wrapper.get('[data-test="price-grid"]').classes()).toContain('sm:grid-cols-4')
+    expect(wrapper.get('[data-test="price-grid"]').classes()).toContain('grid-cols-2')
+    expect(wrapper.get('[data-test="price-grid"]').classes()).not.toContain('sm:grid-cols-4')
     expect(wrapper.get('[data-test="monitor-summary"]').text()).toContain('49.5TPS')
     expect(wrapper.get('[data-test="monitor-summary"]').text()).toContain('14720ms')
     expect(wrapper.get('[data-test="monitor-summary"]').text()).toContain('20ms')
@@ -54,13 +55,29 @@ describe('ModelSquareCard', () => {
     expect(wrapper.find('.metric-number').exists()).toBe(false)
   })
 
-  it('retains monitor metrics and timeline in list view', () => {
+  it('uses responsive list columns while retaining monitor metrics and timeline', () => {
     const wrapper = render(49.5, card, true, 'list')
+    expect(wrapper.get('[data-test="card-content"]').classes()).toContain('lg:grid-cols-[minmax(0,11fr)_minmax(0,9fr)]')
+    expect(wrapper.get('[data-test="card-identity"]').classes()).toEqual(expect.arrayContaining(['lg:pr-4', 'xl:pr-6']))
+    expect(wrapper.get('[data-test="price-grid"]').classes()).toEqual(expect.arrayContaining(['sm:grid-cols-4', 'lg:grid-cols-2', 'xl:grid-cols-4', 'lg:border-l', 'lg:pl-5']))
     expect(wrapper.get('[data-test="monitor-summary"]').text()).toContain('49.5TPS')
     expect(wrapper.get('[data-test="monitor-summary"]').text()).toContain('14720ms')
     expect(wrapper.get('[data-test="monitor-summary"]').text()).toContain('20ms')
     expect(wrapper.get('[data-test="monitor-summary"]').text()).toContain('99.90%')
     expect(wrapper.getComponent({ name: 'MonitorTimeline' }).props('showCountdown')).toBe(false)
+  })
+
+  it('renders every formatted price digit without truncating the numeric value', () => {
+    const precisePrices = {
+      ...card,
+      pricing: { ...card.pricing, input_price: 0.00000030864125, output_price: 0 },
+    }
+    const wrapper = render(49.5, precisePrices, true, 'list')
+    const value = wrapper.get('[data-test="price-value"]')
+
+    expect(value.text()).toBe('$0.123457')
+    expect(value.classes()).toContain('whitespace-nowrap')
+    expect(value.classes()).not.toContain('truncate')
   })
 
   it('shows unavailable throughput as an em dash instead of zero in list view', () => {
@@ -95,12 +112,15 @@ describe('ModelSquareCard', () => {
     expect(wrapper.text()).not.toContain('modelSquare.price.imageOutput')
   })
 
-  it('uses the no-pricing state when every configured dimension is zero', () => {
+  it('uses the responsive no-pricing state when every configured dimension is zero', () => {
     const zeroPrices = {
       ...card,
       pricing: { ...card.pricing, input_price: 0, output_price: 0, cache_write_price: 0, cache_read_price: 0, image_output_price: 0 },
     }
-    expect(render(49.5, zeroPrices).text()).toContain('modelSquare.noPricing')
+    const wrapper = render(49.5, zeroPrices, true, 'list')
+
+    expect(wrapper.get('[data-test="no-pricing"]').text()).toContain('modelSquare.noPricing')
+    expect(wrapper.get('[data-test="no-pricing"]').classes()).toEqual(expect.arrayContaining(['lg:border-l', 'lg:pl-5']))
   })
 
   it('omits a zero per-request price', () => {
