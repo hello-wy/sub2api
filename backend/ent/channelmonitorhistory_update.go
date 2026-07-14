@@ -125,6 +125,60 @@ func (_u *ChannelMonitorHistoryUpdate) ClearPingLatencyMs() *ChannelMonitorHisto
 	return _u
 }
 
+// SetOutputTokens sets the "output_tokens" field.
+func (_u *ChannelMonitorHistoryUpdate) SetOutputTokens(v int) *ChannelMonitorHistoryUpdate {
+	_u.mutation.ResetOutputTokens()
+	_u.mutation.SetOutputTokens(v)
+	return _u
+}
+
+// SetNillableOutputTokens sets the "output_tokens" field if the given value is not nil.
+func (_u *ChannelMonitorHistoryUpdate) SetNillableOutputTokens(v *int) *ChannelMonitorHistoryUpdate {
+	if v != nil {
+		_u.SetOutputTokens(*v)
+	}
+	return _u
+}
+
+// AddOutputTokens adds value to the "output_tokens" field.
+func (_u *ChannelMonitorHistoryUpdate) AddOutputTokens(v int) *ChannelMonitorHistoryUpdate {
+	_u.mutation.AddOutputTokens(v)
+	return _u
+}
+
+// ClearOutputTokens clears the value of the "output_tokens" field.
+func (_u *ChannelMonitorHistoryUpdate) ClearOutputTokens() *ChannelMonitorHistoryUpdate {
+	_u.mutation.ClearOutputTokens()
+	return _u
+}
+
+// SetThroughputTps sets the "throughput_tps" field.
+func (_u *ChannelMonitorHistoryUpdate) SetThroughputTps(v float64) *ChannelMonitorHistoryUpdate {
+	_u.mutation.ResetThroughputTps()
+	_u.mutation.SetThroughputTps(v)
+	return _u
+}
+
+// SetNillableThroughputTps sets the "throughput_tps" field if the given value is not nil.
+func (_u *ChannelMonitorHistoryUpdate) SetNillableThroughputTps(v *float64) *ChannelMonitorHistoryUpdate {
+	if v != nil {
+		_u.SetThroughputTps(*v)
+	}
+	return _u
+}
+
+// AddThroughputTps adds value to the "throughput_tps" field.
+func (_u *ChannelMonitorHistoryUpdate) AddThroughputTps(v float64) *ChannelMonitorHistoryUpdate {
+	_u.mutation.AddThroughputTps(v)
+	return _u
+}
+
+// ClearThroughputTps clears the value of the "throughput_tps" field.
+func (_u *ChannelMonitorHistoryUpdate) ClearThroughputTps() *ChannelMonitorHistoryUpdate {
+	_u.mutation.ClearThroughputTps()
+	return _u
+}
+
 // SetMessage sets the "message" field.
 func (_u *ChannelMonitorHistoryUpdate) SetMessage(v string) *ChannelMonitorHistoryUpdate {
 	_u.mutation.SetMessage(v)
@@ -260,6 +314,24 @@ func (_u *ChannelMonitorHistoryUpdate) sqlSave(ctx context.Context) (_node int, 
 	}
 	if _u.mutation.PingLatencyMsCleared() {
 		_spec.ClearField(channelmonitorhistory.FieldPingLatencyMs, field.TypeInt)
+	}
+	if value, ok := _u.mutation.OutputTokens(); ok {
+		_spec.SetField(channelmonitorhistory.FieldOutputTokens, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedOutputTokens(); ok {
+		_spec.AddField(channelmonitorhistory.FieldOutputTokens, field.TypeInt, value)
+	}
+	if _u.mutation.OutputTokensCleared() {
+		_spec.ClearField(channelmonitorhistory.FieldOutputTokens, field.TypeInt)
+	}
+	if value, ok := _u.mutation.ThroughputTps(); ok {
+		_spec.SetField(channelmonitorhistory.FieldThroughputTps, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.AddedThroughputTps(); ok {
+		_spec.AddField(channelmonitorhistory.FieldThroughputTps, field.TypeFloat64, value)
+	}
+	if _u.mutation.ThroughputTpsCleared() {
+		_spec.ClearField(channelmonitorhistory.FieldThroughputTps, field.TypeFloat64)
 	}
 	if value, ok := _u.mutation.Message(); ok {
 		_spec.SetField(channelmonitorhistory.FieldMessage, field.TypeString, value)
@@ -412,6 +484,60 @@ func (_u *ChannelMonitorHistoryUpdateOne) AddPingLatencyMs(v int) *ChannelMonito
 // ClearPingLatencyMs clears the value of the "ping_latency_ms" field.
 func (_u *ChannelMonitorHistoryUpdateOne) ClearPingLatencyMs() *ChannelMonitorHistoryUpdateOne {
 	_u.mutation.ClearPingLatencyMs()
+	return _u
+}
+
+// SetOutputTokens sets the "output_tokens" field.
+func (_u *ChannelMonitorHistoryUpdateOne) SetOutputTokens(v int) *ChannelMonitorHistoryUpdateOne {
+	_u.mutation.ResetOutputTokens()
+	_u.mutation.SetOutputTokens(v)
+	return _u
+}
+
+// SetNillableOutputTokens sets the "output_tokens" field if the given value is not nil.
+func (_u *ChannelMonitorHistoryUpdateOne) SetNillableOutputTokens(v *int) *ChannelMonitorHistoryUpdateOne {
+	if v != nil {
+		_u.SetOutputTokens(*v)
+	}
+	return _u
+}
+
+// AddOutputTokens adds value to the "output_tokens" field.
+func (_u *ChannelMonitorHistoryUpdateOne) AddOutputTokens(v int) *ChannelMonitorHistoryUpdateOne {
+	_u.mutation.AddOutputTokens(v)
+	return _u
+}
+
+// ClearOutputTokens clears the value of the "output_tokens" field.
+func (_u *ChannelMonitorHistoryUpdateOne) ClearOutputTokens() *ChannelMonitorHistoryUpdateOne {
+	_u.mutation.ClearOutputTokens()
+	return _u
+}
+
+// SetThroughputTps sets the "throughput_tps" field.
+func (_u *ChannelMonitorHistoryUpdateOne) SetThroughputTps(v float64) *ChannelMonitorHistoryUpdateOne {
+	_u.mutation.ResetThroughputTps()
+	_u.mutation.SetThroughputTps(v)
+	return _u
+}
+
+// SetNillableThroughputTps sets the "throughput_tps" field if the given value is not nil.
+func (_u *ChannelMonitorHistoryUpdateOne) SetNillableThroughputTps(v *float64) *ChannelMonitorHistoryUpdateOne {
+	if v != nil {
+		_u.SetThroughputTps(*v)
+	}
+	return _u
+}
+
+// AddThroughputTps adds value to the "throughput_tps" field.
+func (_u *ChannelMonitorHistoryUpdateOne) AddThroughputTps(v float64) *ChannelMonitorHistoryUpdateOne {
+	_u.mutation.AddThroughputTps(v)
+	return _u
+}
+
+// ClearThroughputTps clears the value of the "throughput_tps" field.
+func (_u *ChannelMonitorHistoryUpdateOne) ClearThroughputTps() *ChannelMonitorHistoryUpdateOne {
+	_u.mutation.ClearThroughputTps()
 	return _u
 }
 
@@ -580,6 +706,24 @@ func (_u *ChannelMonitorHistoryUpdateOne) sqlSave(ctx context.Context) (_node *C
 	}
 	if _u.mutation.PingLatencyMsCleared() {
 		_spec.ClearField(channelmonitorhistory.FieldPingLatencyMs, field.TypeInt)
+	}
+	if value, ok := _u.mutation.OutputTokens(); ok {
+		_spec.SetField(channelmonitorhistory.FieldOutputTokens, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedOutputTokens(); ok {
+		_spec.AddField(channelmonitorhistory.FieldOutputTokens, field.TypeInt, value)
+	}
+	if _u.mutation.OutputTokensCleared() {
+		_spec.ClearField(channelmonitorhistory.FieldOutputTokens, field.TypeInt)
+	}
+	if value, ok := _u.mutation.ThroughputTps(); ok {
+		_spec.SetField(channelmonitorhistory.FieldThroughputTps, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.AddedThroughputTps(); ok {
+		_spec.AddField(channelmonitorhistory.FieldThroughputTps, field.TypeFloat64, value)
+	}
+	if _u.mutation.ThroughputTpsCleared() {
+		_spec.ClearField(channelmonitorhistory.FieldThroughputTps, field.TypeFloat64)
 	}
 	if value, ok := _u.mutation.Message(); ok {
 		_spec.SetField(channelmonitorhistory.FieldMessage, field.TypeString, value)

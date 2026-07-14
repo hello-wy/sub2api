@@ -102,22 +102,26 @@ type channelMonitorResponse struct {
 }
 
 type channelMonitorCheckResultResponse struct {
-	Model         string `json:"model"`
-	Status        string `json:"status"`
-	LatencyMs     *int   `json:"latency_ms"`
-	PingLatencyMs *int   `json:"ping_latency_ms"`
-	Message       string `json:"message"`
-	CheckedAt     string `json:"checked_at"`
+	Model         string   `json:"model"`
+	Status        string   `json:"status"`
+	LatencyMs     *int     `json:"latency_ms"`
+	PingLatencyMs *int     `json:"ping_latency_ms"`
+	OutputTokens  *int     `json:"output_tokens"`
+	ThroughputTPS *float64 `json:"throughput_tps"`
+	Message       string   `json:"message"`
+	CheckedAt     string   `json:"checked_at"`
 }
 
 type channelMonitorHistoryItemResponse struct {
-	ID            int64  `json:"id"`
-	Model         string `json:"model"`
-	Status        string `json:"status"`
-	LatencyMs     *int   `json:"latency_ms"`
-	PingLatencyMs *int   `json:"ping_latency_ms"`
-	Message       string `json:"message"`
-	CheckedAt     string `json:"checked_at"`
+	ID            int64    `json:"id"`
+	Model         string   `json:"model"`
+	Status        string   `json:"status"`
+	LatencyMs     *int     `json:"latency_ms"`
+	PingLatencyMs *int     `json:"ping_latency_ms"`
+	OutputTokens  *int     `json:"output_tokens"`
+	ThroughputTPS *float64 `json:"throughput_tps"`
+	Message       string   `json:"message"`
+	CheckedAt     string   `json:"checked_at"`
 }
 
 // maskAPIKey 对 API Key 明文做脱敏：前 4 字符 + "***"，长度 ≤ 4 时只显示 "***"。
@@ -176,6 +180,8 @@ func checkResultToResponse(r *service.CheckResult) channelMonitorCheckResultResp
 		Status:        r.Status,
 		LatencyMs:     r.LatencyMs,
 		PingLatencyMs: r.PingLatencyMs,
+		OutputTokens:  r.OutputTokens,
+		ThroughputTPS: r.ThroughputTPS,
 		Message:       r.Message,
 		CheckedAt:     r.CheckedAt.UTC().Format(time.RFC3339),
 	}
@@ -188,6 +194,8 @@ func historyEntryToResponse(e *service.ChannelMonitorHistoryEntry) channelMonito
 		Status:        e.Status,
 		LatencyMs:     e.LatencyMs,
 		PingLatencyMs: e.PingLatencyMs,
+		OutputTokens:  e.OutputTokens,
+		ThroughputTPS: e.ThroughputTPS,
 		Message:       e.Message,
 		CheckedAt:     e.CheckedAt.UTC().Format(time.RFC3339),
 	}

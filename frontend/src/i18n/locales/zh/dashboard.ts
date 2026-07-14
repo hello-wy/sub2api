@@ -577,6 +577,8 @@ export default {
     balanceAddedAffiliate: '余额充值（返利转入）',
     balanceAddedAdmin: '余额充值（管理员）',
     balanceDeductedAdmin: '余额扣除（管理员）',
+    balanceAddedDailyCheckin: '每日签到',
+    balanceAddedUsageRebate: '用量返利',
     concurrencyAddedRedeem: '并发增加（兑换）',
     concurrencyAddedAdmin: '并发增加（管理员）',
     concurrencyReducedAdmin: '并发减少（管理员）',
@@ -855,12 +857,37 @@ export default {
     loadFailed: '加载模型广场失败',
     intervalPricing: '{count} 条阶梯价格',
     intervalHint: '阶梯价格沿用相同倍率计算，详细区间以渠道定价配置为准。',
+    resultCount: '共 {count} 个模型',
+    sort: {
+      default: '默认排序',
+      modelAsc: '模型 A–Z',
+      modelDesc: '模型 Z–A',
+      platform: '按平台排序'
+    },
+    view: {
+      label: '视图模式',
+      grid: '网格视图',
+      list: '列表视图'
+    },
+    monitor: {
+      status: '状态',
+      lastChecked: '最后检测',
+      throughput: '输出吞吐',
+      latency: '延时'
+    },
+    currentGroup: '当前分组',
     stats: {
       models: '模型',
       platforms: '平台',
       groups: '分组'
     },
     filters: {
+      title: '筛选',
+      search: '搜索',
+      platform: '供应商 / 平台',
+      group: '分组',
+      billing: '计费类型',
+      reset: '重置筛选',
       allPlatforms: '全部平台',
       allBillingModes: '全部计费',
       allGroups: '全部分组'
@@ -868,13 +895,18 @@ export default {
     billing: {
       token: 'Token',
       perRequest: '按次',
-      image: '图片'
+      image: '图片',
+      usageBased: '按量付费',
+      perImage: '按次付费（图片）'
     },
     units: {
       perMillion: '/ 1M token',
       perRequest: '/ 次'
     },
     price: {
+      base: '基础价格',
+      quota: '额度价格',
+      equivalent: '折合价格',
       input: '输入',
       output: '输出',
       cacheWrite: '缓存写入',

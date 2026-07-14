@@ -1,222 +1,341 @@
 <template>
   <AppLayout>
-    <div class="model-square min-h-full rounded-[2rem] p-5 text-white md:p-8">
-      <section class="rounded-[1.75rem] border border-white/10 bg-white/[0.08] p-6 shadow-2xl backdrop-blur-xl md:p-8">
-        <p class="text-xs font-semibold uppercase tracking-[0.32em] text-cyan-200">{{ t('modelSquare.eyebrow') }}</p>
-        <div class="mt-4 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div class="max-w-2xl">
-            <h1 class="text-4xl font-black tracking-tight md:text-5xl">{{ t('modelSquare.title') }}</h1>
-            <p class="mt-3 text-sm leading-6 text-slate-200 md:text-base">{{ t('modelSquare.description') }}</p>
-          </div>
-          <div class="grid grid-cols-3 gap-3">
-            <div v-for="stat in stats" :key="stat.label" class="rounded-2xl border border-white/10 bg-black/20 p-4 text-center">
-              <div class="text-2xl font-black">{{ stat.value }}</div>
-              <div class="mt-1 text-[11px] uppercase tracking-widest text-slate-300">{{ stat.label }}</div>
+    <div class="min-h-full overflow-hidden rounded-2xl bg-white text-gray-900 shadow-card dark:bg-dark-900 dark:text-gray-100">
+      <div class="grid min-h-full lg:grid-cols-[258px_minmax(0,1fr)]">
+        <aside
+          data-test="filter-sidebar"
+          class="self-stretch border-b border-gray-200 px-5 py-6 dark:border-dark-700 lg:border-b-0 lg:border-r lg:px-5 lg:py-8"
+        >
+          <div class="lg:sticky lg:top-6">
+            <div class="flex items-center justify-between">
+              <button
+                type="button"
+                class="flex min-w-0 flex-1 items-center gap-2 text-left text-lg font-semibold lg:pointer-events-none"
+                :aria-expanded="filtersOpen"
+                aria-controls="model-square-filters"
+                @click="filtersOpen = !filtersOpen"
+              >
+                <Icon name="filter" size="sm" class="lg:hidden" />
+                {{ t('modelSquare.filters.title') }}
+                <Icon
+                  name="chevronDown"
+                  size="sm"
+                  class="ml-auto transition-transform lg:hidden"
+                  :class="filtersOpen && 'rotate-180'"
+                />
+              </button>
+              <button
+                type="button"
+                data-test="reset-filters"
+                class="ml-3 shrink-0 text-xs font-medium text-gray-400 transition hover:text-primary-600 dark:hover:text-primary-400"
+                @click="resetFilters"
+              >
+                {{ t('modelSquare.filters.reset') }}
+              </button>
+            </div>
+
+            <div id="model-square-filters" v-show="filtersOpen" class="mt-7 space-y-8 lg:block">
+              <label class="block">
+                <span class="filter-label">{{ t('modelSquare.filters.search') }}</span>
+                <div class="relative mt-2.5">
+                  <Icon name="search" size="sm" class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input v-model="searchQuery" class="filter-control pl-9" :placeholder="t('modelSquare.searchPlaceholder')" />
+                </div>
+              </label>
+
+              <div role="group" :aria-label="t('modelSquare.filters.platform')">
+                <span class="filter-label">{{ t('modelSquare.filters.platform') }}</span>
+                <div class="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    class="filter-option"
+                    :class="{ 'filter-option-active': !platformFilter }"
+                    :aria-pressed="!platformFilter"
+                    data-test="platform-filter-all"
+                    @click="selectPlatform('')"
+                  >
+                    {{ t('modelSquare.filters.allPlatforms') }}
+                  </button>
+                  <button
+                    v-for="platform in platforms"
+                    :key="platform"
+                    type="button"
+                    class="filter-option max-w-full break-words"
+                    :class="{ 'filter-option-active': platformFilter === platform }"
+                    :aria-pressed="platformFilter === platform"
+                    :data-test="`platform-filter-${platform}`"
+                    @click="selectPlatform(platform)"
+                  >
+                    {{ platform }}
+                  </button>
+                </div>
+              </div>
+
+              <div role="group" :aria-label="t('modelSquare.filters.billing')">
+                <span class="filter-label">{{ t('modelSquare.filters.billing') }}</span>
+                <div class="mt-3 flex flex-wrap gap-2">
+                  <button
+                    v-for="option in billingOptions"
+                    :key="option.value"
+                    type="button"
+                    class="filter-option"
+                    :class="{ 'filter-option-active': billingFilter === option.value }"
+                    :aria-pressed="billingFilter === option.value"
+                    :data-test="`billing-filter-${option.value || 'all'}`"
+                    @click="billingFilter = option.value"
+                  >
+                    {{ option.label }}
+                  </button>
+                </div>
+              </div>
+
+              <div role="group" :aria-label="t('modelSquare.filters.group')">
+                <span class="filter-label">{{ t('modelSquare.filters.group') }}</span>
+                <div class="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    class="filter-option"
+                    :class="{ 'filter-option-active': !groupFilter }"
+                    :aria-pressed="!groupFilter"
+                    data-test="group-filter-all"
+                    @click="selectGroup('')"
+                  >
+                    {{ t('modelSquare.filters.allGroups') }}
+                  </button>
+                  <button
+                    v-for="group in groupOptions"
+                    :key="group.id"
+                    type="button"
+                    class="filter-option max-w-full break-words"
+                    :class="{ 'filter-option-active': groupFilter === String(group.id) }"
+                    :aria-pressed="groupFilter === String(group.id)"
+                    :data-test="`group-filter-${group.id}`"
+                    @click="selectGroup(String(group.id))"
+                  >
+                    {{ group.name }} · {{ formatPrice(group.rate) }}×
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </aside>
 
-      <section class="mt-5 rounded-[1.5rem] border border-white/10 bg-black/25 p-4 backdrop-blur-xl">
-        <div class="grid gap-3 lg:grid-cols-[1fr_180px_180px_220px]">
-          <div class="relative">
-            <Icon name="search" size="md" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input v-model="searchQuery" class="model-input pl-10" :placeholder="t('modelSquare.searchPlaceholder')" />
+        <main class="min-w-0 px-5 py-6 sm:px-7 lg:px-7 lg:py-7">
+          <header class="border-b border-gray-200 pb-5 dark:border-dark-700">
+            <p class="text-xs font-semibold uppercase tracking-[0.24em] text-primary-600 dark:text-primary-400">{{ t('modelSquare.eyebrow') }}</p>
+            <div class="mt-1 flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <h1 class="text-3xl font-bold tracking-tight sm:text-4xl">{{ t('modelSquare.title') }}</h1>
+                <p class="mt-1.5 text-sm text-gray-500 dark:text-gray-400">{{ t('modelSquare.description') }}</p>
+              </div>
+              <div class="pb-0.5 text-sm text-gray-400">{{ t('modelSquare.resultCount', { count: filteredCards.length }) }}</div>
+            </div>
+          </header>
+
+          <div class="flex flex-wrap items-center justify-between gap-3 py-4">
+            <div data-test="sort-control" class="w-36">
+              <Select v-model="sortMode" :options="sortOptions" />
+            </div>
+            <div class="inline-flex rounded-lg border border-gray-200 bg-white p-0.5 dark:border-dark-600 dark:bg-dark-800" role="group" :aria-label="t('modelSquare.view.label')">
+              <button
+                type="button"
+                data-test="grid-view"
+                class="view-button"
+                :class="viewMode === 'grid' && 'view-button-active'"
+                :aria-label="t('modelSquare.view.grid')"
+                :aria-pressed="viewMode === 'grid'"
+                @click="viewMode = 'grid'"
+              >
+                <Icon name="grid" size="sm" />
+              </button>
+              <button
+                type="button"
+                data-test="list-view"
+                class="view-button"
+                :class="viewMode === 'list' && 'view-button-active'"
+                :aria-label="t('modelSquare.view.list')"
+                :aria-pressed="viewMode === 'list'"
+                @click="viewMode = 'list'"
+              >
+                <Icon name="list" size="sm" />
+              </button>
+            </div>
           </div>
-          <select v-model="platformFilter" class="model-input">
-            <option value="">{{ t('modelSquare.filters.allPlatforms') }}</option>
-            <option v-for="platform in platforms" :key="platform" :value="platform">{{ platform }}</option>
-          </select>
-          <select v-model="billingFilter" class="model-input">
-            <option value="">{{ t('modelSquare.filters.allBillingModes') }}</option>
-            <option value="token">{{ t('modelSquare.billing.token') }}</option>
-            <option value="per_request">{{ t('modelSquare.billing.perRequest') }}</option>
-            <option value="image">{{ t('modelSquare.billing.image') }}</option>
-          </select>
-          <select v-model="groupFilter" class="model-input">
-            <option value="">{{ t('modelSquare.filters.allGroups') }}</option>
-            <option v-for="group in groupOptions" :key="group.id" :value="String(group.id)">
-              {{ group.name }} · {{ group.rate }}x
-            </option>
-          </select>
-        </div>
-      </section>
 
-      <div v-if="loading" class="flex justify-center py-20">
-        <div class="h-10 w-10 animate-spin rounded-full border-2 border-cyan-300 border-t-transparent"></div>
+          <div v-if="loading" class="flex justify-center py-20"><div class="h-8 w-8 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" /></div>
+          <div v-else-if="filteredCards.length === 0" class="rounded-xl border border-dashed border-gray-200 py-20 text-center text-base text-gray-400 dark:border-dark-700">{{ t('modelSquare.empty') }}</div>
+          <section
+            v-else
+            data-test="model-card-grid"
+            :class="viewMode === 'grid' ? 'grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3' : 'grid grid-cols-1 gap-3'"
+          >
+            <ModelSquareCard
+              v-for="item in paginatedCards"
+              :key="item.card.key"
+              :card="item.card"
+              :active-group="item.activeGroup"
+              :effective-rate="item.effectiveRate"
+              :recharge-multiplier="rechargeMultiplier"
+              :monitor="item.monitor"
+              :view-mode="viewMode"
+            />
+          </section>
+
+          <Pagination
+            v-if="filteredCards.length > pageSize"
+            v-model:page="page"
+            class="mt-4"
+            :total="filteredCards.length"
+            :page-size="pageSize"
+            :show-page-size-selector="false"
+          />
+        </main>
       </div>
-      <div v-else-if="filteredModels.length === 0" class="py-20 text-center text-slate-300">
-        {{ t('modelSquare.empty') }}
-      </div>
-      <section v-else class="mt-5 grid gap-4 xl:grid-cols-2 2xl:grid-cols-3">
-        <article v-for="item in filteredModels" :key="item.key" class="model-card">
-          <div class="flex items-start justify-between gap-3">
-            <div class="min-w-0">
-              <div class="flex flex-wrap items-center gap-2">
-                <span class="rounded-full bg-white/10 px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-cyan-100">{{ item.platform }}</span>
-                <span class="rounded-full bg-emerald-400/15 px-2 py-1 text-[11px] font-semibold text-emerald-200">{{ billingLabel(item.billingMode) }}</span>
-              </div>
-              <h2 class="mt-3 break-words text-xl font-black text-white">{{ item.model }}</h2>
-              <p class="mt-1 text-xs text-slate-400">{{ item.channel }}</p>
-            </div>
-            <div class="rounded-2xl border border-cyan-300/20 bg-cyan-300/10 px-3 py-2 text-right">
-              <div class="text-[10px] uppercase tracking-widest text-cyan-100">{{ t('modelSquare.effectiveRate') }}</div>
-              <div class="text-lg font-black text-cyan-50">{{ item.effectiveRate }}x</div>
-            </div>
-          </div>
-
-          <div class="mt-4 flex flex-wrap gap-2">
-            <span v-for="group in item.groups" :key="group.id" class="rounded-full border border-white/10 bg-white/[0.07] px-2.5 py-1 text-xs text-slate-200">
-              {{ group.name }} · {{ effectiveRate(group).toFixed(3).replace(/\.?0+$/, '') }}x
-            </span>
-          </div>
-
-          <div v-if="item.prices.length > 0" class="mt-5 grid gap-2">
-            <div v-for="price in item.prices" :key="price.label" class="rounded-2xl bg-black/25 p-3">
-              <div class="flex items-center justify-between text-xs text-slate-400">
-                <span>{{ price.label }}</span>
-                <span>{{ price.unit }}</span>
-              </div>
-              <div class="mt-1 flex items-end justify-between gap-3">
-                <span class="font-mono text-sm text-slate-300">${{ price.raw }}</span>
-                <span class="font-mono text-2xl font-black text-emerald-200">${{ price.calculated }}</span>
-              </div>
-            </div>
-          </div>
-          <div v-else class="mt-5 rounded-2xl border border-dashed border-white/10 p-4 text-center text-sm text-slate-400">
-            {{ t('modelSquare.noPricing') }}
-          </div>
-
-          <details v-if="item.intervalCount > 0" class="mt-4 text-xs text-slate-300">
-            <summary class="cursor-pointer text-cyan-200">{{ t('modelSquare.intervalPricing', { count: item.intervalCount }) }}</summary>
-            <p class="mt-2 text-slate-400">{{ t('modelSquare.intervalHint') }}</p>
-          </details>
-        </article>
-      </section>
     </div>
   </AppLayout>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Icon from '@/components/icons/Icon.vue'
-import userChannelsAPI, { type UserAvailableGroup, type UserSupportedModelPricing } from '@/api/channels'
+import Pagination from '@/components/common/Pagination.vue'
+import Select from '@/components/common/Select.vue'
+import ModelSquareCard, { type ModelSquareCardData } from '@/components/user/models/ModelSquareCard.vue'
+import userChannelsAPI, { type UserAvailableGroup } from '@/api/channels'
 import userGroupsAPI from '@/api/groups'
+import channelMonitorUserAPI, { type UserMonitorView } from '@/api/channelMonitor'
+import { paymentAPI } from '@/api/payment'
 import { useAppStore } from '@/stores/app'
 import { extractApiErrorMessage } from '@/utils/apiError'
-import { applyRateMultiplier, formatPrice, resolveEffectiveRate, toDisplayTokenPrice } from '@/utils/model-pricing'
-import type { BillingMode } from '@/constants/channel'
+import { formatPrice, normalizeRechargeMultiplier, resolveCardGroup, resolveEffectiveRate } from '@/utils/model-pricing'
 
-interface ModelCard {
-  key: string
-  model: string
-  platform: string
-  channel: string
-  groups: UserAvailableGroup[]
-  billingMode: BillingMode
-  prices: PriceLine[]
-  effectiveRate: string
-  intervalCount: number
-  searchText: string
-}
-
-interface PriceLine {
-  label: string
-  raw: string
-  calculated: string
-  unit: string
-}
+type SortMode = 'default' | 'model-asc' | 'model-desc' | 'platform'
+type ViewMode = 'grid' | 'list'
 
 const { t } = useI18n()
 const appStore = useAppStore()
 const loading = ref(false)
-const cards = ref<ModelCard[]>([])
+const filtersOpen = ref(true)
+const cards = ref<ModelSquareCardData[]>([])
+const monitors = ref<UserMonitorView[]>([])
 const userGroupRates = ref<Record<number, number>>({})
+const rechargeMultiplier = ref(1)
 const searchQuery = ref('')
 const platformFilter = ref('')
 const billingFilter = ref('')
 const groupFilter = ref('')
+const sortMode = ref<SortMode>('default')
+const viewMode = ref<ViewMode>('grid')
+const page = ref(1)
+const pageSize = 12
 
-const stats = computed(() => [
-  { label: t('modelSquare.stats.models'), value: new Set(cards.value.map((item) => item.model)).size },
-  { label: t('modelSquare.stats.platforms'), value: platforms.value.length },
-  { label: t('modelSquare.stats.groups'), value: groupOptions.value.length },
+const billingOptions = computed(() => [
+  { value: '', label: t('modelSquare.filters.allBillingModes') },
+  { value: 'usage', label: t('modelSquare.billing.usageBased') },
+  { value: 'request', label: t('modelSquare.billing.perImage') },
+])
+const sortOptions = computed(() => [
+  { value: 'default', label: t('modelSquare.sort.default') },
+  { value: 'model-asc', label: t('modelSquare.sort.modelAsc') },
+  { value: 'model-desc', label: t('modelSquare.sort.modelDesc') },
+  { value: 'platform', label: t('modelSquare.sort.platform') },
 ])
 const platforms = computed(() => [...new Set(cards.value.map((item) => item.platform))].sort())
 const groupOptions = computed(() => {
-  const groups = new Map<number, { id: number; name: string; rate: number }>()
+  const groups = new Map<number, { id: number; name: string; platform: string; rate: number }>()
   for (const card of cards.value) {
     for (const group of card.groups) {
-      groups.set(group.id, { id: group.id, name: group.name, rate: effectiveRate(group) })
+      groups.set(group.id, {
+        id: group.id,
+        name: group.name,
+        platform: card.platform,
+        rate: resolveEffectiveRate({ groupId: group.id, groupRate: group.rate_multiplier, userGroupRates: userGroupRates.value }),
+      })
     }
   }
-  return [...groups.values()].sort((a, b) => a.name.localeCompare(b.name))
+  return [...groups.values()].sort((left, right) => left.platform.localeCompare(right.platform) || left.name.localeCompare(right.name))
 })
-const filteredModels = computed(() => {
-  const query = searchQuery.value.trim().toLowerCase()
-  return cards.value.filter((item) => matchesFilters(item, query))
+const selectedGroupOption = computed(() => groupOptions.value.find((group) => String(group.id) === groupFilter.value))
+
+watch(platformFilter, (platform) => {
+  if (groupFilter.value && selectedGroupOption.value?.platform !== platform) groupFilter.value = ''
 })
+watch([searchQuery, platformFilter, billingFilter, groupFilter, sortMode], () => { page.value = 1 })
 
-function matchesFilters(item: ModelCard, query: string): boolean {
-  if (query && !item.searchText.includes(query)) return false
-  if (platformFilter.value && item.platform !== platformFilter.value) return false
-  if (billingFilter.value && item.billingMode !== billingFilter.value) return false
-  if (groupFilter.value && !item.groups.some((group) => String(group.id) === groupFilter.value)) return false
-  return true
+function selectPlatform(platform: string) {
+  platformFilter.value = platform
 }
-
-function effectiveRate(group: UserAvailableGroup): number {
-  return resolveEffectiveRate({ groupId: group.id, groupRate: group.rate_multiplier, userGroupRates: userGroupRates.value })
+function selectGroup(groupId: string) {
+  groupFilter.value = groupId
+  const group = selectedGroupOption.value
+  if (group) platformFilter.value = group.platform
 }
-
-function minEffectiveRate(groups: UserAvailableGroup[]): number {
-  if (groups.length === 0) return 1
-  return Math.min(...groups.map((group) => effectiveRate(group)))
+function normalizedIdentity(value: string): string {
+  return value.trim().normalize('NFKC').toLowerCase().replace(/[\s_]+/g, '-')
 }
-
-function billingLabel(mode: BillingMode): string {
-  if (mode === 'per_request') return t('modelSquare.billing.perRequest')
-  if (mode === 'image') return t('modelSquare.billing.image')
-  return t('modelSquare.billing.token')
-}
-
-function tokenPrice(value: number | null | undefined, rate: number): { raw: string; calculated: string } | null {
-  const display = toDisplayTokenPrice(value)
-  if (display === null) return null
-  return { raw: formatPrice(display), calculated: formatPrice(applyRateMultiplier(display, rate)) }
-}
-
-function directPrice(value: number | null | undefined, rate: number): { raw: string; calculated: string } | null {
-  const calculated = applyRateMultiplier(value, rate)
-  if (calculated === null) return null
-  return { raw: formatPrice(value), calculated: formatPrice(calculated) }
-}
-
-function buildPrices(pricing: UserSupportedModelPricing | null, rate: number): PriceLine[] {
-  if (!pricing) return []
-  const unit = pricing.billing_mode === 'token' ? t('modelSquare.units.perMillion') : t('modelSquare.units.perRequest')
-  if (pricing.billing_mode !== 'token') {
-    const price = directPrice(pricing.per_request_price, rate)
-    return price ? [{ label: t('modelSquare.price.perRequest'), raw: price.raw, calculated: price.calculated, unit }] : []
+function monitorFor(card: ModelSquareCardData, selectedGroup?: UserAvailableGroup): UserMonitorView | undefined {
+  const candidates = monitors.value.filter((monitor) =>
+    normalizedIdentity(monitor.provider) === normalizedIdentity(card.platform)
+    && normalizedIdentity(monitor.name) === normalizedIdentity(card.channel)
+    && normalizedIdentity(monitor.primary_model) === normalizedIdentity(card.model),
+  )
+  if (selectedGroup) {
+    const groupMatches = candidates.filter((monitor) => monitor.group_name && normalizedIdentity(monitor.group_name) === normalizedIdentity(selectedGroup.name))
+    return groupMatches.length === 1 ? groupMatches[0] : undefined
   }
-  return [
-    makePriceLine(t('modelSquare.price.input'), pricing.input_price, rate, unit),
-    makePriceLine(t('modelSquare.price.output'), pricing.output_price, rate, unit),
-    makePriceLine(t('modelSquare.price.cacheWrite'), pricing.cache_write_price, rate, unit),
-    makePriceLine(t('modelSquare.price.cacheRead'), pricing.cache_read_price, rate, unit),
-    makePriceLine(t('modelSquare.price.imageOutput'), pricing.image_output_price, rate, unit),
-  ].filter((line): line is PriceLine => line !== null)
+  if (candidates.length === 1) return candidates[0]
+  const ungrouped = candidates.filter((monitor) => !monitor.group_name)
+  return ungrouped.length === 1 ? ungrouped[0] : undefined
+}
+function billingCategory(card: ModelSquareCardData): 'usage' | 'request' {
+  return card.billingMode === 'token' ? 'usage' : 'request'
 }
 
-function makePriceLine(label: string, value: number | null | undefined, rate: number, unit: string): PriceLine | null {
-  const price = tokenPrice(value, rate)
-  return price ? { label, raw: price.raw, calculated: price.calculated, unit } : null
-}
+const resolvedCards = computed(() => cards.value.map((card, sourceIndex) => {
+  const selectedGroup = groupFilter.value
+    ? card.groups.find((group) => String(group.id) === groupFilter.value)
+    : undefined
+  const activeGroup = selectedGroup ?? resolveCardGroup({ groups: card.groups, userGroupRates: userGroupRates.value })
+  const effectiveRate = activeGroup
+    ? resolveEffectiveRate({ groupId: activeGroup.id, groupRate: activeGroup.rate_multiplier, userGroupRates: userGroupRates.value })
+    : 1
+  return { card, activeGroup, effectiveRate, monitor: monitorFor(card, activeGroup), sourceIndex }
+}))
+const filteredCards = computed(() => {
+  const query = searchQuery.value.trim().toLowerCase()
+  return resolvedCards.value.filter(({ card }) =>
+    (!query || card.searchText.includes(query))
+    && (!platformFilter.value || card.platform === platformFilter.value)
+    && (!billingFilter.value || billingCategory(card) === billingFilter.value)
+    && (!groupFilter.value || card.groups.some((group) => String(group.id) === groupFilter.value)),
+  )
+})
+const sortedCards = computed(() => {
+  if (sortMode.value === 'default') return filteredCards.value
+  const direction = sortMode.value === 'model-desc' ? -1 : 1
+  return [...filteredCards.value].sort((left, right) => {
+    const primary = sortMode.value === 'platform'
+      ? left.card.platform.localeCompare(right.card.platform)
+      : left.card.model.localeCompare(right.card.model) * direction
+    return primary || left.card.model.localeCompare(right.card.model) || left.sourceIndex - right.sourceIndex
+  })
+})
+const paginatedCards = computed(() => sortedCards.value.slice((page.value - 1) * pageSize, page.value * pageSize))
 
-function buildSearchText(channel: string, model: string, platform: string, groups: UserAvailableGroup[]): string {
-  return [channel, model, platform, ...groups.map((group) => group.name)].join(' ').toLowerCase()
+watch(() => filteredCards.value.length, (count) => {
+  const lastPage = Math.max(1, Math.ceil(count / pageSize))
+  if (page.value > lastPage) page.value = lastPage
+})
+
+function resetFilters() {
+  searchQuery.value = ''
+  platformFilter.value = ''
+  billingFilter.value = ''
+  groupFilter.value = ''
+  sortMode.value = 'default'
+  page.value = 1
 }
 
 async function loadModels() {
@@ -224,25 +343,19 @@ async function loadModels() {
   try {
     const [channels, rates] = await Promise.all([userChannelsAPI.getAvailable(), userGroupsAPI.getUserGroupRates()])
     userGroupRates.value = rates
-    cards.value = channels.flatMap((channel) =>
-      channel.platforms.flatMap((section) =>
-        section.supported_models.map((model) => {
-          const rate = minEffectiveRate(section.groups)
-          return {
-            key: `${channel.name}:${section.platform}:${model.name}`,
-            model: model.name,
-            platform: section.platform,
-            channel: channel.name,
-            groups: section.groups,
-            billingMode: model.pricing?.billing_mode ?? 'token',
-            prices: buildPrices(model.pricing, rate),
-            effectiveRate: rate.toFixed(3).replace(/\.?0+$/, ''),
-            intervalCount: model.pricing?.intervals?.length ?? 0,
-            searchText: buildSearchText(channel.name, model.name, section.platform, section.groups),
-          }
-        }),
-      ),
-    )
+    const [checkout, monitorResponse] = await Promise.allSettled([paymentAPI.getCheckoutInfo(), channelMonitorUserAPI.list()])
+    if (checkout.status === 'fulfilled') rechargeMultiplier.value = normalizeRechargeMultiplier(checkout.value.data.balance_recharge_multiplier)
+    monitors.value = monitorResponse.status === 'fulfilled' ? monitorResponse.value.items : []
+    cards.value = channels.flatMap((channel) => channel.platforms.flatMap((section) => section.supported_models.map((model) => ({
+      key: `${channel.name}:${section.platform}:${model.name}`,
+      model: model.name,
+      platform: section.platform,
+      channel: channel.name,
+      groups: section.groups,
+      pricing: model.pricing,
+      billingMode: model.pricing?.billing_mode ?? 'token',
+      searchText: [channel.name, model.name, section.platform, ...section.groups.map((group) => group.name)].join(' ').toLowerCase(),
+    }))))
   } catch (error) {
     appStore.showError(extractApiErrorMessage(error, t('modelSquare.loadFailed')))
   } finally {
@@ -254,29 +367,21 @@ onMounted(loadModels)
 </script>
 
 <style scoped>
-.model-square {
-  background:
-    radial-gradient(circle at top left, rgba(34, 211, 238, 0.35), transparent 34rem),
-    radial-gradient(circle at 85% 15%, rgba(16, 185, 129, 0.25), transparent 30rem),
-    linear-gradient(135deg, #07111f 0%, #0e1b2f 45%, #111827 100%);
-}
-
-.model-input {
-  width: 100%;
-  border-radius: 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(15, 23, 42, 0.75);
-  padding: 0.75rem 1rem;
-  color: white;
-  outline: none;
-}
-
-.model-card {
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 1.5rem;
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.12), rgba(15, 23, 42, 0.72));
-  padding: 1.25rem;
-  box-shadow: 0 1.5rem 4rem rgba(0, 0, 0, 0.28);
-  backdrop-filter: blur(18px);
-}
+.filter-label { font-size: 0.75rem; font-weight: 600; color: rgb(107 114 128); }
+.filter-control { width: 100%; border-radius: 0.5rem; border: 1px solid rgb(229 231 235); background: white; padding: 0.55rem 0.7rem 0.55rem 2.25rem; font-size: 0.75rem; outline: none; }
+.filter-control:focus { border-color: rgb(var(--color-primary-500)); box-shadow: 0 0 0 2px rgb(var(--color-primary-500) / 0.1); }
+.filter-option { min-width: 0; border-radius: 0.5rem; border: 1px solid rgb(229 231 235); padding: 0.4rem 0.65rem; font-size: 0.75rem; line-height: 1rem; color: rgb(75 85 99); transition: background-color 150ms, border-color 150ms, color 150ms; }
+.filter-option:hover { background: rgb(249 250 251); }
+.filter-option:focus-visible, .view-button:focus-visible { outline: 2px solid rgb(var(--color-primary-500)); outline-offset: 2px; }
+.filter-option-active { border-color: rgb(var(--color-primary-500)); background: rgb(var(--color-primary-50)); color: rgb(var(--color-primary-700)); font-weight: 600; }
+.view-button { display: grid; height: 2rem; width: 2rem; place-items: center; border-radius: 0.375rem; color: rgb(107 114 128); transition: color 150ms, background-color 150ms; }
+.view-button:hover { color: rgb(31 41 55); }
+.view-button-active { background: rgb(var(--color-primary-50)); color: rgb(var(--color-primary-600)); box-shadow: inset 0 0 0 1px rgb(var(--color-primary-500)); }
+:global(.dark) .filter-label { color: rgb(156 163 175); }
+:global(.dark) .filter-control { border-color: rgb(55 65 81); background: rgb(31 41 55); color: rgb(229 231 235); }
+:global(.dark) .filter-option { border-color: rgb(55 65 81); color: rgb(209 213 219); }
+:global(.dark) .filter-option:hover { background: rgb(55 65 81); }
+:global(.dark) .filter-option-active { border-color: rgb(var(--color-primary-500)); background: rgb(var(--color-primary-500) / 0.12); color: rgb(var(--color-primary-300)); }
+:global(.dark) .view-button:hover { color: rgb(229 231 235); }
+:global(.dark) .view-button-active { background: rgb(var(--color-primary-500) / 0.12); color: rgb(var(--color-primary-300)); }
 </style>

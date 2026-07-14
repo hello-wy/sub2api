@@ -114,6 +114,8 @@ type CheckResult struct {
 	Status        string // operational / degraded / failed / error
 	LatencyMs     *int
 	PingLatencyMs *int
+	OutputTokens  *int
+	ThroughputTPS *float64
 	Message       string
 	CheckedAt     time.Time
 }
@@ -127,8 +129,9 @@ type UserMonitorView struct {
 	PrimaryModel         string
 	PrimaryStatus        string
 	PrimaryLatencyMs     *int
-	PrimaryPingLatencyMs *int    // 主模型最近一次 ping 延迟
-	Availability7d       float64 // 0-100
+	PrimaryPingLatencyMs *int     // 主模型最近一次 ping 延迟
+	PrimaryThroughputTPS *float64 // 主模型最近一次端到端输出吞吐
+	Availability7d       float64  // 0-100
 	ExtraModels          []ExtraModelStatus
 	Timeline             []UserMonitorTimelinePoint // 主模型最近 N 个历史点（按 checked_at DESC，最新在前）
 }
@@ -175,6 +178,8 @@ type ChannelMonitorHistoryRow struct {
 	Status        string
 	LatencyMs     *int
 	PingLatencyMs *int
+	OutputTokens  *int
+	ThroughputTPS *float64
 	Message       string
 	CheckedAt     time.Time
 }
@@ -186,6 +191,8 @@ type ChannelMonitorHistoryEntry struct {
 	Status        string
 	LatencyMs     *int
 	PingLatencyMs *int
+	OutputTokens  *int
+	ThroughputTPS *float64
 	Message       string
 	CheckedAt     time.Time
 }
@@ -196,6 +203,7 @@ type ChannelMonitorLatest struct {
 	Status        string
 	LatencyMs     *int
 	PingLatencyMs *int
+	ThroughputTPS *float64
 	CheckedAt     time.Time
 }
 

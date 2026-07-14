@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -84,6 +85,9 @@ func runCheckForModel(ctx context.Context, provider, endpoint, apiKey, model str
 		res.Message = truncateMessage(sanitizeErrorMessage(fmt.Sprintf("upstream HTTP %d: %s", statusCode, bodySnippet)))
 		return res
 	}
+
+	res.OutputTokens = extractOutputTokens(provider, checkAPIMode(opts), []byte(rawBody))
+	res.ThroughputTPS = calculateThroughputTPS(res.OutputTokens, latency)
 
 	// Replace 模式：跳过 challenge 校验（用户 body 是静态的，challenge 没法嵌入）。
 	// 改用「HTTP 2xx + 响应文本（adapter.textPath 抽取）非空」作为 operational 判定。
@@ -290,6 +294,46 @@ func callProvider(ctx context.Context, provider, endpoint, apiKey, model, prompt
 // extractOpenAIResponsesText 聚合 Responses API 的最终 assistant 文本。
 // Responses 的 output 数组顺序由模型决定：reasoning / tool-call item 可能排在 message 前面，
 // 因此不能假设文本永远在 output.0.content.0.text。
+func extractOutputTokens(provider, apiMode string, respBytes []byte) *int {
+	var path string
+	switch provider {
+	case MonitorProviderOpenAI:
+		if defaultAPIMode(apiMode) == MonitorAPIModeResponses {
+			path = "usage.output_tokens"
+		} else {
+			path = "usage.completion_tokens"
+		}
+	case MonitorProviderAnthropic:
+		path = "usage.output_tokens"
+	case MonitorProviderGemini:
+		path = "usageMetadata.candidatesTokenCount"
+	default:
+		return nil
+	}
+	value := gjson.GetBytes(respBytes, path)
+	if !value.Exists() || value.Type != gjson.Number || strings.ContainsAny(value.Raw, ".eE") {
+		return nil
+	}
+	tokens, err := strconv.ParseInt(value.Raw, 10, 64)
+	if err != nil || tokens <= 0 || uint64(tokens) > uint64(^uint(0)>>1) {
+		return nil
+	}
+	v := int(tokens)
+	return &v
+}
+
+func calculateThroughputTPS(outputTokens *int, duration time.Duration) *float64 {
+	if outputTokens == nil || *outputTokens <= 0 || duration <= 0 {
+		return nil
+	}
+	seconds := duration.Seconds()
+	if seconds <= 0 {
+		return nil
+	}
+	tps := float64(*outputTokens) / seconds
+	return &tps
+}
+
 func extractOpenAIResponsesText(respBytes []byte) string {
 	if text := gjson.GetBytes(respBytes, "output_text").String(); strings.TrimSpace(text) != "" {
 		return text

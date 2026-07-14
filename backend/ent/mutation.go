@@ -17757,6 +17757,10 @@ type ChannelMonitorHistoryMutation struct {
 	addlatency_ms      *int
 	ping_latency_ms    *int
 	addping_latency_ms *int
+	output_tokens      *int
+	addoutput_tokens   *int
+	throughput_tps     *float64
+	addthroughput_tps  *float64
 	message            *string
 	checked_at         *time.Time
 	clearedFields      map[string]struct{}
@@ -18113,6 +18117,146 @@ func (m *ChannelMonitorHistoryMutation) ResetPingLatencyMs() {
 	delete(m.clearedFields, channelmonitorhistory.FieldPingLatencyMs)
 }
 
+// SetOutputTokens sets the "output_tokens" field.
+func (m *ChannelMonitorHistoryMutation) SetOutputTokens(i int) {
+	m.output_tokens = &i
+	m.addoutput_tokens = nil
+}
+
+// OutputTokens returns the value of the "output_tokens" field in the mutation.
+func (m *ChannelMonitorHistoryMutation) OutputTokens() (r int, exists bool) {
+	v := m.output_tokens
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldOutputTokens returns the old "output_tokens" field's value of the ChannelMonitorHistory entity.
+// If the ChannelMonitorHistory object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelMonitorHistoryMutation) OldOutputTokens(ctx context.Context) (v *int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldOutputTokens is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldOutputTokens requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldOutputTokens: %w", err)
+	}
+	return oldValue.OutputTokens, nil
+}
+
+// AddOutputTokens adds i to the "output_tokens" field.
+func (m *ChannelMonitorHistoryMutation) AddOutputTokens(i int) {
+	if m.addoutput_tokens != nil {
+		*m.addoutput_tokens += i
+	} else {
+		m.addoutput_tokens = &i
+	}
+}
+
+// AddedOutputTokens returns the value that was added to the "output_tokens" field in this mutation.
+func (m *ChannelMonitorHistoryMutation) AddedOutputTokens() (r int, exists bool) {
+	v := m.addoutput_tokens
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearOutputTokens clears the value of the "output_tokens" field.
+func (m *ChannelMonitorHistoryMutation) ClearOutputTokens() {
+	m.output_tokens = nil
+	m.addoutput_tokens = nil
+	m.clearedFields[channelmonitorhistory.FieldOutputTokens] = struct{}{}
+}
+
+// OutputTokensCleared returns if the "output_tokens" field was cleared in this mutation.
+func (m *ChannelMonitorHistoryMutation) OutputTokensCleared() bool {
+	_, ok := m.clearedFields[channelmonitorhistory.FieldOutputTokens]
+	return ok
+}
+
+// ResetOutputTokens resets all changes to the "output_tokens" field.
+func (m *ChannelMonitorHistoryMutation) ResetOutputTokens() {
+	m.output_tokens = nil
+	m.addoutput_tokens = nil
+	delete(m.clearedFields, channelmonitorhistory.FieldOutputTokens)
+}
+
+// SetThroughputTps sets the "throughput_tps" field.
+func (m *ChannelMonitorHistoryMutation) SetThroughputTps(f float64) {
+	m.throughput_tps = &f
+	m.addthroughput_tps = nil
+}
+
+// ThroughputTps returns the value of the "throughput_tps" field in the mutation.
+func (m *ChannelMonitorHistoryMutation) ThroughputTps() (r float64, exists bool) {
+	v := m.throughput_tps
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldThroughputTps returns the old "throughput_tps" field's value of the ChannelMonitorHistory entity.
+// If the ChannelMonitorHistory object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelMonitorHistoryMutation) OldThroughputTps(ctx context.Context) (v *float64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldThroughputTps is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldThroughputTps requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldThroughputTps: %w", err)
+	}
+	return oldValue.ThroughputTps, nil
+}
+
+// AddThroughputTps adds f to the "throughput_tps" field.
+func (m *ChannelMonitorHistoryMutation) AddThroughputTps(f float64) {
+	if m.addthroughput_tps != nil {
+		*m.addthroughput_tps += f
+	} else {
+		m.addthroughput_tps = &f
+	}
+}
+
+// AddedThroughputTps returns the value that was added to the "throughput_tps" field in this mutation.
+func (m *ChannelMonitorHistoryMutation) AddedThroughputTps() (r float64, exists bool) {
+	v := m.addthroughput_tps
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearThroughputTps clears the value of the "throughput_tps" field.
+func (m *ChannelMonitorHistoryMutation) ClearThroughputTps() {
+	m.throughput_tps = nil
+	m.addthroughput_tps = nil
+	m.clearedFields[channelmonitorhistory.FieldThroughputTps] = struct{}{}
+}
+
+// ThroughputTpsCleared returns if the "throughput_tps" field was cleared in this mutation.
+func (m *ChannelMonitorHistoryMutation) ThroughputTpsCleared() bool {
+	_, ok := m.clearedFields[channelmonitorhistory.FieldThroughputTps]
+	return ok
+}
+
+// ResetThroughputTps resets all changes to the "throughput_tps" field.
+func (m *ChannelMonitorHistoryMutation) ResetThroughputTps() {
+	m.throughput_tps = nil
+	m.addthroughput_tps = nil
+	delete(m.clearedFields, channelmonitorhistory.FieldThroughputTps)
+}
+
 // SetMessage sets the "message" field.
 func (m *ChannelMonitorHistoryMutation) SetMessage(s string) {
 	m.message = &s
@@ -18259,7 +18403,7 @@ func (m *ChannelMonitorHistoryMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ChannelMonitorHistoryMutation) Fields() []string {
-	fields := make([]string, 0, 7)
+	fields := make([]string, 0, 9)
 	if m.monitor != nil {
 		fields = append(fields, channelmonitorhistory.FieldMonitorID)
 	}
@@ -18274,6 +18418,12 @@ func (m *ChannelMonitorHistoryMutation) Fields() []string {
 	}
 	if m.ping_latency_ms != nil {
 		fields = append(fields, channelmonitorhistory.FieldPingLatencyMs)
+	}
+	if m.output_tokens != nil {
+		fields = append(fields, channelmonitorhistory.FieldOutputTokens)
+	}
+	if m.throughput_tps != nil {
+		fields = append(fields, channelmonitorhistory.FieldThroughputTps)
 	}
 	if m.message != nil {
 		fields = append(fields, channelmonitorhistory.FieldMessage)
@@ -18299,6 +18449,10 @@ func (m *ChannelMonitorHistoryMutation) Field(name string) (ent.Value, bool) {
 		return m.LatencyMs()
 	case channelmonitorhistory.FieldPingLatencyMs:
 		return m.PingLatencyMs()
+	case channelmonitorhistory.FieldOutputTokens:
+		return m.OutputTokens()
+	case channelmonitorhistory.FieldThroughputTps:
+		return m.ThroughputTps()
 	case channelmonitorhistory.FieldMessage:
 		return m.Message()
 	case channelmonitorhistory.FieldCheckedAt:
@@ -18322,6 +18476,10 @@ func (m *ChannelMonitorHistoryMutation) OldField(ctx context.Context, name strin
 		return m.OldLatencyMs(ctx)
 	case channelmonitorhistory.FieldPingLatencyMs:
 		return m.OldPingLatencyMs(ctx)
+	case channelmonitorhistory.FieldOutputTokens:
+		return m.OldOutputTokens(ctx)
+	case channelmonitorhistory.FieldThroughputTps:
+		return m.OldThroughputTps(ctx)
 	case channelmonitorhistory.FieldMessage:
 		return m.OldMessage(ctx)
 	case channelmonitorhistory.FieldCheckedAt:
@@ -18370,6 +18528,20 @@ func (m *ChannelMonitorHistoryMutation) SetField(name string, value ent.Value) e
 		}
 		m.SetPingLatencyMs(v)
 		return nil
+	case channelmonitorhistory.FieldOutputTokens:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetOutputTokens(v)
+		return nil
+	case channelmonitorhistory.FieldThroughputTps:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetThroughputTps(v)
+		return nil
 	case channelmonitorhistory.FieldMessage:
 		v, ok := value.(string)
 		if !ok {
@@ -18398,6 +18570,12 @@ func (m *ChannelMonitorHistoryMutation) AddedFields() []string {
 	if m.addping_latency_ms != nil {
 		fields = append(fields, channelmonitorhistory.FieldPingLatencyMs)
 	}
+	if m.addoutput_tokens != nil {
+		fields = append(fields, channelmonitorhistory.FieldOutputTokens)
+	}
+	if m.addthroughput_tps != nil {
+		fields = append(fields, channelmonitorhistory.FieldThroughputTps)
+	}
 	return fields
 }
 
@@ -18410,6 +18588,10 @@ func (m *ChannelMonitorHistoryMutation) AddedField(name string) (ent.Value, bool
 		return m.AddedLatencyMs()
 	case channelmonitorhistory.FieldPingLatencyMs:
 		return m.AddedPingLatencyMs()
+	case channelmonitorhistory.FieldOutputTokens:
+		return m.AddedOutputTokens()
+	case channelmonitorhistory.FieldThroughputTps:
+		return m.AddedThroughputTps()
 	}
 	return nil, false
 }
@@ -18433,6 +18615,20 @@ func (m *ChannelMonitorHistoryMutation) AddField(name string, value ent.Value) e
 		}
 		m.AddPingLatencyMs(v)
 		return nil
+	case channelmonitorhistory.FieldOutputTokens:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddOutputTokens(v)
+		return nil
+	case channelmonitorhistory.FieldThroughputTps:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddThroughputTps(v)
+		return nil
 	}
 	return fmt.Errorf("unknown ChannelMonitorHistory numeric field %s", name)
 }
@@ -18446,6 +18642,12 @@ func (m *ChannelMonitorHistoryMutation) ClearedFields() []string {
 	}
 	if m.FieldCleared(channelmonitorhistory.FieldPingLatencyMs) {
 		fields = append(fields, channelmonitorhistory.FieldPingLatencyMs)
+	}
+	if m.FieldCleared(channelmonitorhistory.FieldOutputTokens) {
+		fields = append(fields, channelmonitorhistory.FieldOutputTokens)
+	}
+	if m.FieldCleared(channelmonitorhistory.FieldThroughputTps) {
+		fields = append(fields, channelmonitorhistory.FieldThroughputTps)
 	}
 	if m.FieldCleared(channelmonitorhistory.FieldMessage) {
 		fields = append(fields, channelmonitorhistory.FieldMessage)
@@ -18469,6 +18671,12 @@ func (m *ChannelMonitorHistoryMutation) ClearField(name string) error {
 		return nil
 	case channelmonitorhistory.FieldPingLatencyMs:
 		m.ClearPingLatencyMs()
+		return nil
+	case channelmonitorhistory.FieldOutputTokens:
+		m.ClearOutputTokens()
+		return nil
+	case channelmonitorhistory.FieldThroughputTps:
+		m.ClearThroughputTps()
 		return nil
 	case channelmonitorhistory.FieldMessage:
 		m.ClearMessage()
@@ -18495,6 +18703,12 @@ func (m *ChannelMonitorHistoryMutation) ResetField(name string) error {
 		return nil
 	case channelmonitorhistory.FieldPingLatencyMs:
 		m.ResetPingLatencyMs()
+		return nil
+	case channelmonitorhistory.FieldOutputTokens:
+		m.ResetOutputTokens()
+		return nil
+	case channelmonitorhistory.FieldThroughputTps:
+		m.ResetThroughputTps()
 		return nil
 	case channelmonitorhistory.FieldMessage:
 		m.ResetMessage()

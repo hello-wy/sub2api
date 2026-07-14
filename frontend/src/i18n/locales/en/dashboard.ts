@@ -572,6 +572,8 @@ export default {
     balanceAddedAffiliate: 'Balance Added (Affiliate Transfer)',
     balanceAddedAdmin: 'Balance Added (Admin)',
     balanceDeductedAdmin: 'Balance Deducted (Admin)',
+    balanceAddedDailyCheckin: 'Daily Check-in',
+    balanceAddedUsageRebate: 'Usage Rebate',
     concurrencyAddedRedeem: 'Concurrency Added (Redeem)',
     concurrencyAddedAdmin: 'Concurrency Added (Admin)',
     concurrencyReducedAdmin: 'Concurrency Reduced (Admin)',
@@ -850,12 +852,37 @@ export default {
     loadFailed: 'Failed to load model square',
     intervalPricing: '{count} tiered price(s)',
     intervalHint: 'Tiered prices use the same multiplier. Detailed ranges follow channel pricing configuration.',
+    resultCount: '{count} models',
+    sort: {
+      default: 'Default order',
+      modelAsc: 'Model A–Z',
+      modelDesc: 'Model Z–A',
+      platform: 'Provider'
+    },
+    view: {
+      label: 'View mode',
+      grid: 'Grid view',
+      list: 'List view'
+    },
+    monitor: {
+      status: 'Status',
+      lastChecked: 'Last checked',
+      throughput: 'Output throughput',
+      latency: 'Latency'
+    },
+    currentGroup: 'Current group',
     stats: {
       models: 'Models',
       platforms: 'Platforms',
       groups: 'Groups'
     },
     filters: {
+      title: 'Filters',
+      search: 'Search',
+      platform: 'Provider / platform',
+      group: 'Group',
+      billing: 'Billing type',
+      reset: 'Reset filters',
       allPlatforms: 'All platforms',
       allBillingModes: 'All billing',
       allGroups: 'All groups'
@@ -863,13 +890,18 @@ export default {
     billing: {
       token: 'Token',
       perRequest: 'Per request',
-      image: 'Image'
+      image: 'Image',
+      usageBased: 'Usage based',
+      perImage: 'Per image request'
     },
     units: {
       perMillion: '/ 1M tokens',
       perRequest: '/ request'
     },
     price: {
+      base: 'Base',
+      quota: 'Quota',
+      equivalent: 'Equivalent',
       input: 'Input',
       output: 'Output',
       cacheWrite: 'Cache write',

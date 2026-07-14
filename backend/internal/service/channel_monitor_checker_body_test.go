@@ -362,3 +362,51 @@ func TestRunCheckForModel_ReplaceMode_EmptyResponseIsFailed(t *testing.T) {
 		t.Errorf("failure message should hint replace-mode, got %q", res.Message)
 	}
 }
+
+func TestExtractOutputTokens(t *testing.T) {
+	tests := []struct {
+		name     string
+		provider string
+		apiMode  string
+		body     string
+		want     int
+		wantNil  bool
+	}{
+		{name: "openai chat", provider: MonitorProviderOpenAI, apiMode: MonitorAPIModeChatCompletions, body: `{"usage":{"completion_tokens":12}}`, want: 12},
+		{name: "openai responses", provider: MonitorProviderOpenAI, apiMode: MonitorAPIModeResponses, body: `{"usage":{"output_tokens":23}}`, want: 23},
+		{name: "anthropic", provider: MonitorProviderAnthropic, body: `{"usage":{"output_tokens":34}}`, want: 34},
+		{name: "gemini", provider: MonitorProviderGemini, body: `{"usageMetadata":{"candidatesTokenCount":45}}`, want: 45},
+		{name: "missing", provider: MonitorProviderAnthropic, body: `{}`, wantNil: true},
+		{name: "zero", provider: MonitorProviderGemini, body: `{"usageMetadata":{"candidatesTokenCount":0}}`, wantNil: true},
+		{name: "fractional", provider: MonitorProviderOpenAI, body: `{"usage":{"completion_tokens":1.5}}`, wantNil: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := extractOutputTokens(tt.provider, tt.apiMode, []byte(tt.body))
+			if tt.wantNil {
+				if got != nil {
+					t.Fatalf("expected nil, got %d", *got)
+				}
+				return
+			}
+			if got == nil || *got != tt.want {
+				t.Fatalf("expected %d, got %v", tt.want, got)
+			}
+		})
+	}
+}
+
+func TestCalculateThroughputTPS(t *testing.T) {
+	tokens := 25
+	got := calculateThroughputTPS(&tokens, 2*time.Second)
+	if got == nil || *got != 12.5 {
+		t.Fatalf("expected 12.5 TPS, got %v", got)
+	}
+	if got := calculateThroughputTPS(&tokens, 0); got != nil {
+		t.Fatalf("zero duration must produce nil, got %v", *got)
+	}
+	zero := 0
+	if got := calculateThroughputTPS(&zero, time.Second); got != nil {
+		t.Fatalf("zero tokens must produce nil, got %v", *got)
+	}
+}
