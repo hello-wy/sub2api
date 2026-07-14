@@ -4,7 +4,9 @@
       class="flex justify-between text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-2"
     >
       <span>{{ t('monitorCommon.history60pts', { n: length }) }}</span>
-      <span class="tabular-nums">{{ t('monitorCommon.nextUpdateIn', { n: countdownSeconds }) }}</span>
+      <span v-if="showCountdown" class="tabular-nums">
+        {{ t('monitorCommon.nextUpdateIn', { n: countdownSeconds }) }}
+      </span>
     </div>
 
     <div
@@ -13,11 +15,11 @@
     >
       {{ t('monitorCommon.maintenancePaused') }}
     </div>
-    <div v-else class="flex items-end gap-[2px] h-5 w-full">
+    <div v-else data-test="timeline-track" class="flex h-5 min-w-0 w-full items-end gap-[2px] overflow-hidden">
       <div
         v-for="(bar, idx) in displayBars"
         :key="idx"
-        class="flex-1 min-w-[3px] rounded-sm"
+        class="min-w-0 flex-1 rounded-sm"
         :class="bar.colorClass"
         :style="{ height: bar.heightPct + '%' }"
         :title="bar.title"
@@ -44,10 +46,12 @@ const props = withDefaults(defineProps<{
   countdownSeconds: number
   length?: number
   maintenance?: boolean
+  showCountdown?: boolean
 }>(), {
   buckets: () => [],
   length: 60,
   maintenance: false,
+  showCountdown: true,
 })
 
 const { t } = useI18n()

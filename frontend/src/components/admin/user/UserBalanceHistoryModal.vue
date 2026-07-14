@@ -114,7 +114,7 @@
                 </p>
                 <!-- Notes (admin adjustment reason) -->
                 <p
-                  v-if="item.notes"
+                  v-if="item.notes && item.type !== 'daily_checkin'"
                   class="mt-0.5 text-xs text-gray-500 dark:text-dark-400"
                   :title="item.notes"
                 >
@@ -134,7 +134,7 @@
                 {{ t('redeem.adminAdjustment') }}
               </p>
               <p v-else-if="isRewardType(item.type)" class="max-w-[12rem] truncate text-xs text-gray-400 dark:text-dark-500" :title="item.notes || getItemTitle(item)">
-                {{ item.notes || getItemTitle(item) }}
+                {{ item.type === 'daily_checkin' ? getItemTitle(item) : (item.notes || getItemTitle(item)) }}
               </p>
               <p
                 v-else

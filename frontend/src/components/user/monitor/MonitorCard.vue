@@ -1,11 +1,11 @@
 <template>
   <button
     type="button"
-    class="group text-left p-5 rounded-2xl min-h-[280px] w-full bg-white/70 backdrop-blur-xl border border-gray-200/80 shadow-card dark:bg-dark-800/60 dark:border-dark-700/70 hover:-translate-y-1 hover:shadow-card-hover dark:hover:border-primary-500/30 hover:border-gray-300 transition-all duration-300 ease-out flex flex-col"
+    class="group flex min-h-[280px] min-w-0 w-full flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white/70 p-5 text-left shadow-card backdrop-blur-xl transition-all duration-300 ease-out hover:-translate-y-1 hover:border-gray-300 hover:shadow-card-hover dark:border-dark-700/70 dark:bg-dark-800/60 dark:hover:border-primary-500/30"
     @click="emit('click')"
   >
     <!-- Header: icon + name/model + status chip -->
-    <div class="flex items-start gap-3">
+    <div class="flex min-w-0 items-start gap-3">
       <span
         class="w-9 h-9 rounded-xl ring-1 ring-black/5 dark:ring-white/10 grid place-items-center flex-shrink-0"
         :class="[providerGradient(item.provider), providerTintClass]"

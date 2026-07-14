@@ -281,6 +281,8 @@ func (s *ChannelMonitorService) persistCheckResults(ctx context.Context, m *Chan
 			Status:        r.Status,
 			LatencyMs:     r.LatencyMs,
 			PingLatencyMs: r.PingLatencyMs,
+			OutputTokens:  r.OutputTokens,
+			ThroughputTPS: r.ThroughputTPS,
 			Message:       r.Message,
 			CheckedAt:     r.CheckedAt,
 		})

@@ -49,6 +49,7 @@ type channelMonitorUserListItem struct {
 	PrimaryStatus        string                               `json:"primary_status"`
 	PrimaryLatencyMs     *int                                 `json:"primary_latency_ms"`
 	PrimaryPingLatencyMs *int                                 `json:"primary_ping_latency_ms"`
+	PrimaryThroughputTPS *float64                             `json:"primary_throughput_tps"`
 	Availability7d       float64                              `json:"availability_7d"`
 	ExtraModels          []dto.ChannelMonitorExtraModelStatus `json:"extra_models"`
 	Timeline             []channelMonitorUserTimelinePoint    `json:"timeline"`
@@ -108,6 +109,7 @@ func userMonitorViewToItem(v *service.UserMonitorView) channelMonitorUserListIte
 		PrimaryStatus:        v.PrimaryStatus,
 		PrimaryLatencyMs:     v.PrimaryLatencyMs,
 		PrimaryPingLatencyMs: v.PrimaryPingLatencyMs,
+		PrimaryThroughputTPS: v.PrimaryThroughputTPS,
 		Availability7d:       v.Availability7d,
 		ExtraModels:          extras,
 		Timeline:             timeline,

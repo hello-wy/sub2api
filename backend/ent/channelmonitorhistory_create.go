@@ -69,6 +69,34 @@ func (_c *ChannelMonitorHistoryCreate) SetNillablePingLatencyMs(v *int) *Channel
 	return _c
 }
 
+// SetOutputTokens sets the "output_tokens" field.
+func (_c *ChannelMonitorHistoryCreate) SetOutputTokens(v int) *ChannelMonitorHistoryCreate {
+	_c.mutation.SetOutputTokens(v)
+	return _c
+}
+
+// SetNillableOutputTokens sets the "output_tokens" field if the given value is not nil.
+func (_c *ChannelMonitorHistoryCreate) SetNillableOutputTokens(v *int) *ChannelMonitorHistoryCreate {
+	if v != nil {
+		_c.SetOutputTokens(*v)
+	}
+	return _c
+}
+
+// SetThroughputTps sets the "throughput_tps" field.
+func (_c *ChannelMonitorHistoryCreate) SetThroughputTps(v float64) *ChannelMonitorHistoryCreate {
+	_c.mutation.SetThroughputTps(v)
+	return _c
+}
+
+// SetNillableThroughputTps sets the "throughput_tps" field if the given value is not nil.
+func (_c *ChannelMonitorHistoryCreate) SetNillableThroughputTps(v *float64) *ChannelMonitorHistoryCreate {
+	if v != nil {
+		_c.SetThroughputTps(*v)
+	}
+	return _c
+}
+
 // SetMessage sets the "message" field.
 func (_c *ChannelMonitorHistoryCreate) SetMessage(v string) *ChannelMonitorHistoryCreate {
 	_c.mutation.SetMessage(v)
@@ -221,6 +249,14 @@ func (_c *ChannelMonitorHistoryCreate) createSpec() (*ChannelMonitorHistory, *sq
 	if value, ok := _c.mutation.PingLatencyMs(); ok {
 		_spec.SetField(channelmonitorhistory.FieldPingLatencyMs, field.TypeInt, value)
 		_node.PingLatencyMs = &value
+	}
+	if value, ok := _c.mutation.OutputTokens(); ok {
+		_spec.SetField(channelmonitorhistory.FieldOutputTokens, field.TypeInt, value)
+		_node.OutputTokens = &value
+	}
+	if value, ok := _c.mutation.ThroughputTps(); ok {
+		_spec.SetField(channelmonitorhistory.FieldThroughputTps, field.TypeFloat64, value)
+		_node.ThroughputTps = &value
 	}
 	if value, ok := _c.mutation.Message(); ok {
 		_spec.SetField(channelmonitorhistory.FieldMessage, field.TypeString, value)
@@ -380,6 +416,54 @@ func (u *ChannelMonitorHistoryUpsert) AddPingLatencyMs(v int) *ChannelMonitorHis
 // ClearPingLatencyMs clears the value of the "ping_latency_ms" field.
 func (u *ChannelMonitorHistoryUpsert) ClearPingLatencyMs() *ChannelMonitorHistoryUpsert {
 	u.SetNull(channelmonitorhistory.FieldPingLatencyMs)
+	return u
+}
+
+// SetOutputTokens sets the "output_tokens" field.
+func (u *ChannelMonitorHistoryUpsert) SetOutputTokens(v int) *ChannelMonitorHistoryUpsert {
+	u.Set(channelmonitorhistory.FieldOutputTokens, v)
+	return u
+}
+
+// UpdateOutputTokens sets the "output_tokens" field to the value that was provided on create.
+func (u *ChannelMonitorHistoryUpsert) UpdateOutputTokens() *ChannelMonitorHistoryUpsert {
+	u.SetExcluded(channelmonitorhistory.FieldOutputTokens)
+	return u
+}
+
+// AddOutputTokens adds v to the "output_tokens" field.
+func (u *ChannelMonitorHistoryUpsert) AddOutputTokens(v int) *ChannelMonitorHistoryUpsert {
+	u.Add(channelmonitorhistory.FieldOutputTokens, v)
+	return u
+}
+
+// ClearOutputTokens clears the value of the "output_tokens" field.
+func (u *ChannelMonitorHistoryUpsert) ClearOutputTokens() *ChannelMonitorHistoryUpsert {
+	u.SetNull(channelmonitorhistory.FieldOutputTokens)
+	return u
+}
+
+// SetThroughputTps sets the "throughput_tps" field.
+func (u *ChannelMonitorHistoryUpsert) SetThroughputTps(v float64) *ChannelMonitorHistoryUpsert {
+	u.Set(channelmonitorhistory.FieldThroughputTps, v)
+	return u
+}
+
+// UpdateThroughputTps sets the "throughput_tps" field to the value that was provided on create.
+func (u *ChannelMonitorHistoryUpsert) UpdateThroughputTps() *ChannelMonitorHistoryUpsert {
+	u.SetExcluded(channelmonitorhistory.FieldThroughputTps)
+	return u
+}
+
+// AddThroughputTps adds v to the "throughput_tps" field.
+func (u *ChannelMonitorHistoryUpsert) AddThroughputTps(v float64) *ChannelMonitorHistoryUpsert {
+	u.Add(channelmonitorhistory.FieldThroughputTps, v)
+	return u
+}
+
+// ClearThroughputTps clears the value of the "throughput_tps" field.
+func (u *ChannelMonitorHistoryUpsert) ClearThroughputTps() *ChannelMonitorHistoryUpsert {
+	u.SetNull(channelmonitorhistory.FieldThroughputTps)
 	return u
 }
 
@@ -548,6 +632,62 @@ func (u *ChannelMonitorHistoryUpsertOne) UpdatePingLatencyMs() *ChannelMonitorHi
 func (u *ChannelMonitorHistoryUpsertOne) ClearPingLatencyMs() *ChannelMonitorHistoryUpsertOne {
 	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
 		s.ClearPingLatencyMs()
+	})
+}
+
+// SetOutputTokens sets the "output_tokens" field.
+func (u *ChannelMonitorHistoryUpsertOne) SetOutputTokens(v int) *ChannelMonitorHistoryUpsertOne {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.SetOutputTokens(v)
+	})
+}
+
+// AddOutputTokens adds v to the "output_tokens" field.
+func (u *ChannelMonitorHistoryUpsertOne) AddOutputTokens(v int) *ChannelMonitorHistoryUpsertOne {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.AddOutputTokens(v)
+	})
+}
+
+// UpdateOutputTokens sets the "output_tokens" field to the value that was provided on create.
+func (u *ChannelMonitorHistoryUpsertOne) UpdateOutputTokens() *ChannelMonitorHistoryUpsertOne {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.UpdateOutputTokens()
+	})
+}
+
+// ClearOutputTokens clears the value of the "output_tokens" field.
+func (u *ChannelMonitorHistoryUpsertOne) ClearOutputTokens() *ChannelMonitorHistoryUpsertOne {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.ClearOutputTokens()
+	})
+}
+
+// SetThroughputTps sets the "throughput_tps" field.
+func (u *ChannelMonitorHistoryUpsertOne) SetThroughputTps(v float64) *ChannelMonitorHistoryUpsertOne {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.SetThroughputTps(v)
+	})
+}
+
+// AddThroughputTps adds v to the "throughput_tps" field.
+func (u *ChannelMonitorHistoryUpsertOne) AddThroughputTps(v float64) *ChannelMonitorHistoryUpsertOne {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.AddThroughputTps(v)
+	})
+}
+
+// UpdateThroughputTps sets the "throughput_tps" field to the value that was provided on create.
+func (u *ChannelMonitorHistoryUpsertOne) UpdateThroughputTps() *ChannelMonitorHistoryUpsertOne {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.UpdateThroughputTps()
+	})
+}
+
+// ClearThroughputTps clears the value of the "throughput_tps" field.
+func (u *ChannelMonitorHistoryUpsertOne) ClearThroughputTps() *ChannelMonitorHistoryUpsertOne {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.ClearThroughputTps()
 	})
 }
 
@@ -885,6 +1025,62 @@ func (u *ChannelMonitorHistoryUpsertBulk) UpdatePingLatencyMs() *ChannelMonitorH
 func (u *ChannelMonitorHistoryUpsertBulk) ClearPingLatencyMs() *ChannelMonitorHistoryUpsertBulk {
 	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
 		s.ClearPingLatencyMs()
+	})
+}
+
+// SetOutputTokens sets the "output_tokens" field.
+func (u *ChannelMonitorHistoryUpsertBulk) SetOutputTokens(v int) *ChannelMonitorHistoryUpsertBulk {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.SetOutputTokens(v)
+	})
+}
+
+// AddOutputTokens adds v to the "output_tokens" field.
+func (u *ChannelMonitorHistoryUpsertBulk) AddOutputTokens(v int) *ChannelMonitorHistoryUpsertBulk {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.AddOutputTokens(v)
+	})
+}
+
+// UpdateOutputTokens sets the "output_tokens" field to the value that was provided on create.
+func (u *ChannelMonitorHistoryUpsertBulk) UpdateOutputTokens() *ChannelMonitorHistoryUpsertBulk {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.UpdateOutputTokens()
+	})
+}
+
+// ClearOutputTokens clears the value of the "output_tokens" field.
+func (u *ChannelMonitorHistoryUpsertBulk) ClearOutputTokens() *ChannelMonitorHistoryUpsertBulk {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.ClearOutputTokens()
+	})
+}
+
+// SetThroughputTps sets the "throughput_tps" field.
+func (u *ChannelMonitorHistoryUpsertBulk) SetThroughputTps(v float64) *ChannelMonitorHistoryUpsertBulk {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.SetThroughputTps(v)
+	})
+}
+
+// AddThroughputTps adds v to the "throughput_tps" field.
+func (u *ChannelMonitorHistoryUpsertBulk) AddThroughputTps(v float64) *ChannelMonitorHistoryUpsertBulk {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.AddThroughputTps(v)
+	})
+}
+
+// UpdateThroughputTps sets the "throughput_tps" field to the value that was provided on create.
+func (u *ChannelMonitorHistoryUpsertBulk) UpdateThroughputTps() *ChannelMonitorHistoryUpsertBulk {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.UpdateThroughputTps()
+	})
+}
+
+// ClearThroughputTps clears the value of the "throughput_tps" field.
+func (u *ChannelMonitorHistoryUpsertBulk) ClearThroughputTps() *ChannelMonitorHistoryUpsertBulk {
+	return u.Update(func(s *ChannelMonitorHistoryUpsert) {
+		s.ClearThroughputTps()
 	})
 }
 

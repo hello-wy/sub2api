@@ -7020,7 +7020,8 @@ type (
 		PaymentProviderInstance, PendingAuthSession, PromoCode, PromoCodeUsage, Proxy,
 		RedeemCode, SecuritySecret, Setting, SubscriptionPlan, TLSFingerprintProfile,
 		UsageCleanupTask, UsageLog, User, UserAllowedGroup, UserAttributeDefinition,
-		UserAttributeValue, UserPlatformQuota, UserSubscription, WelfareRecord []ent.Hook
+		UserAttributeValue, UserPlatformQuota, UserSubscription,
+		WelfareRecord []ent.Hook
 	}
 	inters struct {
 		APIKey, Account, AccountGroup, Announcement, AnnouncementRead, AuthIdentity,
@@ -7031,7 +7032,8 @@ type (
 		PaymentProviderInstance, PendingAuthSession, PromoCode, PromoCodeUsage, Proxy,
 		RedeemCode, SecuritySecret, Setting, SubscriptionPlan, TLSFingerprintProfile,
 		UsageCleanupTask, UsageLog, User, UserAllowedGroup, UserAttributeDefinition,
-		UserAttributeValue, UserPlatformQuota, UserSubscription, WelfareRecord []ent.Interceptor
+		UserAttributeValue, UserPlatformQuota, UserSubscription,
+		WelfareRecord []ent.Interceptor
 	}
 )
 

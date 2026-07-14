@@ -25,6 +25,10 @@ const (
 	FieldLatencyMs = "latency_ms"
 	// FieldPingLatencyMs holds the string denoting the ping_latency_ms field in the database.
 	FieldPingLatencyMs = "ping_latency_ms"
+	// FieldOutputTokens holds the string denoting the output_tokens field in the database.
+	FieldOutputTokens = "output_tokens"
+	// FieldThroughputTps holds the string denoting the throughput_tps field in the database.
+	FieldThroughputTps = "throughput_tps"
 	// FieldMessage holds the string denoting the message field in the database.
 	FieldMessage = "message"
 	// FieldCheckedAt holds the string denoting the checked_at field in the database.
@@ -50,6 +54,8 @@ var Columns = []string{
 	FieldStatus,
 	FieldLatencyMs,
 	FieldPingLatencyMs,
+	FieldOutputTokens,
+	FieldThroughputTps,
 	FieldMessage,
 	FieldCheckedAt,
 }
@@ -131,6 +137,16 @@ func ByLatencyMs(opts ...sql.OrderTermOption) OrderOption {
 // ByPingLatencyMs orders the results by the ping_latency_ms field.
 func ByPingLatencyMs(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldPingLatencyMs, opts...).ToFunc()
+}
+
+// ByOutputTokens orders the results by the output_tokens field.
+func ByOutputTokens(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldOutputTokens, opts...).ToFunc()
+}
+
+// ByThroughputTps orders the results by the throughput_tps field.
+func ByThroughputTps(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldThroughputTps, opts...).ToFunc()
 }
 
 // ByMessage orders the results by the message field.

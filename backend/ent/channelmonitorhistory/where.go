@@ -75,6 +75,16 @@ func PingLatencyMs(v int) predicate.ChannelMonitorHistory {
 	return predicate.ChannelMonitorHistory(sql.FieldEQ(FieldPingLatencyMs, v))
 }
 
+// OutputTokens applies equality check predicate on the "output_tokens" field. It's identical to OutputTokensEQ.
+func OutputTokens(v int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldEQ(FieldOutputTokens, v))
+}
+
+// ThroughputTps applies equality check predicate on the "throughput_tps" field. It's identical to ThroughputTpsEQ.
+func ThroughputTps(v float64) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldEQ(FieldThroughputTps, v))
+}
+
 // Message applies equality check predicate on the "message" field. It's identical to MessageEQ.
 func Message(v string) predicate.ChannelMonitorHistory {
 	return predicate.ChannelMonitorHistory(sql.FieldEQ(FieldMessage, v))
@@ -288,6 +298,106 @@ func PingLatencyMsIsNil() predicate.ChannelMonitorHistory {
 // PingLatencyMsNotNil applies the NotNil predicate on the "ping_latency_ms" field.
 func PingLatencyMsNotNil() predicate.ChannelMonitorHistory {
 	return predicate.ChannelMonitorHistory(sql.FieldNotNull(FieldPingLatencyMs))
+}
+
+// OutputTokensEQ applies the EQ predicate on the "output_tokens" field.
+func OutputTokensEQ(v int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldEQ(FieldOutputTokens, v))
+}
+
+// OutputTokensNEQ applies the NEQ predicate on the "output_tokens" field.
+func OutputTokensNEQ(v int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldNEQ(FieldOutputTokens, v))
+}
+
+// OutputTokensIn applies the In predicate on the "output_tokens" field.
+func OutputTokensIn(vs ...int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldIn(FieldOutputTokens, vs...))
+}
+
+// OutputTokensNotIn applies the NotIn predicate on the "output_tokens" field.
+func OutputTokensNotIn(vs ...int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldNotIn(FieldOutputTokens, vs...))
+}
+
+// OutputTokensGT applies the GT predicate on the "output_tokens" field.
+func OutputTokensGT(v int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldGT(FieldOutputTokens, v))
+}
+
+// OutputTokensGTE applies the GTE predicate on the "output_tokens" field.
+func OutputTokensGTE(v int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldGTE(FieldOutputTokens, v))
+}
+
+// OutputTokensLT applies the LT predicate on the "output_tokens" field.
+func OutputTokensLT(v int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldLT(FieldOutputTokens, v))
+}
+
+// OutputTokensLTE applies the LTE predicate on the "output_tokens" field.
+func OutputTokensLTE(v int) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldLTE(FieldOutputTokens, v))
+}
+
+// OutputTokensIsNil applies the IsNil predicate on the "output_tokens" field.
+func OutputTokensIsNil() predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldIsNull(FieldOutputTokens))
+}
+
+// OutputTokensNotNil applies the NotNil predicate on the "output_tokens" field.
+func OutputTokensNotNil() predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldNotNull(FieldOutputTokens))
+}
+
+// ThroughputTpsEQ applies the EQ predicate on the "throughput_tps" field.
+func ThroughputTpsEQ(v float64) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldEQ(FieldThroughputTps, v))
+}
+
+// ThroughputTpsNEQ applies the NEQ predicate on the "throughput_tps" field.
+func ThroughputTpsNEQ(v float64) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldNEQ(FieldThroughputTps, v))
+}
+
+// ThroughputTpsIn applies the In predicate on the "throughput_tps" field.
+func ThroughputTpsIn(vs ...float64) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldIn(FieldThroughputTps, vs...))
+}
+
+// ThroughputTpsNotIn applies the NotIn predicate on the "throughput_tps" field.
+func ThroughputTpsNotIn(vs ...float64) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldNotIn(FieldThroughputTps, vs...))
+}
+
+// ThroughputTpsGT applies the GT predicate on the "throughput_tps" field.
+func ThroughputTpsGT(v float64) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldGT(FieldThroughputTps, v))
+}
+
+// ThroughputTpsGTE applies the GTE predicate on the "throughput_tps" field.
+func ThroughputTpsGTE(v float64) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldGTE(FieldThroughputTps, v))
+}
+
+// ThroughputTpsLT applies the LT predicate on the "throughput_tps" field.
+func ThroughputTpsLT(v float64) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldLT(FieldThroughputTps, v))
+}
+
+// ThroughputTpsLTE applies the LTE predicate on the "throughput_tps" field.
+func ThroughputTpsLTE(v float64) predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldLTE(FieldThroughputTps, v))
+}
+
+// ThroughputTpsIsNil applies the IsNil predicate on the "throughput_tps" field.
+func ThroughputTpsIsNil() predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldIsNull(FieldThroughputTps))
+}
+
+// ThroughputTpsNotNil applies the NotNil predicate on the "throughput_tps" field.
+func ThroughputTpsNotNil() predicate.ChannelMonitorHistory {
+	return predicate.ChannelMonitorHistory(sql.FieldNotNull(FieldThroughputTps))
 }
 
 // MessageEQ applies the EQ predicate on the "message" field.
