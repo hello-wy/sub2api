@@ -18,11 +18,11 @@ vi.mock('@/composables/useClipboard', () => ({
 
 import UseKeyModal from '../UseKeyModal.vue'
 
-function mountModal(platform = 'openai') {
+function mountModal(platform = 'openai', apiKey = 'sk-test') {
   return mount(UseKeyModal, {
     props: {
       show: true,
-      apiKey: 'sk-test',
+      apiKey,
       baseUrl: 'https://example.com/v1',
       platform
     },
@@ -40,6 +40,50 @@ function mountModal(platform = 'openai') {
 }
 
 describe('UseKeyModal', () => {
+  it('renders Grok Build and OpenCode setup for Grok groups', async () => {
+    const wrapper = mountModal('grok', 'sk-grok-test')
+
+    const grokTab = wrapper.findAll('button').find((button) =>
+      button.text().includes('keys.useKeyModal.cliTabs.grokCli')
+    )
+    expect(grokTab).toBeDefined()
+
+    const grokConfig = wrapper.findAll('pre code')
+      .map((code) => code.text())
+      .find((content) => content.includes('[model."sub2api-grok"]'))
+    expect(grokConfig).toBeDefined()
+    expect(grokConfig).toContain('model = "grok-4.5"')
+    expect(grokConfig).toContain('base_url = "https://example.com/v1"')
+    expect(grokConfig).toContain('api_key = "sk-grok-test"')
+    expect(grokConfig).toContain('api_backend = "responses"')
+
+    const windowsTab = wrapper.findAll('button').find(
+      (button) => button.text().trim() === 'Windows'
+    )
+    expect(windowsTab).toBeDefined()
+    await windowsTab!.trigger('click')
+    await nextTick()
+    expect(wrapper.text()).toContain('%userprofile%\\.grok/config.toml')
+
+    const opencodeTab = wrapper.findAll('button').find((button) =>
+      button.text().includes('keys.useKeyModal.cliTabs.opencode')
+    )
+    expect(opencodeTab).toBeDefined()
+    await opencodeTab!.trigger('click')
+    await nextTick()
+
+    const parsed = JSON.parse(wrapper.find('pre code').text())
+    expect(parsed.provider.grok.npm).toBe('@ai-sdk/openai')
+    expect(parsed.provider.grok.options).toEqual({
+      baseURL: 'https://example.com/v1',
+      apiKey: 'sk-grok-test'
+    })
+    expect(parsed.provider.grok.models['grok-4.5']).toBeDefined()
+    expect(parsed.provider.grok.models['grok-build-0.1']).toBeDefined()
+    expect(parsed.provider.grok.models['grok-composer-2.5-fast']).toBeDefined()
+    expect(parsed.provider.grok.models['gpt-5.6']).toBeUndefined()
+  })
+
   it('renders safe GPT-5.5 OpenAI Codex setup command', async () => {
     const wrapper = mountModal('openai')
     const codexTab = wrapper.findAll('button').find((button) =>
@@ -51,19 +95,20 @@ describe('UseKeyModal', () => {
     await nextTick()
 
     const codeBlocks = wrapper.findAll('pre code').map((code) => code.text())
-    const configToml = codeBlocks.find((content) => content.includes('model_provider = "OpenAI"'))
-
+    const shellCommand = codeBlocks[0]
+    const configToml = codeBlocks.find((content) => content.startsWith('model_provider = "OpenAI"'))
     expect(configToml).toBeDefined()
-    expect(configToml).toContain('mkdir -p ~/.codex')
-    expect(configToml).toContain('cat > ~/.codex/config.toml')
+    expect(shellCommand).toContain('mkdir -p ~/.codex')
+    expect(shellCommand).toContain('cat > ~/.codex/config.toml')
     expect(configToml).toContain('model = "gpt-5.5"')
     expect(configToml).toContain('review_model = "gpt-5.5"')
+    expect(configToml).toContain('goals = true')
     expect(configToml).not.toContain('model = "gpt-5.4"')
-    expect(configToml).toContain('"OPENAI_API_KEY": "<YOUR_OPENAI_API_KEY>"')
-    expect(configToml).toContain('chmod 600 ~/.codex/auth.json')
-    expect(configToml).toContain('ls -la ~/.codex')
-    expect(configToml).not.toContain('sk-test')
-    expect(configToml).not.toMatch(/^EOF &&/m)
+    expect(shellCommand).toContain('"OPENAI_API_KEY": "<YOUR_OPENAI_API_KEY>"')
+    expect(shellCommand).toContain('chmod 600 ~/.codex/auth.json')
+    expect(shellCommand).toContain('ls -la ~/.codex')
+    expect(shellCommand).not.toContain('sk-test')
+    expect(shellCommand).not.toMatch(/^EOF &&/m)
   })
 
   it('renders GPT-5.5 OpenAI Codex WebSocket setup command', async () => {
@@ -78,14 +123,16 @@ describe('UseKeyModal', () => {
     await nextTick()
 
     const codeBlocks = wrapper.findAll('pre code').map((code) => code.text())
-    const configToml = codeBlocks.find((content) => content.includes('supports_websockets = true'))
+    const shellCommand = codeBlocks[0]
+    const configToml = codeBlocks.find((content) => content.startsWith('model_provider = "OpenAI"'))
 
     expect(configToml).toBeDefined()
     expect(configToml).toContain('model = "gpt-5.5"')
     expect(configToml).toContain('review_model = "gpt-5.5"')
+    expect(configToml).toContain('goals = true')
     expect(configToml).not.toContain('model = "gpt-5.4"')
     expect(configToml).toContain('[features]\nresponses_websockets_v2 = true')
-    expect(configToml).toContain('"OPENAI_API_KEY": "<YOUR_OPENAI_API_KEY>"')
+    expect(shellCommand).toContain('"OPENAI_API_KEY": "<YOUR_OPENAI_API_KEY>"')
     expect(configToml).not.toContain('sk-test')
   })
 
@@ -112,8 +159,8 @@ describe('UseKeyModal', () => {
     const text = wrapper.text()
 
     expect(text).toContain('Shell 一键命令')
-    expect(text.indexOf('Shell 一键命令')).toBeLessThan(text.indexOf('~/.claude/settings.json'))
-    expect(wrapper.find('pre code').text()).toContain('mkdir -p "~/.claude"')
+    expect(text.indexOf('Shell 一键命令')).toBeLessThan(text.indexOf('~/.codex/config.toml'))
+    expect(wrapper.find('pre code').text()).toContain('mkdir -p ~/.codex')
   })
 
   it('copies shell command and displays copied state', async () => {
@@ -124,7 +171,7 @@ describe('UseKeyModal', () => {
     await button!.trigger('click')
     await nextTick()
 
-    expect(copyToClipboard).toHaveBeenCalledWith(expect.stringContaining('settings.json'), 'keys.copied')
+    expect(copyToClipboard).toHaveBeenCalledWith(expect.stringContaining('config.toml'), 'keys.copied')
     expect(wrapper.text()).toContain('keys.useKeyModal.copied')
   })
 
@@ -132,11 +179,11 @@ describe('UseKeyModal', () => {
     const wrapper = mountModal('openai')
     expect(wrapper.find('pre code').text()).toContain('mkdir -p')
 
-    const cmdTab = wrapper.findAll('button').find((button) => button.text().includes('Windows CMD'))
+    const cmdTab = wrapper.findAll('button').find((button) => button.text().trim() === 'Windows')
     await cmdTab!.trigger('click')
     await nextTick()
 
-    expect(wrapper.find('pre code').text()).toContain('if not exist "%userprofile%\\.claude"')
+    expect(wrapper.find('pre code').text()).toContain('if not exist "%userprofile%\\.codex"')
   })
 
   it('orders openai client tabs with Claude Code first', () => {
@@ -195,7 +242,11 @@ describe('UseKeyModal', () => {
     await opencodeTab!.trigger('click')
     await nextTick()
 
-    const parsed = JSON.parse(wrapper.find('pre code').text())
+    const openCode = wrapper.findAll('pre code')
+      .map((code) => code.text())
+      .find((content) => content.trimStart().startsWith('{') && content.includes('\"provider\"'))
+    expect(openCode).toBeDefined()
+    const parsed = JSON.parse(openCode!)
     const models = parsed.provider.openai.models
     for (const model of ['gpt-5.6', 'gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna']) {
       expect(models[model]).toBeDefined()
