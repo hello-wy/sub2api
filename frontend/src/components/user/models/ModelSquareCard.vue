@@ -79,7 +79,7 @@ import type { BillingMode } from '@/constants/channel'
 import PlatformIcon from '@/components/common/PlatformIcon.vue'
 import MonitorTimeline from '@/components/user/monitor/MonitorTimeline.vue'
 import { useChannelMonitorFormat } from '@/composables/useChannelMonitorFormat'
-import { equivalentPrice, formatPrice, normalizeRechargeMultiplier } from '@/utils/model-pricing'
+import { applyRateMultiplier, formatPrice, quotaPrice } from '@/utils/model-pricing'
 import { platformIconClass } from '@/utils/platformColors'
 
 export interface ModelSquareCardData {
@@ -97,7 +97,6 @@ const props = withDefaults(defineProps<{
   card: ModelSquareCardData
   activeGroup?: UserAvailableGroup
   effectiveRate: number
-  rechargeMultiplier: number
   monitor?: UserMonitorView
   viewMode?: 'grid' | 'list'
 }>(), {
@@ -108,15 +107,11 @@ const { statusLabel, statusBadgeClass, formatLatency, formatPercent } = useChann
 const billingLabel = computed(() => t(props.card.billingMode === 'token' ? 'modelSquare.billing.usageBased' : 'modelSquare.billing.perImage'))
 const intervals = computed<UserPricingInterval[]>(() => props.card.pricing?.intervals ?? [])
 
-function directEquivalentPrice(value: number | null | undefined): number | null {
-  if (value == null) return null
-  return value * props.effectiveRate / normalizeRechargeMultiplier(props.rechargeMultiplier)
-}
 function makeLine(key: string, label: string, value: number | null | undefined, token: boolean) {
   if (value == null || !Number.isFinite(Number(value)) || Number(value) === 0) return null
   const price = token
-    ? equivalentPrice(value, props.effectiveRate, props.rechargeMultiplier)
-    : directEquivalentPrice(value)
+    ? quotaPrice(value, props.effectiveRate)
+    : applyRateMultiplier(value, props.effectiveRate)
   return price == null ? null : {
     key,
     label,

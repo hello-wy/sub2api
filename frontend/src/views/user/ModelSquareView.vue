@@ -175,7 +175,6 @@
               :card="item.card"
               :active-group="item.activeGroup"
               :effective-rate="item.effectiveRate"
-              :recharge-multiplier="rechargeMultiplier"
               :monitor="item.monitor"
               :view-mode="viewMode"
             />
@@ -206,10 +205,9 @@ import ModelSquareCard, { type ModelSquareCardData } from '@/components/user/mod
 import userChannelsAPI, { type UserAvailableGroup } from '@/api/channels'
 import userGroupsAPI from '@/api/groups'
 import channelMonitorUserAPI, { type UserMonitorView } from '@/api/channelMonitor'
-import { paymentAPI } from '@/api/payment'
 import { useAppStore } from '@/stores/app'
 import { extractApiErrorMessage } from '@/utils/apiError'
-import { formatPrice, normalizeRechargeMultiplier, resolveCardGroup, resolveEffectiveRate } from '@/utils/model-pricing'
+import { formatPrice, resolveCardGroup, resolveEffectiveRate } from '@/utils/model-pricing'
 
 type SortMode = 'default' | 'model-asc' | 'model-desc' | 'platform'
 type ViewMode = 'grid' | 'list'
@@ -221,7 +219,6 @@ const filtersOpen = ref(true)
 const cards = ref<ModelSquareCardData[]>([])
 const monitors = ref<UserMonitorView[]>([])
 const userGroupRates = ref<Record<number, number>>({})
-const rechargeMultiplier = ref(1)
 const searchQuery = ref('')
 const platformFilter = ref('')
 const billingFilter = ref('')
@@ -343,8 +340,7 @@ async function loadModels() {
   try {
     const [channels, rates] = await Promise.all([userChannelsAPI.getAvailable(), userGroupsAPI.getUserGroupRates()])
     userGroupRates.value = rates
-    const [checkout, monitorResponse] = await Promise.allSettled([paymentAPI.getCheckoutInfo(), channelMonitorUserAPI.list()])
-    if (checkout.status === 'fulfilled') rechargeMultiplier.value = normalizeRechargeMultiplier(checkout.value.data.balance_recharge_multiplier)
+    const [monitorResponse] = await Promise.allSettled([channelMonitorUserAPI.list()])
     monitors.value = monitorResponse.status === 'fulfilled' ? monitorResponse.value.items : []
     cards.value = channels.flatMap((channel) => channel.platforms.flatMap((section) => section.supported_models.map((model) => ({
       key: `${channel.name}:${section.platform}:${model.name}`,

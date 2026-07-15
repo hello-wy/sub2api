@@ -6,14 +6,12 @@ import ModelSquareView from '../ModelSquareView.vue'
 const mocks = vi.hoisted(() => ({
   getAvailable: vi.fn(),
   getUserGroupRates: vi.fn(),
-  getCheckoutInfo: vi.fn(),
   listMonitors: vi.fn(),
   showError: vi.fn(),
 }))
 
 vi.mock('@/api/channels', () => ({ default: { getAvailable: mocks.getAvailable } }))
 vi.mock('@/api/groups', () => ({ default: { getUserGroupRates: mocks.getUserGroupRates } }))
-vi.mock('@/api/payment', () => ({ paymentAPI: { getCheckoutInfo: mocks.getCheckoutInfo } }))
 vi.mock('@/api/channelMonitor', () => ({ default: { list: mocks.listMonitors } }))
 vi.mock('@/stores/app', () => ({ useAppStore: () => ({ showError: mocks.showError }) }))
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string, params?: { count?: number }) => params?.count === undefined ? key : `${key}:${params.count}` }) }))
@@ -34,7 +32,7 @@ vi.mock('@/components/common/Pagination.vue', () => ({
 vi.mock('@/components/user/models/ModelSquareCard.vue', () => ({
   default: defineComponent({
     name: 'ModelSquareCard',
-    props: ['card', 'activeGroup', 'effectiveRate', 'rechargeMultiplier', 'monitor', 'viewMode'],
+    props: ['card', 'activeGroup', 'effectiveRate', 'monitor', 'viewMode'],
     setup(props) { return () => h('article', { 'data-test': 'model-card', 'data-model': props.card.model, 'data-platform': props.card.platform, 'data-view': props.viewMode }) },
   }),
 }))
@@ -68,7 +66,6 @@ beforeEach(() => {
   vi.clearAllMocks()
   mocks.getAvailable.mockResolvedValue(channels())
   mocks.getUserGroupRates.mockResolvedValue({ 1: 0.8 })
-  mocks.getCheckoutInfo.mockResolvedValue({ data: { balance_recharge_multiplier: 1.2 } })
 })
 
 describe('ModelSquareView', () => {
@@ -78,20 +75,18 @@ describe('ModelSquareView', () => {
 
     expect(cards).toHaveLength(2)
     expect(cards[0].props('card')).toMatchObject({ key: 'OpenAI Main:openai:GPT_4o', model: 'GPT_4o', platform: 'openai', channel: 'OpenAI Main', billingMode: 'token', pricing: tokenPricing })
-    expect(cards[0].props()).toMatchObject({ activeGroup: groupA, effectiveRate: 0.8, rechargeMultiplier: 1.2 })
+    expect(cards[0].props()).toMatchObject({ activeGroup: groupA, effectiveRate: 0.8 })
     expect(cards[0].props('monitor')).toBeUndefined()
     expect(mocks.listMonitors).toHaveBeenCalledTimes(1)
     expect(cards[1].props('card')).toMatchObject({ model: 'Claude', billingMode: 'per_request' })
   })
 
-  it('still builds core cards when payment and monitor enhancements fail', async () => {
-    mocks.getCheckoutInfo.mockRejectedValue(new Error('payment unavailable'))
+  it('still builds core cards when the monitor enhancement fails', async () => {
     mocks.listMonitors.mockRejectedValue(new Error('monitor unavailable'))
 
     const wrapper = await render([])
     const cards = wrapper.findAllComponents({ name: 'ModelSquareCard' })
     expect(cards).toHaveLength(2)
-    expect(cards[0].props()).toMatchObject({ rechargeMultiplier: 1 })
     expect(cards[0].props('monitor')).toBeUndefined()
     expect(mocks.showError).not.toHaveBeenCalled()
   })

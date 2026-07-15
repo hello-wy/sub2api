@@ -28,7 +28,7 @@ const card = {
 function render(primaryThroughput: number | null = 49.5, cardOverride = card, includeActiveGroup = true, viewMode: 'grid' | 'list' = 'grid') {
   return mount(ModelSquareCard, {
     props: {
-      card: cardOverride, activeGroup: includeActiveGroup ? group : undefined, effectiveRate: 0.8, rechargeMultiplier: 2, viewMode,
+      card: cardOverride, activeGroup: includeActiveGroup ? group : undefined, effectiveRate: 0.8, viewMode,
       monitor: { id: 1, name: 'Main', provider: 'openai', group_name: 'Codex', primary_model: 'gpt-5.5', primary_status: 'operational', primary_latency_ms: 14720, primary_ping_latency_ms: 20, primary_throughput_tps: primaryThroughput, availability_7d: 99.9, extra_models: [], timeline: [] },
     },
   })
@@ -42,8 +42,8 @@ describe('ModelSquareCard', () => {
     expect(platformIcon.classes()).toEqual(expect.arrayContaining(['text-emerald-500', 'dark:text-emerald-400']))
     expect(wrapper.text()).toContain('modelSquare.billing.usageBased')
     expect(wrapper.text()).toContain('Codex')
-    expect(wrapper.text()).toContain('$1')
-    expect(wrapper.text()).toContain('$6')
+    expect(wrapper.text()).toContain('$2')
+    expect(wrapper.text()).toContain('$12')
     expect(wrapper.get('[data-test="price-grid"]').classes()).toContain('grid-cols-2')
     expect(wrapper.get('[data-test="price-grid"]').classes()).not.toContain('sm:grid-cols-4')
     expect(wrapper.get('[data-test="monitor-summary"]').text()).toContain('49.5TPS')
@@ -75,7 +75,7 @@ describe('ModelSquareCard', () => {
     const wrapper = render(49.5, precisePrices, true, 'list')
     const value = wrapper.get('[data-test="price-value"]')
 
-    expect(value.text()).toBe('$0.123457')
+    expect(value.text()).toBe('$0.246913')
     expect(value.classes()).toContain('whitespace-nowrap')
     expect(value.classes()).not.toContain('truncate')
   })
@@ -86,7 +86,7 @@ describe('ModelSquareCard', () => {
 
   it('does not render monitor status when no monitor was matched', () => {
     const wrapper = mount(ModelSquareCard, {
-      props: { card, activeGroup: group, effectiveRate: 0.8, rechargeMultiplier: 2 },
+      props: { card, activeGroup: group, effectiveRate: 0.8 },
     })
 
     expect(wrapper.find('[data-test="monitor-summary"]').exists()).toBe(false)
@@ -121,6 +121,15 @@ describe('ModelSquareCard', () => {
 
     expect(wrapper.get('[data-test="no-pricing"]').text()).toContain('modelSquare.noPricing')
     expect(wrapper.get('[data-test="no-pricing"]').classes()).toEqual(expect.arrayContaining(['lg:border-l', 'lg:pl-5']))
+  })
+
+  it('applies only the group rate to a per-request price', () => {
+    const requestPrice = {
+      ...card,
+      billingMode: 'per_request' as const,
+      pricing: { ...card.pricing, billing_mode: 'per_request' as const, per_request_price: 0.25 },
+    }
+    expect(render(49.5, requestPrice).get('[data-test="price-value"]').text()).toBe('$0.2')
   })
 
   it('omits a zero per-request price', () => {
