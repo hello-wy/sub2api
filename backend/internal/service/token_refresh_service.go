@@ -1153,7 +1153,10 @@ func (s *TokenRefreshService) retryBackoff(accountID int64, attempt int) time.Du
 	// same boundaries without making tests or operations nondeterministic.
 	jitterPercent := int64(75) + (accountID+int64(attempt*17))%51
 	backoff := base * time.Duration(jitterPercent) / 100
-	return min(backoff, maxTokenRefreshRetryBackoff)
+	if backoff > maxTokenRefreshRetryBackoff {
+		return maxTokenRefreshRetryBackoff
+	}
+	return backoff
 }
 
 // postRefreshActions 刷新成功后的后续动作（清除错误状态、缓存失效、调度器同步等）

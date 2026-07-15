@@ -1163,7 +1163,7 @@ watch(
 }
 
 .checkin-menu-dot-label {
-  left: 6.625rem;
+  right: 0.75rem;
   top: 0.625rem;
 }
 
