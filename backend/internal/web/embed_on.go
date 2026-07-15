@@ -88,7 +88,10 @@ func (s *FrontendServer) Middleware() gin.HandlerFunc {
 		path := c.Request.URL.Path
 
 		// Skip API routes
-		if shouldBypassEmbeddedFrontend(path) {
+		if isNegotiatedModelsRequest(c.Request) {
+			addVaryHeader(c.Writer.Header(), "Accept")
+		}
+		if shouldBypassEmbeddedFrontendRequest(c.Request) {
 			c.Next()
 			return
 		}
@@ -258,7 +261,10 @@ func ServeEmbeddedFrontend() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		path := c.Request.URL.Path
 
-		if shouldBypassEmbeddedFrontend(path) {
+		if isNegotiatedModelsRequest(c.Request) {
+			addVaryHeader(c.Writer.Header(), "Accept")
+		}
+		if shouldBypassEmbeddedFrontendRequest(c.Request) {
 			c.Next()
 			return
 		}
@@ -297,6 +303,37 @@ func tryServeOverrideFile(c *gin.Context, overrideDir, cleanPath string) bool {
 	c.File(filePath)
 	c.Abort()
 	return true
+}
+
+func shouldBypassEmbeddedFrontendRequest(r *http.Request) bool {
+	path := strings.TrimSpace(r.URL.Path)
+	if path == "/models" {
+		return !isNegotiatedModelsRequest(r) || !acceptsHTML(r.Header.Get("Accept"))
+	}
+	return shouldBypassEmbeddedFrontend(path)
+}
+
+func isNegotiatedModelsRequest(r *http.Request) bool {
+	return r.Method == http.MethodGet && strings.TrimSpace(r.URL.Path) == "/models"
+}
+
+func acceptsHTML(accept string) bool {
+	for value := range strings.SplitSeq(accept, ",") {
+		mediaType := strings.TrimSpace(strings.SplitN(value, ";", 2)[0])
+		if strings.EqualFold(mediaType, "text/html") {
+			return true
+		}
+	}
+	return false
+}
+
+func addVaryHeader(header http.Header, value string) {
+	for existing := range strings.SplitSeq(header.Get("Vary"), ",") {
+		if strings.EqualFold(strings.TrimSpace(existing), value) {
+			return
+		}
+	}
+	header.Add("Vary", value)
 }
 
 func shouldBypassEmbeddedFrontend(path string) bool {

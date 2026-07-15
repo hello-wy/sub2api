@@ -32,17 +32,26 @@
         <a class="rounded-full bg-[#06111f] px-4 py-1.5 text-sm font-semibold text-white dark:bg-white dark:text-[#06111f]" href="#home-hero">
           首页
         </a>
-        <a
-          v-for="item in navItems"
-          :key="item.label"
-          class="inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-semibold text-[#26374d] transition-colors hover:bg-[#1677ff]/10 hover:text-[#06111f] dark:text-white dark:hover:bg-white/12 dark:hover:text-white"
-          :href="item.href"
-          :target="item.external ? '_blank' : undefined"
-          :rel="item.external ? 'noopener noreferrer' : undefined"
-        >
-          <Icon :name="item.icon" size="xs" :stroke-width="2" />
-          {{ item.label }}
-        </a>
+        <template v-for="item in navItems" :key="item.label">
+          <router-link
+            v-if="item.internal"
+            class="inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-semibold text-[#26374d] transition-colors hover:bg-[#1677ff]/10 hover:text-[#06111f] dark:text-white dark:hover:bg-white/12 dark:hover:text-white"
+            :to="item.href"
+          >
+            <Icon :name="item.icon" size="xs" :stroke-width="2" />
+            {{ item.label }}
+          </router-link>
+          <a
+            v-else
+            class="inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-semibold text-[#26374d] transition-colors hover:bg-[#1677ff]/10 hover:text-[#06111f] dark:text-white dark:hover:bg-white/12 dark:hover:text-white"
+            :href="item.href"
+            :target="item.external ? '_blank' : undefined"
+            :rel="item.external ? 'noopener noreferrer' : undefined"
+          >
+            <Icon :name="item.icon" size="xs" :stroke-width="2" />
+            {{ item.label }}
+          </a>
+        </template>
       </div>
 
       <div class="flex items-center gap-2">
@@ -212,10 +221,10 @@ const siteLogo = computed(() => sanitizeUrl(appStore.cachedPublicSettings?.site_
 const docUrl = computed(() => sanitizeUrl(appStore.cachedPublicSettings?.doc_url || appStore.docUrl || ''))
 const homeContent = computed(() => appStore.cachedPublicSettings?.home_content || '')
 
-const navItems = computed<Array<{ label: string, href: string, icon: IconName, external?: boolean }>>(() => [
-  { label: 'API 接入', href: '/available-channels', icon: 'link' },
-  { label: '模型价格', href: '/models', icon: 'creditCard' },
-  { label: '运行状态', href: '/monitor', icon: 'chart' },
+const navItems = computed<Array<{ label: string, href: string, icon: IconName, internal?: boolean, external?: boolean }>>(() => [
+  { label: 'API 接入', href: '/available-channels', icon: 'link', internal: true },
+  { label: '模型价格', href: '/models', icon: 'creditCard', internal: true },
+  { label: '运行状态', href: '/monitor', icon: 'chart', internal: true },
   { label: '文档', href: docUrl.value || '#docs', icon: 'book', external: Boolean(docUrl.value) }
 ])
 
