@@ -474,6 +474,64 @@ func TestOverrideFilesNeverReceiveImmutableCacheHeaders(t *testing.T) {
 	})
 }
 
+func TestEmbeddedFrontendModelsContentNegotiation(t *testing.T) {
+	provider := &mockSettingsProvider{settings: map[string]string{"test": "value"}}
+	server, err := NewFrontendServer(provider)
+	require.NoError(t, err)
+
+	middlewares := map[string]gin.HandlerFunc{
+		"frontend_server": server.Middleware(),
+		"legacy":          ServeEmbeddedFrontend(),
+	}
+	tests := []struct {
+		name            string
+		accept          string
+		expectsHTML     bool
+		expectsNextCall bool
+	}{
+		{name: "html", accept: "text/html", expectsHTML: true},
+		{name: "browser", accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8", expectsHTML: true},
+		{name: "json", accept: "application/json", expectsNextCall: true},
+		{name: "wildcard", accept: "*/*", expectsNextCall: true},
+		{name: "missing_accept", expectsNextCall: true},
+	}
+
+	for middlewareName, frontendMiddleware := range middlewares {
+		frontendMiddleware := frontendMiddleware
+		t.Run(middlewareName, func(t *testing.T) {
+			for _, tt := range tests {
+				t.Run(tt.name, func(t *testing.T) {
+					router := gin.New()
+					router.Use(frontendMiddleware)
+					nextCalled := false
+					router.GET("/models", func(c *gin.Context) {
+						nextCalled = true
+						c.JSON(http.StatusUnauthorized, gin.H{"code": "API_KEY_REQUIRED"})
+					})
+
+					w := httptest.NewRecorder()
+					req := httptest.NewRequest(http.MethodGet, "/models", nil)
+					if tt.accept != "" {
+						req.Header.Set("Accept", tt.accept)
+					}
+					router.ServeHTTP(w, req)
+
+					assert.Equal(t, tt.expectsNextCall, nextCalled)
+					assert.Contains(t, w.Header().Values("Vary"), "Accept")
+					if tt.expectsHTML {
+						assert.Equal(t, http.StatusOK, w.Code)
+						assert.Contains(t, w.Header().Get("Content-Type"), "text/html")
+						assert.Contains(t, w.Body.String(), "<!doctype html>")
+					} else {
+						assert.Equal(t, http.StatusUnauthorized, w.Code)
+						assert.JSONEq(t, `{"code":"API_KEY_REQUIRED"}`, w.Body.String())
+					}
+				})
+			}
+		})
+	}
+}
+
 func TestFrontendServer_Middleware(t *testing.T) {
 	t.Run("skips_api_routes", func(t *testing.T) {
 		provider := &mockSettingsProvider{
