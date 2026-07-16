@@ -76,7 +76,7 @@ func TestUserHandlerCheckInUserRequiresQQBinding(t *testing.T) {
 		user:  &service.User{ID: 31, Balance: 10},
 		hasQQ: false,
 	}
-	handler := NewUserHandler(newStubAdminService(), nil, nil, nil, service.NewUserService(repo, nil, nil, nil))
+	handler := NewUserHandler(newStubAdminService(), nil, nil, nil, nil, service.NewUserService(repo, nil, nil, nil))
 
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
@@ -103,7 +103,7 @@ func TestUserHandlerCheckInUserByID(t *testing.T) {
 		user:  &service.User{ID: 31, Balance: 10},
 		hasQQ: true,
 	}
-	handler := NewUserHandler(newStubAdminService(), nil, nil, nil, service.NewUserService(repo, nil, nil, nil))
+	handler := NewUserHandler(newStubAdminService(), nil, nil, nil, nil, service.NewUserService(repo, nil, nil, nil))
 
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
