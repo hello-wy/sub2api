@@ -145,20 +145,20 @@ type UpdateSettingsRequest struct {
 	CustomEndpoints             *[]dto.CustomEndpoint `json:"custom_endpoints"`
 
 	// 默认配置
-	DefaultConcurrency           int                               `json:"default_concurrency"`
-	DefaultBalance               float64                           `json:"default_balance"`
-	AffiliateRebateRate          *float64                          `json:"affiliate_rebate_rate"`
-	AffiliateRebateFreezeHours   *int                              `json:"affiliate_rebate_freeze_hours"`
-	AffiliateRebateDurationDays  *int                              `json:"affiliate_rebate_duration_days"`
-	AffiliateRebatePerInviteeCap *float64                          `json:"affiliate_rebate_per_invitee_cap"`
-	AdminRechargeRebateEnabled   *bool                             `json:"affiliate_admin_recharge_enabled"`
-	DefaultUserRPMLimit          int                               `json:"default_user_rpm_limit"`
+	DefaultConcurrency           int                              `json:"default_concurrency"`
+	DefaultBalance               float64                          `json:"default_balance"`
+	AffiliateRebateRate          *float64                         `json:"affiliate_rebate_rate"`
+	AffiliateRebateFreezeHours   *int                             `json:"affiliate_rebate_freeze_hours"`
+	AffiliateRebateDurationDays  *int                             `json:"affiliate_rebate_duration_days"`
+	AffiliateRebatePerInviteeCap *float64                         `json:"affiliate_rebate_per_invitee_cap"`
+	AdminRechargeRebateEnabled   *bool                            `json:"affiliate_admin_recharge_enabled"`
+	DefaultUserRPMLimit          int                              `json:"default_user_rpm_limit"`
 	DefaultSubscriptions         []dto.DefaultSubscriptionSetting `json:"default_subscriptions"`
 	// 排行榜福利设置
-	WelfareLeaderboardRankLimit    int    `json:"welfare_leaderboard_rank_limit"`
-	WelfareLeaderboardRewardRatios string `json:"welfare_leaderboard_reward_ratios"`
-	LoyaltyWeeklyRules             string `json:"loyalty_weekly_rules"`
-	LoyaltyPermanentRules          string `json:"loyalty_permanent_rules"`
+	WelfareLeaderboardRankLimit               int                               `json:"welfare_leaderboard_rank_limit"`
+	WelfareLeaderboardRewardRatios            string                            `json:"welfare_leaderboard_reward_ratios"`
+	LoyaltyWeeklyRules                        string                            `json:"loyalty_weekly_rules"`
+	LoyaltyPermanentRules                     string                            `json:"loyalty_permanent_rules"`
 	AuthSourceDefaultEmailBalance             *float64                          `json:"auth_source_default_email_balance"`
 	AuthSourceDefaultEmailConcurrency         *int                              `json:"auth_source_default_email_concurrency"`
 	AuthSourceDefaultEmailSubscriptions       *[]dto.DefaultSubscriptionSetting `json:"auth_source_default_email_subscriptions"`
