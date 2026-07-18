@@ -69,16 +69,22 @@ func (s *PaymentService) CreateOrder(ctx context.Context, req CreateOrderRequest
 			return nil, err
 		}
 	}
+	gatewayOriginalAmount := limitAmount
 	gatewayBaseAmount := limitAmount
 	var loyaltyInfo *PaymentLoyaltyInfo
-	if req.OrderType == payment.OrderTypeBalance {
+	if req.OrderType == payment.OrderTypeBalance || req.OrderType == payment.OrderTypeSubscription {
 		loyaltyInfo, err = s.GetLoyaltyInfo(ctx, req.UserID)
 		if err != nil {
 			return nil, fmt.Errorf("get loyalty info: %w", err)
 		}
-		gatewayBaseAmount = applyPaymentLoyaltyDiscount(limitAmount, loyaltyInfo.DiscountPercent, methodCurrency)
 	}
-	// 订阅套餐 price 是直付价，余额充值倍率只影响余额充值到账，不参与订阅 pay_amount 计算。
+	gatewayOriginalAmount, gatewayBaseAmount = calculateCreateOrderGatewayAmounts(
+		limitAmount,
+		loyaltyDiscountPercent(loyaltyInfo),
+		methodCurrency,
+		req.OrderType,
+		cfg.SubscriptionUSDToCNYRate,
+	)
 	payAmountStr, payAmount, err := calculateCreateOrderPayAmount(gatewayBaseAmount, feeRate, methodCurrency)
 	if err != nil {
 		return nil, err
@@ -95,9 +101,13 @@ func (s *PaymentService) CreateOrder(ctx context.Context, req CreateOrderRequest
 		selectedCurrency = paymentProviderConfigCurrency(sel.ProviderKey, sel.Config)
 	}
 	if selectedCurrency != methodCurrency {
-		if req.OrderType == payment.OrderTypeBalance {
-			gatewayBaseAmount = applyPaymentLoyaltyDiscount(limitAmount, loyaltyInfo.DiscountPercent, selectedCurrency)
-		}
+		gatewayOriginalAmount, gatewayBaseAmount = calculateCreateOrderGatewayAmounts(
+			limitAmount,
+			loyaltyDiscountPercent(loyaltyInfo),
+			selectedCurrency,
+			req.OrderType,
+			cfg.SubscriptionUSDToCNYRate,
+		)
 		payAmountStr, payAmount, err = calculateCreateOrderPayAmount(gatewayBaseAmount, feeRate, selectedCurrency)
 		if err != nil {
 			return nil, err
@@ -113,7 +123,11 @@ func (s *PaymentService) CreateOrder(ctx context.Context, req CreateOrderRequest
 	if oauthResp != nil {
 		return oauthResp, nil
 	}
-	loyaltySnapshot := buildPaymentLoyaltySnapshot(loyaltyInfo, limitAmount, gatewayBaseAmount, limitAmount, selectedCurrency)
+	loyaltyPointsDelta := limitAmount
+	if req.OrderType == payment.OrderTypeSubscription {
+		loyaltyPointsDelta = 0
+	}
+	loyaltySnapshot := buildPaymentLoyaltySnapshot(loyaltyInfo, gatewayOriginalAmount, gatewayBaseAmount, loyaltyPointsDelta, selectedCurrency)
 	order, err := s.createOrderInTx(ctx, req, user, plan, cfg, orderAmount, gatewayBaseAmount, feeRate, payAmount, sel, loyaltySnapshot)
 	if err != nil {
 		return nil, err
@@ -659,11 +673,26 @@ func calculateCreateOrderPayAmount(limitAmount, feeRate float64, currency string
 }
 
 func calculateCreateOrderPayAmountForOrderType(limitAmount, feeRate float64, currency, orderType string, usdToCnyRate float64) (string, float64, error) {
-	paymentAmount := limitAmount
-	if orderType == payment.OrderTypeSubscription {
-		paymentAmount = calculateSubscriptionGatewayBaseAmount(limitAmount, usdToCnyRate, currency)
-	}
+	_, paymentAmount := calculateCreateOrderGatewayAmounts(limitAmount, 0, currency, orderType, usdToCnyRate)
 	return calculateCreateOrderPayAmount(paymentAmount, feeRate, currency)
+}
+
+func calculateCreateOrderGatewayAmounts(amount, discountPercent float64, currency, orderType string, usdToCnyRate float64) (float64, float64) {
+	originalAmount := amount
+	if orderType == payment.OrderTypeSubscription {
+		originalAmount = calculateSubscriptionGatewayBaseAmount(amount, usdToCnyRate, currency)
+	}
+	if orderType != payment.OrderTypeBalance && orderType != payment.OrderTypeSubscription {
+		return originalAmount, originalAmount
+	}
+	return originalAmount, applyPaymentLoyaltyDiscount(originalAmount, discountPercent, currency)
+}
+
+func loyaltyDiscountPercent(info *PaymentLoyaltyInfo) float64 {
+	if info == nil || !info.Enabled {
+		return 0
+	}
+	return info.DiscountPercent
 }
 
 // calculateSubscriptionGatewayBaseAmount 计算订阅订单的网关扣款基数。

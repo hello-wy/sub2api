@@ -243,6 +243,36 @@ func TestCalculateCreateOrderPayAmountForBalanceIgnoresSubscriptionRate(t *testi
 	}
 }
 
+func TestCalculateCreateOrderGatewayAmountsAppliesLoyaltyDiscountToSubscription(t *testing.T) {
+	t.Parallel()
+
+	originalAmount, discountedAmount := calculateCreateOrderGatewayAmounts(
+		50,
+		8,
+		"CNY",
+		payment.OrderTypeSubscription,
+		0,
+	)
+	if originalAmount != 50 || discountedAmount != 46 {
+		t.Fatalf("subscription amounts = (%v, %v), want (50, 46)", originalAmount, discountedAmount)
+	}
+}
+
+func TestCalculateCreateOrderGatewayAmountsConvertsBeforeSubscriptionDiscount(t *testing.T) {
+	t.Parallel()
+
+	originalAmount, discountedAmount := calculateCreateOrderGatewayAmounts(
+		10,
+		8,
+		"CNY",
+		payment.OrderTypeSubscription,
+		7.15,
+	)
+	if originalAmount != 71.5 || discountedAmount != 65.78 {
+		t.Fatalf("subscription converted amounts = (%v, %v), want (71.5, 65.78)", originalAmount, discountedAmount)
+	}
+}
+
 func TestCalculateCreditedBalanceStillUsesRechargeMultiplier(t *testing.T) {
 	t.Parallel()
 

@@ -103,33 +103,50 @@
         </button>
       </div>
 
-      <div class="mb-3 grid min-h-10 grid-cols-2 gap-3 text-xs">
+      <div class="mb-3 min-h-[72px] text-xs">
         <template v-if="paymentSource === 'recharge'">
-          <div>
-            <span class="block text-gray-500 dark:text-gray-400">{{ t('wallet.subscriptionPlanDiscount') }}</span>
-            <strong class="mt-0.5 block text-primary-600 dark:text-primary-400">{{ discountText || t('wallet.subscriptionNoDiscount') }}</strong>
+          <div class="flex items-center justify-between gap-3">
+            <span class="text-gray-500 dark:text-gray-400">{{ t('wallet.subscriptionMemberDiscount') }}</span>
+            <strong class="text-primary-600 dark:text-primary-400">{{ loyaltyDiscountLabel }}</strong>
           </div>
-          <div class="text-right">
-            <span class="block text-gray-500 dark:text-gray-400">{{ t('wallet.subscriptionSettlementAmount') }}</span>
-            <strong :class="['mt-0.5 block', rechargeAvailable ? 'text-gray-900 dark:text-white' : 'text-amber-600 dark:text-amber-300']">
-              {{ rechargeAvailable ? rechargeAmountLabel : t('payment.notAvailable') }}
-            </strong>
-          </div>
-        </template>
-        <template v-else-if="hasEnoughBalance">
-          <div>
-            <span class="block text-gray-500 dark:text-gray-400">{{ t('wallet.subscriptionBalanceNoDiscount') }}</span>
-            <strong class="mt-0.5 block text-gray-900 dark:text-white">-${{ effectiveBalancePrice.toFixed(2) }}</strong>
-          </div>
-          <div class="text-right">
-            <span class="block text-gray-500 dark:text-gray-400">{{ t('wallet.subscriptionBalanceSettlement') }}</span>
-            <strong class="mt-0.5 block text-primary-600 dark:text-primary-400">${{ balanceAfterPayment.toFixed(2) }}</strong>
-          </div>
+          <dl class="mt-2 grid grid-cols-3 gap-2">
+            <div>
+              <dt class="text-gray-400 dark:text-gray-500">{{ t('wallet.subscriptionBeforeDiscount') }}</dt>
+              <dd class="mt-0.5 font-semibold text-gray-700 dark:text-gray-300">{{ rechargeBeforeDiscountLabel }}</dd>
+            </div>
+            <div class="text-center">
+              <dt class="text-gray-400 dark:text-gray-500">{{ t('wallet.subscriptionAfterDiscount') }}</dt>
+              <dd class="mt-0.5 font-semibold text-primary-600 dark:text-primary-400">{{ rechargeAfterDiscountLabel }}</dd>
+            </div>
+            <div class="text-right">
+              <dt class="text-gray-400 dark:text-gray-500">{{ t('wallet.subscriptionSettlementAmount') }}</dt>
+              <dd :class="['mt-0.5 font-semibold', rechargeAvailable ? 'text-gray-900 dark:text-white' : 'text-amber-600 dark:text-amber-300']">
+                {{ rechargeAvailable ? rechargeAmountLabel : t('payment.notAvailable') }}
+              </dd>
+            </div>
+          </dl>
         </template>
         <template v-else>
-          <span class="col-span-2 self-center text-red-600 dark:text-red-400">
-            {{ t('wallet.subscriptionBalanceInsufficient') }} · {{ t('wallet.subscriptionBalanceRequired') }} ${{ effectiveBalancePrice.toFixed(2) }}
-          </span>
+          <div class="flex items-center justify-between gap-3">
+            <span class="text-gray-500 dark:text-gray-400">{{ t('wallet.subscriptionBalanceNoDiscount') }}</span>
+            <strong v-if="!hasEnoughBalance" class="text-red-600 dark:text-red-400">{{ t('wallet.subscriptionBalanceInsufficientShort') }}</strong>
+          </div>
+          <dl class="mt-2 grid grid-cols-3 gap-2">
+            <div>
+              <dt class="text-gray-400 dark:text-gray-500">{{ t('wallet.subscriptionBalanceAvailable') }}</dt>
+              <dd :class="['mt-0.5 font-semibold', hasEnoughBalance ? 'text-gray-700 dark:text-gray-300' : 'text-red-600 dark:text-red-400']">${{ availableBalance.toFixed(2) }}</dd>
+            </div>
+            <div class="text-center">
+              <dt class="text-gray-400 dark:text-gray-500">{{ t('wallet.subscriptionBalanceRequired') }}</dt>
+              <dd class="mt-0.5 font-semibold text-gray-900 dark:text-white">${{ effectiveBalancePrice.toFixed(2) }}</dd>
+            </div>
+            <div class="text-right">
+              <dt class="text-gray-400 dark:text-gray-500">{{ t('wallet.subscriptionBalanceSettlement') }}</dt>
+              <dd :class="['mt-0.5 font-semibold', hasEnoughBalance ? 'text-primary-600 dark:text-primary-400' : 'text-gray-400 dark:text-gray-500']">
+                {{ hasEnoughBalance ? `$${balanceAfterPayment.toFixed(2)}` : '--' }}
+              </dd>
+            </div>
+          </dl>
         </template>
       </div>
 
@@ -160,7 +177,10 @@ const props = withDefaults(defineProps<{
   availableBalance?: number
   balancePrice?: number
   rechargeAvailable?: boolean
+  rechargeBeforeDiscountLabel?: string
+  rechargeAfterDiscountLabel?: string
   rechargeAmountLabel?: string
+  loyaltyDiscountLabel?: string
   disabled?: boolean
   submitting?: boolean
 }>(), {
@@ -168,7 +188,10 @@ const props = withDefaults(defineProps<{
   availableBalance: 0,
   balancePrice: 0,
   rechargeAvailable: true,
+  rechargeBeforeDiscountLabel: '',
+  rechargeAfterDiscountLabel: '',
   rechargeAmountLabel: '',
+  loyaltyDiscountLabel: '',
   disabled: false,
   submitting: false,
 })

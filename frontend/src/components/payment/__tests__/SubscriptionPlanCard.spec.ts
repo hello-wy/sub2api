@@ -28,8 +28,13 @@ const i18n = createI18n({
         subscriptionPaymentBalance: "Balance payment",
         subscriptionBalanceAvailable: "Available balance",
         subscriptionBalanceInsufficient: "Insufficient balance",
-        subscriptionPlanDiscount: "Plan discount",
+        subscriptionBalanceInsufficientShort: "Insufficient balance",
+        subscriptionMemberDiscount: "Member discount",
         subscriptionNoDiscount: "No discount",
+        subscriptionWeeklyDiscount: "Weekly discount",
+        subscriptionPermanentDiscount: "Lifetime discount",
+        subscriptionBeforeDiscount: "Before discount",
+        subscriptionAfterDiscount: "After discount",
         subscriptionSettlementAmount: "Settlement amount",
         subscriptionBalanceNoDiscount: "No discount",
         subscriptionBalanceSettlement: "Balance after payment",
@@ -48,7 +53,10 @@ const mountPlanCard = (
     props: {
       subscriptionUsdToCnyRate,
       availableBalance: 25,
+      rechargeBeforeDiscountLabel: "¥71.50",
+      rechargeAfterDiscountLabel: "¥71.50",
       rechargeAmountLabel: "¥71.50",
+      loyaltyDiscountLabel: "No discount",
       plan: {
         id: 1,
         group_id: 10,
@@ -113,7 +121,7 @@ describe("SubscriptionPlanCard", () => {
     );
 
     await balanceButton?.trigger("click");
-    expect(wrapper.text()).toContain("wallet.subscriptionBalanceInsufficient");
+    expect(wrapper.text()).toContain("wallet.subscriptionBalanceInsufficientShort");
     expect(wrapper.findAll("button").at(-1)?.attributes("disabled")).toBeDefined();
   });
 
@@ -122,12 +130,16 @@ describe("SubscriptionPlanCard", () => {
     const wrapper = mountPlanCard("openai", 1, {
       availableBalance: 25,
       balancePrice: 20,
-      rechargeAmountLabel: "¥10.00",
+      rechargeBeforeDiscountLabel: "¥10.00",
+      rechargeAfterDiscountLabel: "¥9.20",
+      rechargeAmountLabel: "¥9.20",
+      loyaltyDiscountLabel: "Weekly L4 · 8% off",
       plan: { ...basePlan, price: 10, original_price: 20 },
     });
 
-    expect(wrapper.text()).toContain("-50%");
+    expect(wrapper.text()).toContain("Weekly L4 · 8% off");
     expect(wrapper.text()).toContain("¥10.00");
+    expect(wrapper.text()).toContain("¥9.20");
 
     const balanceButton = wrapper.findAll("button").find(button =>
       button.text().includes("wallet.subscriptionPaymentBalance"),
@@ -135,7 +147,8 @@ describe("SubscriptionPlanCard", () => {
     await balanceButton?.trigger("click");
 
     expect(wrapper.text()).toContain("wallet.subscriptionBalanceNoDiscount");
-    expect(wrapper.text()).toContain("-$20.00");
+    expect(wrapper.text()).toContain("$25.00");
+    expect(wrapper.text()).toContain("$20.00");
     expect(wrapper.text()).toContain("$5.00");
   });
 });

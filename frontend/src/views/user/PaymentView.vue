@@ -122,7 +122,10 @@
                     :available-balance="availableBalance"
                     :balance-price="subscriptionBalancePrice(plan)"
                     :recharge-available="canRechargeSubscriptionPlan(plan)"
+                    :recharge-before-discount-label="formatSubscriptionBeforeDiscountAmount(plan)"
+                    :recharge-after-discount-label="formatSubscriptionAfterDiscountAmount(plan)"
                     :recharge-amount-label="formatSubscriptionRechargeAmount(plan)"
+                    :loyalty-discount-label="subscriptionLoyaltyDiscountLabel"
                     :disabled="submitting"
                     :submitting="submitting && submittingPlanId === plan.id"
                     @subscribe="subscribeToPlan"
@@ -526,7 +529,7 @@ const walletOfferCount = computed(() => checkout.value.plans.length + (enabledMe
 const validAmount = computed(() => amount.value ?? 0)
 const balanceRechargeMultiplier = computed(() => {
   const multiplier = checkout.value.balance_recharge_multiplier
-  return Number.isFinite(multiplier) && multiplier > 0 ? multiplier : 1
+  return Number.isFinite(multiplier) && multiplier > 0 ? multiplier : 10
 })
 // 订阅 CNY 换算汇率（1 USD = X CNY）。0 = 未配置，订阅保持 price 直付（与后端 opt-in 条件严格镜像）。
 const subscriptionUsdToCnyRate = computed(() => {
@@ -694,17 +697,23 @@ const canSubmit = computed(() =>
     && selectedLimit.value?.available !== false
 )
 
-function subscriptionTotalAmountForCurrency(value: number, currency: string): number {
-  const paymentAmount = subscriptionPaymentAmountForCurrency(value, currency)
-  if (feeRate.value <= 0 || paymentAmount <= 0) return paymentAmount
-  const fee = ceilPaymentAmount((paymentAmount * feeRate.value) / 100, currency)
-  return roundPaymentAmount(paymentAmount + fee, currency)
-}
-
 const availableBalance = computed(() => Number(user.value?.balance ?? 0))
 
+function subscriptionBeforeDiscountAmount(plan: SubscriptionPlan, currency: string): number {
+  return subscriptionPaymentAmountForCurrency(plan.price, currency)
+}
+
+function subscriptionAfterDiscountAmount(plan: SubscriptionPlan, currency: string): number {
+  return balancePaymentBaseForCurrency(subscriptionBeforeDiscountAmount(plan, currency), currency)
+}
+
 function subscriptionTotalAmountForPlan(plan: SubscriptionPlan): number {
-  return subscriptionTotalAmountForCurrency(plan.price, selectedCurrency.value)
+  const discountedAmount = subscriptionAfterDiscountAmount(plan, selectedCurrency.value)
+  if (feeRate.value <= 0 || discountedAmount <= 0) return discountedAmount
+  return roundPaymentAmount(
+    discountedAmount + balanceFeeAmountForCurrency(discountedAmount, selectedCurrency.value),
+    selectedCurrency.value,
+  )
 }
 
 function canRechargeSubscriptionPlan(plan: SubscriptionPlan): boolean {
@@ -717,9 +726,28 @@ function formatSubscriptionRechargeAmount(plan: SubscriptionPlan): string {
   return formatSelectedPaymentAmount(subscriptionTotalAmountForPlan(plan))
 }
 
+function formatSubscriptionBeforeDiscountAmount(plan: SubscriptionPlan): string {
+  return formatSelectedPaymentAmount(subscriptionBeforeDiscountAmount(plan, selectedCurrency.value))
+}
+
+function formatSubscriptionAfterDiscountAmount(plan: SubscriptionPlan): string {
+  return formatSelectedPaymentAmount(subscriptionAfterDiscountAmount(plan, selectedCurrency.value))
+}
+
+const subscriptionLoyaltyDiscountLabel = computed(() => {
+  if (loyaltyDiscountPercent.value <= 0) return t('wallet.subscriptionNoDiscount')
+  const key = loyaltyInfo.value?.discount_scope === 'permanent'
+    ? 'wallet.subscriptionPermanentDiscount'
+    : 'wallet.subscriptionWeeklyDiscount'
+  return t(key, {
+    level: loyaltyInfo.value?.discount_level || '',
+    discount: loyaltyDiscountPercent.value,
+  })
+})
+
 function subscriptionBalancePrice(plan: SubscriptionPlan): number {
-  const originalPrice = Number(plan.original_price ?? 0)
-  return Number.isFinite(originalPrice) ? Math.max(plan.price, originalPrice) : plan.price
+  const cnyPrice = subscriptionBeforeDiscountAmount(plan, DEFAULT_PAYMENT_CURRENCY)
+  return Math.round(cnyPrice * balanceRechargeMultiplier.value * 100) / 100
 }
 
 function hasEnoughBalanceForPlan(plan: SubscriptionPlan): boolean {

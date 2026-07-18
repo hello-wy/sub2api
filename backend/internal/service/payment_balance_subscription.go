@@ -45,7 +45,7 @@ func (s *PaymentService) PurchaseSubscriptionWithBalance(ctx context.Context, re
 	if err != nil {
 		return nil, err
 	}
-	balancePrice := balanceSubscriptionPlanPrice(plan)
+	balancePrice := balanceSubscriptionPlanPrice(plan, cfg.BalanceRechargeMultiplier, cfg.SubscriptionUSDToCNYRate)
 	if math.IsNaN(balancePrice) || math.IsInf(balancePrice, 0) || balancePrice <= 0 {
 		return nil, infraerrors.BadRequest("INVALID_AMOUNT", "subscription plan price must be positive")
 	}
@@ -140,13 +140,10 @@ func (s *PaymentService) PurchaseSubscriptionWithBalance(ctx context.Context, re
 	}, nil
 }
 
-func balanceSubscriptionPlanPrice(plan *dbent.SubscriptionPlan) float64 {
+func balanceSubscriptionPlanPrice(plan *dbent.SubscriptionPlan, rechargeMultiplier, usdToCNYRate float64) float64 {
 	if plan == nil {
 		return 0
 	}
-	price := plan.Price
-	if plan.OriginalPrice != nil && !math.IsNaN(*plan.OriginalPrice) && !math.IsInf(*plan.OriginalPrice, 0) {
-		price = math.Max(price, *plan.OriginalPrice)
-	}
-	return price
+	gatewayPrice := calculateSubscriptionGatewayBaseAmount(plan.Price, usdToCNYRate, payment.DefaultPaymentCurrency)
+	return calculateCreditedBalance(gatewayPrice, rechargeMultiplier)
 }

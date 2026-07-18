@@ -430,15 +430,80 @@ describe('PaymentView inline subscription checkout', () => {
     expect(purchaseSubscriptionWithBalance).not.toHaveBeenCalled()
   })
 
-  it('passes the undiscounted original price to balance settlement', async () => {
-    authUserState.user = { username: 'demo-user', balance: 250 }
-    const wrapper = await mountSubscriptionConfirm({
+  it('uses the recharge multiplier for balance settlement without loyalty discount', async () => {
+    authUserState.user = { username: 'demo-user', balance: 600 }
+    const twentyWrapper = await mountSubscriptionConfirm({
+      checkout: { balance_recharge_multiplier: 10 },
       plan: { price: 20, original_price: 200 },
+    })
+    const twentyCard = twentyWrapper.findComponent({ name: 'SubscriptionPlanCard' })
+
+    expect(twentyCard.props('balancePrice')).toBe(200)
+
+    const fiftyWrapper = await mountSubscriptionConfirm({
+      checkout: { balance_recharge_multiplier: 10 },
+      plan: { price: 50, original_price: 0 },
+    })
+    const fiftyCard = fiftyWrapper.findComponent({ name: 'SubscriptionPlanCard' })
+
+    expect(fiftyCard.props('balancePrice')).toBe(500)
+    expect(fiftyCard.props('rechargeAmountLabel')).toBe(formatPaymentAmount(50, 'CNY'))
+
+    const fallbackWrapper = await mountSubscriptionConfirm({
+      checkout: { balance_recharge_multiplier: 0 },
+      plan: { price: 20 },
+    })
+    expect(fallbackWrapper.findComponent({ name: 'SubscriptionPlanCard' }).props('balancePrice')).toBe(200)
+  })
+
+  it('syncs the effective weekly loyalty discount into subscription recharge prices', async () => {
+    const wrapper = await mountSubscriptionConfirm({
+      checkout: {
+        loyalty: {
+          enabled: true,
+          definitions_configured: true,
+          weekly_points: 900,
+          permanent_points: 1200,
+          weekly_discount: 8,
+          permanent_discount: 4,
+          discount_percent: 8,
+          discount_scope: 'weekly',
+          discount_level: 'L4',
+        },
+      },
+      plan: { price: 50 },
     })
     const card = wrapper.findComponent({ name: 'SubscriptionPlanCard' })
 
-    expect(card.props('balancePrice')).toBe(200)
-    expect(card.props('rechargeAmountLabel')).toBe(formatPaymentAmount(20, 'CNY'))
+    expect(card.props('rechargeBeforeDiscountLabel')).toBe(formatPaymentAmount(50, 'CNY'))
+    expect(card.props('rechargeAfterDiscountLabel')).toBe(formatPaymentAmount(46, 'CNY'))
+    expect(card.props('rechargeAmountLabel')).toBe(formatPaymentAmount(46, 'CNY'))
+    expect(card.props('loyaltyDiscountLabel')).toBe('wallet.subscriptionWeeklyDiscount')
+  })
+
+  it('syncs the effective permanent loyalty discount into subscription recharge prices', async () => {
+    const wrapper = await mountSubscriptionConfirm({
+      checkout: {
+        loyalty: {
+          enabled: true,
+          definitions_configured: true,
+          weekly_points: 0,
+          permanent_points: 1200,
+          weekly_discount: 0,
+          permanent_discount: 4,
+          discount_percent: 4,
+          discount_scope: 'permanent',
+          discount_level: 'L2',
+        },
+      },
+      plan: { price: 50 },
+    })
+    const card = wrapper.findComponent({ name: 'SubscriptionPlanCard' })
+
+    expect(card.props('rechargeBeforeDiscountLabel')).toBe(formatPaymentAmount(50, 'CNY'))
+    expect(card.props('rechargeAfterDiscountLabel')).toBe(formatPaymentAmount(48, 'CNY'))
+    expect(card.props('rechargeAmountLabel')).toBe(formatPaymentAmount(48, 'CNY'))
+    expect(card.props('loyaltyDiscountLabel')).toBe('wallet.subscriptionPermanentDiscount')
   })
 
   it('shows converted CNY pay amount using the subscription rate, not the balance multiplier', async () => {
