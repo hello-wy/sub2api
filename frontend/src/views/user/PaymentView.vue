@@ -203,6 +203,21 @@
                       <span class="mx-1.5">·</span>
                       <span>{{ t('payment.planCard.rate') }} ×{{ sub.group?.rate_multiplier ?? 1 }}</span>
                     </p>
+                    <div v-if="subscriptionUsageRows(sub).length" class="mt-3 space-y-3">
+                      <div v-for="usage in subscriptionUsageRows(sub)" :key="usage.period" class="space-y-1.5">
+                        <div class="flex items-center justify-between gap-3 text-xs">
+                          <span class="font-medium text-gray-600 dark:text-gray-300">{{ usage.label }}</span>
+                          <span class="shrink-0 tabular-nums text-gray-500 dark:text-gray-400">${{ usage.used.toFixed(2) }} / ${{ usage.limit.toFixed(2) }}</span>
+                        </div>
+                        <div class="h-1.5 overflow-hidden rounded-full bg-gray-100 dark:bg-dark-700">
+                          <div :class="['h-full rounded-full transition-[width] duration-300', subscriptionUsageBarClass(usage.percentage)]" :style="{ width: `${usage.percentage}%` }"></div>
+                        </div>
+                      </div>
+                    </div>
+                    <div v-else class="mt-3 flex items-center justify-between rounded-md bg-gray-50 px-3 py-2 text-xs dark:bg-dark-700/60">
+                      <span class="text-gray-500 dark:text-gray-400">{{ t('userSubscriptions.usage') }}</span>
+                      <span class="font-medium text-emerald-600 dark:text-emerald-400">{{ t('userSubscriptions.unlimited') }}</span>
+                    </div>
                   </div>
                 </div>
                 <div v-else class="px-5 py-8 text-center text-sm text-gray-500 dark:text-gray-400">{{ t('payment.noActiveSubscription') }}</div>
@@ -256,6 +271,7 @@ import { paymentAPI } from '@/api/payment'
 import { extractApiErrorMessage, extractI18nErrorMessage } from '@/utils/apiError'
 import { isMobileDevice } from '@/utils/device'
 import type { SubscriptionPlan, CheckoutInfoResponse, CreateOrderResult, OrderType } from '@/types/payment'
+import type { UserSubscription } from '@/types'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import PaymentMethodSelector from '@/components/payment/PaymentMethodSelector.vue'
 import RechargePackageSelector from '@/components/wallet/RechargePackageSelector.vue'
@@ -297,6 +313,40 @@ const activeSubscriptions = computed(() => subscriptionStore.activeSubscriptions
 function getDaysRemaining(expiresAt: string): number {
   const diff = new Date(expiresAt).getTime() - Date.now()
   return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)))
+}
+
+interface SubscriptionUsageRow {
+  period: 'daily' | 'weekly' | 'monthly'
+  label: string
+  used: number
+  limit: number
+  percentage: number
+}
+
+function subscriptionUsageRows(subscription: UserSubscription): SubscriptionUsageRow[] {
+  const periods = [
+    { period: 'daily' as const, used: subscription.daily_usage_usd, limit: subscription.group?.daily_limit_usd },
+    { period: 'weekly' as const, used: subscription.weekly_usage_usd, limit: subscription.group?.weekly_limit_usd },
+    { period: 'monthly' as const, used: subscription.monthly_usage_usd, limit: subscription.group?.monthly_limit_usd },
+  ]
+
+  return periods.flatMap(({ period, used, limit }) => {
+    if (!limit || limit <= 0) return []
+    const safeUsed = Number.isFinite(used) ? Math.max(0, used) : 0
+    return [{
+      period,
+      label: t(`userSubscriptions.${period}`),
+      used: safeUsed,
+      limit,
+      percentage: Math.min(100, (safeUsed / limit) * 100),
+    }]
+  })
+}
+
+function subscriptionUsageBarClass(percentage: number): string {
+  if (percentage >= 90) return 'bg-red-500'
+  if (percentage >= 70) return 'bg-amber-500'
+  return 'bg-primary-500'
 }
 
 const loading = ref(true)

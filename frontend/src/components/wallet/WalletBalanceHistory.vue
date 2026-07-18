@@ -14,7 +14,7 @@
       <span class="h-7 w-7 animate-spin rounded-full border-2 border-primary-500 border-t-transparent"></span>
     </div>
     <div v-else-if="displayedHistory.length" :class="['divide-y divide-gray-100 dark:divide-dark-700', compact && 'max-h-[520px] overflow-y-auto']">
-      <div v-for="item in displayedHistory" :key="item.id" :class="['flex items-center px-5', compact ? 'gap-3 py-3.5' : 'gap-4 py-4']">
+      <div v-for="item in displayedHistory" :key="item.id" :class="['flex items-start px-5', compact ? 'gap-3 py-3.5' : 'gap-4 py-4']">
         <span :class="[
           'flex shrink-0 items-center justify-center rounded-lg',
           compact ? 'h-8 w-8' : 'h-10 w-10',
@@ -23,14 +23,14 @@
           <Icon name="dollar" :size="compact ? 'sm' : 'md'" />
         </span>
         <div class="min-w-0 flex-1">
-          <p class="truncate text-sm font-medium text-gray-900 dark:text-white">{{ itemTitle(item) }}</p>
+          <div class="flex items-start justify-between gap-3">
+            <p class="wallet-history-title min-w-0 text-sm font-medium leading-5 text-gray-900 dark:text-white">{{ itemTitle(item) }}</p>
+            <p :class="['shrink-0 text-sm font-semibold tabular-nums', item.value >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400']">
+              {{ item.value >= 0 ? '+' : '' }}${{ item.value.toFixed(2) }}
+            </p>
+          </div>
           <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{{ formatDateTime(item.used_at) }}</p>
-        </div>
-        <div class="text-right">
-          <p :class="['text-sm font-semibold tabular-nums', item.value >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400']">
-            {{ item.value >= 0 ? '+' : '' }}${{ item.value.toFixed(2) }}
-          </p>
-          <p v-if="item.notes" class="mt-1 whitespace-normal break-words text-xs leading-5 text-gray-400">{{ item.notes }}</p>
+          <p v-if="historyNote(item)" class="mt-1.5 whitespace-normal break-words text-xs leading-5 text-gray-400">{{ historyNote(item) }}</p>
         </div>
       </div>
     </div>
@@ -65,6 +65,13 @@ function itemTitle(item: RedeemHistoryItem): string {
   if (item.type === 'daily_checkin') return t('redeem.balanceAddedDailyCheckin')
   if (item.type === 'usage_rebate') return t('redeem.balanceAddedUsageRebate')
   return item.value >= 0 ? t('redeem.balanceAddedAdmin') : t('redeem.balanceDeductedAdmin')
+}
+
+function historyNote(item: RedeemHistoryItem): string {
+  if (!item.notes || ['daily_checkin', 'usage_rebate'].includes(item.type)) return ''
+  const note = item.notes.trim()
+  const title = itemTitle(item)
+  return note === title || note.startsWith(`${title} `) ? '' : note
 }
 
 onMounted(async () => {

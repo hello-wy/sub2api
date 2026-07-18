@@ -295,7 +295,7 @@ export default {
     helpImageAlt: 'Payment help',
     paymentMethod: 'Payment Method',
     fee: 'Fee',
-    loyaltyDiscount: 'Loyalty Discount ({discount}%)',
+    loyaltyDiscount: 'Member Discount ({discount}%)',
     discountedPaymentAmount: 'Discounted Amount',
     actualPay: 'Actual Payment',
     createOrder: 'Confirm Payment',

@@ -4,6 +4,7 @@ import PaymentView from '../PaymentView.vue'
 import { PAYMENT_RECOVERY_STORAGE_KEY } from '@/components/payment/paymentFlow'
 import { formatPaymentAmount } from '@/components/payment/currency'
 import type { CheckoutInfoResponse, MethodLimit, SubscriptionPlan } from '@/types/payment'
+import type { UserSubscription } from '@/types'
 
 const routeState = vi.hoisted(() => ({
   path: '/purchase',
@@ -21,6 +22,7 @@ const showInfo = vi.hoisted(() => vi.fn())
 const showWarning = vi.hoisted(() => vi.fn())
 const getCheckoutInfo = vi.hoisted(() => vi.fn())
 const bridgeInvoke = vi.hoisted(() => vi.fn())
+const activeSubscriptionsState = vi.hoisted(() => ({ items: [] as UserSubscription[] }))
 
 vi.mock('vue-router', async () => {
   const actual = await vi.importActual<typeof import('vue-router')>('vue-router')
@@ -63,7 +65,9 @@ vi.mock('@/stores/payment', () => ({
 
 vi.mock('@/stores/subscriptions', () => ({
   useSubscriptionStore: () => ({
-    activeSubscriptions: [],
+    get activeSubscriptions() {
+      return activeSubscriptionsState.items
+    },
     fetchActiveSubscriptions,
   }),
 }))
@@ -85,6 +89,10 @@ vi.mock('@/api/payment', () => ({
 vi.mock('@/utils/device', () => ({
   isMobileDevice: () => true,
 }))
+
+beforeEach(() => {
+  activeSubscriptionsState.items = []
+})
 
 function checkoutInfoFixture(overrides: Partial<CheckoutInfoResponse> = {}) {
   const wxpayMethod: MethodLimit = {
@@ -347,6 +355,44 @@ describe('PaymentView balance loyalty discount', () => {
       payment_type: 'wxpay',
       order_type: 'balance',
     }))
+  })
+
+  it('shows active subscription usage in the wallet summary', async () => {
+    activeSubscriptionsState.items = [{
+      id: 9,
+      user_id: 1,
+      group_id: 3,
+      status: 'active',
+      starts_at: '2026-07-01T00:00:00Z',
+      expires_at: '2099-08-01T00:00:00Z',
+      daily_usage_usd: 2.5,
+      weekly_usage_usd: 8,
+      monthly_usage_usd: 0,
+      daily_window_start: '2026-07-18T00:00:00Z',
+      weekly_window_start: '2026-07-14T00:00:00Z',
+      monthly_window_start: null,
+      created_at: '2026-07-01T00:00:00Z',
+      updated_at: '2026-07-18T00:00:00Z',
+      group: {
+        id: 3,
+        name: 'OpenAI Pro',
+        platform: 'openai',
+        rate_multiplier: 1,
+        daily_limit_usd: 10,
+        weekly_limit_usd: 40,
+        monthly_limit_usd: null,
+      },
+    } as UserSubscription]
+
+    const wrapper = await mountRecharge()
+    const text = wrapper.text()
+
+    expect(text).toContain('OpenAI Pro')
+    expect(text).toContain('userSubscriptions.daily')
+    expect(text).toContain('$2.50 / $10.00')
+    expect(text).toContain('userSubscriptions.weekly')
+    expect(text).toContain('$8.00 / $40.00')
+    expect(wrapper.find('[style="width: 25%;"]').exists()).toBe(true)
   })
 })
 
