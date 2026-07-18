@@ -653,6 +653,7 @@ export default {
     balanceDeductedAdmin: 'Balance Deducted (Admin)',
     balanceAddedDailyCheckin: 'Daily Check-in',
     balanceAddedUsageRebate: 'Usage Rebate',
+    balanceDeductedSubscription: 'Subscription Plan (Balance Payment)',
     concurrencyAddedRedeem: 'Concurrency Added (Redeem)',
     concurrencyAddedAdmin: 'Concurrency Added (Admin)',
     concurrencyReducedAdmin: 'Concurrency Reduced (Admin)',

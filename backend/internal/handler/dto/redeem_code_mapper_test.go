@@ -10,7 +10,7 @@ import (
 func TestRedeemCodeFromServiceShowsRewardNotes(t *testing.T) {
 	t.Parallel()
 
-	for _, codeType := range []string{service.AdjustmentTypeDailyCheckin, service.AdjustmentTypeUsageRebate} {
+	for _, codeType := range []string{service.AdjustmentTypeDailyCheckin, service.AdjustmentTypeUsageRebate, service.AdjustmentTypeSubscriptionPay} {
 		dto := RedeemCodeFromService(&service.RedeemCode{
 			Type:  codeType,
 			Notes: "每日签到 2026/06/28 13:02:25",

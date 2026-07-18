@@ -658,6 +658,7 @@ export default {
     balanceDeductedAdmin: '余额扣除（管理员）',
     balanceAddedDailyCheckin: '每日签到',
     balanceAddedUsageRebate: '用量返利',
+    balanceDeductedSubscription: '订阅套餐（余额支付）',
     concurrencyAddedRedeem: '并发增加（兑换）',
     concurrencyAddedAdmin: '并发增加（管理员）',
     concurrencyReducedAdmin: '并发减少（管理员）',

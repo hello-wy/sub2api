@@ -422,22 +422,6 @@ const CreditCardIcon = {
     )
 }
 
-const WalletIcon = {
-  render: () =>
-    h(
-      'svg',
-      { fill: 'currentColor', viewBox: '0 0 24 24', 'aria-hidden': 'true' },
-      [
-        h('path', {
-          d: 'M4.5 4.5A2.5 2.5 0 002 7v10a2.5 2.5 0 002.5 2.5h15A2.5 2.5 0 0022 17v-6.25A2.75 2.75 0 0019.25 8H5a1 1 0 010-2h14.25a.75.75 0 000-1.5H4.5z'
-        }),
-        h('path', {
-          d: 'M15.25 11A2.25 2.25 0 0013 13.25v1.5A2.25 2.25 0 0015.25 17H22v-6h-6.75zm.75 3.75a.75.75 0 110-1.5.75.75 0 010 1.5z'
-        })
-      ]
-    )
-}
-
 const GlobeIcon = {
   render: () =>
     h(
@@ -700,7 +684,7 @@ function buildSelfNavItems(withDashboard: boolean): NavItem[] {
     items.push({ path: '/dashboard', label: t('nav.dashboard'), icon: DashboardIcon })
   }
   items.push(
-    { path: '/wallet', label: t('nav.wallet'), icon: WalletIcon, hideInSimpleMode: true },
+    { path: '/wallet', label: t('nav.wallet'), icon: CreditCardIcon, hideInSimpleMode: true },
     { path: '/keys', label: t('nav.apiKeys'), icon: KeyIcon },
     { path: '/batch-image', label: t('nav.batchImage'), icon: BatchImageIcon, hideInSimpleMode: true, featureFlag: flagBatchImageAccess },
     { path: '/usage', label: t('nav.usage'), icon: ChartIcon, hideInSimpleMode: true },

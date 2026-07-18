@@ -112,6 +112,9 @@ func (s *PaymentService) PurchaseSubscriptionWithBalance(ctx context.Context, re
 	if err != nil {
 		return nil, fmt.Errorf("create balance subscription order: %w", err)
 	}
+	if err := recordBalanceSubscriptionPayment(ctx, tx.Client(), req.UserID, balancePrice, plan.Name, now); err != nil {
+		return nil, err
+	}
 	if err := tx.Commit(); err != nil {
 		return nil, fmt.Errorf("commit balance subscription transaction: %w", err)
 	}
@@ -138,6 +141,28 @@ func (s *PaymentService) PurchaseSubscriptionWithBalance(ctx context.Context, re
 		NewBalance:   updatedUser.Balance,
 		Subscription: subscription,
 	}, nil
+}
+
+func recordBalanceSubscriptionPayment(ctx context.Context, client *dbent.Client, userID int64, amount float64, planName string, at time.Time) error {
+	if client == nil || amount <= 0 {
+		return nil
+	}
+	code, err := GenerateRedeemCode()
+	if err != nil {
+		return fmt.Errorf("generate subscription payment history code: %w", err)
+	}
+	if _, err := client.RedeemCode.Create().
+		SetCode(code).
+		SetType(AdjustmentTypeSubscriptionPay).
+		SetValue(-amount).
+		SetStatus(StatusUsed).
+		SetUsedBy(userID).
+		SetUsedAt(at).
+		SetNotes(planName).
+		Save(ctx); err != nil {
+		return fmt.Errorf("record subscription balance payment: %w", err)
+	}
+	return nil
 }
 
 func balanceSubscriptionPlanPrice(plan *dbent.SubscriptionPlan, rechargeMultiplier, usdToCNYRate float64) float64 {

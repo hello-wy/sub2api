@@ -32,7 +32,7 @@
           <div class="flex items-start justify-between gap-3">
             <p class="wallet-history-title min-w-0 text-sm font-medium leading-5 text-gray-900 dark:text-white">{{ itemTitle(item) }}</p>
             <p :class="['shrink-0 text-sm font-semibold tabular-nums', item.value >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400']">
-              {{ item.value >= 0 ? '+' : '' }}${{ item.value.toFixed(2) }}
+              {{ item.value >= 0 ? '+' : '-' }}${{ Math.abs(item.value).toFixed(2) }}
             </p>
           </div>
           <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{{ formatDateTime(item.used_at) }}</p>
@@ -63,13 +63,14 @@ const history = ref<RedeemHistoryItem[]>([])
 const loading = ref(true)
 
 const balanceHistory = computed(() => history.value.filter((item) =>
-  ['balance', 'admin_balance', 'daily_checkin', 'usage_rebate'].includes(item.type)))
+  ['balance', 'admin_balance', 'daily_checkin', 'usage_rebate', 'subscription_payment'].includes(item.type)))
 const displayedHistory = computed(() => balanceHistory.value)
 
 function itemTitle(item: RedeemHistoryItem): string {
   if (item.type === 'balance') return t('redeem.balanceAddedRedeem')
   if (item.type === 'daily_checkin') return t('redeem.balanceAddedDailyCheckin')
   if (item.type === 'usage_rebate') return t('redeem.balanceAddedUsageRebate')
+  if (item.type === 'subscription_payment') return t('redeem.balanceDeductedSubscription')
   return item.value >= 0 ? t('redeem.balanceAddedAdmin') : t('redeem.balanceDeductedAdmin')
 }
 

@@ -18,6 +18,7 @@ vi.mock('vue-i18n', async () => {
         'wallet.recordsCount': '2 条记录',
         'redeem.balanceAddedDailyCheckin': '每日签到',
         'redeem.balanceAddedAdmin': '余额充值（管理员）',
+        'redeem.balanceDeductedSubscription': '订阅套餐（余额支付）',
       }[key] || key),
     }),
   }
@@ -46,6 +47,16 @@ describe('WalletBalanceHistory', () => {
         created_at: '2026-07-18T16:04:06Z',
         notes: '活动补发',
       },
+      {
+        id: 3,
+        code: 'SUBSCRIPTION-1',
+        type: 'subscription_payment',
+        value: -200,
+        status: 'used',
+        used_at: '2026-07-18T16:10:00Z',
+        created_at: '2026-07-18T16:10:00Z',
+        notes: '轻度包月',
+      },
     ])
   })
 
@@ -64,6 +75,9 @@ describe('WalletBalanceHistory', () => {
     expect(titles[0].classes()).not.toContain('truncate')
     expect(wrapper.text()).not.toContain('每日签到 2026/07/18 15:46:36')
     expect(wrapper.text()).toContain('活动补发')
+    expect(wrapper.text()).toContain('订阅套餐（余额支付）')
+    expect(wrapper.text()).toContain('-$200.00')
+    expect(wrapper.text()).toContain('轻度包月')
   })
 
   it('uses an internal scrollbar after five records', async () => {

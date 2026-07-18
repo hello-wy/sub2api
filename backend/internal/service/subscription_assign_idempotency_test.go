@@ -267,6 +267,78 @@ func (s *subscriptionUserSubRepoStub) Update(_ context.Context, sub *UserSubscri
 	return nil
 }
 
+func (s *subscriptionUserSubRepoStub) ListByUserID(_ context.Context, userID int64) ([]UserSubscription, error) {
+	result := make([]UserSubscription, 0)
+	for _, sub := range s.byID {
+		if sub.UserID == userID {
+			result = append(result, *sub)
+		}
+	}
+	return result, nil
+}
+
+func (s *subscriptionUserSubRepoStub) ListActiveByUserID(_ context.Context, userID int64) ([]UserSubscription, error) {
+	now := time.Now()
+	result := make([]UserSubscription, 0)
+	for _, sub := range s.byID {
+		if sub.UserID == userID && sub.Status == SubscriptionStatusActive && sub.ExpiresAt.After(now) {
+			result = append(result, *sub)
+		}
+	}
+	return result, nil
+}
+
+func TestReplaceSubscriptionForPaymentResetsTermAndExpiresOtherPlans(t *testing.T) {
+	groupRepo := &subscriptionGroupRepoStub{
+		group: &Group{ID: 1, SubscriptionType: SubscriptionTypeSubscription},
+	}
+	subRepo := newSubscriptionUserSubRepoStub()
+	subRepo.seed(&UserSubscription{
+		ID:              10,
+		UserID:          1001,
+		GroupID:         1,
+		StartsAt:        time.Now().AddDate(0, 0, -10),
+		ExpiresAt:       time.Now().AddDate(0, 0, 30),
+		Status:          SubscriptionStatusActive,
+		DailyUsageUSD:   12,
+		WeeklyUsageUSD:  24,
+		MonthlyUsageUSD: 36,
+		Notes:           "old target",
+	})
+	subRepo.seed(&UserSubscription{
+		ID:        11,
+		UserID:    1001,
+		GroupID:   2,
+		StartsAt:  time.Now().AddDate(0, 0, -5),
+		ExpiresAt: time.Now().AddDate(0, 0, 20),
+		Status:    SubscriptionStatusActive,
+		Notes:     "old other",
+	})
+
+	before := time.Now()
+	svc := NewSubscriptionService(groupRepo, subRepo, nil, nil, nil)
+	replaced, err := svc.replaceSubscriptionForPayment(context.Background(), &AssignSubscriptionInput{
+		UserID:       1001,
+		GroupID:      1,
+		ValidityDays: 30,
+		Notes:        "payment order 42",
+	})
+	require.NoError(t, err)
+	after := time.Now()
+
+	require.WithinDuration(t, before, replaced.StartsAt, after.Sub(before)+time.Second)
+	require.WithinDuration(t, replaced.StartsAt.AddDate(0, 0, 30), replaced.ExpiresAt, time.Second)
+	require.Zero(t, replaced.DailyUsageUSD)
+	require.Zero(t, replaced.WeeklyUsageUSD)
+	require.Zero(t, replaced.MonthlyUsageUSD)
+	require.Contains(t, replaced.Notes, "payment order 42")
+
+	other, err := subRepo.GetByID(context.Background(), 11)
+	require.NoError(t, err)
+	require.Equal(t, SubscriptionStatusExpired, other.Status)
+	require.False(t, other.ExpiresAt.After(after))
+}
+
 func TestAssignSubscriptionReuseWhenSemanticsMatch(t *testing.T) {
 	start := time.Date(2026, 2, 20, 10, 0, 0, 0, time.UTC)
 	groupRepo := &subscriptionGroupRepoStub{

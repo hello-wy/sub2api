@@ -3,8 +3,10 @@
 package service
 
 import (
+	"context"
 	"math"
 	"testing"
+	"time"
 
 	dbent "github.com/Wei-Shaw/sub2api/ent"
 	"github.com/stretchr/testify/require"
@@ -33,4 +35,26 @@ func TestBalanceSubscriptionPlanPriceUsesRechargeMultiplierWithoutLoyaltyDiscoun
 			require.Equal(t, tt.want, balanceSubscriptionPlanPrice(tt.plan, tt.multiplier, tt.cnyRate))
 		})
 	}
+}
+
+func TestRecordBalanceSubscriptionPaymentCreatesNegativeHistory(t *testing.T) {
+	ctx := context.Background()
+	client := newPaymentConfigServiceTestClient(t)
+	at := time.Date(2026, 7, 18, 18, 0, 0, 0, time.UTC)
+	user, err := client.User.Create().
+		SetEmail("subscription-history@example.com").
+		SetPasswordHash("hash").
+		SetUsername("subscription-history-user").
+		Save(ctx)
+	require.NoError(t, err)
+
+	require.NoError(t, recordBalanceSubscriptionPayment(ctx, client, user.ID, 200, "轻度包月", at))
+	record, err := client.RedeemCode.Query().Only(ctx)
+	require.NoError(t, err)
+	require.Equal(t, AdjustmentTypeSubscriptionPay, record.Type)
+	require.Equal(t, -200.0, record.Value)
+	require.Equal(t, StatusUsed, record.Status)
+	require.Equal(t, user.ID, *record.UsedBy)
+	require.Equal(t, at, *record.UsedAt)
+	require.Equal(t, "轻度包月", *record.Notes)
 }

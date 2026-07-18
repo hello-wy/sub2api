@@ -584,7 +584,8 @@ func redeemCodeNotesVisibleToUser(rc *service.RedeemCode) bool {
 	case service.AdjustmentTypeAdminBalance,
 		service.AdjustmentTypeAdminConcurrency,
 		service.AdjustmentTypeDailyCheckin,
-		service.AdjustmentTypeUsageRebate:
+		service.AdjustmentTypeUsageRebate,
+		service.AdjustmentTypeSubscriptionPay:
 		return true
 	default:
 		return false

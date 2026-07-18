@@ -89,14 +89,13 @@ describe('AppSidebar user navigation', () => {
     )
   })
 
-  it('places the wallet first in personal navigation and uses a filled icon', () => {
+  it('places the wallet first in personal navigation and uses the card icon', () => {
     const sharedItems = componentSource.slice(
       componentSource.indexOf('function buildSelfNavItems'),
       componentSource.indexOf('// finalizeNav'),
     )
     expect(sharedItems.indexOf("path: '/wallet'")).toBeLessThan(sharedItems.indexOf("path: '/keys'"))
-    expect(sharedItems).toContain("icon: WalletIcon")
-    expect(componentSource).toMatch(/const WalletIcon = \{[\s\S]*fill: 'currentColor'/)
+    expect(sharedItems).toContain("icon: CreditCardIcon")
   })
 
   it('places membership in the shared My Account navigation used by admins', () => {
