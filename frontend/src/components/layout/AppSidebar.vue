@@ -1039,27 +1039,44 @@ watch(
 </script>
 
 <style scoped>
-.sidebar-liquid-shell {
-  background-image:
-    linear-gradient(180deg, rgba(239, 246, 255, 0.62), rgba(219, 234, 254, 0.7)),
-    url('/home/solid-api-blue-core-light.jpg');
-  background-position: center;
-  background-size: cover;
+:global(.sidebar-liquid-shell) {
+  background-color: #eef6ff;
+  background-image: linear-gradient(180deg, rgba(248, 251, 255, 0.98), rgba(232, 242, 255, 0.96));
+  backdrop-filter: blur(10px) saturate(1.05);
+  box-shadow: inset -1px 0 rgba(22, 119, 255, 0.05);
 }
 
-.sidebar-liquid-shell .sidebar-header,
-.sidebar-liquid-shell .sidebar-footer {
+:global(.sidebar-liquid-shell.liquid-glass::before) {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.34), rgba(22, 119, 255, 0.025));
+}
+
+:global(.sidebar-liquid-shell.liquid-glass::after) {
+  border-color: rgba(22, 119, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42);
+}
+
+:global(.sidebar-liquid-shell) .sidebar-header,
+:global(.sidebar-liquid-shell) .sidebar-footer {
   border-color: rgba(148, 184, 222, 0.22);
 }
 
-.dark .sidebar-liquid-shell {
-  background-image:
-    linear-gradient(180deg, rgba(5, 22, 48, 0.46), rgba(4, 18, 40, 0.66)),
-    url('/home/solid-api-blue-core.jpg');
+:global(.dark .sidebar-liquid-shell) {
+  background-image: linear-gradient(180deg, #10233b 0%, #0b1b30 52%, #091626 100%);
+  backdrop-filter: blur(8px) saturate(1.04);
+  box-shadow: inset -1px 0 rgba(126, 192, 255, 0.05);
 }
 
-.dark .sidebar-liquid-shell .sidebar-header,
-.dark .sidebar-liquid-shell .sidebar-footer {
+:global(.dark .sidebar-liquid-shell.liquid-glass::before) {
+  background: linear-gradient(180deg, rgba(126, 192, 255, 0.025), rgba(5, 18, 36, 0.12));
+}
+
+:global(.dark .sidebar-liquid-shell.liquid-glass::after) {
+  border-color: rgba(163, 207, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+}
+
+:global(.dark .sidebar-liquid-shell) .sidebar-header,
+:global(.dark .sidebar-liquid-shell) .sidebar-footer {
   border-color: rgba(163, 207, 255, 0.1);
 }
 

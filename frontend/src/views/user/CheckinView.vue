@@ -11,9 +11,9 @@
             <div class="flex min-w-0 flex-col gap-5 sm:flex-row sm:items-center">
               <div class="relative mx-auto flex h-24 w-24 shrink-0 items-center justify-center sm:mx-0">
                 <div class="absolute inset-3 rounded-3xl bg-emerald-200/60 blur-xl dark:bg-emerald-600/25"></div>
-                <div class="relative flex h-20 w-20 items-center justify-center rounded-3xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-100 text-emerald-600 shadow-[0_18px_38px_rgba(20,184,166,0.24)] dark:border-emerald-700/40 dark:from-emerald-950 dark:to-teal-950 dark:text-emerald-300">
+                <div class="relative flex h-20 w-20 items-center justify-center rounded-3xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-100 text-emerald-600 shadow-[0_18px_38px_rgba(22,119,255,0.24)] dark:border-emerald-700/40 dark:from-emerald-950 dark:to-teal-950 dark:text-emerald-300">
                   <Icon name="calendar" size="xl" :stroke-width="1.9" />
-                  <Icon name="check" size="lg" class="absolute -bottom-1 -right-1 rounded-full bg-white p-1 text-teal-500 shadow-lg dark:bg-dark-900" :stroke-width="2.6" />
+                  <Icon name="check" size="lg" class="absolute -bottom-1 -right-1 rounded-full bg-white p-1 text-primary-500 shadow-lg dark:bg-dark-900" :stroke-width="2.6" />
                 </div>
                 <span class="absolute left-1 top-3 h-2 w-2 rounded-full bg-teal-300 shadow-[0_0_18px_rgba(45,212,191,0.8)]"></span>
                 <span class="absolute right-2 top-1 h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_14px_rgba(52,211,153,0.8)]"></span>
@@ -36,7 +36,7 @@
 
             <div class="flex flex-col items-center gap-3 lg:items-end">
               <button
-                class="inline-flex min-h-[58px] min-w-[190px] items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 px-8 text-base font-semibold text-white shadow-[0_18px_32px_rgba(20,184,166,0.28)] transition hover:-translate-y-0.5 hover:shadow-[0_22px_36px_rgba(20,184,166,0.34)] disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0"
+                class="inline-flex min-h-[58px] min-w-[190px] items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-primary-400 to-primary-600 px-8 text-base font-semibold text-white shadow-[0_18px_32px_rgba(22,119,255,0.28)] transition hover:-translate-y-0.5 hover:shadow-[0_22px_36px_rgba(22,119,255,0.34)] disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0"
                 :disabled="alreadyCheckedIn || checkingIn || loading"
                 @click="handleCheckin"
               >
@@ -108,7 +108,7 @@
                   <p class="mt-1 text-xs text-slate-500 dark:text-dark-400">{{ card.hint }}</p>
                 </div>
               </div>
-              <div class="pointer-events-none absolute bottom-2 right-3 text-teal-300/25 transition group-hover:scale-110 group-hover:text-teal-300/40 dark:text-teal-500/20">
+              <div class="pointer-events-none absolute bottom-2 right-3 text-primary-300/25 transition group-hover:scale-110 group-hover:text-primary-300/40 dark:text-primary-500/20">
                 <Icon :name="card.accentIcon" size="xl" :stroke-width="1.5" />
               </div>
             </div>
@@ -190,7 +190,7 @@
                     <span
                       class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold sm:h-8 sm:w-8 sm:text-sm"
                       :class="day.checked_in
-                        ? 'bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-[0_8px_18px_rgba(20,184,166,0.3)]'
+                        ? 'bg-gradient-to-br from-primary-400 to-primary-600 text-white shadow-[0_8px_18px_rgba(22,119,255,0.3)]'
                         : day.is_today
                           ? 'bg-white text-teal-600 ring-1 ring-inset ring-teal-200 dark:bg-dark-950 dark:text-teal-300 dark:ring-teal-800'
                           : 'bg-slate-50 text-slate-300 ring-1 ring-inset ring-slate-200 dark:bg-dark-800 dark:text-dark-500 dark:ring-dark-700'"
@@ -607,7 +607,7 @@ onMounted(() => {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background-image: radial-gradient(rgba(20, 184, 166, 0.14) 1px, transparent 1px);
+  background-image: radial-gradient(rgba(22, 119, 255, 0.14) 1px, transparent 1px);
   background-size: 14px 14px;
   mask-image: linear-gradient(to bottom, transparent, black 24%, black 78%, transparent);
   opacity: 0.42;

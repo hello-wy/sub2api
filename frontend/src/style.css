@@ -318,12 +318,90 @@
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), inset 0 -1px 0 rgba(75, 159, 255, 0.12);
 }
 
+/* Shared liquid-glass surface for native buttons and button-like links. */
+:where(button, .btn) {
+  --liquid-button-edge: rgba(255, 255, 255, 0.56);
+  --liquid-button-highlight: rgba(255, 255, 255, 0.34);
+  --liquid-button-refraction: rgba(22, 119, 255, 0.1);
+  position: relative;
+  isolation: isolate;
+  -webkit-backdrop-filter: blur(12px) saturate(1.16) contrast(1.03);
+  backdrop-filter: blur(12px) saturate(1.16) contrast(1.03);
+}
+
+:where(button, .btn)::before {
+  position: absolute;
+  z-index: -1;
+  inset: 1px;
+  border: 1px solid var(--liquid-button-edge);
+  border-radius: inherit;
+  content: '';
+  pointer-events: none;
+  background: linear-gradient(
+    135deg,
+    var(--liquid-button-highlight),
+    rgba(255, 255, 255, 0.04) 48%,
+    var(--liquid-button-refraction)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.44),
+    inset 0 -1px 0 var(--liquid-button-refraction);
+}
+
+.dark :where(button, .btn) {
+  --liquid-button-edge: rgba(210, 234, 255, 0.2);
+  --liquid-button-highlight: rgba(240, 249, 255, 0.15);
+  --liquid-button-refraction: rgba(75, 159, 255, 0.12);
+}
+
+:where(button, .btn):disabled::before,
+:where(.btn[aria-disabled='true'])::before {
+  opacity: 0.5;
+}
+
+.page-fade-enter-active,
+.page-fade-leave-active {
+  will-change: opacity, transform;
+}
+
+.page-fade-enter-active {
+  transition:
+    opacity 220ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.page-fade-leave-active {
+  transition:
+    opacity 140ms ease-in,
+    transform 140ms ease-in;
+}
+
+.page-fade-enter-from {
+  opacity: 0;
+  transform: translate3d(0, 8px, 0);
+}
+
+.page-fade-leave-to {
+  opacity: 0;
+  transform: translate3d(0, -4px, 0);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .home-hero-copy,
   .home-floating-nav,
   .home-product-stack,
   .home-marquee-track {
     animation: none;
+  }
+
+  .page-fade-enter-active,
+  .page-fade-leave-active {
+    transition-duration: 0.01ms;
+  }
+
+  .page-fade-enter-from,
+  .page-fade-leave-to {
+    transform: none;
   }
 }
 
@@ -332,6 +410,7 @@
   .btn {
     @apply inline-flex items-center justify-center gap-2;
     @apply rounded-xl px-4 py-2.5 text-sm font-medium;
+    @apply overflow-hidden;
     @apply transition-all duration-200 ease-out;
     @apply focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:ring-offset-2;
     @apply disabled:transform-none disabled:cursor-not-allowed disabled:opacity-50;
@@ -346,16 +425,16 @@
   }
 
   .btn-secondary {
-    @apply bg-white dark:bg-dark-800;
+    @apply bg-white/80 dark:bg-dark-800/80;
     @apply text-gray-700 dark:text-gray-200;
     @apply border border-gray-200 dark:border-dark-600;
-    @apply shadow-sm hover:bg-gray-50 dark:hover:bg-dark-700;
+    @apply shadow-sm hover:bg-gray-50/90 dark:hover:bg-dark-700/85;
     @apply hover:border-gray-300 dark:hover:border-dark-500;
   }
 
   .btn-ghost {
     @apply bg-transparent text-gray-600 dark:text-gray-300;
-    @apply hover:bg-gray-100 dark:hover:bg-dark-800;
+    @apply hover:bg-gray-100/80 dark:hover:bg-dark-800/75;
   }
 
   .btn-danger {
