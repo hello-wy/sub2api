@@ -1,14 +1,8 @@
 <template>
   <div
-    :class="[
-      'group relative flex flex-col overflow-hidden rounded-2xl border transition-all',
-      'hover:shadow-xl hover:-translate-y-0.5',
-      borderClass,
-      'bg-white dark:bg-dark-800',
-    ]"
+    class="group relative flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-white transition-colors duration-200 hover:border-primary-300 dark:border-dark-600 dark:bg-dark-800 dark:hover:border-primary-500/60"
   >
-    <!-- Colored top accent bar -->
-    <div :class="['h-1.5', accentClass]" />
+    <div class="h-1 bg-primary-500" />
 
     <div class="flex flex-1 flex-col p-4">
       <!-- Header: name + badge + price -->
@@ -16,7 +10,7 @@
         <div class="min-w-0 flex-1">
           <div class="flex items-center gap-2">
             <h3 class="truncate text-base font-bold text-gray-900 dark:text-white">{{ plan.name }}</h3>
-            <span :class="['shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium', badgeLightClass]">
+            <span class="shrink-0 rounded-md border border-primary-200 bg-primary-50 px-2 py-0.5 text-[11px] font-medium text-primary-700 dark:border-primary-500/30 dark:bg-primary-500/10 dark:text-primary-300">
               {{ pLabel }}
             </span>
           </div>
@@ -26,14 +20,13 @@
         </div>
         <div class="shrink-0 text-right">
           <div class="flex items-baseline gap-1">
-            <span class="text-xs text-gray-400 dark:text-dark-500">$</span>
-            <span :class="['text-2xl font-extrabold tracking-tight', textClass]">{{ plan.price }}</span>
-            <span v-if="plan.currency" class="text-xs font-medium text-gray-400 dark:text-dark-500">{{ plan.currency }}</span>
+            <span class="text-sm font-semibold text-primary-600 dark:text-primary-400">¥</span>
+            <span class="text-2xl font-extrabold tracking-tight text-gray-950 dark:text-white">{{ displayPrice }}</span>
           </div>
           <span class="text-[11px] text-gray-400 dark:text-dark-500">/ {{ validitySuffix }}</span>
           <div v-if="plan.original_price" class="mt-0.5 flex items-center justify-end gap-1.5">
-            <span class="text-xs text-gray-400 line-through dark:text-dark-500">${{ plan.original_price }}<template v-if="plan.currency"> {{ plan.currency }}</template></span>
-            <span :class="['rounded px-1 py-0.5 text-[10px] font-semibold', discountClass]">{{ discountText }}</span>
+            <span class="text-xs text-gray-400 line-through dark:text-dark-500">¥{{ displayOriginalPrice }}</span>
+            <span class="rounded bg-primary-50 px-1.5 py-0.5 text-[10px] font-semibold text-primary-700 dark:bg-primary-500/10 dark:text-primary-300">{{ discountText }}</span>
           </div>
         </div>
       </div>
@@ -78,7 +71,7 @@
       <!-- Features list (compact) -->
       <div v-if="plan.features.length > 0" class="mb-3 space-y-1">
         <div v-for="feature in plan.features" :key="feature" class="flex items-start gap-1.5">
-          <svg :class="['mt-0.5 h-3.5 w-3.5 flex-shrink-0', iconClass]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+          <svg class="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
           </svg>
           <span class="text-xs text-gray-600 dark:text-gray-300">{{ feature }}</span>
@@ -90,10 +83,10 @@
       <!-- Subscribe Button -->
       <button
         type="button"
-        :class="['w-full rounded-xl py-2.5 text-sm font-semibold transition-all active:scale-[0.98]', btnClass]"
+        class="btn btn-primary w-full py-2.5 text-sm font-semibold"
         @click="emit('select', plan)"
       >
-        {{ isRenewal ? t('payment.renewNow') : t('payment.subscribeNow') }}
+        {{ t('wallet.subscribeAction') }}
       </button>
     </div>
   </div>
@@ -103,38 +96,34 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { SubscriptionPlan } from '@/types/payment'
-import type { UserSubscription } from '@/types'
 import { useAppStore } from '@/stores/app'
 import { hasPeakRate as groupHasPeakRate, formatPeakRateWindow, serverTimezoneLabel } from '@/utils/peak-rate'
-import {
-  platformAccentBarClass,
-  platformBadgeLightClass,
-  platformBorderClass,
-  platformTextClass,
-  platformIconClass,
-  platformButtonClass,
-  platformDiscountClass,
-  platformLabel,
-} from '@/utils/platformColors'
+import { platformLabel } from '@/utils/platformColors'
 
-const props = defineProps<{ plan: SubscriptionPlan; activeSubscriptions?: UserSubscription[] }>()
+const props = withDefaults(defineProps<{
+  plan: SubscriptionPlan
+  subscriptionUsdToCnyRate?: number
+}>(), {
+  subscriptionUsdToCnyRate: 0,
+})
 const emit = defineEmits<{ select: [plan: SubscriptionPlan] }>()
 const { t } = useI18n()
 
 const platform = computed(() => props.plan.group_platform || '')
-const isRenewal = computed(() =>
-  props.activeSubscriptions?.some(s => s.group_id === props.plan.group_id && s.status === 'active') ?? false
-)
-
-// Derived color classes from central config
-const accentClass = computed(() => platformAccentBarClass(platform.value))
-const borderClass = computed(() => platformBorderClass(platform.value))
-const badgeLightClass = computed(() => platformBadgeLightClass(platform.value))
-const textClass = computed(() => platformTextClass(platform.value))
-const iconClass = computed(() => platformIconClass(platform.value))
-const btnClass = computed(() => platformButtonClass(platform.value))
-const discountClass = computed(() => platformDiscountClass(platform.value))
 const pLabel = computed(() => platformLabel(platform.value))
+
+function cnyPrice(value: number): string {
+  const rate = Number.isFinite(props.subscriptionUsdToCnyRate) && props.subscriptionUsdToCnyRate > 0
+    ? props.subscriptionUsdToCnyRate
+    : 1
+  return new Intl.NumberFormat('zh-CN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value * rate)
+}
+
+const displayPrice = computed(() => cnyPrice(props.plan.price))
+const displayOriginalPrice = computed(() => cnyPrice(props.plan.original_price ?? 0))
 
 const discountText = computed(() => {
   if (!props.plan.original_price || props.plan.original_price <= 0) return ''

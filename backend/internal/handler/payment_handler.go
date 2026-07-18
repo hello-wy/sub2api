@@ -7,6 +7,7 @@ import (
 	"time"
 
 	dbent "github.com/Wei-Shaw/sub2api/ent"
+	"github.com/Wei-Shaw/sub2api/internal/handler/dto"
 	"github.com/Wei-Shaw/sub2api/internal/payment"
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
@@ -294,6 +295,41 @@ func (h *PaymentHandler) CreateOrder(c *gin.Context) {
 		return
 	}
 	response.Success(c, result)
+}
+
+type BalanceSubscriptionPurchaseRequest struct {
+	PlanID int64 `json:"plan_id" binding:"required"`
+}
+
+func (h *PaymentHandler) PurchaseSubscriptionWithBalance(c *gin.Context) {
+	subject, ok := requireAuth(c)
+	if !ok {
+		return
+	}
+
+	var req BalanceSubscriptionPurchaseRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+	result, err := h.paymentService.PurchaseSubscriptionWithBalance(c.Request.Context(), service.BalanceSubscriptionPurchaseRequest{
+		UserID:   subject.UserID,
+		PlanID:   req.PlanID,
+		ClientIP: c.ClientIP(),
+		SrcHost:  c.Request.Host,
+		SrcURL:   c.Request.Referer(),
+		Locale:   c.GetHeader("Accept-Language"),
+	})
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, gin.H{
+		"order_id":     result.OrderID,
+		"amount":       result.Amount,
+		"new_balance":  result.NewBalance,
+		"subscription": dto.UserSubscriptionFromService(result.Subscription),
+	})
 }
 
 func applyWeChatPaymentResumeClaims(req *CreateOrderRequest, claims *service.WeChatPaymentResumeClaims) error {

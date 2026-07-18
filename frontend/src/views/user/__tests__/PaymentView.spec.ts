@@ -21,8 +21,10 @@ const showError = vi.hoisted(() => vi.fn())
 const showInfo = vi.hoisted(() => vi.fn())
 const showWarning = vi.hoisted(() => vi.fn())
 const getCheckoutInfo = vi.hoisted(() => vi.fn())
+const purchaseSubscriptionWithBalance = vi.hoisted(() => vi.fn())
 const bridgeInvoke = vi.hoisted(() => vi.fn())
 const activeSubscriptionsState = vi.hoisted(() => ({ items: [] as UserSubscription[] }))
+const authUserState = vi.hoisted(() => ({ user: { username: 'demo-user', balance: 0 } }))
 
 vi.mock('vue-router', async () => {
   const actual = await vi.importActual<typeof import('vue-router')>('vue-router')
@@ -49,9 +51,8 @@ vi.mock('vue-i18n', async () => {
 
 vi.mock('@/stores/auth', () => ({
   useAuthStore: () => ({
-    user: {
-      username: 'demo-user',
-      balance: 0,
+    get user() {
+      return authUserState.user
     },
     refreshUser,
   }),
@@ -83,6 +84,7 @@ vi.mock('@/stores', () => ({
 vi.mock('@/api/payment', () => ({
   paymentAPI: {
     getCheckoutInfo,
+    purchaseSubscriptionWithBalance,
   },
 }))
 
@@ -92,6 +94,8 @@ vi.mock('@/utils/device', () => ({
 
 beforeEach(() => {
   activeSubscriptionsState.items = []
+  authUserState.user = { username: 'demo-user', balance: 0 }
+  purchaseSubscriptionWithBalance.mockReset()
 })
 
 function checkoutInfoFixture(overrides: Partial<CheckoutInfoResponse> = {}) {
@@ -399,6 +403,45 @@ describe('PaymentView balance loyalty discount', () => {
 })
 
 describe('PaymentView subscription confirmation amounts', () => {
+  it('purchases a subscription with account balance and refreshes the wallet summary', async () => {
+    authUserState.user = { username: 'demo-user', balance: 200 }
+    purchaseSubscriptionWithBalance.mockResolvedValue({
+      data: { order_id: 99, amount: 128, new_balance: 72, subscription: {} },
+    })
+    const wrapper = await mountSubscriptionConfirm()
+
+    const balanceButton = wrapper.findAll('button').find(button => button.text().includes('wallet.subscriptionPaymentBalance'))
+    expect(balanceButton).toBeTruthy()
+    await balanceButton?.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('$128.00')
+    expect(wrapper.text()).toContain('$200.00')
+    const submitButton = wrapper.findAll('button').find(button => button.text().includes('wallet.subscribeAction $128.00'))
+    expect(submitButton).toBeTruthy()
+    await submitButton?.trigger('click')
+    await flushPromises()
+
+    expect(purchaseSubscriptionWithBalance).toHaveBeenCalledWith(7)
+    expect(refreshUser).toHaveBeenCalled()
+    expect(fetchActiveSubscriptions).toHaveBeenCalledWith(true)
+    expect(showInfo).toHaveBeenCalledWith('wallet.subscriptionBalanceSuccess')
+  })
+
+  it('disables balance subscription when the account balance is insufficient', async () => {
+    authUserState.user = { username: 'demo-user', balance: 12 }
+    const wrapper = await mountSubscriptionConfirm()
+
+    const balanceButton = wrapper.findAll('button').find(button => button.text().includes('wallet.subscriptionPaymentBalance'))
+    await balanceButton?.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('wallet.subscriptionBalanceInsufficient')
+    const submitButton = wrapper.findAll('button').find(button => button.text().includes('wallet.subscribeAction $128.00'))
+    expect(submitButton?.attributes('disabled')).toBeDefined()
+    expect(purchaseSubscriptionWithBalance).not.toHaveBeenCalled()
+  })
+
   it('shows converted CNY pay amount using the subscription rate, not the balance multiplier', async () => {
     const wrapper = await mountSubscriptionConfirm({
       checkout: {
@@ -426,7 +469,7 @@ describe('PaymentView subscription confirmation amounts', () => {
     expect(wrapper.findAll('button').some(button => button.text().includes(convertedPrice))).toBe(true)
   })
 
-  it('keeps plan price when the subscription rate is not configured or payment currency is not CNY', async () => {
+  it('keeps the catalog price in yuan while preserving the provider currency at checkout', async () => {
     // opt-in 回归锁：即使余额倍率已配置，未配置订阅汇率时 CNY 订阅仍按 price 直付
     const cnyWrapper = await mountSubscriptionConfirm({
       checkout: {
@@ -458,8 +501,10 @@ describe('PaymentView subscription confirmation amounts', () => {
       },
     })
 
-    expect(usdWrapper.text()).toContain(formatPaymentAmount(7.99, 'USD'))
-    expect(usdWrapper.text()).toContain(formatPaymentAmount(9.99, 'USD'))
+    expect(usdWrapper.text()).toContain(formatPaymentAmount(7.99 * 7.15, 'CNY'))
+    expect(usdWrapper.text()).toContain(formatPaymentAmount(9.99 * 7.15, 'CNY'))
+    expect(usdWrapper.findAll('button').some(button => button.text().includes(formatPaymentAmount(7.99, 'USD')))).toBe(true)
+    expect(usdWrapper.text()).not.toContain(formatPaymentAmount(9.99, 'USD'))
   })
 
   it('adds fee rate after CNY rate conversion to match backend pay_amount', async () => {

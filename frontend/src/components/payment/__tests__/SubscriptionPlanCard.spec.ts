@@ -19,15 +19,18 @@ const i18n = createI18n({
           rate: "Rate",
           unlimited: "Unlimited",
         },
-        subscribeNow: "Subscribe now",
+      },
+      wallet: {
+        subscribeAction: "Subscribe",
       },
     },
   },
 });
 
-const mountPlanCard = (groupPlatform: string) =>
+const mountPlanCard = (groupPlatform: string, subscriptionUsdToCnyRate = 0) =>
   mount(SubscriptionPlanCard, {
     props: {
+      subscriptionUsdToCnyRate,
       plan: {
         id: 1,
         group_id: 10,
@@ -61,5 +64,13 @@ describe("SubscriptionPlanCard", () => {
     expect(text).toContain("Claude");
     expect(text).toContain("Gemini");
     expect(text).toContain("Imagen");
+  });
+
+  it("shows the converted yuan price and always uses the subscribe action", () => {
+    const wrapper = mountPlanCard("openai", 7.15);
+
+    expect(wrapper.text()).toContain("¥71.50");
+    expect(wrapper.text()).not.toContain("$10");
+    expect(wrapper.get("button").text()).toBe("wallet.subscribeAction");
   });
 });

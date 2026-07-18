@@ -994,3 +994,13 @@ func TestExecuteSubscriptionFulfillmentDoesNotDuplicateWorkAfterLegacySuccessAud
 
 var _ AffiliateRepository = (*paymentFulfillmentAffiliateRepoStub)(nil)
 var _ SettingRepository = (*paymentFulfillmentSettingRepoStub)(nil)
+
+func TestAffiliateRebateBaseAmountSkipsBalanceFundedSubscription(t *testing.T) {
+	order := &dbent.PaymentOrder{
+		Amount:      25,
+		PaymentType: "balance",
+		OrderType:   payment.OrderTypeSubscription,
+	}
+
+	require.Zero(t, affiliateRebateBaseAmount(order))
+}

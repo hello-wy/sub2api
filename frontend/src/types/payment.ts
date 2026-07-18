@@ -2,6 +2,8 @@
  * Payment System Type Definitions
  */
 
+import type { UserSubscription } from '@/types'
+
 // ==================== Enums / Union Types ====================
 
 export type OrderStatus =
@@ -241,6 +243,13 @@ export interface CreateOrderResult {
   jsapi?: WechatJSAPIPayload
   jsapi_payload?: WechatJSAPIPayload
   loyalty?: PaymentLoyaltyInfo
+}
+
+export interface BalanceSubscriptionPurchaseResult {
+  order_id: number
+  amount: number
+  new_balance: number
+  subscription: UserSubscription
 }
 
 export interface DashboardStats {
