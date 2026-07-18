@@ -6,7 +6,7 @@
     <!-- Main Content Area -->
     <div
       class="relative flex h-dvh min-h-0 flex-col transition-all duration-300"
-      :class="[sidebarCollapsed ? 'lg:ml-[84px]' : 'lg:ml-[268px]']"
+      :class="[sidebarCollapsed ? 'lg:ml-[84px]' : 'lg:ml-[236px]']"
     >
       <!-- Header -->
       <AppHeader />
