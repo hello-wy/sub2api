@@ -1159,17 +1159,12 @@
     padding-right: 0.875rem;
   }
 
-  .sidebar-link:not(.sidebar-link-active):hover {
-    transform: translateX(0.1875rem);
-    border-color: rgba(59, 130, 246, 0.2);
-    background-color: rgba(22, 119, 255, 0.08);
-    box-shadow: 0 6px 18px rgba(44, 111, 184, 0.07);
+  .sidebar-link:hover {
+    background-color: rgba(22, 119, 255, 0.055);
   }
 
-  .dark .sidebar-link:not(.sidebar-link-active):hover {
-    border-color: rgba(126, 192, 255, 0.16);
-    background-color: rgba(126, 192, 255, 0.08);
-    box-shadow: 0 7px 20px rgba(0, 0, 0, 0.12);
+  .dark .sidebar-link:hover {
+    background-color: rgba(126, 192, 255, 0.055);
   }
 
   .sidebar-link-active {

@@ -3,7 +3,7 @@
     class="sidebar"
     :class="[
       sidebarCollapsed ? 'w-[72px]' : 'w-64',
-      { '-translate-x-full lg:translate-x-0': !mobileOpen }
+      { '-translate-x-[calc(100%+1.5rem)] lg:translate-x-0': !mobileOpen }
     ]"
   >
     <LiquidGlass class="sidebar-liquid-shell relative flex h-full flex-col">
@@ -965,12 +965,24 @@ watch(
 </script>
 
 <style scoped>
+:global(.sidebar) {
+  top: 0.75rem;
+  bottom: 0.75rem;
+  left: 0.75rem;
+}
+
 :global(.sidebar-liquid-shell) {
+  overflow: hidden;
+  border: 1px solid rgba(148, 184, 222, 0.28);
+  border-radius: 1rem;
   background-color: var(--app-chrome-surface);
   background-image: none;
   -webkit-backdrop-filter: blur(12px) saturate(1.08);
   backdrop-filter: blur(12px) saturate(1.08);
-  box-shadow: inset 0 1px 0 var(--app-chrome-highlight);
+  box-shadow:
+    inset 0 1px 0 var(--app-chrome-highlight),
+    0 18px 46px rgba(47, 94, 143, 0.16),
+    0 3px 12px rgba(47, 94, 143, 0.08);
 }
 
 :global(.sidebar-liquid-shell.liquid-glass::before) {
@@ -987,9 +999,13 @@ watch(
 }
 
 :global(.dark .sidebar-liquid-shell) {
+  border-color: rgba(163, 207, 255, 0.14);
   background-color: var(--app-chrome-surface);
   background-image: none;
-  box-shadow: inset 0 1px 0 var(--app-chrome-highlight);
+  box-shadow:
+    inset 0 1px 0 var(--app-chrome-highlight),
+    0 22px 52px rgba(0, 0, 0, 0.34),
+    0 4px 14px rgba(0, 0, 0, 0.2);
 }
 
 :global(.dark .sidebar-liquid-shell.liquid-glass::before) {
