@@ -10,8 +10,9 @@ const loginSource = readFileSync(resolve(dir, '../../../views/auth/LoginView.vue
 
 describe('AuthLayout home-inspired login variant', () => {
   it('uses the dedicated home variant only for the login page', () => {
-    expect(loginSource).toContain('<AuthLayout variant="home">')
-    expect(layoutSource).toContain("variant?: 'default' | 'home'")
+    expect(loginSource).toContain(":variant=\"embedded ? 'embedded' : 'home'\"")
+    expect(layoutSource).toContain("variant?: 'default' | 'home' | 'embedded'")
+    expect(layoutSource).toContain('class="auth-embedded-shell"')
     expect(layoutSource).toContain("variant: 'default'")
   })
 

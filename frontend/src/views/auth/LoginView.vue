@@ -1,5 +1,5 @@
 <template>
-  <AuthLayout variant="home">
+  <AuthLayout :variant="embedded ? 'embedded' : 'home'">
     <div class="login-form space-y-6">
       <!-- Title -->
       <div class="login-heading">
@@ -221,11 +221,19 @@ import { resolvePostLoginRedirect } from '@/router/postLoginRedirect'
 const { t } = useI18n()
 const LOGIN_AGREEMENT_STORAGE_KEY = 'sub2api_login_agreement_consent'
 
+const props = withDefaults(defineProps<{
+  embedded?: boolean
+}>(), {
+  embedded: false
+})
+
 // ==================== Router & Stores ====================
 
 const router = useRouter()
 const authStore = useAuthStore()
 const appStore = useAppStore()
+
+const embedded = computed(() => props.embedded)
 
 // ==================== State ====================
 

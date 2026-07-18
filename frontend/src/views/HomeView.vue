@@ -66,12 +66,23 @@
         </button>
 
         <router-link
-          :to="isAuthenticated ? dashboardPath : '/login'"
+          v-if="isAuthenticated"
+          :to="dashboardPath"
           class="hidden items-center gap-2 rounded-full bg-[#06111f] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_18px_45px_rgba(6,17,31,0.18)] transition-all hover:-translate-y-0.5 hover:bg-[#102235] dark:bg-white dark:text-[#06111f] dark:shadow-[0_18px_45px_rgba(255,255,255,0.12)] dark:hover:bg-[#eef6ff] md:inline-flex"
         >
-          {{ isAuthenticated ? '进入控制台' : '开始使用' }}
+          进入控制台
           <Icon name="arrowRight" size="sm" :stroke-width="2" />
         </router-link>
+
+        <button
+          v-else
+          type="button"
+          class="hidden items-center gap-2 rounded-full bg-[#06111f] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_18px_45px_rgba(6,17,31,0.18)] transition-all hover:-translate-y-0.5 hover:bg-[#102235] dark:bg-white dark:text-[#06111f] dark:shadow-[0_18px_45px_rgba(255,255,255,0.12)] dark:hover:bg-[#eef6ff] md:inline-flex"
+          @click="openInlineLogin"
+        >
+          开始使用
+          <Icon name="arrowRight" size="sm" :stroke-width="2" />
+        </button>
 
         <button
           class="flex h-11 w-11 items-center justify-center rounded-full border border-[#d8e2ee] bg-white text-[#06111f] transition-colors hover:border-[#b9c9da] hover:bg-[#f4f8ff] md:hidden dark:border-[#263548] dark:bg-[#0d1724] dark:text-white dark:hover:border-[#3b526b] dark:hover:bg-[#121f2f]"
@@ -85,7 +96,7 @@
 
     <section
       id="home-hero"
-      class="relative min-h-[100dvh] w-full overflow-hidden bg-[#f4f8ff] dark:bg-[#050b14]"
+      class="relative min-h-[100dvh] w-full overflow-x-hidden bg-[#f4f8ff] dark:bg-[#050b14]"
       @mouseleave="hideSpotlight"
     >
       <img
@@ -124,7 +135,8 @@
       <div class="pointer-events-none absolute inset-0 z-40" :style="{ background: verticalOverlay }"></div>
 
       <div class="absolute left-0 top-[23%] z-50 w-full px-7 sm:top-[20%] sm:px-10 lg:top-1/2 lg:-translate-y-[46%] lg:pr-14 lg:pl-[clamp(4rem,6vw,7rem)]">
-        <div class="max-w-[840px]">
+        <Transition name="home-login" mode="out-in">
+          <div v-if="!showInlineLogin" key="hero-copy" class="max-w-[840px]">
           <p
             class="hero-anim hero-fade mb-6 text-sm font-semibold tracking-[0.08em] text-[#1677ff] dark:text-[#a6d3ff]"
             :style="{ animationDelay: '0.12s' }"
@@ -152,12 +164,22 @@
             :style="{ animationDelay: '0.74s' }"
           >
             <router-link
-              :to="isAuthenticated ? dashboardPath : '/login'"
+              v-if="isAuthenticated"
+              :to="dashboardPath"
               class="inline-flex items-center gap-2 rounded-full bg-[#1677ff] px-7 py-3 text-sm font-semibold text-white shadow-[0_18px_42px_rgba(22,119,255,0.32)] transition-all hover:scale-[1.03] hover:bg-[#2488ff] active:scale-95 dark:bg-[#2488ff] dark:shadow-[0_18px_42px_rgba(36,136,255,0.36)]"
             >
               开始使用
               <Icon name="arrowRight" size="sm" :stroke-width="2" />
             </router-link>
+            <button
+              v-else
+              type="button"
+              class="inline-flex items-center gap-2 rounded-full bg-[#1677ff] px-7 py-3 text-sm font-semibold text-white shadow-[0_18px_42px_rgba(22,119,255,0.32)] transition-all hover:scale-[1.03] hover:bg-[#2488ff] active:scale-95 dark:bg-[#2488ff] dark:shadow-[0_18px_42px_rgba(36,136,255,0.36)]"
+              @click="openInlineLogin"
+            >
+              开始使用
+              <Icon name="arrowRight" size="sm" :stroke-width="2" />
+            </button>
             <router-link
               to="/models"
               class="inline-flex items-center gap-2 rounded-full border border-[#1677ff]/18 bg-white/76 px-7 py-3 text-sm font-semibold text-[#06111f] shadow-[0_16px_36px_rgba(20,68,140,0.10)] backdrop-blur-xl transition-all hover:border-[#1677ff]/36 hover:bg-white active:scale-95 dark:border-white/18 dark:bg-white/14 dark:text-white dark:shadow-none dark:hover:border-[#79b8ff]/55 dark:hover:bg-white/18"
@@ -192,6 +214,26 @@
             </LogoLoop>
           </div>
         </div>
+
+          <div v-else key="inline-login" class="home-inline-login">
+            <div class="home-inline-card">
+              <button
+                type="button"
+                class="home-inline-close"
+                aria-label="关闭登录面板"
+                title="关闭登录面板"
+                @click="closeInlineLogin"
+              >
+                <Icon name="x" size="sm" :stroke-width="2" />
+              </button>
+              <div class="home-inline-kicker">
+                <span class="home-inline-kicker-dot"></span>
+                安全访问 · AI API Gateway
+              </div>
+              <LoginView :embedded="true" />
+            </div>
+          </div>
+        </Transition>
       </div>
 
     </section>
@@ -204,6 +246,7 @@ import { useAuthStore, useAppStore } from '@/stores'
 import LogoLoop, { type LogoItem } from '@/components/home/LogoLoop.vue'
 import ProviderLogo from '@/components/home/ProviderLogo.vue'
 import Icon from '@/components/icons/Icon.vue'
+import LoginView from '@/views/auth/LoginView.vue'
 import { sanitizeUrl } from '@/utils/url'
 
 type IconName = InstanceType<typeof Icon>['$props']['name']
@@ -246,6 +289,7 @@ const isHomeContentUrl = computed(() => {
 })
 
 const isDark = ref(document.documentElement.classList.contains('dark'))
+const showInlineLogin = ref(false)
 const cursorPos = ref({ x: -999, y: -999 })
 const mouse = { x: -999, y: -999 }
 const smooth = { x: -999, y: -999 }
@@ -287,6 +331,15 @@ const verticalOverlay = computed(() => (
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 const isAdmin = computed(() => authStore.isAdmin)
 const dashboardPath = computed(() => isAdmin.value ? '/admin/dashboard' : '/dashboard')
+
+function openInlineLogin() {
+  if (isAuthenticated.value) return
+  showInlineLogin.value = true
+}
+
+function closeInlineLogin() {
+  showInlineLogin.value = false
+}
 
 function handleMouseMove(event: MouseEvent) {
   mouse.x = event.clientX
@@ -356,3 +409,114 @@ onBeforeUnmount(() => {
   }
 })
 </script>
+
+<style scoped>
+.home-inline-login {
+  width: min(100%, 448px);
+}
+
+.home-inline-card {
+  position: relative;
+  border: 1px solid rgba(148, 163, 184, 0.34);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  padding: 30px;
+  box-shadow: 0 28px 72px rgba(30, 64, 175, 0.18), 0 2px 10px rgba(15, 23, 42, 0.06);
+}
+
+.home-inline-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #dbe3ee;
+  border-radius: 7px;
+  color: #64748b;
+  transition: border-color 180ms ease, background-color 180ms ease, color 180ms ease;
+}
+
+.home-inline-close:hover {
+  border-color: #a8b8cc;
+  background: #f8fafc;
+  color: #1677ff;
+}
+
+.home-inline-kicker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 22px;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.home-inline-kicker-dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: #1677ff;
+  box-shadow: 0 0 0 4px rgba(22, 119, 255, 0.12);
+}
+
+.home-login-enter-active,
+.home-login-leave-active {
+  transition: opacity 260ms ease, transform 260ms ease;
+}
+
+.home-login-enter-from {
+  opacity: 0;
+  transform: translateX(-28px) scale(0.98);
+}
+
+.home-login-leave-to {
+  opacity: 0;
+  transform: translateX(-18px) scale(0.98);
+}
+
+.dark .home-inline-card {
+  border-color: rgba(71, 85, 105, 0.7);
+  background: rgba(11, 20, 34, 0.98);
+  box-shadow: 0 30px 82px rgba(0, 0, 0, 0.46), 0 0 0 1px rgba(96, 165, 250, 0.04);
+}
+
+.dark .home-inline-close {
+  border-color: #334155;
+  color: #94a3b8;
+}
+
+.dark .home-inline-close:hover {
+  border-color: #52647b;
+  background: #101c2d;
+  color: #60a5fa;
+}
+
+.dark .home-inline-kicker {
+  color: #94a3b8;
+}
+
+@media (max-width: 767px) {
+  .home-inline-login {
+    width: 100%;
+  }
+
+  .home-inline-card {
+    padding: 24px 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-login-enter-active,
+  .home-login-leave-active,
+  .home-inline-close {
+    transition: none;
+  }
+}
+</style>
