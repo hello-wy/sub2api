@@ -161,9 +161,9 @@ describe('admin DashboardView', () => {
 
     expect(wrapper.find('.trend-chart').exists()).toBe(true)
     expect(wrapper.text()).toContain('128,420')
-    expect(wrapper.findAll('.hero-card')[0].text()).toContain('实际 ¥124.82')
-    expect(wrapper.findAll('.hero-card')[0].text()).toContain('成本 ¥86.40')
-    expect(wrapper.findAll('.hero-card')[0].text()).toContain('标准 ¥156.75')
+    expect(wrapper.findAll('.hero-card')[0].text()).toContain('实际 $124.82')
+    expect(wrapper.findAll('.hero-card')[0].text()).toContain('成本 $86.40')
+    expect(wrapper.findAll('.hero-card')[0].text()).toContain('标准 $156.75')
     expect(wrapper.text()).toContain('gpt-5')
     expect(wrapper.text()).toContain('team@example.com')
 

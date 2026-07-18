@@ -16,15 +16,15 @@
         </header>
 
         <section class="hero-metrics">
-          <article class="hero-card hero-card--primary"><span>账户余额</span><strong>¥{{ formatCost(user?.balance || 0) }}</strong><small>个人账户可用</small></article>
+          <article class="hero-card hero-card--primary"><span>账户余额</span><strong>${{ formatCost(user?.balance || 0) }}</strong><small>个人账户可用</small></article>
           <article class="hero-card"><span>今日 API 调用</span><strong>{{ formatNumber(stats.today_requests) }}</strong><small>全部请求 {{ formatNumber(stats.total_requests) }} 次</small><svg v-if="hasTrendData" class="metric-sparkline metric-sparkline--mint" viewBox="0 0 300 78" preserveAspectRatio="none"><polyline :points="sparklinePoints" /></svg></article>
-          <article v-if="!authStore.isSimpleMode" class="hero-card"><span>今日消费</span><strong>¥{{ formatCost(stats.today_actual_cost) }}</strong><small>当前余额 ¥{{ formatCost(user?.balance || 0) }}</small><svg v-if="hasTrendData" class="metric-sparkline metric-sparkline--violet" viewBox="0 0 300 78" preserveAspectRatio="none"><polyline :points="sparklinePoints" /></svg></article>
+          <article v-if="!authStore.isSimpleMode" class="hero-card"><span>今日消费</span><strong>${{ formatCost(stats.today_actual_cost) }}</strong><small>当前余额 ${{ formatCost(user?.balance || 0) }}</small><svg v-if="hasTrendData" class="metric-sparkline metric-sparkline--violet" viewBox="0 0 300 78" preserveAspectRatio="none"><polyline :points="sparklinePoints" /></svg></article>
           <article v-else class="hero-card"><span>响应速度</span><strong>{{ formatDuration(stats.average_duration_ms) }}</strong><small>近 5 分钟 {{ formatNumber(stats.rpm) }} RPM</small><svg v-if="hasTrendData" class="metric-sparkline metric-sparkline--violet" viewBox="0 0 300 78" preserveAspectRatio="none"><polyline :points="sparklinePoints" /></svg></article>
         </section>
 
         <section class="personal-strip" aria-label="个人资源状态">
           <div class="strip-item"><span class="strip-icon"><Icon name="key" size="md" /></span><p>我的 API Key<strong>{{ stats.total_api_keys }}</strong><small>{{ stats.active_api_keys }} 个可用</small></p></div>
-          <div v-if="!authStore.isSimpleMode" class="strip-item"><span class="strip-icon"><Icon name="creditCard" size="md" /></span><p>账户余额<strong>¥{{ formatCost(user?.balance || 0) }}</strong><small>个人账户可用</small></p></div>
+          <div v-if="!authStore.isSimpleMode" class="strip-item"><span class="strip-icon"><Icon name="creditCard" size="md" /></span><p>账户余额<strong>${{ formatCost(user?.balance || 0) }}</strong><small>个人账户可用</small></p></div>
           <div class="strip-item"><span class="strip-icon"><Icon name="cube" size="md" /></span><p>累计 Token<strong>{{ formatTokens(stats.total_tokens) }}</strong><small>个人使用总量</small></p></div>
           <div class="strip-item"><span class="strip-icon"><Icon name="chart" size="md" /></span><p>当前速率<strong>{{ formatNumber(stats.rpm) }} RPM</strong><small>{{ formatNumber(stats.tpm) }} TPM</small></p></div>
           <div class="strip-item"><span class="strip-icon"><Icon name="clock" size="md" /></span><p>平均响应<strong>{{ formatDuration(stats.average_duration_ms) }}</strong><small>个人请求表现</small></p></div>
@@ -127,4 +127,67 @@ onMounted(() => { updateDateRange(); refreshAll() })
 .quota-row { display:grid;grid-template-columns:minmax(86px,1fr) auto;gap:5px 12px;border:1px solid var(--line);border-radius:10px;padding:12px 14px;color:#7180a0;font-size:11px; }
 .quota-row strong { grid-row:1 / span 3;color:#17294e;font-size:13px;align-self:start; }
 .quota-row span { text-align:right;font-variant-numeric:tabular-nums; }
+.dashboard-page .hero-card.hero-card--primary { isolation:isolate; border-color:rgba(141,184,255,.76); background:linear-gradient(120deg,rgba(53,122,247,.86) 0%,rgba(83,164,248,.7) 50%,rgba(111,207,224,.58) 100%); box-shadow:0 16px 36px rgba(51,117,217,.2),inset 0 1px rgba(255,255,255,.38); backdrop-filter:blur(14px) saturate(122%); transition:transform .24s cubic-bezier(.16,1,.3,1),border-color .24s ease,box-shadow .24s ease; }
+.hero-card--primary::after { position:absolute; z-index:0; inset:-35% -55%; background:linear-gradient(112deg,transparent 38%,rgba(255,255,255,.28) 50%,transparent 62%); content:""; pointer-events:none; transform:translate3d(-34%,0,0); transition:transform .65s cubic-bezier(.16,1,.3,1); }
+.hero-card--primary > * { position:relative; z-index:1; }
+.hero-card--primary:hover { border-color:rgba(186,224,255,.96); box-shadow:0 22px 46px rgba(45,117,221,.28),inset 0 1px rgba(255,255,255,.48); transform:translate3d(0,-4px,0) scale(1.006); }
+.hero-card--primary:hover::after { transform:translate3d(34%,0,0); }
+@media (prefers-reduced-motion:reduce) { .hero-card--primary,.hero-card--primary::after { transition:none; }.hero-card--primary:hover { transform:none; } }
+</style>
+
+<style>
+.dark .dashboard-page {
+  --ink: #eef4ff;
+  --muted: #9aa9c3;
+  --line: rgba(152, 180, 224, 0.16);
+  background: transparent;
+  color: var(--ink);
+}
+
+.dark .dashboard-page.dashboard-liquid-shell {
+  background: transparent;
+}
+
+.dark .dashboard-page .hero-card:not(.hero-card--primary),
+.dark .dashboard-page .personal-strip,
+.dark .dashboard-page .dashboard-card,
+.dark .dashboard-page .range-label,
+.dark .dashboard-page .refresh-button,
+.dark .dashboard-page .quota-row {
+  border-color: var(--line);
+  background: #0e192b;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
+}
+
+.dark .dashboard-page .dashboard-header h1,
+.dark .dashboard-page .hero-card strong,
+.dark .dashboard-page .strip-item strong,
+.dark .dashboard-page .card-heading h2,
+.dark .dashboard-page .recent-row strong,
+.dark .dashboard-page .dashboard-load-error strong,
+.dark .dashboard-page .quota-row strong {
+  color: #eef4ff;
+}
+
+.dark .dashboard-page .hero-card > span,
+.dark .dashboard-page .hero-card small,
+.dark .dashboard-page .strip-item p,
+.dark .dashboard-page .strip-item small,
+.dark .dashboard-page .card-heading p,
+.dark .dashboard-page .empty-copy,
+.dark .dashboard-page .chart-empty,
+.dark .dashboard-page .quota-row {
+  color: #9aa9c3;
+}
+
+.dark .dashboard-page .strip-item,
+.dark .dashboard-page .recent-row {
+  border-color: var(--line);
+}
+
+.dark .dashboard-page .strip-icon,
+.dark .dashboard-page .model-mark,
+.dark .dashboard-page .model-row span {
+  background: rgba(77, 132, 224, 0.14);
+}
 </style>

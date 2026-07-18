@@ -86,7 +86,7 @@ describe('user DashboardView', () => {
     const cards = wrapper.findAll('.hero-card')
     expect(cards).toHaveLength(3)
     expect(cards[0].text()).toContain('账户余额')
-    expect(cards[0].text()).toContain('¥42.75')
+    expect(cards[0].text()).toContain('$42.75')
     expect(cards[1].text()).toContain('今日 API 调用')
     expect(cards[2].text()).toContain('今日消费')
   })

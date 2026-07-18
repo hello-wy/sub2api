@@ -32,9 +32,9 @@
             <span>今日 Token</span>
             <strong>{{ formatTokens(stats.today_tokens) }}</strong>
             <small class="cost-breakdown">
-              <span>实际 ¥{{ formatCost(stats.today_actual_cost) }}</span>
-              <span>成本 ¥{{ formatCost(stats.today_account_cost) }}</span>
-              <span>标准 ¥{{ formatCost(stats.today_cost) }}</span>
+              <span class="cost-breakdown__actual">实际 ${{ formatCost(stats.today_actual_cost) }}</span>
+              <span class="cost-breakdown__account">成本 ${{ formatCost(stats.today_account_cost) }}</span>
+              <span class="cost-breakdown__standard">标准 ${{ formatCost(stats.today_cost) }}</span>
             </small>
             <svg v-if="hasTrendData" class="metric-sparkline" viewBox="0 0 300 78" preserveAspectRatio="none" aria-hidden="true">
               <polyline :points="sparklinePoints" />
@@ -52,8 +52,8 @@
 
           <article class="hero-card">
             <span>今日消耗</span>
-            <strong>¥{{ formatCost(stats.today_actual_cost) }}</strong>
-            <small>标准成本 ¥{{ formatCost(stats.today_cost) }}</small>
+            <strong>${{ formatCost(stats.today_actual_cost) }}</strong>
+            <small>标准成本 ${{ formatCost(stats.today_cost) }}</small>
             <svg v-if="hasTrendData" class="metric-sparkline metric-sparkline--violet" viewBox="0 0 300 78" preserveAspectRatio="none" aria-hidden="true">
               <polyline :points="sparklinePoints" />
             </svg>
@@ -285,7 +285,14 @@ onMounted(() => { updateDateRange(); loadDashboard() })
 .hero-card strong { display:block; margin:8px 0 9px; color:var(--dashboard-ink); font-size:31px; font-weight:760; letter-spacing:-.045em; line-height:1; }
 .hero-card small { color:var(--dashboard-muted); font-size:12px; }
 .cost-breakdown { display:flex; flex-wrap:wrap; gap:4px 12px; font-variant-numeric:tabular-nums; }
-.hero-card--primary { border-color:#8db8ff; background:linear-gradient(118deg,#5c9dff 0%,#7fbbff 49%,#97e4ec 100%); box-shadow:0 15px 34px rgba(66,135,232,.23),inset 0 1px rgba(255,255,255,.42); }
+.cost-breakdown__actual { color:#bbf7d0; }
+.cost-breakdown__account { color:#fed7aa; }
+.cost-breakdown__standard { color:#e2e8f0; }
+.hero-card--primary { isolation:isolate; border-color:rgba(141,184,255,.76); background:linear-gradient(118deg,rgba(52,124,255,.88) 0%,rgba(76,158,246,.72) 52%,rgba(111,207,224,.62) 100%); box-shadow:0 15px 34px rgba(66,135,232,.2),inset 0 1px rgba(255,255,255,.38); backdrop-filter:blur(14px) saturate(122%); transition:transform .24s cubic-bezier(.16,1,.3,1),border-color .24s ease,box-shadow .24s ease; }
+.hero-card--primary::after { position:absolute; z-index:0; inset:-35% -55%; background:linear-gradient(112deg,transparent 38%,rgba(255,255,255,.28) 50%,transparent 62%); content:""; transform:translate3d(-34%,0,0); transition:transform .65s cubic-bezier(.16,1,.3,1); pointer-events:none; }
+.hero-card--primary > * { position:relative; z-index:1; }
+.hero-card--primary:hover { border-color:rgba(186,224,255,.96); box-shadow:0 22px 46px rgba(45,117,221,.28),inset 0 1px rgba(255,255,255,.48); transform:translate3d(0,-4px,0) scale(1.006); }
+.hero-card--primary:hover::after { transform:translate3d(34%,0,0); }
 .hero-card--primary > span,.hero-card--primary small,.hero-card--primary strong { color:#fff; }
 .metric-sparkline { position:absolute; right:20px; bottom:15px; left:20px; width:calc(100% - 40px); height:69px; opacity:.9; }
 .metric-sparkline polyline { fill:none; stroke:#fff; stroke-width:1.5; vector-effect:non-scaling-stroke; }
@@ -313,7 +320,7 @@ onMounted(() => { updateDateRange(); loadDashboard() })
 .trend-chart polyline { fill:none; stroke:var(--dashboard-blue); stroke-width:2.2; vector-effect:non-scaling-stroke; }
 .chart-y-axis { position:absolute; top:-2px; bottom:-1px; left:0; display:flex; flex-direction:column; justify-content:space-between; color:#8c99b0; font-size:9px; line-height:1; text-align:right; }
 .chart-axis { display:flex; justify-content:space-between; padding-left:35px; color:#8c99b0; font-size:10px; }
-.chart-empty { display:grid; min-height:190px; place-content:center; gap:6px; border-top:1px dashed #edf1f7; color:var(--dashboard-muted); text-align:center; }
+.chart-empty { display:grid; min-height:190px; place-content:center; gap:6px; color:var(--dashboard-muted); text-align:center; }
 .chart-empty span { color:#93a3bd; font-size:22px; font-weight:700; letter-spacing:-.03em; }
 .chart-empty p { margin:0; font-size:12px; }
 .model-list { display:grid; gap:15px; margin-top:20px; }
@@ -339,6 +346,7 @@ onMounted(() => { updateDateRange(); loadDashboard() })
 .dashboard-state--error .refresh-button { margin-top:4px; }
 @media (max-width:1180px) { .dashboard-grid { grid-template-columns:1fr 1fr; }.recent-card { grid-column:span 2; }.operation-strip { grid-template-columns:repeat(3,1fr); }.strip-item:nth-child(3) { border-right:0; }.strip-item:nth-child(-n+3) { border-bottom:1px solid var(--dashboard-line); } }
 @media (max-width:760px) { .dashboard-page { padding-top:0; }.dashboard-header { flex-direction:column; gap:16px; }.dashboard-header h1 { font-size:27px; }.dashboard-actions { width:100%; }.range-label,.refresh-button { flex:1; justify-content:center; }.hero-metrics,.dashboard-grid { grid-template-columns:1fr; }.operation-strip { grid-template-columns:1fr 1fr; }.strip-item { border-bottom:1px solid var(--dashboard-line); }.strip-item:nth-child(2n) { border-right:0; }.recent-card { grid-column:auto; } }
+@media (prefers-reduced-motion:reduce) { .hero-card--primary,.hero-card--primary::after { transition:none; }.hero-card--primary:hover { transform:none; } }
 .dark .dashboard-page { --dashboard-ink:#eef4ff; --dashboard-muted:#9aa9c3; --dashboard-line:rgba(152,180,224,.16); --dashboard-surface:#0e192b; }
 .dark .hero-card:not(.hero-card--primary),.dark .operation-strip,.dark .dashboard-card,.dark .range-label,.dark .refresh-button { background:#0e192b; }
 .dark .hero-card strong,.dark .strip-item strong,.dark .card-heading h2,.dark .recent-row strong { color:#eef4ff; }
