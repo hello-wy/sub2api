@@ -576,12 +576,15 @@ export default {
   wallet: {
     title: '我的钱包',
     description: '统一管理余额充值、订阅套餐、余额明细和兑换码',
-    tabs: {
-      recharge: '余额充值',
-      subscription: '订阅统计',
-      history: '余额明细',
-      redeem: '兑换码'
-    },
+    catalogTitle: '选择套餐',
+    catalogHint: '订阅套餐和余额充值直接展示在下方，按需开通、充值或兑换。',
+    offersCount: '{count} 个套餐',
+    rechargeSectionTitle: '余额充值套餐',
+    rechargeSectionHint: '选择支付方式和到账余额，充值成功后直接计入通用余额。',
+    subscriptionSectionTitle: '订阅套餐',
+    subscriptionSectionHint: '选择适合的订阅方案，当前订阅状态会同步显示在右侧。',
+    refreshBalance: '刷新余额与订阅',
+    balanceDescription: '充值成功后会直接计入账户余额，后续调用按实际消耗扣费。',
     rechargePackages: '余额充值套餐',
     rechargePackagesHint: '选择固定到账余额，或使用自定义充值',
     generalBalance: '通用余额',

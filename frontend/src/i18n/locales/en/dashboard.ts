@@ -571,12 +571,15 @@ export default {
   wallet: {
     title: 'My Wallet',
     description: 'Manage balance top-ups, subscriptions, balance activity, and redeem codes',
-    tabs: {
-      recharge: 'Balance Top-up',
-      subscription: 'Subscriptions',
-      history: 'Balance Activity',
-      redeem: 'Redeem Code'
-    },
+    catalogTitle: 'Choose an offer',
+    catalogHint: 'Subscription plans and balance top-ups are listed below for direct purchase, top-up, or redemption.',
+    offersCount: '{count} offers',
+    rechargeSectionTitle: 'Balance top-up offers',
+    rechargeSectionHint: 'Choose a payment method and credited balance. Funds are added to your general balance after payment.',
+    subscriptionSectionTitle: 'Subscription plans',
+    subscriptionSectionHint: 'Choose a plan that fits your usage. Active subscriptions stay visible in the summary.',
+    refreshBalance: 'Refresh balance and subscriptions',
+    balanceDescription: 'Successful top-ups are credited to your account and usage is deducted from the balance.',
     rechargePackages: 'Balance Top-up Packages',
     rechargePackagesHint: 'Choose a fixed credited balance or enter a custom amount',
     generalBalance: 'General Balance',

@@ -1,6 +1,6 @@
 <template>
-  <div class="grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(260px,0.65fr)]">
-    <section class="card p-6">
+  <div :class="compact ? '' : 'grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(260px,0.65fr)]'">
+    <section class="rounded-lg border border-gray-200 bg-white p-6 dark:border-dark-600 dark:bg-dark-800">
       <div class="mb-6 flex items-start gap-3">
         <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary-600 dark:bg-primary-950/40 dark:text-primary-400">
           <Icon name="gift" size="lg" />
@@ -40,7 +40,7 @@
       </div>
     </section>
 
-    <aside class="card p-5">
+    <aside v-if="!compact" class="rounded-lg border border-gray-200 bg-white p-5 dark:border-dark-600 dark:bg-dark-800">
       <p class="text-xs font-medium uppercase text-gray-400 dark:text-gray-500">{{ t('redeem.currentBalance') }}</p>
       <p class="mt-2 text-3xl font-bold text-gray-950 dark:text-white">${{ user?.balance?.toFixed(2) || '0.00' }}</p>
       <div class="my-5 h-px bg-gray-100 dark:bg-dark-700"></div>
@@ -64,6 +64,7 @@ import { useAppStore } from '@/stores/app'
 import Icon from '@/components/icons/Icon.vue'
 
 const { t } = useI18n()
+withDefaults(defineProps<{ compact?: boolean }>(), { compact: false })
 const authStore = useAuthStore()
 const appStore = useAppStore()
 const subscriptionStore = useSubscriptionStore()

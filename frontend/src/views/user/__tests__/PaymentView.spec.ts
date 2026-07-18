@@ -286,6 +286,16 @@ async function mountRecharge(options: {
 }
 
 describe('PaymentView balance loyalty discount', () => {
+  it('renders recharge, subscription, history, and redeem in one page', async () => {
+    const wrapper = await mountRecharge()
+
+    expect(wrapper.findComponent({ name: 'RechargePackageSelector' }).exists()).toBe(true)
+    expect(wrapper.findComponent({ name: 'WalletBalanceHistory' }).exists()).toBe(true)
+    expect(wrapper.findComponent({ name: 'WalletRedeemPanel' }).exists()).toBe(true)
+    expect(wrapper.text()).toContain('wallet.subscriptionSectionTitle')
+    expect(wrapper.text()).not.toContain('wallet.tabs.')
+  })
+
   it('discounts the actual payment while submitting the original recharge amount', async () => {
     createOrder.mockResolvedValue({
       order_id: 321,

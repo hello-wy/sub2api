@@ -1,9 +1,9 @@
 <template>
-  <section class="card overflow-hidden">
+  <section class="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-dark-600 dark:bg-dark-800">
     <header class="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-5 py-4 dark:border-dark-700">
       <div>
         <h2 class="text-base font-semibold text-gray-900 dark:text-white">{{ t('wallet.balanceHistory') }}</h2>
-        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ t('wallet.balanceHistoryHint') }}</p>
+        <p v-if="!compact" class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ t('wallet.balanceHistoryHint') }}</p>
       </div>
       <span class="rounded-md bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600 dark:bg-dark-700 dark:text-gray-300">
         {{ t('wallet.recordsCount', { count: balanceHistory.length }) }}
@@ -13,13 +13,14 @@
     <div v-if="loading" class="flex items-center justify-center py-16">
       <span class="h-7 w-7 animate-spin rounded-full border-2 border-primary-500 border-t-transparent"></span>
     </div>
-    <div v-else-if="balanceHistory.length" class="divide-y divide-gray-100 dark:divide-dark-700">
-      <div v-for="item in balanceHistory" :key="item.id" class="flex items-center gap-4 px-5 py-4">
+    <div v-else-if="displayedHistory.length" :class="['divide-y divide-gray-100 dark:divide-dark-700', compact && 'max-h-[520px] overflow-y-auto']">
+      <div v-for="item in displayedHistory" :key="item.id" :class="['flex items-center px-5', compact ? 'gap-3 py-3.5' : 'gap-4 py-4']">
         <span :class="[
-          'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg',
+          'flex shrink-0 items-center justify-center rounded-lg',
+          compact ? 'h-8 w-8' : 'h-10 w-10',
           item.value >= 0 ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400' : 'bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400',
         ]">
-          <Icon name="dollar" size="md" />
+          <Icon name="dollar" :size="compact ? 'sm' : 'md'" />
         </span>
         <div class="min-w-0 flex-1">
           <p class="truncate text-sm font-medium text-gray-900 dark:text-white">{{ itemTitle(item) }}</p>
@@ -33,7 +34,7 @@
         </div>
       </div>
     </div>
-    <div v-else class="flex flex-col items-center py-16 text-center">
+    <div v-else :class="['flex flex-col items-center text-center', compact ? 'py-10' : 'py-16']">
       <span class="flex h-12 w-12 items-center justify-center rounded-lg bg-gray-100 text-gray-400 dark:bg-dark-700 dark:text-gray-500">
         <Icon name="clock" size="lg" />
       </span>
@@ -51,11 +52,13 @@ import Icon from '@/components/icons/Icon.vue'
 import { formatDateTime } from '@/utils/format'
 
 const { t } = useI18n()
+const props = withDefaults(defineProps<{ compact?: boolean }>(), { compact: false })
 const history = ref<RedeemHistoryItem[]>([])
 const loading = ref(true)
 
 const balanceHistory = computed(() => history.value.filter((item) =>
   ['balance', 'admin_balance', 'daily_checkin', 'usage_rebate'].includes(item.type)))
+const displayedHistory = computed(() => props.compact ? balanceHistory.value.slice(0, 8) : balanceHistory.value)
 
 function itemTitle(item: RedeemHistoryItem): string {
   if (item.type === 'balance') return t('redeem.balanceAddedRedeem')
