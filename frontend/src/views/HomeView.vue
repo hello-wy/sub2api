@@ -226,7 +226,7 @@ const navItems = computed<Array<{ label: string, href: string, icon: IconName, i
   { label: 'API 接入', href: '/available-channels', icon: 'link', internal: true },
   { label: '模型价格', href: '/models', icon: 'creditCard', internal: true },
   { label: '运行状态', href: '/monitor', icon: 'chart', internal: true },
-  { label: '文档', href: docUrl.value || '#docs', icon: 'book', external: Boolean(docUrl.value) }
+  { label: '文档', href: docUrl.value || '/docs', icon: 'book', internal: !docUrl.value, external: Boolean(docUrl.value) }
 ])
 
 const providerLogos: LogoItem[] = [

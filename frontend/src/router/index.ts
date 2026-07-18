@@ -176,6 +176,15 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/docs',
+    name: 'Docs',
+    component: () => import('@/views/public/DocsView.vue'),
+    meta: {
+      requiresAuth: false,
+      title: '使用文档'
+    }
+  },
+  {
     path: '/leaderboard',
     name: 'Leaderboard',
     component: () => import('@/views/public/LeaderboardView.vue'),
