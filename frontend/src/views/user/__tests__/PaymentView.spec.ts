@@ -331,6 +331,7 @@ describe('PaymentView balance loyalty discount', () => {
 
     const text = wrapper.text()
     expect(text).toContain('payment.loyaltyDiscount')
+    expect(text).toContain('payment.actualPay')
     expect(text).toContain(formatPaymentAmount(100, 'CNY'))
     expect(text).toContain(formatPaymentAmount(92, 'CNY'))
     expect(text).toContain(formatPaymentAmount(1.84, 'CNY'))

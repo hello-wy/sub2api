@@ -79,6 +79,14 @@
                         <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('payment.creditedBalance') }}</dt>
                         <dd class="mt-1 font-semibold text-primary-600 dark:text-primary-400">${{ creditedAmount.toFixed(2) }}</dd>
                       </div>
+                      <div>
+                        <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('wallet.conversionRate') }}</dt>
+                        <dd class="mt-1 font-semibold text-gray-900 dark:text-white">1:{{ formatRechargeRatio(balanceRechargeMultiplier) }}</dd>
+                      </div>
+                      <div>
+                        <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('payment.actualPay') }}</dt>
+                        <dd class="mt-1 text-base font-bold text-primary-600 dark:text-primary-400">{{ formatSelectedPaymentAmount(totalAmount) }}</dd>
+                      </div>
                     </dl>
                     <button :class="['btn min-w-[190px] px-5 py-3 text-sm font-semibold', paymentButtonClass]" :disabled="!canSubmit || submitting" @click="handleSubmitRecharge">
                       <span v-if="submitting" class="flex items-center justify-center gap-2">
@@ -156,12 +164,9 @@
                 </div>
               </section>
 
-              <section id="wallet-redeem" class="scroll-mt-6">
-                <WalletRedeemPanel compact />
-              </section>
             </main>
 
-            <aside class="space-y-5 xl:sticky xl:top-0">
+            <aside class="space-y-5">
               <section class="rounded-lg border border-gray-200 bg-white p-5 dark:border-dark-600 dark:bg-dark-800">
                 <div class="flex items-start justify-between gap-3">
                   <div>
@@ -175,6 +180,10 @@
                 <p class="mt-4 text-sm leading-6 text-gray-500 dark:text-gray-400">{{ t('wallet.balanceDescription') }}</p>
                 <p class="mt-3 truncate text-xs text-gray-400 dark:text-gray-500">{{ t('payment.rechargeAccount') }}: {{ user?.username || '--' }}</p>
               </section>
+
+              <div id="wallet-redeem" class="scroll-mt-6">
+                <WalletRedeemPanel compact />
+              </div>
 
               <section id="wallet-subscription-summary" class="scroll-mt-6 overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-dark-600 dark:bg-dark-800">
                 <header class="flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-4 dark:border-dark-700">
@@ -471,7 +480,7 @@ function onPaymentSettled() {
 // All checkout data from single API call
 const checkout = ref<CheckoutInfoResponse>({
   methods: {}, global_min: 0, global_max: 0,
-  plans: [], balance_disabled: false, balance_recharge_multiplier: 1, subscription_usd_to_cny_rate: 0, recharge_fee_rate: 0, help_text: '', help_image_url: '', stripe_publishable_key: '',
+  plans: [], balance_disabled: false, balance_recharge_multiplier: 10, subscription_usd_to_cny_rate: 0, recharge_fee_rate: 0, help_text: '', help_image_url: '', stripe_publishable_key: '',
 })
 
 const walletSectionIds: Record<string, string> = {
@@ -598,6 +607,10 @@ function subscriptionPaymentAmountForCurrency(value: number, currency: string): 
 
 function formatSelectedPaymentAmount(value: number): string {
   return formatPaymentAmount(value, selectedCurrency.value, localeCode.value)
+}
+
+function formatRechargeRatio(value: number): string {
+  return Number.isInteger(value) ? String(value) : String(Number(value.toFixed(2)))
 }
 
 function formatSelectedSubscriptionPaymentAmount(value: number): string {

@@ -30,7 +30,7 @@
           <p :class="['text-sm font-semibold tabular-nums', item.value >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400']">
             {{ item.value >= 0 ? '+' : '' }}${{ item.value.toFixed(2) }}
           </p>
-          <p v-if="item.notes" class="mt-0.5 max-w-[220px] truncate text-xs text-gray-400" :title="item.notes">{{ item.notes }}</p>
+          <p v-if="item.notes" class="mt-1 whitespace-normal break-words text-xs leading-5 text-gray-400">{{ item.notes }}</p>
         </div>
       </div>
     </div>
@@ -58,7 +58,7 @@ const loading = ref(true)
 
 const balanceHistory = computed(() => history.value.filter((item) =>
   ['balance', 'admin_balance', 'daily_checkin', 'usage_rebate'].includes(item.type)))
-const displayedHistory = computed(() => props.compact ? balanceHistory.value.slice(0, 8) : balanceHistory.value)
+const displayedHistory = computed(() => balanceHistory.value)
 
 function itemTitle(item: RedeemHistoryItem): string {
   if (item.type === 'balance') return t('redeem.balanceAddedRedeem')
@@ -69,7 +69,7 @@ function itemTitle(item: RedeemHistoryItem): string {
 
 onMounted(async () => {
   try {
-    history.value = await redeemAPI.getHistory()
+    history.value = await redeemAPI.getHistory(props.compact ? 200 : 25)
   } catch (error) {
     console.error('Failed to fetch wallet balance history:', error)
   } finally {

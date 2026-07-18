@@ -14,17 +14,18 @@ describe('RechargePackageSelector', () => {
       props: {
         modelValue: null,
         credits: [10],
-        multiplier: 0.1,
+        multiplier: 10,
         formatAmount: (value: number) => `¥${value.toFixed(2)}`,
       },
     })
 
     const fixedPackage = wrapper.findAll('button').find((button) => button.text().includes('$10'))
     expect(fixedPackage).toBeTruthy()
-    expect(fixedPackage?.text()).toContain('¥100.00')
+    expect(fixedPackage?.text()).toContain('¥1.00')
+    expect(fixedPackage?.text()).toContain('1:10')
 
     await fixedPackage?.trigger('click')
-    expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([100])
+    expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([1])
   })
 
   it('supports a custom credited balance with the same conversion rate', async () => {
@@ -32,17 +33,17 @@ describe('RechargePackageSelector', () => {
       props: {
         modelValue: null,
         credits: [10],
-        multiplier: 0.1,
+        multiplier: 10,
         formatAmount: (value: number) => `¥${value.toFixed(2)}`,
       },
     })
 
-    const customButton = wrapper.findAll('button').find((button) => button.text().includes('wallet.customRecharge'))
-    await customButton?.trigger('click')
+    await wrapper.get('input').trigger('focus')
     await wrapper.get('input').setValue('25')
 
-    expect(wrapper.text()).toContain('¥250.00')
-    expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([250])
+    expect(wrapper.text()).toContain('¥2.50')
+    expect(wrapper.text()).toContain('$25.00')
+    expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([2.5])
 
     const emitCount = wrapper.emitted('update:modelValue')?.length
     await wrapper.get('input').setValue('invalid')
