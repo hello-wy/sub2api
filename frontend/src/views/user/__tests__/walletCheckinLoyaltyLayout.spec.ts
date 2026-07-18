@@ -29,4 +29,10 @@ describe('wallet, check-in, and loyalty layout cleanup', () => {
     expect(loyaltySource).not.toContain('loyalty.viewRules')
     expect(loyaltySource).not.toContain('loyalty-table-action')
   })
+
+  it('uses the VIP image in the membership hero and removes stat card icons', () => {
+    expect(loyaltySource).toContain('membership-vip.jpg')
+    expect(existsSync(resolve(testDirectory, '../../../assets/membership-vip.jpg'))).toBe(true)
+    expect(loyaltySource).not.toContain(':name="card.icon"')
+  })
 })

@@ -6,9 +6,11 @@
           <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_230px] lg:items-center">
             <div class="flex min-w-0 flex-col gap-5 sm:flex-row sm:items-center">
               <div class="loyalty-mascot mx-auto sm:mx-0">
-                <div class="loyalty-mascot-inner" aria-hidden="true">
-                  <Icon name="gift" size="xl" :stroke-width="1.8" />
-                </div>
+                <img
+                  :src="membershipVipImage"
+                  alt="VIP 计划"
+                  class="loyalty-mascot-image"
+                />
               </div>
 
               <div class="min-w-0 text-center sm:text-left">
@@ -57,9 +59,6 @@
               class="loyalty-stat-card"
             >
               <div class="flex items-start gap-4">
-                <div class="loyalty-stat-icon">
-                  <Icon :name="card.icon" size="lg" :stroke-width="1.9" />
-                </div>
                 <div class="min-w-0">
                   <p class="text-sm font-bold text-slate-500 dark:text-dark-300">{{ card.label }}</p>
                   <p class="mt-2 break-words text-3xl font-black tracking-normal text-slate-950 dark:text-white">
@@ -194,6 +193,7 @@ import { useRouter } from 'vue-router'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import Icon from '@/components/icons/Icon.vue'
+import membershipVipImage from '@/assets/membership-vip.jpg'
 import { paymentAPI, userAPI } from '@/api'
 import { useAppStore } from '@/stores/app'
 import { extractApiErrorMessage } from '@/utils/apiError'
@@ -286,13 +286,11 @@ const statCards = computed(() => [
     label: t('loyalty.weeklyPoints'),
     value: formatLoyaltyPoints(weeklyPoints.value),
     hint: t('loyalty.weeklyPointsHint'),
-    icon: 'database' as IconName,
   },
   {
     label: t('loyalty.permanentPoints'),
     value: formatLoyaltyPoints(permanentPoints.value),
     hint: t('loyalty.permanentPointsHint'),
-    icon: 'trendingUp' as IconName,
   },
   {
     label: t('loyalty.currentLevel'),
@@ -300,13 +298,11 @@ const statCards = computed(() => [
     hint: bestCurrentRule.value
       ? t('loyalty.unlockedDiscount', { discount: bestCurrentRule.value.discount })
       : t('loyalty.noTierHint'),
-    icon: 'shield' as IconName,
   },
   {
     label: t('loyalty.highestDiscount'),
     value: `${bestDiscount.value}%`,
     hint: t('loyalty.bestDiscountHint'),
-    icon: 'dollar' as IconName,
   },
 ])
 
@@ -481,15 +477,23 @@ onMounted(() => {
 .loyalty-mascot {
   position: relative;
   display: flex;
-  height: 6rem;
-  width: 6rem;
+  height: 7rem;
+  width: 7rem;
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  border-radius: 9999px;
+  overflow: hidden;
+  border-radius: 1.25rem;
   border: 1px solid rgba(145, 202, 255, 0.72);
-  background: rgba(230, 244, 255, 0.88);
+  background: #ffffff;
   box-shadow: 0 12px 26px rgba(22, 119, 255, 0.14);
+}
+
+.loyalty-mascot-image {
+  height: 100%;
+  width: 100%;
+  object-fit: contain;
+  padding: 0.25rem;
 }
 
 .loyalty-mascot-inner {
@@ -809,6 +813,10 @@ onMounted(() => {
   border-color: rgba(64, 150, 255, 0.36);
   background: rgba(0, 44, 140, 0.32);
   box-shadow: 0 14px 30px rgba(0, 0, 0, 0.26);
+}
+
+.dark .loyalty-mascot-image {
+  background: #ffffff;
 }
 
 .dark .loyalty-mascot-inner {
