@@ -35,4 +35,10 @@ describe('wallet, check-in, and loyalty layout cleanup', () => {
     expect(existsSync(resolve(testDirectory, '../../../assets/membership-vip.png'))).toBe(true)
     expect(loyaltySource).not.toContain(':name="card.icon"')
   })
+
+  it('keeps the VIP artwork free of a framing surface', () => {
+    expect(loyaltySource).toContain('border: 0;')
+    expect(loyaltySource).toContain('background: transparent;')
+    expect(loyaltySource).toContain('box-shadow: none;')
+  })
 })

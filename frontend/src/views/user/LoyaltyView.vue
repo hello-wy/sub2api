@@ -482,11 +482,10 @@ onMounted(() => {
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
-  border-radius: 1.25rem;
-  border: 1px solid rgba(145, 202, 255, 0.72);
+  overflow: visible;
+  border: 0;
   background: transparent;
-  box-shadow: 0 12px 26px rgba(22, 119, 255, 0.14);
+  box-shadow: none;
 }
 
 .loyalty-mascot-image {
@@ -494,18 +493,6 @@ onMounted(() => {
   width: 100%;
   object-fit: contain;
   padding: 0.25rem;
-}
-
-.loyalty-mascot-inner {
-  display: flex;
-  height: 3.75rem;
-  width: 3.75rem;
-  align-items: center;
-  justify-content: center;
-  border-radius: 0.75rem;
-  background: linear-gradient(135deg, #4096ff, #1677ff);
-  color: white;
-  box-shadow: 0 10px 20px rgba(22, 119, 255, 0.24);
 }
 
 .loyalty-recharge-btn {
@@ -807,17 +794,6 @@ onMounted(() => {
     linear-gradient(135deg, rgba(15, 23, 42, 0.94), rgba(0, 62, 179, 0.26)),
     rgba(15, 23, 42, 0.9);
   box-shadow: 0 18px 42px rgba(0, 0, 0, 0.34);
-}
-
-.dark .loyalty-mascot {
-  border-color: rgba(64, 150, 255, 0.36);
-  background: rgba(0, 44, 140, 0.32);
-  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.26);
-}
-
-.dark .loyalty-mascot-inner {
-  background: linear-gradient(135deg, #1677ff, #0958d9);
-  box-shadow: 0 12px 24px rgba(22, 119, 255, 0.24);
 }
 
 .dark .loyalty-alert-panel {

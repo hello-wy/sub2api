@@ -850,7 +850,7 @@ export default {
   loyalty: {
     eyebrow: '累计充值权益',
     title: '会员计划',
-    description: '充值累计积分，周计划动态升级，永久计划累计解锁，享受更高充值折扣和专属优惠。',
+    description: '累计积分，解锁更高充值折扣。',
     currentPoints: '当前积分',
     weeklyPoints: '周积分',
     permanentPoints: '永久积分',
