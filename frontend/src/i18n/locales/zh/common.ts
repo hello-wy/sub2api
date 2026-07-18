@@ -125,7 +125,7 @@ export default {
     balance: '余额',
     checkin: '签到',
     recharge: '充值',
-    activeSubscriptionTitle: '当前订阅：{name}（有效）'
+    activeSubscriptionTitle: '当前订阅：{name}，已使用 {percentage}%'
   },
 
   legal: {

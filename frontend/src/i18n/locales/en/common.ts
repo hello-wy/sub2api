@@ -125,7 +125,7 @@ export default {
     balance: 'Balance',
     checkin: 'Check in',
     recharge: 'Recharge',
-    activeSubscriptionTitle: 'Current subscription: {name} (active)'
+    activeSubscriptionTitle: 'Current subscription: {name}, {percentage}% used'
   },
 
   legal: {

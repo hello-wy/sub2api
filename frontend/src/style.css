@@ -505,27 +505,15 @@
 }
 
 .header-subscription-status {
-  display: inline-flex;
-  flex: 0 0 auto;
-  height: 2.5rem;
-  align-items: center;
-  gap: 0.5rem;
   max-width: 12rem;
-  padding: 0 0.75rem;
-  border: 1px solid rgba(37, 99, 235, 0.24);
-  border-radius: 0.75rem;
-  background: rgba(239, 246, 255, 0.82);
-  color: #2563eb;
-  transition: border-color 160ms ease, background-color 160ms ease, transform 160ms ease;
 }
 
-.header-subscription-status:hover {
-  border-color: rgba(37, 99, 235, 0.45);
-  background: rgba(219, 234, 254, 0.94);
-}
-
-.header-subscription-status:active {
-  transform: translateY(1px);
+.header-subscription-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: #10b981;
 }
 
 .header-subscription-copy {
@@ -540,7 +528,7 @@
 .header-subscription-name {
   min-width: 0;
   overflow: hidden;
-  color: #1e3a8a;
+  color: inherit;
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -548,8 +536,9 @@
 
 .header-subscription-state {
   flex: 0 0 auto;
-  color: #059669;
+  color: #64748b;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
 .header-notification-count {
@@ -609,23 +598,8 @@
   color: #071525;
 }
 
-.dark .header-subscription-status {
-  border-color: rgba(96, 165, 250, 0.28);
-  background: rgba(30, 64, 175, 0.2);
-  color: #93c5fd;
-}
-
-.dark .header-subscription-status:hover {
-  border-color: rgba(96, 165, 250, 0.5);
-  background: rgba(30, 64, 175, 0.3);
-}
-
-.dark .header-subscription-name {
-  color: #dbeafe;
-}
-
 .dark .header-subscription-state {
-  color: #6ee7b7;
+  color: #94a3b8;
 }
 
 @media (max-width: 1400px) {
@@ -691,9 +665,8 @@
     color: #fff;
   }
 
-  .header-wallet-actions .header-subscription-status svg {
-    width: 0.65rem;
-    height: 0.65rem;
+  .header-wallet-actions .header-subscription-dot {
+    display: none;
   }
 }
 

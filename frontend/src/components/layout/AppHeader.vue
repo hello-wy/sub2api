@@ -74,15 +74,15 @@
 
           <router-link
             v-if="activeSubscription"
-            to="/membership"
-            class="header-subscription-status"
-            :aria-label="t('header.activeSubscriptionTitle', { name: activeSubscriptionName })"
-            :title="t('header.activeSubscriptionTitle', { name: activeSubscriptionName })"
+            to="/wallet"
+            class="header-tool-button header-subscription-status"
+            :aria-label="t('header.activeSubscriptionTitle', { name: activeSubscriptionName, percentage: activeSubscriptionUsagePercentage })"
+            :title="t('header.activeSubscriptionTitle', { name: activeSubscriptionName, percentage: activeSubscriptionUsagePercentage })"
           >
-            <Icon name="checkCircle" size="md" />
+            <span class="header-subscription-dot" aria-hidden="true"></span>
             <span class="header-subscription-copy">
               <span class="header-subscription-name">{{ activeSubscriptionName }}</span>
-              <span class="header-subscription-state">{{ t('userSubscriptions.status.active') }}</span>
+              <span class="header-subscription-state">{{ activeSubscriptionUsagePercentage }}%</span>
             </span>
           </router-link>
         </div>
@@ -243,6 +243,7 @@ import AnnouncementBell from '@/components/common/AnnouncementBell.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { QQ_GROUP_INVITE_URL } from '@/constants/community'
 import { useCheckinReminder } from '@/composables/useCheckinReminder'
+import { getHighestSubscriptionUsagePercentage } from '@/utils/subscriptionQuota'
 
 const router = useRouter()
 const route = useRoute()
@@ -269,6 +270,9 @@ const activeSubscriptionName = computed(() => {
   const subscription = activeSubscription.value
   if (!subscription) return ''
   return subscription.group?.name || t('payment.groupFallback', { id: subscription.group_id })
+})
+const activeSubscriptionUsagePercentage = computed(() => {
+  return getHighestSubscriptionUsagePercentage(activeSubscription.value)
 })
 
 // 只在标准模式的管理员下显示新手引导按钮
