@@ -70,11 +70,12 @@
             </article>
           </section>
 
-          <section class="grid gap-5 md:grid-cols-2">
+          <section class="loyalty-plan-grid grid gap-5 md:grid-cols-2">
             <article
               v-for="plan in planCards"
               :key="plan.key"
               class="loyalty-panel p-5 sm:p-6"
+              :class="`loyalty-plan-${plan.key}`"
             >
               <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div class="flex min-w-0 flex-1 items-start gap-3">
@@ -592,6 +593,16 @@ onMounted(() => {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.5rem;
+}
+
+.loyalty-plan-permanent .loyalty-tier-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (min-width: 768px) {
+  .loyalty-plan-grid {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  }
 }
 
 .loyalty-tier-tile.is-current {

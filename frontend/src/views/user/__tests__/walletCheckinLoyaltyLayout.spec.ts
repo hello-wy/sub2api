@@ -45,7 +45,10 @@ describe('wallet, check-in, and loyalty layout cleanup', () => {
   it('uses a container-aware tier grid for both membership plans', () => {
     expect(loyaltySource).toContain('class="loyalty-tier-grid mt-5"')
     expect(loyaltySource).toContain('grid-template-columns: repeat(4, minmax(0, 1fr));')
-    expect(loyaltySource).toContain('class="grid gap-5 md:grid-cols-2"')
+    expect(loyaltySource).toContain('class="loyalty-plan-grid grid gap-5 md:grid-cols-2"')
+    expect(loyaltySource).toContain(':class="`loyalty-plan-${plan.key}`"')
+    expect(loyaltySource).toContain('.loyalty-plan-permanent .loyalty-tier-grid')
+    expect(loyaltySource).toContain('grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);')
     expect(loyaltySource).not.toContain("'lg:grid-cols-4'")
     expect(loyaltySource).not.toContain('class="grid gap-5 2xl:grid-cols-2"')
   })
