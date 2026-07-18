@@ -12,14 +12,7 @@
             <p>这里是 SolidAPI 平台今日的运行概览</p>
           </div>
           <div class="dashboard-actions">
-            <label class="range-label">
-              <Icon name="calendar" size="sm" />
-              <select v-model="timeRange" aria-label="统计时间范围" @change="applyTimeRange">
-                <option v-for="option in rangeOptions" :key="option.value" :value="option.value">
-                  {{ option.label }}
-                </option>
-              </select>
-            </label>
+            <DashboardRangeSelect v-model="timeRange" :options="rangeOptions" @change="applyTimeRange" />
             <button type="button" class="refresh-button" :disabled="chartsLoading" @click="loadDashboard">
               <Icon name="refresh" size="sm" :class="chartsLoading ? 'animate-spin' : ''" />
               刷新
@@ -44,7 +37,7 @@
               <span class="cost-breakdown__standard">标准 ${{ formatCost(stats.today_cost) }}</span>
             </small>
             <svg v-if="hasTrendData" class="metric-sparkline" viewBox="0 0 300 78" preserveAspectRatio="none" aria-hidden="true">
-              <polyline :points="sparklinePoints" />
+              <path :d="tokenSparklinePath" />
             </svg>
           </article>
 
@@ -53,7 +46,7 @@
             <strong>{{ formatNumber(stats.today_requests) }}</strong>
             <small>累计 {{ formatNumber(stats.total_requests) }} 次</small>
             <svg v-if="hasTrendData" class="metric-sparkline metric-sparkline--mint" viewBox="0 0 300 78" preserveAspectRatio="none" aria-hidden="true">
-              <polyline :points="sparklinePoints" />
+              <path :d="requestSparklinePath" />
             </svg>
           </article>
 
@@ -62,7 +55,7 @@
             <strong>${{ formatCost(stats.today_actual_cost) }}</strong>
             <small>标准成本 ${{ formatCost(stats.today_cost) }}</small>
             <svg v-if="hasTrendData" class="metric-sparkline metric-sparkline--violet" viewBox="0 0 300 78" preserveAspectRatio="none" aria-hidden="true">
-              <polyline :points="sparklinePoints" />
+              <path :d="costSparklinePath" />
             </svg>
           </article>
         </section>
@@ -98,27 +91,8 @@
           <article class="dashboard-card trend-card">
             <div class="card-heading">
               <div><h2>Token 使用趋势</h2><p>按选定时间范围汇总的平台 Token 用量</p></div>
-              <span class="chart-key"><i /> 总量（Token）</span>
             </div>
-
-            <template v-if="hasTrendData">
-              <div class="trend-chart">
-                <div class="chart-y-axis" aria-hidden="true"><span v-for="label in trendTickLabels" :key="label">{{ label }}</span></div>
-                <svg viewBox="0 0 700 220" preserveAspectRatio="none" aria-label="Token 使用趋势图" role="img">
-                  <defs>
-                    <linearGradient id="admin-area" x1="0" x2="0" y1="0" y2="1">
-                      <stop offset="0" stop-color="#2f7bff" stop-opacity=".22" />
-                      <stop offset="1" stop-color="#2f7bff" stop-opacity="0" />
-                    </linearGradient>
-                  </defs>
-                  <g class="chart-grid"><line v-for="line in 5" :key="line" x1="0" :y1="(line - 1) * 55" x2="700" :y2="(line - 1) * 55" /></g>
-                  <path :d="areaPath" fill="url(#admin-area)" />
-                  <polyline :points="largeSparklinePoints" />
-                </svg>
-              </div>
-              <div class="chart-axis"><span>{{ startDate }}</span><span>{{ endDate }}</span></div>
-            </template>
-            <div v-else class="chart-empty"><span>0 Token</span><p>该时间范围暂无 Token 使用数据</p></div>
+            <TokenUsageTrend :trend-data="trendData" :loading="chartsLoading" embedded />
           </article>
 
           <article class="dashboard-card distribution-card">
@@ -165,7 +139,10 @@ import { adminAPI } from '@/api/admin'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import Icon from '@/components/icons/Icon.vue'
+import DashboardRangeSelect, { type DashboardTimeRange } from '@/components/dashboard/DashboardRangeSelect.vue'
+import TokenUsageTrend from '@/components/charts/TokenUsageTrend.vue'
 import { useAuthStore } from '@/stores/auth'
+import { buildSmoothSparklinePath } from '@/utils/sparkline'
 import type { DashboardStats, ModelStat, TrendDataPoint, UserSpendingRankingItem } from '@/types'
 
 const router = useRouter()
@@ -179,16 +156,18 @@ const modelStats = ref<ModelStat[]>([])
 const rankingItems = ref<UserSpendingRankingItem[]>([])
 
 const formatLocalDate = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-const timeRange = ref<'24h' | '7d' | '30d'>('24h')
-const rangeOptions = [{ value: '24h', label: '最近 24 小时' }, { value: '7d', label: '最近 7 天' }, { value: '30d', label: '最近 30 天' }]
+const timeRange = ref<DashboardTimeRange>('24h')
+const rangeOptions: Array<{ value: DashboardTimeRange; label: string }> = [{ value: '24h', label: '最近 24 小时' }, { value: '7d', label: '最近 7 天' }, { value: '30d', label: '最近 30 天' }]
 const endDate = ref('')
 const startDate = ref('')
 const granularity = computed<'hour' | 'day'>(() => timeRange.value === '24h' ? 'hour' : 'day')
 const trendValues = computed(() => trendData.value.map((item) => item.total_tokens || 0))
+const requestTrendValues = computed(() => trendData.value.map((item) => item.requests || 0))
+const costTrendValues = computed(() => trendData.value.map((item) => item.actual_cost || 0))
 const hasTrendData = computed(() => trendData.value.length > 0)
-const sparklinePoints = computed(() => buildPoints(trendValues.value, 300, 78))
-const largeSparklinePoints = computed(() => buildPoints(trendValues.value, 700, 220))
-const areaPath = computed(() => hasTrendData.value ? `M 0 220 L ${largeSparklinePoints.value} L 700 220 Z` : '')
+const tokenSparklinePath = computed(() => buildSmoothSparklinePath(trendValues.value, 300, 78))
+const requestSparklinePath = computed(() => buildSmoothSparklinePath(requestTrendValues.value, 300, 78))
+const costSparklinePath = computed(() => buildSmoothSparklinePath(costTrendValues.value, 300, 78))
 const maxModelTokens = computed(() => Math.max(...modelStats.value.map((item) => item.total_tokens), 1))
 const totalModelTokens = computed(() => modelStats.value.reduce((total, item) => total + item.total_tokens, 0))
 const displayName = computed(() => authStore.user?.username || authStore.user?.email?.split('@')[0] || '管理员')
@@ -199,19 +178,6 @@ const greeting = computed(() => {
   if (hour < 18) return '下午好'
   return '晚上好'
 })
-const trendTickLabels = computed(() => {
-  const maximum = Math.max(...trendValues.value, 0)
-  return [maximum, maximum * .75, maximum * .5, maximum * .25, 0].map((value) => formatTokens(value))
-})
-
-function buildPoints(values: number[], width: number, height: number) {
-  if (!values.length) return ''
-  const maximum = Math.max(...values, 1)
-  const minimum = Math.min(...values)
-  const range = maximum - minimum || 1
-  return values.map((value, index) => `${(index / Math.max(values.length - 1, 1)) * width},${height - 10 - ((value - minimum) / range) * (height - 26)}`).join(' ')
-}
-
 const modelWidth = (tokens: number) => tokens > 0 ? (tokens / maxModelTokens.value) * 100 : 0
 const modelPercent = (tokens: number) => totalModelTokens.value > 0 ? `${Math.round((tokens / totalModelTokens.value) * 100)}%` : '0%'
 const formatNumber = (value: number) => Number(value || 0).toLocaleString()
@@ -294,8 +260,7 @@ onMounted(() => { updateDateRange(); loadDashboard() })
 .dashboard-header h1 span { font-size:.7em; letter-spacing:0; }
 .dashboard-header p { margin:8px 0 0; color:var(--dashboard-muted); font-size:13px; }
 .dashboard-actions { display:flex; align-items:center; gap:10px; flex-shrink:0; }
-.range-label,.refresh-button { display:inline-flex; align-items:center; gap:8px; height:40px; border:1px solid var(--dashboard-line); border-radius:10px; background:var(--dashboard-surface); color:#53627d; padding:0 13px; box-shadow:0 4px 12px rgba(28,56,112,.035); font-size:13px; font-weight:650; }
-.range-label select { appearance:none; min-width:103px; border:0; outline:0; background:transparent; color:inherit; font:inherit; cursor:pointer; }
+.refresh-button { display:inline-flex; align-items:center; gap:8px; height:40px; border:1px solid var(--dashboard-line); border-radius:10px; background:var(--dashboard-surface); color:#53627d; padding:0 13px; box-shadow:0 4px 12px rgba(28,56,112,.035); font-size:13px; font-weight:650; }
 .refresh-button { cursor:pointer; transition:background .16s ease, border-color .16s ease, transform .16s ease; }
 .refresh-button:hover:not(:disabled) { border-color:#bfd3fc; background:#f6f9ff; transform:translateY(-1px); }
 .refresh-button:disabled { cursor:wait; opacity:.66; }
@@ -318,9 +283,9 @@ onMounted(() => { updateDateRange(); loadDashboard() })
 .hero-card--primary:hover { border-color:rgba(186,224,255,.96); box-shadow:0 18px 40px rgba(45,117,221,.25),inset 0 1px rgba(255,255,255,.48); }
 .hero-card--primary > span,.hero-card--primary small,.hero-card--primary strong { color:#fff; }
 .metric-sparkline { position:absolute; right:20px; bottom:15px; left:20px; width:calc(100% - 40px); height:69px; opacity:.9; }
-.metric-sparkline polyline { fill:none; stroke:#fff; stroke-width:1.5; vector-effect:non-scaling-stroke; }
-.metric-sparkline--mint polyline { stroke:#2bc4ad; }
-.metric-sparkline--violet polyline { stroke:#9570f7; }
+.metric-sparkline path { fill:none; stroke:#fff; stroke-width:1.65; stroke-linecap:round; stroke-linejoin:round; vector-effect:non-scaling-stroke; }
+.metric-sparkline--mint path { stroke:#2bc4ad; }
+.metric-sparkline--violet path { stroke:#9570f7; }
 .operation-strip { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); margin:16px 0; overflow:hidden; border:1px solid var(--dashboard-line); border-radius:15px; background:var(--dashboard-surface); box-shadow:0 8px 20px rgba(28,56,104,.035); }
 .strip-item { display:flex; align-items:center; min-width:0; gap:10px; padding:15px 14px; border-right:1px solid var(--dashboard-line); }
 .strip-item:last-child { border-right:0; }
@@ -335,17 +300,6 @@ onMounted(() => { updateDateRange(); loadDashboard() })
 .card-heading h2 { margin:0; color:#253556; font-size:15px; font-weight:760; letter-spacing:-.025em; }
 .card-heading p { margin:5px 0 0; color:var(--dashboard-muted); font-size:11px; }
 .card-heading a { color:var(--dashboard-blue); font-size:11px; font-weight:700; text-decoration:none; white-space:nowrap; }
-.chart-key { display:flex; align-items:center; gap:6px; color:#8390a7; font-size:11px; white-space:nowrap; }
-.chart-key i { width:7px; height:7px; border-radius:50%; background:var(--dashboard-blue); }
-.trend-chart { position:relative; height:174px; margin-top:14px; padding-left:35px; }
-.trend-chart svg { width:100%; height:100%; overflow:visible; }
-.chart-grid line { stroke:#edf1f7; stroke-dasharray:4 4; stroke-width:1; vector-effect:non-scaling-stroke; }
-.trend-chart polyline { fill:none; stroke:var(--dashboard-blue); stroke-width:2.2; vector-effect:non-scaling-stroke; }
-.chart-y-axis { position:absolute; top:-2px; bottom:-1px; left:0; display:flex; flex-direction:column; justify-content:space-between; color:#8c99b0; font-size:9px; line-height:1; text-align:right; }
-.chart-axis { display:flex; justify-content:space-between; padding-left:35px; color:#8c99b0; font-size:10px; }
-.chart-empty { display:grid; min-height:190px; place-content:center; gap:6px; color:var(--dashboard-muted); text-align:center; }
-.chart-empty span { color:#93a3bd; font-size:22px; font-weight:700; letter-spacing:-.03em; }
-.chart-empty p { margin:0; font-size:12px; }
 .model-list { display:grid; gap:15px; margin-top:20px; }
 .model-row { display:grid; grid-template-columns:minmax(0,1fr) 31px auto; align-items:center; gap:8px; }
 .model-row strong { display:block; overflow:hidden; color:#3a4964; font-size:11px; font-weight:650; text-overflow:ellipsis; white-space:nowrap; }
@@ -368,11 +322,11 @@ onMounted(() => { updateDateRange(); loadDashboard() })
 .dashboard-state--error strong { color:var(--dashboard-ink); font-size:17px; }
 .dashboard-state--error .refresh-button { margin-top:4px; }
 @media (max-width:1180px) { .dashboard-grid { grid-template-columns:1fr 1fr; }.recent-card { grid-column:span 2; }.operation-strip { grid-template-columns:repeat(3,1fr); }.strip-item:nth-child(3) { border-right:0; }.strip-item:nth-child(-n+3) { border-bottom:1px solid var(--dashboard-line); } }
-@media (max-width:760px) { .dashboard-page { padding-top:0; }.dashboard-header { flex-direction:column; gap:16px; }.dashboard-header h1 { font-size:27px; }.dashboard-actions { width:100%; }.range-label,.refresh-button { flex:1; justify-content:center; }.hero-metrics,.dashboard-grid { grid-template-columns:1fr; }.operation-strip { grid-template-columns:1fr 1fr; }.strip-item { border-bottom:1px solid var(--dashboard-line); }.strip-item:nth-child(2n) { border-right:0; }.recent-card { grid-column:auto; } }
+@media (max-width:760px) { .dashboard-page { padding-top:0; }.dashboard-header { flex-direction:column; gap:16px; }.dashboard-header h1 { font-size:27px; }.dashboard-actions { width:100%; }.refresh-button { flex:1; justify-content:center; }.hero-metrics,.dashboard-grid { grid-template-columns:1fr; }.operation-strip { grid-template-columns:1fr 1fr; }.strip-item { border-bottom:1px solid var(--dashboard-line); }.strip-item:nth-child(2n) { border-right:0; }.recent-card { grid-column:auto; } }
 @media (prefers-reduced-motion:reduce) { .hero-card--primary,.hero-card--primary::after { transition:none; } }
 .dark .dashboard-page { --dashboard-ink:#eef4ff; --dashboard-muted:#9aa9c3; --dashboard-line:rgba(152,180,224,.16); --dashboard-surface:#0e192b; }
-.dark .hero-card:not(.hero-card--primary),.dark .operation-strip,.dark .dashboard-card,.dark .range-label,.dark .refresh-button { background:#0e192b; }
+.dark .hero-card:not(.hero-card--primary),.dark .operation-strip,.dark .dashboard-card,.dark .refresh-button { background:#0e192b; }
 .dark .hero-card strong,.dark .strip-item strong,.dark .card-heading h2,.dark .recent-row strong { color:#eef4ff; }
-.dark .chart-grid line,.dark .recent-row { border-color:rgba(152,180,224,.13); }
+.dark .recent-row { border-color:rgba(152,180,224,.13); }
 .dark .model-row span,.dark .model-mark,.dark .strip-icon { background:rgba(77,132,224,.14); }
 </style>

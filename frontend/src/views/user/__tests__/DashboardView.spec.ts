@@ -87,6 +87,8 @@ describe('user DashboardView', () => {
       global: {
         stubs: {
           AppLayout: { template: '<div><slot /></div>' },
+          DashboardRangeSelect: { props: ['modelValue', 'options'], template: '<select :value="modelValue"><option v-for="option in options" :key="option.value" :value="option.value">{{ option.label }}</option></select>' },
+          TokenUsageTrend: { template: '<div data-testid="token-usage-trend" />' },
           LoadingSpinner: true,
           Icon: true,
           'router-link': { template: '<a><slot /></a>' },
@@ -106,5 +108,6 @@ describe('user DashboardView', () => {
     expect(cards[2].text()).toContain('输入100')
     expect(cards[2].text()).toContain('输出50')
     expect(cards[2].text()).toContain('今日消费 $1.50')
+    expect(wrapper.find('[data-testid="token-usage-trend"]').exists()).toBe(true)
   })
 })

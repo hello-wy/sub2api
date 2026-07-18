@@ -80,6 +80,8 @@ const mountDashboard = () => mount(DashboardView, {
   global: {
     stubs: {
       AppLayout: { template: '<div><slot /></div>' },
+      DashboardRangeSelect: { props: ['modelValue', 'options'], emits: ['update:modelValue', 'change'], template: '<select :value="modelValue" @change="$emit(\'update:modelValue\', $event.target.value); $emit(\'change\', $event.target.value)"><option v-for="option in options" :key="option.value" :value="option.value">{{ option.label }}</option></select>' },
+      TokenUsageTrend: { template: '<div data-testid="token-usage-trend" />' },
       LoadingSpinner: true,
       Icon: true,
       'router-link': { props: ['to'], template: '<a><slot /></a>' }
@@ -133,7 +135,7 @@ describe('admin DashboardView', () => {
     expect(wrapper.findAll('.hero-card')).toHaveLength(3)
     expect(wrapper.findAll('.hero-card')[0].text()).toContain('今日 Token')
     expect(wrapper.findAll('.hero-card')[1].text()).toContain('今日 API 调用')
-    expect(wrapper.text()).toContain('该时间范围暂无 Token 使用数据')
+    expect(wrapper.find('[data-testid="token-usage-trend"]').exists()).toBe(true)
     expect(wrapper.text()).toContain('该时间范围暂无模型使用数据')
     expect(wrapper.text()).toContain('该时间范围暂无用户使用数据')
   })
@@ -159,7 +161,7 @@ describe('admin DashboardView', () => {
     const wrapper = mountDashboard()
     await flushPromises()
 
-    expect(wrapper.find('.trend-chart').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="token-usage-trend"]').exists()).toBe(true)
     expect(wrapper.text()).toContain('128,420')
     expect(wrapper.findAll('.hero-card')[0].text()).toContain('输入2.30M')
     expect(wrapper.findAll('.hero-card')[0].text()).toContain('输出540.0K')

@@ -1,17 +1,18 @@
 <template>
-  <div class="card p-4">
-    <h3 class="mb-4 text-sm font-semibold text-gray-900 dark:text-white">
+  <div class="token-usage-trend" :class="embedded ? 'token-usage-trend--embedded' : 'card p-4'">
+    <h3 v-if="!embedded" class="mb-4 text-sm font-semibold text-gray-900 dark:text-white">
       {{ t('admin.dashboard.tokenUsageTrend') }}
     </h3>
-    <div v-if="loading" class="flex h-48 items-center justify-center">
+    <div v-if="loading" class="token-usage-trend__state flex items-center justify-center" :class="embedded ? 'token-usage-trend__state--embedded' : 'h-48'">
       <LoadingSpinner />
     </div>
-    <div v-else-if="trendData.length > 0 && chartData" class="h-48">
+    <div v-else-if="trendData.length > 0 && chartData" class="token-usage-trend__canvas" :class="embedded ? 'token-usage-trend__canvas--embedded' : 'h-48'">
       <Line :data="chartData" :options="lineOptions" />
     </div>
     <div
       v-else
-      class="flex h-48 items-center justify-center text-sm text-gray-500 dark:text-gray-400"
+      class="token-usage-trend__state flex items-center justify-center text-sm text-gray-500 dark:text-gray-400"
+      :class="embedded ? 'token-usage-trend__state--embedded' : 'h-48'"
     >
       {{ t('admin.dashboard.noDataAvailable') }}
     </div>
@@ -19,7 +20,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
   Chart as ChartJS,
@@ -52,11 +53,20 @@ const { t } = useI18n()
 const props = defineProps<{
   trendData: TrendDataPoint[]
   loading?: boolean
+  embedded?: boolean
 }>()
 
-const isDarkMode = computed(() => {
-  return document.documentElement.classList.contains('dark')
+const isDarkMode = ref(document.documentElement.classList.contains('dark'))
+let themeObserver: MutationObserver | null = null
+
+onMounted(() => {
+  themeObserver = new MutationObserver(() => {
+    isDarkMode.value = document.documentElement.classList.contains('dark')
+  })
+  themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
 })
+
+onUnmounted(() => themeObserver?.disconnect())
 
 const chartColors = computed(() => ({
   text: isDarkMode.value ? '#e5e7eb' : '#374151',
@@ -80,7 +90,10 @@ const chartData = computed(() => {
         borderColor: chartColors.value.input,
         backgroundColor: `${chartColors.value.input}20`,
         fill: true,
-        tension: 0.3
+        tension: 0.38,
+        borderWidth: 2,
+        pointRadius: 0,
+        pointHoverRadius: 3
       },
       {
         label: 'Output',
@@ -88,7 +101,10 @@ const chartData = computed(() => {
         borderColor: chartColors.value.output,
         backgroundColor: `${chartColors.value.output}20`,
         fill: true,
-        tension: 0.3
+        tension: 0.38,
+        borderWidth: 2,
+        pointRadius: 0,
+        pointHoverRadius: 3
       },
       {
         label: 'Cache Creation',
@@ -96,7 +112,10 @@ const chartData = computed(() => {
         borderColor: chartColors.value.cacheCreation,
         backgroundColor: `${chartColors.value.cacheCreation}20`,
         fill: true,
-        tension: 0.3
+        tension: 0.38,
+        borderWidth: 2,
+        pointRadius: 0,
+        pointHoverRadius: 3
       },
       {
         label: 'Cache Read',
@@ -104,7 +123,10 @@ const chartData = computed(() => {
         borderColor: chartColors.value.cacheRead,
         backgroundColor: `${chartColors.value.cacheRead}20`,
         fill: true,
-        tension: 0.3
+        tension: 0.38,
+        borderWidth: 2,
+        pointRadius: 0,
+        pointHoverRadius: 3
       },
       {
         label: 'Cache Hit Rate',
@@ -117,6 +139,9 @@ const chartData = computed(() => {
         borderDash: [5, 5],
         fill: false,
         tension: 0.3,
+        borderWidth: 1.5,
+        pointRadius: 0,
+        pointHoverRadius: 3,
         yAxisID: 'yPercent'
       }
     ]
@@ -129,6 +154,10 @@ const lineOptions = computed(() => ({
   interaction: {
     intersect: false,
     mode: 'index' as const
+  },
+  animation: {
+    duration: 520,
+    easing: 'easeOutQuart' as const
   },
   plugins: {
     legend: {
@@ -226,3 +255,14 @@ const formatCost = (value: number): string => {
   return value.toFixed(4)
 }
 </script>
+
+<style scoped>
+.token-usage-trend--embedded {
+  margin-top: 12px;
+}
+
+.token-usage-trend__canvas--embedded,
+.token-usage-trend__state--embedded {
+  height: 12.5rem;
+}
+</style>
