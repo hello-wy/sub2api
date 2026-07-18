@@ -9,6 +9,7 @@ const {
   getDashboardModels,
   getByDateRange,
   getMyPlatformQuotas,
+  getMyAttributes,
   refreshUser,
 } = vi.hoisted(() => ({
   getDashboardStats: vi.fn(),
@@ -16,6 +17,7 @@ const {
   getDashboardModels: vi.fn(),
   getByDateRange: vi.fn(),
   getMyPlatformQuotas: vi.fn(),
+  getMyAttributes: vi.fn(),
   refreshUser: vi.fn(),
 }))
 
@@ -36,7 +38,7 @@ vi.mock('@/api/usage', () => ({
   },
 }))
 
-vi.mock('@/api/user', () => ({ getMyPlatformQuotas }))
+vi.mock('@/api/user', () => ({ getMyAttributes, getMyPlatformQuotas }))
 
 describe('user DashboardView', () => {
   beforeEach(() => {
@@ -68,9 +70,19 @@ describe('user DashboardView', () => {
     getDashboardModels.mockReset().mockResolvedValue({ models: [] })
     getByDateRange.mockReset().mockResolvedValue({ items: [] })
     getMyPlatformQuotas.mockReset().mockResolvedValue({ platform_quotas: [] })
+    getMyAttributes.mockReset().mockResolvedValue({
+      definitions: [
+        { id: 1, key: 'loyalty_weekly_points', type: 'number', enabled: true },
+        { id: 2, key: 'loyalty_permanent_points', type: 'number', enabled: true },
+      ],
+      values: [
+        { attribute_id: 1, value: '36', updated_at: new Date().toISOString() },
+        { attribute_id: 2, value: '920', updated_at: new Date().toISOString() },
+      ],
+    })
   })
 
-  it('places balance first and keeps API calls and spending after it', async () => {
+  it("places balance first and shows points plus today's input and output tokens", async () => {
     const wrapper = mount(DashboardView, {
       global: {
         stubs: {
@@ -87,7 +99,12 @@ describe('user DashboardView', () => {
     expect(cards).toHaveLength(3)
     expect(cards[0].text()).toContain('账户余额')
     expect(cards[0].text()).toContain('$42.75')
+    expect(cards[0].text()).toContain('周积分 36')
+    expect(cards[0].text()).toContain('永久积分 920')
     expect(cards[1].text()).toContain('今日 API 调用')
-    expect(cards[2].text()).toContain('今日消费')
+    expect(cards[2].text()).toContain('今日 Token')
+    expect(cards[2].text()).toContain('输入100')
+    expect(cards[2].text()).toContain('输出50')
+    expect(cards[2].text()).toContain('今日消费 $1.50')
   })
 })

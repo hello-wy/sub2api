@@ -16,16 +16,15 @@
         </header>
 
         <section class="hero-metrics">
-          <article class="hero-card hero-card--primary"><span>账户余额</span><strong>${{ formatCost(user?.balance || 0) }}</strong><small>个人账户可用</small></article>
+          <article class="hero-card hero-card--primary" @pointermove="updatePrimaryCardSpotlight" @pointerleave="hidePrimaryCardSpotlight"><span>账户余额</span><strong>${{ formatCost(user?.balance || 0) }}</strong><small class="points-breakdown"><span>周积分 {{ formatLoyaltyPoints(weeklyPoints) }}</span><span>永久积分 {{ formatLoyaltyPoints(permanentPoints) }}</span></small></article>
           <article class="hero-card"><span>今日 API 调用</span><strong>{{ formatNumber(stats.today_requests) }}</strong><small>全部请求 {{ formatNumber(stats.total_requests) }} 次</small><svg v-if="hasTrendData" class="metric-sparkline metric-sparkline--mint" viewBox="0 0 300 78" preserveAspectRatio="none"><polyline :points="sparklinePoints" /></svg></article>
-          <article v-if="!authStore.isSimpleMode" class="hero-card"><span>今日消费</span><strong>${{ formatCost(stats.today_actual_cost) }}</strong><small>当前余额 ${{ formatCost(user?.balance || 0) }}</small><svg v-if="hasTrendData" class="metric-sparkline metric-sparkline--violet" viewBox="0 0 300 78" preserveAspectRatio="none"><polyline :points="sparklinePoints" /></svg></article>
-          <article v-else class="hero-card"><span>响应速度</span><strong>{{ formatDuration(stats.average_duration_ms) }}</strong><small>近 5 分钟 {{ formatNumber(stats.rpm) }} RPM</small><svg v-if="hasTrendData" class="metric-sparkline metric-sparkline--violet" viewBox="0 0 300 78" preserveAspectRatio="none"><polyline :points="sparklinePoints" /></svg></article>
+          <article class="hero-card"><span>今日 Token</span><div class="token-pair" aria-label="今日 Token 输入输出"><p><span>输入</span><strong>{{ formatTokens(stats.today_input_tokens) }}</strong></p><p><span>输出</span><strong>{{ formatTokens(stats.today_output_tokens) }}</strong></p></div><small>今日消费 ${{ formatCost(stats.today_actual_cost) }}</small><svg v-if="hasTrendData" class="metric-sparkline metric-sparkline--violet" viewBox="0 0 300 78" preserveAspectRatio="none"><polyline :points="sparklinePoints" /></svg></article>
         </section>
 
         <section class="personal-strip" aria-label="个人资源状态">
           <div class="strip-item"><span class="strip-icon"><Icon name="key" size="md" /></span><p>我的 API Key<strong>{{ stats.total_api_keys }}</strong><small>{{ stats.active_api_keys }} 个可用</small></p></div>
           <div v-if="!authStore.isSimpleMode" class="strip-item"><span class="strip-icon"><Icon name="creditCard" size="md" /></span><p>账户余额<strong>${{ formatCost(user?.balance || 0) }}</strong><small>个人账户可用</small></p></div>
-          <div class="strip-item"><span class="strip-icon"><Icon name="cube" size="md" /></span><p>累计 Token<strong>{{ formatTokens(stats.total_tokens) }}</strong><small>个人使用总量</small></p></div>
+          <div class="strip-item"><span class="strip-icon"><Icon name="cube" size="md" /></span><p>累计 Token<strong>输入 {{ formatTokens(stats.total_input_tokens) }}</strong><small>输出 {{ formatTokens(stats.total_output_tokens) }}</small></p></div>
           <div class="strip-item"><span class="strip-icon"><Icon name="chart" size="md" /></span><p>当前速率<strong>{{ formatNumber(stats.rpm) }} RPM</strong><small>{{ formatNumber(stats.tpm) }} TPM</small></p></div>
           <div class="strip-item"><span class="strip-icon"><Icon name="clock" size="md" /></span><p>平均响应<strong>{{ formatDuration(stats.average_duration_ms) }}</strong><small>个人请求表现</small></p></div>
         </section>
@@ -60,8 +59,9 @@ import { usageAPI, type UserDashboardStats as UserStatsType } from '@/api/usage'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import Icon from '@/components/icons/Icon.vue'
-import type { ModelStat, PlatformQuotaItem, TrendDataPoint, UsageLog } from '@/types'
-import { getMyPlatformQuotas } from '@/api/user'
+import type { ModelStat, PlatformQuotaItem, TrendDataPoint, UsageLog, UserAttributeDefinition, UserAttributeValue } from '@/types'
+import { getMyAttributes, getMyPlatformQuotas } from '@/api/user'
+import { formatLoyaltyPoints, readLoyaltyPoints } from '@/utils/loyalty'
 
 const authStore = useAuthStore()
 const user = computed(() => authStore.user)
@@ -74,6 +74,8 @@ const trendData = ref<TrendDataPoint[]>([])
 const modelStats = ref<ModelStat[]>([])
 const recentUsage = ref<UsageLog[]>([])
 const platformQuotas = ref<PlatformQuotaItem[] | null>(null)
+const attributeDefinitions = ref<UserAttributeDefinition[]>([])
+const attributeValues = ref<UserAttributeValue[]>([])
 const timeRange = ref<'24h' | '7d' | '30d'>('7d')
 const rangeOptions = [{ value: '24h', label: '最近 24 小时' }, { value: '7d', label: '最近 7 天' }, { value: '30d', label: '最近 30 天' }]
 const startDate = ref('')
@@ -88,6 +90,8 @@ const maxModelTokens = computed(() => Math.max(...modelStats.value.map((item) =>
 const configuredPlatformQuotas = computed(() => (platformQuotas.value ?? []).filter((quota) =>
   quota.daily_limit_usd != null || quota.weekly_limit_usd != null || quota.monthly_limit_usd != null
 ))
+const weeklyPoints = computed(() => readLoyaltyPoints(attributeDefinitions.value, attributeValues.value, 'weekly'))
+const permanentPoints = computed(() => readLoyaltyPoints(attributeDefinitions.value, attributeValues.value, 'permanent'))
 const platformLabels: Record<string, string> = {
   anthropic: 'Claude',
   openai: 'OpenAI',
@@ -111,7 +115,10 @@ const loadStats = async () => { loading.value = true; errorMessage.value = ''; t
 const loadCharts = async () => { loadingCharts.value = true; try { const result = await Promise.all([usageAPI.getDashboardTrend({ start_date: startDate.value, end_date: endDate.value, granularity: granularity.value }), usageAPI.getDashboardModels({ start_date: startDate.value, end_date: endDate.value })]); trendData.value = result[0].trend || []; modelStats.value = result[1].models || [] } catch (error) { trendData.value = []; modelStats.value = []; console.error('Failed to load charts:', error) } finally { loadingCharts.value = false } }
 const loadRecent = async () => { loadingUsage.value = true; try { const result = await usageAPI.getByDateRange(startDate.value, endDate.value); recentUsage.value = result.items.slice(0, 6) } catch (error) { recentUsage.value = []; console.error('Failed to load recent usage:', error) } finally { loadingUsage.value = false } }
 const loadPlatformQuotas = async () => { try { const data = await getMyPlatformQuotas(); platformQuotas.value = data.platform_quotas ?? [] } catch (error) { platformQuotas.value = []; console.warn('Failed to load platform quotas:', error) } }
-const refreshAll = () => { void loadStats(); void loadCharts(); void loadRecent(); void loadPlatformQuotas() }
+const loadLoyaltyPoints = async () => { try { const data = await getMyAttributes(); attributeDefinitions.value = data.definitions; attributeValues.value = data.values } catch (error) { attributeDefinitions.value = []; attributeValues.value = []; console.warn('Failed to load loyalty points:', error) } }
+function updatePrimaryCardSpotlight(event: PointerEvent) { const card = event.currentTarget as HTMLElement; const bounds = card.getBoundingClientRect(); card.style.setProperty('--spotlight-x', `${event.clientX - bounds.left}px`); card.style.setProperty('--spotlight-y', `${event.clientY - bounds.top}px`); card.style.setProperty('--spotlight-opacity', '1') }
+function hidePrimaryCardSpotlight(event: PointerEvent) { const card = event.currentTarget as HTMLElement; card.style.setProperty('--spotlight-opacity', '0') }
+const refreshAll = () => { void loadStats(); void loadCharts(); void loadRecent(); void loadPlatformQuotas(); void loadLoyaltyPoints() }
 const applyTimeRange = () => { updateDateRange(); refreshAll() }
 onMounted(() => { updateDateRange(); refreshAll() })
 </script>
@@ -127,12 +134,16 @@ onMounted(() => { updateDateRange(); refreshAll() })
 .quota-row { display:grid;grid-template-columns:minmax(86px,1fr) auto;gap:5px 12px;border:1px solid var(--line);border-radius:10px;padding:12px 14px;color:#7180a0;font-size:11px; }
 .quota-row strong { grid-row:1 / span 3;color:#17294e;font-size:13px;align-self:start; }
 .quota-row span { text-align:right;font-variant-numeric:tabular-nums; }
-.dashboard-page .hero-card.hero-card--primary { isolation:isolate; border-color:rgba(141,184,255,.76); background:linear-gradient(120deg,rgba(53,122,247,.86) 0%,rgba(83,164,248,.7) 50%,rgba(111,207,224,.58) 100%); box-shadow:0 16px 36px rgba(51,117,217,.2),inset 0 1px rgba(255,255,255,.38); backdrop-filter:blur(14px) saturate(122%); transition:transform .24s cubic-bezier(.16,1,.3,1),border-color .24s ease,box-shadow .24s ease; }
-.hero-card--primary::after { position:absolute; z-index:0; inset:-35% -55%; background:linear-gradient(112deg,transparent 38%,rgba(255,255,255,.28) 50%,transparent 62%); content:""; pointer-events:none; transform:translate3d(-34%,0,0); transition:transform .65s cubic-bezier(.16,1,.3,1); }
+.points-breakdown { display:flex!important; flex-wrap:wrap; gap:4px 14px; font-variant-numeric:tabular-nums; }
+.token-pair { position:relative; z-index:1; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; margin:13px 0 9px; }
+.token-pair p { min-width:0; margin:0; }
+.token-pair p > span { display:block; margin-bottom:5px; color:#75839e; font-size:10px; font-weight:650; }
+.token-pair strong { overflow:hidden; margin:0; font-size:26px; line-height:1; text-overflow:ellipsis; white-space:nowrap; }
+.dashboard-page .hero-card.hero-card--primary { --spotlight-x:-200px; --spotlight-y:-200px; --spotlight-opacity:0; isolation:isolate; border-color:rgba(141,184,255,.76); background:linear-gradient(120deg,rgba(53,122,247,.86) 0%,rgba(83,164,248,.7) 50%,rgba(111,207,224,.58) 100%); box-shadow:0 16px 36px rgba(51,117,217,.2),inset 0 1px rgba(255,255,255,.38); backdrop-filter:blur(14px) saturate(122%); transition:border-color .24s ease,box-shadow .24s ease; }
+.hero-card--primary::after { position:absolute; z-index:0; inset:0; background:radial-gradient(circle 165px at var(--spotlight-x) var(--spotlight-y),rgba(255,255,255,.34) 0%,rgba(191,231,255,.14) 44%,transparent 76%); content:""; opacity:var(--spotlight-opacity); pointer-events:none; transition:opacity .22s ease; }
 .hero-card--primary > * { position:relative; z-index:1; }
-.hero-card--primary:hover { border-color:rgba(186,224,255,.96); box-shadow:0 22px 46px rgba(45,117,221,.28),inset 0 1px rgba(255,255,255,.48); transform:translate3d(0,-4px,0) scale(1.006); }
-.hero-card--primary:hover::after { transform:translate3d(34%,0,0); }
-@media (prefers-reduced-motion:reduce) { .hero-card--primary,.hero-card--primary::after { transition:none; }.hero-card--primary:hover { transform:none; } }
+.hero-card--primary:hover { border-color:rgba(186,224,255,.96); box-shadow:0 19px 42px rgba(45,117,221,.25),inset 0 1px rgba(255,255,255,.48); }
+@media (prefers-reduced-motion:reduce) { .hero-card--primary,.hero-card--primary::after { transition:none; } }
 </style>
 
 <style>

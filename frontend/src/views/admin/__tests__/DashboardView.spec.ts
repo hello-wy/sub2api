@@ -150,7 +150,7 @@ describe('admin DashboardView', () => {
     const ranking: UserSpendingRankingItem[] = [{ user_id: 42, email: 'team@example.com', actual_cost: 12.34, requests: 20, tokens: 1000, rank: 1 }]
 
     getSnapshotV2.mockResolvedValueOnce({
-      stats: createDashboardStats({ today_requests: 128420, total_requests: 900000, today_tokens: 2840000, today_actual_cost: 124.82, today_account_cost: 86.4, today_cost: 156.75 }),
+      stats: createDashboardStats({ today_requests: 128420, total_requests: 900000, today_input_tokens: 2300000, today_output_tokens: 540000, today_tokens: 2840000, today_actual_cost: 124.82, today_account_cost: 86.4, today_cost: 156.75 }),
       trend,
       models
     })
@@ -161,6 +161,8 @@ describe('admin DashboardView', () => {
 
     expect(wrapper.find('.trend-chart').exists()).toBe(true)
     expect(wrapper.text()).toContain('128,420')
+    expect(wrapper.findAll('.hero-card')[0].text()).toContain('输入2.30M')
+    expect(wrapper.findAll('.hero-card')[0].text()).toContain('输出540.0K')
     expect(wrapper.findAll('.hero-card')[0].text()).toContain('实际 $124.82')
     expect(wrapper.findAll('.hero-card')[0].text()).toContain('成本 $86.40')
     expect(wrapper.findAll('.hero-card')[0].text()).toContain('标准 $156.75')

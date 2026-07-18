@@ -28,9 +28,16 @@
         </header>
 
         <section class="hero-metrics" aria-label="今日核心指标">
-          <article class="hero-card hero-card--primary">
+          <article
+            class="hero-card hero-card--primary"
+            @pointermove="updatePrimaryCardSpotlight"
+            @pointerleave="hidePrimaryCardSpotlight"
+          >
             <span>今日 Token</span>
-            <strong>{{ formatTokens(stats.today_tokens) }}</strong>
+            <div class="token-pair" aria-label="今日 Token 输入输出">
+              <p><span>输入</span><strong>{{ formatTokens(stats.today_input_tokens) }}</strong></p>
+              <p><span>输出</span><strong>{{ formatTokens(stats.today_output_tokens) }}</strong></p>
+            </div>
             <small class="cost-breakdown">
               <span class="cost-breakdown__actual">实际 ${{ formatCost(stats.today_actual_cost) }}</span>
               <span class="cost-breakdown__account">成本 ${{ formatCost(stats.today_account_cost) }}</span>
@@ -211,6 +218,19 @@ const formatNumber = (value: number) => Number(value || 0).toLocaleString()
 const formatTokens = (value: number) => value >= 1_000_000 ? `${(value / 1_000_000).toFixed(2)}M` : value >= 1_000 ? `${(value / 1_000).toFixed(1)}K` : formatNumber(value)
 const formatCost = (value: number) => Number(value || 0).toFixed(2)
 const formatDuration = (value: number) => value >= 1000 ? `${(value / 1000).toFixed(2)}s` : `${Math.round(value || 0)}ms`
+
+function updatePrimaryCardSpotlight(event: PointerEvent) {
+  const card = event.currentTarget as HTMLElement
+  const bounds = card.getBoundingClientRect()
+  card.style.setProperty('--spotlight-x', `${event.clientX - bounds.left}px`)
+  card.style.setProperty('--spotlight-y', `${event.clientY - bounds.top}px`)
+  card.style.setProperty('--spotlight-opacity', '1')
+}
+
+function hidePrimaryCardSpotlight(event: PointerEvent) {
+  const card = event.currentTarget as HTMLElement
+  card.style.setProperty('--spotlight-opacity', '0')
+}
 const getUserLabel = (item: UserSpendingRankingItem) => item.email?.trim() || `用户 #${item.user_id}`
 const goToUserUsage = (userId: number) => void router.push({ path: '/admin/usage', query: { user_id: String(userId), start_date: startDate.value, end_date: endDate.value } })
 const updateDateRange = () => {
@@ -284,15 +304,18 @@ onMounted(() => { updateDateRange(); loadDashboard() })
 .hero-card > span { display:block; color:#61708a; font-size:13px; font-weight:650; }
 .hero-card strong { display:block; margin:8px 0 9px; color:var(--dashboard-ink); font-size:31px; font-weight:760; letter-spacing:-.045em; line-height:1; }
 .hero-card small { color:var(--dashboard-muted); font-size:12px; }
+.token-pair { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px; margin:12px 0 10px; }
+.token-pair p { min-width:0; margin:0; }
+.token-pair p > span { display:block; margin-bottom:5px; color:rgba(255,255,255,.76); font-size:10px; font-weight:650; }
+.token-pair strong { overflow:hidden; margin:0; font-size:25px; text-overflow:ellipsis; white-space:nowrap; }
 .cost-breakdown { display:flex; flex-wrap:wrap; gap:4px 12px; font-variant-numeric:tabular-nums; }
 .cost-breakdown__actual { color:#bbf7d0; }
 .cost-breakdown__account { color:#fed7aa; }
 .cost-breakdown__standard { color:#e2e8f0; }
-.hero-card--primary { isolation:isolate; border-color:rgba(141,184,255,.76); background:linear-gradient(118deg,rgba(52,124,255,.88) 0%,rgba(76,158,246,.72) 52%,rgba(111,207,224,.62) 100%); box-shadow:0 15px 34px rgba(66,135,232,.2),inset 0 1px rgba(255,255,255,.38); backdrop-filter:blur(14px) saturate(122%); transition:transform .24s cubic-bezier(.16,1,.3,1),border-color .24s ease,box-shadow .24s ease; }
-.hero-card--primary::after { position:absolute; z-index:0; inset:-35% -55%; background:linear-gradient(112deg,transparent 38%,rgba(255,255,255,.28) 50%,transparent 62%); content:""; transform:translate3d(-34%,0,0); transition:transform .65s cubic-bezier(.16,1,.3,1); pointer-events:none; }
+.hero-card--primary { --spotlight-x:-200px; --spotlight-y:-200px; --spotlight-opacity:0; isolation:isolate; border-color:rgba(141,184,255,.76); background:linear-gradient(118deg,rgba(52,124,255,.88) 0%,rgba(76,158,246,.72) 52%,rgba(111,207,224,.62) 100%); box-shadow:0 15px 34px rgba(66,135,232,.2),inset 0 1px rgba(255,255,255,.38); backdrop-filter:blur(14px) saturate(122%); transition:border-color .24s ease,box-shadow .24s ease; }
+.hero-card--primary::after { position:absolute; z-index:0; inset:0; background:radial-gradient(circle 150px at var(--spotlight-x) var(--spotlight-y),rgba(255,255,255,.32) 0%,rgba(191,231,255,.14) 44%,transparent 76%); content:""; opacity:var(--spotlight-opacity); transition:opacity .22s ease; pointer-events:none; }
 .hero-card--primary > * { position:relative; z-index:1; }
-.hero-card--primary:hover { border-color:rgba(186,224,255,.96); box-shadow:0 22px 46px rgba(45,117,221,.28),inset 0 1px rgba(255,255,255,.48); transform:translate3d(0,-4px,0) scale(1.006); }
-.hero-card--primary:hover::after { transform:translate3d(34%,0,0); }
+.hero-card--primary:hover { border-color:rgba(186,224,255,.96); box-shadow:0 18px 40px rgba(45,117,221,.25),inset 0 1px rgba(255,255,255,.48); }
 .hero-card--primary > span,.hero-card--primary small,.hero-card--primary strong { color:#fff; }
 .metric-sparkline { position:absolute; right:20px; bottom:15px; left:20px; width:calc(100% - 40px); height:69px; opacity:.9; }
 .metric-sparkline polyline { fill:none; stroke:#fff; stroke-width:1.5; vector-effect:non-scaling-stroke; }
@@ -346,7 +369,7 @@ onMounted(() => { updateDateRange(); loadDashboard() })
 .dashboard-state--error .refresh-button { margin-top:4px; }
 @media (max-width:1180px) { .dashboard-grid { grid-template-columns:1fr 1fr; }.recent-card { grid-column:span 2; }.operation-strip { grid-template-columns:repeat(3,1fr); }.strip-item:nth-child(3) { border-right:0; }.strip-item:nth-child(-n+3) { border-bottom:1px solid var(--dashboard-line); } }
 @media (max-width:760px) { .dashboard-page { padding-top:0; }.dashboard-header { flex-direction:column; gap:16px; }.dashboard-header h1 { font-size:27px; }.dashboard-actions { width:100%; }.range-label,.refresh-button { flex:1; justify-content:center; }.hero-metrics,.dashboard-grid { grid-template-columns:1fr; }.operation-strip { grid-template-columns:1fr 1fr; }.strip-item { border-bottom:1px solid var(--dashboard-line); }.strip-item:nth-child(2n) { border-right:0; }.recent-card { grid-column:auto; } }
-@media (prefers-reduced-motion:reduce) { .hero-card--primary,.hero-card--primary::after { transition:none; }.hero-card--primary:hover { transform:none; } }
+@media (prefers-reduced-motion:reduce) { .hero-card--primary,.hero-card--primary::after { transition:none; } }
 .dark .dashboard-page { --dashboard-ink:#eef4ff; --dashboard-muted:#9aa9c3; --dashboard-line:rgba(152,180,224,.16); --dashboard-surface:#0e192b; }
 .dark .hero-card:not(.hero-card--primary),.dark .operation-strip,.dark .dashboard-card,.dark .range-label,.dark .refresh-button { background:#0e192b; }
 .dark .hero-card strong,.dark .strip-item strong,.dark .card-heading h2,.dark .recent-row strong { color:#eef4ff; }
