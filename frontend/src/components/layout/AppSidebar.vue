@@ -6,7 +6,7 @@
       { '-translate-x-full lg:translate-x-0': !mobileOpen }
     ]"
   >
-    <LiquidGlass class="sidebar-liquid-shell relative flex h-full flex-col border-r">
+    <LiquidGlass class="sidebar-liquid-shell relative flex h-full flex-col">
     <!-- Logo/Brand -->
     <div class="sidebar-header" :class="{ 'sidebar-header-collapsed': sidebarCollapsed }">
       <!-- Custom Logo or Default Logo -->
@@ -1042,7 +1042,6 @@ watch(
 :global(.sidebar-liquid-shell) {
   background-color: var(--app-chrome-surface);
   background-image: none;
-  border-color: var(--app-chrome-border);
   -webkit-backdrop-filter: blur(12px) saturate(1.08);
   backdrop-filter: blur(12px) saturate(1.08);
   box-shadow: inset 0 1px 0 var(--app-chrome-highlight);
@@ -1053,8 +1052,8 @@ watch(
 }
 
 :global(.sidebar-liquid-shell.liquid-glass::after) {
-  border-color: var(--app-chrome-border);
-  box-shadow: inset 0 1px 0 var(--app-chrome-highlight);
+  border-color: transparent;
+  box-shadow: none;
 }
 
 :global(.sidebar-liquid-shell) .sidebar-header,
@@ -1073,8 +1072,8 @@ watch(
 }
 
 :global(.dark .sidebar-liquid-shell.liquid-glass::after) {
-  border-color: var(--app-chrome-border);
-  box-shadow: inset 0 1px 0 var(--app-chrome-highlight);
+  border-color: transparent;
+  box-shadow: none;
 }
 
 :global(.dark .sidebar-liquid-shell) .sidebar-header,

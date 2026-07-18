@@ -64,6 +64,14 @@ describe('AppSidebar liquid glass states', () => {
     )
     expect(styleSource).toMatch(/\.sidebar-link-active\s*\{[\s\S]*?backdrop-filter: blur\(12px\)/)
   })
+
+  it('does not draw a vertical divider on the sidebar shell', () => {
+    expect(componentSource).toContain(
+      'class="sidebar-liquid-shell relative flex h-full flex-col"'
+    )
+    expect(componentSource).toContain('border-color: transparent;')
+    expect(componentSource).toContain('box-shadow: none;')
+  })
 })
 
 describe('AppSidebar user navigation', () => {

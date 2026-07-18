@@ -363,12 +363,18 @@
   --app-chrome-surface: rgba(240, 247, 255, 0.94);
   --app-chrome-border: rgba(148, 184, 222, 0.22);
   --app-chrome-highlight: rgba(255, 255, 255, 0.52);
+  --app-panel-surface: rgba(255, 255, 255, 0.9);
+  --app-panel-border: rgba(148, 184, 222, 0.22);
+  --app-panel-shadow: 0 18px 48px rgba(47, 94, 143, 0.08);
 }
 
 .dark .app-shell {
   --app-chrome-surface: rgba(12, 29, 49, 0.96);
   --app-chrome-border: rgba(163, 207, 255, 0.1);
   --app-chrome-highlight: rgba(255, 255, 255, 0.045);
+  --app-panel-surface: rgba(8, 20, 36, 0.84);
+  --app-panel-border: rgba(163, 207, 255, 0.1);
+  --app-panel-shadow: 0 22px 56px rgba(0, 0, 0, 0.18);
 }
 
 .app-header-surface {
@@ -377,6 +383,32 @@
   -webkit-backdrop-filter: blur(12px) saturate(1.08);
   backdrop-filter: blur(12px) saturate(1.08);
   box-shadow: inset 0 1px 0 var(--app-chrome-highlight);
+}
+
+.app-content-stage {
+  min-width: 0;
+  padding: 0.75rem;
+}
+
+.app-page-panel {
+  min-height: calc(100dvh - 5.5rem);
+  border: 1px solid var(--app-panel-border);
+  border-radius: 1.25rem;
+  background-color: var(--app-panel-surface);
+  box-shadow: var(--app-panel-shadow);
+  -webkit-backdrop-filter: blur(14px) saturate(1.04);
+  backdrop-filter: blur(14px) saturate(1.04);
+}
+
+@media (max-width: 767px) {
+  .app-content-stage {
+    padding: 0.5rem;
+  }
+
+  .app-page-panel {
+    min-height: calc(100dvh - 5rem);
+    border-radius: 1rem;
+  }
 }
 
 @keyframes page-content-fade-in {

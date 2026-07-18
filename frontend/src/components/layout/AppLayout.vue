@@ -8,16 +8,18 @@
 
     <!-- Main Content Area -->
     <div
-      class="relative min-h-screen transition-all duration-300"
+      class="relative flex min-h-screen flex-col transition-all duration-300"
       :class="[sidebarCollapsed ? 'lg:ml-[72px]' : 'lg:ml-64']"
     >
       <!-- Header -->
       <AppHeader />
 
-      <!-- Main Content -->
-      <main class="app-page-content p-4 md:p-6 lg:p-8">
-        <slot />
-      </main>
+      <!-- Main Workspace Panel -->
+      <div class="app-content-stage flex flex-1">
+        <main class="app-page-content app-page-panel min-w-0 flex-1 p-4 md:p-6 lg:p-8">
+          <slot />
+        </main>
+      </div>
     </div>
   </div>
 </template>
