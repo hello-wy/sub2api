@@ -133,19 +133,19 @@
                 <div
                   v-for="(rule, index) in rewardRules"
                   :key="rule.day_count"
-                  class="reward-tile flex min-h-[124px] min-w-0 flex-col items-center justify-between rounded-2xl border border-primary-200/80 bg-gradient-to-br from-primary-50/90 to-white/85 px-4 py-4 text-center shadow-sm dark:border-primary-900/45 dark:from-primary-950/35 dark:to-dark-900/35"
+                  class="reward-tile flex min-h-[124px] min-w-0 flex-col items-center justify-between rounded-2xl border border-primary-200 bg-primary-50 px-4 py-4 text-center dark:border-primary-700/70 dark:bg-dark-900"
                 >
                   <div class="text-sm font-bold text-primary-800 dark:text-primary-200">
                     连续 {{ rule.day_count }} 天
                   </div>
-                  <div class="flex h-10 w-10 items-center justify-center rounded-full bg-white/85 text-xl shadow-sm ring-1 ring-primary-100 dark:bg-dark-950/50 dark:ring-primary-900/50">
+                  <div class="flex h-10 w-10 items-center justify-center rounded-full bg-white text-xl ring-1 ring-primary-100 dark:bg-dark-950 dark:ring-primary-800/70">
                     {{ rewardRuleIcon(index) }}
                   </div>
                   <div class="flex w-full items-center justify-between gap-2">
                     <span class="text-xs font-semibold uppercase text-primary-600/80 dark:text-primary-300/80">
                       Extra
                     </span>
-                    <span class="whitespace-nowrap rounded-full bg-white/85 px-2.5 py-1 text-xs font-bold text-primary-700 shadow-sm ring-1 ring-primary-200 dark:bg-dark-950/40 dark:text-primary-200 dark:ring-primary-900/50">
+                    <span class="whitespace-nowrap rounded-full bg-white px-2.5 py-1 text-xs font-bold text-primary-700 ring-1 ring-primary-200 dark:bg-dark-950 dark:text-primary-200 dark:ring-primary-800/70">
                       +{{ formatDollar(rule.extra_reward) }}
                     </span>
                   </div>
@@ -169,7 +169,7 @@
                     :class="day.checked_in
                       ? 'border-primary-200 bg-primary-50/90 text-primary-700 shadow-sm dark:border-primary-900/40 dark:bg-primary-900/20 dark:text-primary-300'
                       : day.is_today
-                        ? 'border-primary-200 bg-primary-50/70 text-primary-700 shadow-sm dark:border-primary-900/40 dark:bg-primary-900/15 dark:text-primary-300'
+                        ? 'border-primary-300 bg-primary-50 text-primary-700 shadow-sm dark:border-primary-400/90 dark:bg-primary-900/45 dark:text-primary-200 dark:shadow-[inset_0_0_0_1px_rgba(145,202,255,0.18)]'
                         : 'border-slate-200 bg-white/70 text-slate-500 dark:border-dark-700 dark:bg-dark-900/60 dark:text-dark-400'"
                   >
                     <span
@@ -595,22 +595,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.checkin-shell {
-  background:
-    linear-gradient(135deg, rgba(230, 244, 255, 0.84) 0%, rgba(248, 251, 255, 0.96) 46%, rgba(240, 247, 255, 0.9) 100%);
-}
-
-.checkin-shell::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background-image: radial-gradient(rgba(22, 119, 255, 0.14) 1px, transparent 1px);
-  background-size: 14px 14px;
-  mask-image: linear-gradient(to bottom, transparent, black 24%, black 78%, transparent);
-  opacity: 0.42;
-}
-
 .checkin-panel {
   border: 1px solid rgba(226, 232, 240, 0.9);
   border-radius: 1.25rem;
@@ -620,7 +604,8 @@ onMounted(() => {
 }
 
 .reward-tile {
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  box-shadow: none;
+  backdrop-filter: none;
 }
 
 .calendar-grid {
@@ -638,12 +623,6 @@ onMounted(() => {
 </style>
 
 <style>
-/* Kept unscoped so the global html.dark class reliably reaches this route. */
-.dark .checkin-shell {
-  background:
-    linear-gradient(135deg, #071426 0%, #0b1220 52%, #0a1a30 100%);
-}
-
 .dark .checkin-panel {
   border-color: rgba(51, 65, 85, 0.8);
   background: rgba(15, 23, 42, 0.78);

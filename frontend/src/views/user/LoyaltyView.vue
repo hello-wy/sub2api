@@ -463,8 +463,6 @@ onMounted(() => {
 <style scoped>
 .loyalty-shell {
   position: relative;
-  background:
-    linear-gradient(120deg, rgba(230, 244, 255, 0.82) 0%, rgba(248, 251, 255, 0.97) 44%, rgba(239, 246, 255, 0.92) 100%);
 }
 
 .loyalty-panel {
@@ -818,12 +816,6 @@ onMounted(() => {
 </style>
 
 <style>
-/* Kept unscoped so the global html.dark class reliably reaches this route. */
-.dark .loyalty-shell {
-  background:
-    linear-gradient(120deg, rgba(7, 20, 38, 0.99) 0%, rgba(7, 15, 31, 0.99) 48%, rgba(10, 26, 48, 0.98) 100%);
-}
-
 .dark .loyalty-panel,
 .dark .loyalty-stat-card {
   border-color: rgba(71, 85, 105, 0.74);
