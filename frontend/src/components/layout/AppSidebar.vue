@@ -6,7 +6,7 @@
       { '-translate-x-full lg:translate-x-0': !mobileOpen }
     ]"
   >
-    <LiquidGlass class="sidebar-liquid-shell relative flex h-full flex-col border-r border-white/50 dark:border-white/10">
+    <LiquidGlass class="sidebar-liquid-shell relative flex h-full flex-col border-r">
     <!-- Logo/Brand -->
     <div class="sidebar-header" :class="{ 'sidebar-header-collapsed': sidebarCollapsed }">
       <!-- Custom Logo or Default Logo -->
@@ -1040,44 +1040,55 @@ watch(
 
 <style scoped>
 :global(.sidebar-liquid-shell) {
-  background-color: #eef6ff;
-  background-image: linear-gradient(180deg, rgba(248, 251, 255, 0.98), rgba(232, 242, 255, 0.96));
-  backdrop-filter: blur(10px) saturate(1.05);
-  box-shadow: inset -1px 0 rgba(22, 119, 255, 0.05);
+  background-color: var(--app-chrome-surface);
+  background-image: none;
+  border-color: var(--app-chrome-border);
+  -webkit-backdrop-filter: blur(12px) saturate(1.08);
+  backdrop-filter: blur(12px) saturate(1.08);
+  box-shadow: inset 0 1px 0 var(--app-chrome-highlight);
 }
 
 :global(.sidebar-liquid-shell.liquid-glass::before) {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.34), rgba(22, 119, 255, 0.025));
+  background: none;
 }
 
 :global(.sidebar-liquid-shell.liquid-glass::after) {
-  border-color: rgba(22, 119, 255, 0.08);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42);
+  border-color: var(--app-chrome-border);
+  box-shadow: inset 0 1px 0 var(--app-chrome-highlight);
 }
 
 :global(.sidebar-liquid-shell) .sidebar-header,
 :global(.sidebar-liquid-shell) .sidebar-footer {
-  border-color: rgba(148, 184, 222, 0.22);
+  border-color: var(--app-chrome-border);
 }
 
 :global(.dark .sidebar-liquid-shell) {
-  background-image: linear-gradient(180deg, #10233b 0%, #0b1b30 52%, #091626 100%);
-  backdrop-filter: blur(8px) saturate(1.04);
-  box-shadow: inset -1px 0 rgba(126, 192, 255, 0.05);
+  background-color: var(--app-chrome-surface);
+  background-image: none;
+  box-shadow: inset 0 1px 0 var(--app-chrome-highlight);
 }
 
 :global(.dark .sidebar-liquid-shell.liquid-glass::before) {
-  background: linear-gradient(180deg, rgba(126, 192, 255, 0.025), rgba(5, 18, 36, 0.12));
+  background: none;
 }
 
 :global(.dark .sidebar-liquid-shell.liquid-glass::after) {
-  border-color: rgba(163, 207, 255, 0.08);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+  border-color: var(--app-chrome-border);
+  box-shadow: inset 0 1px 0 var(--app-chrome-highlight);
 }
 
 :global(.dark .sidebar-liquid-shell) .sidebar-header,
 :global(.dark .sidebar-liquid-shell) .sidebar-footer {
-  border-color: rgba(163, 207, 255, 0.1);
+  border-color: var(--app-chrome-border);
+}
+
+:global(.sidebar-liquid-shell button:not(.sidebar-link-active)) {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+:global(.sidebar-liquid-shell button:not(.sidebar-link-active)::before) {
+  content: none;
 }
 
 .sidebar-logo {

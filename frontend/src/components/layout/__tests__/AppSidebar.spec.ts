@@ -54,6 +54,18 @@ describe('AppSidebar header styles', () => {
   })
 })
 
+describe('AppSidebar liquid glass states', () => {
+  it('keeps nested sidebar buttons flat until their navigation item is active', () => {
+    expect(componentSource).toContain(
+      ':global(.sidebar-liquid-shell button:not(.sidebar-link-active))'
+    )
+    expect(componentSource).toContain(
+      ':global(.sidebar-liquid-shell button:not(.sidebar-link-active)::before)'
+    )
+    expect(styleSource).toMatch(/\.sidebar-link-active\s*\{[\s\S]*?backdrop-filter: blur\(12px\)/)
+  })
+})
+
 describe('AppSidebar user navigation', () => {
   it('does not include legacy image generation or recharge address menu entries', () => {
     expect(componentSource).not.toContain("path: '/image-generation'")

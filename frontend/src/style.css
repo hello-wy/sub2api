@@ -359,31 +359,58 @@
   opacity: 0.5;
 }
 
-.page-fade-enter-active,
-.page-fade-leave-active {
+.app-shell {
+  --app-chrome-surface: rgba(240, 247, 255, 0.94);
+  --app-chrome-border: rgba(148, 184, 222, 0.22);
+  --app-chrome-highlight: rgba(255, 255, 255, 0.52);
+}
+
+.dark .app-shell {
+  --app-chrome-surface: rgba(12, 29, 49, 0.96);
+  --app-chrome-border: rgba(163, 207, 255, 0.1);
+  --app-chrome-highlight: rgba(255, 255, 255, 0.045);
+}
+
+.app-header-surface {
+  background-color: var(--app-chrome-surface);
+  border-color: var(--app-chrome-border);
+  -webkit-backdrop-filter: blur(12px) saturate(1.08);
+  backdrop-filter: blur(12px) saturate(1.08);
+  box-shadow: inset 0 1px 0 var(--app-chrome-highlight);
+}
+
+@keyframes page-content-fade-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes page-content-fade-out {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translate3d(0, -4px, 0);
+  }
+}
+
+.page-fade-enter-active .app-page-content {
+  animation: page-content-fade-in 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
   will-change: opacity, transform;
 }
 
-.page-fade-enter-active {
-  transition:
-    opacity 220ms cubic-bezier(0.16, 1, 0.3, 1),
-    transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.page-fade-leave-active {
-  transition:
-    opacity 140ms ease-in,
-    transform 140ms ease-in;
-}
-
-.page-fade-enter-from {
-  opacity: 0;
-  transform: translate3d(0, 8px, 0);
-}
-
-.page-fade-leave-to {
-  opacity: 0;
-  transform: translate3d(0, -4px, 0);
+.page-fade-leave-active .app-page-content {
+  animation: page-content-fade-out 140ms ease-in both;
+  will-change: opacity, transform;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -394,14 +421,9 @@
     animation: none;
   }
 
-  .page-fade-enter-active,
-  .page-fade-leave-active {
-    transition-duration: 0.01ms;
-  }
-
-  .page-fade-enter-from,
-  .page-fade-leave-to {
-    transform: none;
+  .page-fade-enter-active .app-page-content,
+  .page-fade-leave-active .app-page-content {
+    animation: none;
   }
 }
 
@@ -903,21 +925,23 @@
     @apply transition-all duration-200;
     @apply hover:text-gray-900 dark:hover:text-white;
     isolation: isolate;
+    border: 1px solid transparent;
     padding-left: 1.0625rem;
     padding-right: 0.875rem;
   }
 
   .sidebar-link:hover {
-    background-color: rgba(255, 255, 255, 0.45);
+    background-color: rgba(22, 119, 255, 0.055);
   }
 
   .dark .sidebar-link:hover {
-    background-color: rgba(255, 255, 255, 0.08);
+    background-color: rgba(126, 192, 255, 0.055);
   }
 
   .sidebar-link-active {
     color: #1677ff;
     background-color: rgba(219, 234, 254, 0.76);
+    background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.06) 52%, rgba(22, 119, 255, 0.08));
     border: 1px solid rgba(191, 219, 254, 0.82);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.68),
@@ -933,6 +957,7 @@
   .dark .sidebar-link-active {
     color: #a6d3ff;
     background-color: rgba(22, 119, 255, 0.18);
+    background-image: linear-gradient(135deg, rgba(240, 249, 255, 0.14), rgba(126, 192, 255, 0.035) 52%, rgba(15, 49, 87, 0.14));
     border-color: rgba(126, 192, 255, 0.24);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.16),
