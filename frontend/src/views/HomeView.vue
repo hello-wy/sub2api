@@ -20,14 +20,14 @@
   >
     <nav class="fixed left-0 right-0 top-0 z-[100] flex h-[76px] items-center justify-between px-4 sm:px-6 lg:px-8">
       <router-link to="/home" class="flex items-center gap-3" aria-label="Solid API home">
-        <LiquidGlass class="relative flex h-10 w-10 items-center justify-center rounded-2xl border border-white/55 shadow-[0_18px_42px_rgba(0,80,180,0.16)] dark:border-white/15 dark:shadow-[0_18px_42px_rgba(0,119,255,0.22)]">
+        <span class="flex h-10 w-10 items-center justify-center">
           <img :src="siteLogo || '/logo.png'" alt="Solid API" class="h-8 w-8 object-contain" />
-        </LiquidGlass>
+        </span>
         <span class="text-[21px] font-semibold tracking-[-0.04em] text-[#06111f] dark:text-white">Solid API</span>
       </router-link>
 
-      <LiquidGlass
-        class="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 rounded-full border border-white/55 px-2 py-2 shadow-[0_18px_60px_rgba(20,68,140,0.16)] dark:border-white/15 dark:shadow-[0_18px_60px_rgba(0,0,0,0.28)] md:flex"
+      <div
+        class="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 rounded-full border border-[#d8e2ee] bg-white px-2 py-2 dark:border-[#263548] dark:bg-[#0d1724] md:flex"
       >
         <a class="rounded-full bg-[#06111f] px-4 py-1.5 text-sm font-semibold text-white dark:bg-white dark:text-[#06111f]" href="#home-hero">
           首页
@@ -52,11 +52,11 @@
             {{ item.label }}
           </a>
         </template>
-      </LiquidGlass>
+      </div>
 
       <div class="flex items-center gap-2">
         <button
-          class="liquid-glass-button inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/55 text-[#06111f] shadow-[0_16px_38px_rgba(20,68,140,0.14)] transition-all hover:-translate-y-0.5 active:scale-95 dark:border-white/15 dark:text-white dark:shadow-[0_16px_38px_rgba(0,0,0,0.26)]"
+          class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#d8e2ee] bg-white text-[#06111f] transition-colors hover:border-[#b9c9da] hover:bg-[#f4f8ff] active:scale-95 dark:border-[#263548] dark:bg-[#0d1724] dark:text-white dark:hover:border-[#3b526b] dark:hover:bg-[#121f2f]"
           type="button"
           :aria-label="isDark ? '切换到浅色模式' : '切换到深色模式'"
           :title="isDark ? '切换到浅色模式' : '切换到深色模式'"
@@ -74,7 +74,7 @@
         </router-link>
 
         <button
-          class="flex h-11 w-11 items-center justify-center rounded-full border border-[#1677ff]/16 bg-white/72 text-[#06111f] backdrop-blur-xl transition-colors hover:bg-white md:hidden dark:border-white/14 dark:bg-white/10 dark:text-white dark:hover:bg-white/16"
+          class="flex h-11 w-11 items-center justify-center rounded-full border border-[#d8e2ee] bg-white text-[#06111f] transition-colors hover:border-[#b9c9da] hover:bg-[#f4f8ff] md:hidden dark:border-[#263548] dark:bg-[#0d1724] dark:text-white dark:hover:border-[#3b526b] dark:hover:bg-[#121f2f]"
           type="button"
           aria-label="打开菜单"
         >
@@ -203,7 +203,6 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useAuthStore, useAppStore } from '@/stores'
 import LogoLoop, { type LogoItem } from '@/components/home/LogoLoop.vue'
 import ProviderLogo from '@/components/home/ProviderLogo.vue'
-import LiquidGlass from '@/components/common/LiquidGlass.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { sanitizeUrl } from '@/utils/url'
 
