@@ -1,14 +1,25 @@
 <template>
   <div class="table-page-layout" :class="{ 'mobile-mode': isMobile }">
-    <!-- 固定区域：操作按钮 -->
-    <div v-if="$slots.actions" class="layout-section-fixed">
-      <slot name="actions" />
+    <div v-if="unifiedToolbar && ($slots.filters || $slots.actions)" class="layout-toolbar">
+      <div v-if="$slots.filters" class="layout-toolbar-filters">
+        <slot name="filters" />
+      </div>
+      <div v-if="$slots.actions" class="layout-toolbar-actions">
+        <slot name="actions" />
+      </div>
     </div>
 
-    <!-- 固定区域：搜索和过滤器 -->
-    <div v-if="$slots.filters" class="layout-section-fixed">
-      <slot name="filters" />
-    </div>
+    <template v-else>
+      <!-- 固定区域：操作按钮 -->
+      <div v-if="$slots.actions" class="layout-section-fixed">
+        <slot name="actions" />
+      </div>
+
+      <!-- 固定区域：搜索和过滤器 -->
+      <div v-if="$slots.filters" class="layout-section-fixed">
+        <slot name="filters" />
+      </div>
+    </template>
 
     <!-- 滚动区域：表格 -->
     <div class="layout-section-scrollable">
@@ -26,6 +37,12 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+
+withDefaults(defineProps<{
+  unifiedToolbar?: boolean
+}>(), {
+  unifiedToolbar: false,
+})
 
 const isMobile = ref(false)
 
@@ -51,6 +68,18 @@ onUnmounted(() => {
 }
 
 .layout-section-fixed {
+  @apply flex-shrink-0;
+}
+
+.layout-toolbar {
+  @apply flex flex-shrink-0 items-start justify-between gap-4;
+}
+
+.layout-toolbar-filters {
+  @apply min-w-0 flex-1;
+}
+
+.layout-toolbar-actions {
   @apply flex-shrink-0;
 }
 
@@ -98,6 +127,15 @@ onUnmounted(() => {
 
 .table-page-layout.mobile-mode .layout-section-scrollable {
   @apply flex-none min-h-fit;
+}
+
+.table-page-layout.mobile-mode .layout-toolbar {
+  @apply flex-col;
+}
+
+.table-page-layout.mobile-mode .layout-toolbar-filters,
+.table-page-layout.mobile-mode .layout-toolbar-actions {
+  @apply w-full;
 }
 
 .table-page-layout.mobile-mode .table-scroll-container :deep(table) {

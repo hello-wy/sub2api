@@ -153,6 +153,9 @@ describe('ModelSquareView', () => {
     expect(wrapper.get('main').classes()).toContain('min-w-0')
     expect(grid.classes()).toContain('xl:grid-cols-3')
     expect(wrapper.get('[data-test="grid-view"]').attributes('aria-pressed')).toBe('true')
+    expect(wrapper.get('[data-test="reset-filters"]').classes()).toContain('filter-reset')
+    expect(wrapper.get('[data-test="platform-filter-all"]').classes()).toContain('filter-option-active')
+    expect(wrapper.get('[data-test="grid-view"]').classes()).toContain('view-button-active')
 
     await wrapper.get('[data-test="list-view"]').trigger('click')
     expect(wrapper.get('[data-test="list-view"]').attributes('aria-pressed')).toBe('true')
