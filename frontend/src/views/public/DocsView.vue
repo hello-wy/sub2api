@@ -44,16 +44,6 @@
 
       <aside class="docs-sidebar" :class="{ 'is-open': mobileNavOpen }" aria-label="文档章节">
         <div class="docs-sidebar-shell relative flex h-full flex-col">
-          <div class="docs-sidebar-header">
-            <router-link to="/home" class="docs-sidebar-logo" aria-label="SolidAPI 首页">
-              <img :src="siteLogo || '/logo.png'" alt="SolidAPI Logo" class="h-full w-full object-contain" />
-            </router-link>
-            <div class="docs-sidebar-brand">
-              <router-link to="/home" class="docs-sidebar-brand-title">SolidAPI</router-link>
-              <span>使用文档</span>
-            </div>
-          </div>
-
           <label class="docs-search">
             <Icon name="search" size="sm" />
             <input v-model="searchQuery" type="search" placeholder="搜索教程" aria-label="搜索教程" />
@@ -936,44 +926,6 @@ watch(activeId, () => {
   padding: 18px 22px 16px 0;
 }
 
-.docs-sidebar-header {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 0 8px 17px;
-}
-
-.docs-sidebar-logo {
-  width: 36px;
-  height: 36px;
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  border-radius: 7px;
-}
-
-.docs-sidebar-brand {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.docs-sidebar-brand-title {
-  color: var(--docs-text);
-  font-size: 15px;
-  font-weight: 800;
-  text-decoration: none;
-}
-
-.docs-sidebar-brand > span {
-  color: var(--docs-muted);
-  font-size: 11px;
-}
-
 .docs-search {
   min-height: 38px;
   display: flex;
@@ -1472,7 +1424,6 @@ watch(activeId, () => {
     padding: 14px;
   }
 
-  .docs-sidebar-header,
   .docs-sidebar-footer {
     display: none;
   }
