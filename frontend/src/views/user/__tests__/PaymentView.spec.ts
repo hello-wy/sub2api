@@ -430,6 +430,17 @@ describe('PaymentView inline subscription checkout', () => {
     expect(purchaseSubscriptionWithBalance).not.toHaveBeenCalled()
   })
 
+  it('passes the undiscounted original price to balance settlement', async () => {
+    authUserState.user = { username: 'demo-user', balance: 250 }
+    const wrapper = await mountSubscriptionConfirm({
+      plan: { price: 20, original_price: 200 },
+    })
+    const card = wrapper.findComponent({ name: 'SubscriptionPlanCard' })
+
+    expect(card.props('balancePrice')).toBe(200)
+    expect(card.props('rechargeAmountLabel')).toBe(formatPaymentAmount(20, 'CNY'))
+  })
+
   it('shows converted CNY pay amount using the subscription rate, not the balance multiplier', async () => {
     const wrapper = await mountSubscriptionConfirm({
       checkout: {

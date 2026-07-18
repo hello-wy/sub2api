@@ -103,20 +103,33 @@
         </button>
       </div>
 
-      <div class="mb-3 flex min-h-5 items-center justify-between gap-3 text-xs">
+      <div class="mb-3 grid min-h-10 grid-cols-2 gap-3 text-xs">
         <template v-if="paymentSource === 'recharge'">
-          <span class="text-gray-500 dark:text-gray-400">{{ t('payment.actualPay') }}</span>
-          <strong :class="rechargeAvailable ? 'text-gray-900 dark:text-white' : 'text-amber-600 dark:text-amber-300'">
-            {{ rechargeAvailable ? rechargeAmountLabel : t('payment.notAvailable') }}
-          </strong>
+          <div>
+            <span class="block text-gray-500 dark:text-gray-400">{{ t('wallet.subscriptionPlanDiscount') }}</span>
+            <strong class="mt-0.5 block text-primary-600 dark:text-primary-400">{{ discountText || t('wallet.subscriptionNoDiscount') }}</strong>
+          </div>
+          <div class="text-right">
+            <span class="block text-gray-500 dark:text-gray-400">{{ t('wallet.subscriptionSettlementAmount') }}</span>
+            <strong :class="['mt-0.5 block', rechargeAvailable ? 'text-gray-900 dark:text-white' : 'text-amber-600 dark:text-amber-300']">
+              {{ rechargeAvailable ? rechargeAmountLabel : t('payment.notAvailable') }}
+            </strong>
+          </div>
+        </template>
+        <template v-else-if="hasEnoughBalance">
+          <div>
+            <span class="block text-gray-500 dark:text-gray-400">{{ t('wallet.subscriptionBalanceNoDiscount') }}</span>
+            <strong class="mt-0.5 block text-gray-900 dark:text-white">-${{ effectiveBalancePrice.toFixed(2) }}</strong>
+          </div>
+          <div class="text-right">
+            <span class="block text-gray-500 dark:text-gray-400">{{ t('wallet.subscriptionBalanceSettlement') }}</span>
+            <strong class="mt-0.5 block text-primary-600 dark:text-primary-400">${{ balanceAfterPayment.toFixed(2) }}</strong>
+          </div>
         </template>
         <template v-else>
-          <span :class="hasEnoughBalance ? 'text-gray-500 dark:text-gray-400' : 'text-red-600 dark:text-red-400'">
-            {{ hasEnoughBalance ? `${t('wallet.subscriptionBalanceRequired')} $${plan.price.toFixed(2)}` : t('wallet.subscriptionBalanceInsufficient') }}
+          <span class="col-span-2 self-center text-red-600 dark:text-red-400">
+            {{ t('wallet.subscriptionBalanceInsufficient') }} · {{ t('wallet.subscriptionBalanceRequired') }} ${{ effectiveBalancePrice.toFixed(2) }}
           </span>
-          <strong :class="hasEnoughBalance ? 'text-primary-600 dark:text-primary-400' : 'text-red-600 dark:text-red-400'">
-            {{ t('wallet.subscriptionBalanceAvailable') }} ${{ availableBalance.toFixed(2) }}
-          </strong>
         </template>
       </div>
 
@@ -145,6 +158,7 @@ const props = withDefaults(defineProps<{
   plan: SubscriptionPlan
   subscriptionUsdToCnyRate?: number
   availableBalance?: number
+  balancePrice?: number
   rechargeAvailable?: boolean
   rechargeAmountLabel?: string
   disabled?: boolean
@@ -152,6 +166,7 @@ const props = withDefaults(defineProps<{
 }>(), {
   subscriptionUsdToCnyRate: 0,
   availableBalance: 0,
+  balancePrice: 0,
   rechargeAvailable: true,
   rechargeAmountLabel: '',
   disabled: false,
@@ -178,7 +193,9 @@ function cnyPrice(value: number): string {
 
 const displayPrice = computed(() => cnyPrice(props.plan.price))
 const displayOriginalPrice = computed(() => cnyPrice(props.plan.original_price ?? 0))
-const hasEnoughBalance = computed(() => props.plan.price > 0 && props.availableBalance + 1e-9 >= props.plan.price)
+const effectiveBalancePrice = computed(() => props.balancePrice > 0 ? props.balancePrice : props.plan.price)
+const hasEnoughBalance = computed(() => effectiveBalancePrice.value > 0 && props.availableBalance + 1e-9 >= effectiveBalancePrice.value)
+const balanceAfterPayment = computed(() => Math.max(0, props.availableBalance - effectiveBalancePrice.value))
 const submitDisabled = computed(() => props.disabled
   || props.submitting
   || (paymentSource.value === 'recharge' ? !props.rechargeAvailable : !hasEnoughBalance.value))

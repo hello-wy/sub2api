@@ -120,6 +120,7 @@
                     :plan="plan"
                     :subscription-usd-to-cny-rate="subscriptionUsdToCnyRate"
                     :available-balance="availableBalance"
+                    :balance-price="subscriptionBalancePrice(plan)"
                     :recharge-available="canRechargeSubscriptionPlan(plan)"
                     :recharge-amount-label="formatSubscriptionRechargeAmount(plan)"
                     :disabled="submitting"
@@ -716,8 +717,14 @@ function formatSubscriptionRechargeAmount(plan: SubscriptionPlan): string {
   return formatSelectedPaymentAmount(subscriptionTotalAmountForPlan(plan))
 }
 
+function subscriptionBalancePrice(plan: SubscriptionPlan): number {
+  const originalPrice = Number(plan.original_price ?? 0)
+  return Number.isFinite(originalPrice) ? Math.max(plan.price, originalPrice) : plan.price
+}
+
 function hasEnoughBalanceForPlan(plan: SubscriptionPlan): boolean {
-  return plan.price > 0 && availableBalance.value + 1e-9 >= plan.price
+  const balancePrice = subscriptionBalancePrice(plan)
+  return balancePrice > 0 && availableBalance.value + 1e-9 >= balancePrice
 }
 
 // Auto-switch to first available method when current selection can't handle the amount

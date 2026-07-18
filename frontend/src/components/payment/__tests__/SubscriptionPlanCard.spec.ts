@@ -28,6 +28,11 @@ const i18n = createI18n({
         subscriptionPaymentBalance: "Balance payment",
         subscriptionBalanceAvailable: "Available balance",
         subscriptionBalanceInsufficient: "Insufficient balance",
+        subscriptionPlanDiscount: "Plan discount",
+        subscriptionNoDiscount: "No discount",
+        subscriptionSettlementAmount: "Settlement amount",
+        subscriptionBalanceNoDiscount: "No discount",
+        subscriptionBalanceSettlement: "Balance after payment",
       },
       common: { processing: "Processing" },
     },
@@ -95,7 +100,7 @@ describe("SubscriptionPlanCard", () => {
     );
 
     await balanceButton?.trigger("click");
-    expect(wrapper.text()).toContain("$25.00");
+    expect(wrapper.text()).toContain("$15.00");
 
     await wrapper.findAll("button").at(-1)?.trigger("click");
     expect(wrapper.emitted("subscribe")?.[0]?.[1]).toBe("balance");
@@ -110,5 +115,27 @@ describe("SubscriptionPlanCard", () => {
     await balanceButton?.trigger("click");
     expect(wrapper.text()).toContain("wallet.subscriptionBalanceInsufficient");
     expect(wrapper.findAll("button").at(-1)?.attributes("disabled")).toBeDefined();
+  });
+
+  it("shows the plan discount for recharge and settles balance payment without it", async () => {
+    const basePlan = mountPlanCard("openai").props("plan");
+    const wrapper = mountPlanCard("openai", 1, {
+      availableBalance: 25,
+      balancePrice: 20,
+      rechargeAmountLabel: "¥10.00",
+      plan: { ...basePlan, price: 10, original_price: 20 },
+    });
+
+    expect(wrapper.text()).toContain("-50%");
+    expect(wrapper.text()).toContain("¥10.00");
+
+    const balanceButton = wrapper.findAll("button").find(button =>
+      button.text().includes("wallet.subscriptionPaymentBalance"),
+    );
+    await balanceButton?.trigger("click");
+
+    expect(wrapper.text()).toContain("wallet.subscriptionBalanceNoDiscount");
+    expect(wrapper.text()).toContain("-$20.00");
+    expect(wrapper.text()).toContain("$5.00");
   });
 });

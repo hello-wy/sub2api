@@ -6,6 +6,7 @@ import (
 	"math"
 	"time"
 
+	dbent "github.com/Wei-Shaw/sub2api/ent"
 	dbuser "github.com/Wei-Shaw/sub2api/ent/user"
 	"github.com/Wei-Shaw/sub2api/internal/payment"
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
@@ -44,7 +45,8 @@ func (s *PaymentService) PurchaseSubscriptionWithBalance(ctx context.Context, re
 	if err != nil {
 		return nil, err
 	}
-	if math.IsNaN(plan.Price) || math.IsInf(plan.Price, 0) || plan.Price <= 0 {
+	balancePrice := balanceSubscriptionPlanPrice(plan)
+	if math.IsNaN(balancePrice) || math.IsInf(balancePrice, 0) || balancePrice <= 0 {
 		return nil, infraerrors.BadRequest("INVALID_AMOUNT", "subscription plan price must be positive")
 	}
 
@@ -66,15 +68,15 @@ func (s *PaymentService) PurchaseSubscriptionWithBalance(ctx context.Context, re
 	defer func() { _ = tx.Rollback() }()
 
 	updated, err := tx.User.Update().
-		Where(dbuser.IDEQ(req.UserID), dbuser.BalanceGTE(plan.Price)).
-		AddBalance(-plan.Price).
+		Where(dbuser.IDEQ(req.UserID), dbuser.BalanceGTE(balancePrice)).
+		AddBalance(-balancePrice).
 		Save(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("deduct subscription balance: %w", err)
 	}
 	if updated == 0 {
 		return nil, ErrInsufficientBalance.WithMetadata(map[string]string{
-			"required":  fmt.Sprintf("%.2f", plan.Price),
+			"required":  fmt.Sprintf("%.2f", balancePrice),
 			"available": fmt.Sprintf("%.2f", user.Balance),
 		})
 	}
@@ -89,8 +91,8 @@ func (s *PaymentService) PurchaseSubscriptionWithBalance(ctx context.Context, re
 		SetUserEmail(user.Email).
 		SetUserName(user.Username).
 		SetNillableUserNotes(psNilIfEmpty(user.Notes)).
-		SetAmount(plan.Price).
-		SetPayAmount(plan.Price).
+		SetAmount(balancePrice).
+		SetPayAmount(balancePrice).
 		SetFeeRate(0).
 		SetRechargeCode("").
 		SetOutTradeNo(outTradeNo).
@@ -132,8 +134,19 @@ func (s *PaymentService) PurchaseSubscriptionWithBalance(ctx context.Context, re
 
 	return &BalanceSubscriptionPurchaseResult{
 		OrderID:      order.ID,
-		Amount:       plan.Price,
+		Amount:       balancePrice,
 		NewBalance:   updatedUser.Balance,
 		Subscription: subscription,
 	}, nil
+}
+
+func balanceSubscriptionPlanPrice(plan *dbent.SubscriptionPlan) float64 {
+	if plan == nil {
+		return 0
+	}
+	price := plan.Price
+	if plan.OriginalPrice != nil && !math.IsNaN(*plan.OriginalPrice) && !math.IsInf(*plan.OriginalPrice, 0) {
+		price = math.Max(price, *plan.OriginalPrice)
+	}
+	return price
 }
