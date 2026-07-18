@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest'
 
 const dir = dirname(fileURLToPath(import.meta.url))
 const componentSource = readFileSync(resolve(dir, '../AppLayout.vue'), 'utf8')
+const appSource = readFileSync(resolve(dir, '../../../App.vue'), 'utf8')
 const styleSource = readFileSync(resolve(dir, '../../../style.css'), 'utf8')
 
 describe('AppLayout workspace scrolling', () => {
@@ -14,5 +15,10 @@ describe('AppLayout workspace scrolling', () => {
     expect(componentSource).toContain('class="app-content-stage flex min-h-0 flex-1"')
     expect(styleSource).toMatch(/\.app-page-panel\s*\{[\s\S]*?overflow-y: auto;/)
     expect(styleSource).toMatch(/\.app-page-panel\s*\{[\s\S]*?scrollbar-gutter: stable;/)
+  })
+
+  it('mounts async route content without waiting for the previous page to leave', () => {
+    expect(appSource).toContain('<Transition name="page-fade" :duration="pageTransitionDuration">')
+    expect(appSource).not.toContain('mode="out-in"')
   })
 })

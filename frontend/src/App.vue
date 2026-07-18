@@ -157,7 +157,7 @@ onMounted(async () => {
 <template>
   <NavigationProgress />
   <RouterView v-slot="{ Component, route: currentRoute }">
-    <Transition name="page-fade" mode="out-in" :duration="pageTransitionDuration">
+    <Transition name="page-fade" :duration="pageTransitionDuration">
       <component :is="Component" :key="currentRoute.path" />
     </Transition>
   </RouterView>
