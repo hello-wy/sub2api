@@ -344,6 +344,7 @@ export default {
     },
     orders: {
       title: 'My Orders',
+      description: 'Review your balance and subscription orders',
       empty: 'No orders yet',
       orderId: 'Order ID',
       orderNo: 'Order No.',

@@ -368,6 +368,7 @@ export default {
     },
     orders: {
       title: '我的订单',
+      description: '查看充值与订阅订单记录',
       empty: '暂无订单',
       orderId: '订单 ID',
       orderNo: '订单编号',

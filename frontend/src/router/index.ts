@@ -183,7 +183,8 @@ const routes: RouteRecordRaw[] = [
       requiresAuth: true,
       requiresAdmin: false,
       title: 'Leaderboard',
-      titleKey: 'nav.leaderboard'
+      titleKey: 'nav.leaderboard',
+      descriptionKey: 'leaderboard.description'
     }
   },
 
@@ -351,6 +352,7 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: false,
       title: 'My Orders',
       titleKey: 'nav.myOrders',
+      descriptionKey: 'payment.orders.description',
       requiresPayment: true
     }
   },
@@ -526,7 +528,8 @@ const routes: RouteRecordRaw[] = [
       requiresAuth: true,
       requiresAdmin: false,
       title: 'Channel Status',
-      titleKey: 'nav.channelStatus'
+      titleKey: 'nav.channelStatus',
+      descriptionKey: 'channelStatus.description'
     }
   },
   {

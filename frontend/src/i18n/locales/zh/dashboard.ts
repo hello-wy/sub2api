@@ -445,6 +445,10 @@ export default {
     relativeDaysAgo: '{n} 天前'
   },
 
+  leaderboard: {
+    description: '查看每日消费排行与个人排名'
+  },
+
   // Channel Status (user-facing read-only view)
   channelStatus: {
     title: '渠道状态',

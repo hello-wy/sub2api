@@ -440,6 +440,10 @@ export default {
     relativeDaysAgo: '{n}d ago'
   },
 
+  leaderboard: {
+    description: 'View daily spending rankings and your personal position'
+  },
+
   // Channel Status (user-facing read-only view)
   channelStatus: {
     title: 'Channel Status',
