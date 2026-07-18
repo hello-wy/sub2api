@@ -158,7 +158,6 @@
                     <h2 class="text-base font-semibold text-gray-900 dark:text-white">{{ t('wallet.activeSubscriptions') }}</h2>
                     <HelpTooltip :content="t('wallet.singleSubscriptionNotice')" width-class="w-72" />
                   </div>
-                  <span class="rounded-md bg-primary-50 px-2 py-1 text-xs font-semibold text-primary-700 dark:bg-primary-950/40 dark:text-primary-300">{{ activeSubscriptions.length }}</span>
                 </header>
                 <div v-if="activeSubscriptions.length" class="divide-y divide-gray-100 dark:divide-dark-700">
                   <div v-for="sub in activeSubscriptions" :key="sub.id" class="px-5 py-4">

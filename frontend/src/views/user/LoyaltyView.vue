@@ -138,10 +138,6 @@
                 <h3 class="text-lg font-black tracking-normal text-slate-950 dark:text-white">{{ t('loyalty.detailsTitle') }}</h3>
                 <p class="mt-1 text-sm font-medium text-slate-500 dark:text-dark-400">{{ t('loyalty.detailsHint') }}</p>
               </div>
-              <span class="loyalty-table-action">
-                <Icon name="book" size="sm" />
-                <span>{{ t('loyalty.viewRules') }}</span>
-              </span>
             </div>
 
             <div class="mt-4 overflow-x-auto">
@@ -217,7 +213,6 @@ import type { PaymentLoyaltyInfo, PaymentLoyaltyRule } from '@/types/payment'
 type IconName =
   | 'badge'
   | 'bolt'
-  | 'book'
   | 'calendar'
   | 'chart'
   | 'database'
@@ -719,26 +714,6 @@ onMounted(() => {
   content: "";
 }
 
-.loyalty-table-action {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  border-radius: 0.5rem;
-  background: rgba(248, 250, 252, 0.94);
-  padding: 0.5rem 0.75rem;
-  font-size: 0.8125rem;
-  font-weight: 900;
-  color: #64748b;
-  box-shadow: inset 0 0 0 1px rgba(226, 232, 240, 0.95);
-  transition: background 160ms ease, color 160ms ease;
-}
-
-.loyalty-table-action:hover {
-  background: rgba(230, 244, 255, 0.9);
-  color: #1677ff;
-}
-
 .loyalty-table {
   width: 100%;
   min-width: 680px;
@@ -853,17 +828,10 @@ onMounted(() => {
   box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.46);
 }
 
-.dark .loyalty-plan-badge,
-.dark .loyalty-table-action {
+.dark .loyalty-plan-badge {
   background: rgba(30, 41, 59, 0.7);
   color: #cbd5e1;
   box-shadow: inset 0 0 0 1px rgba(71, 85, 105, 0.82);
-}
-
-.dark .loyalty-table-action:hover {
-  background: rgba(0, 44, 140, 0.34);
-  color: #91caff;
-  box-shadow: inset 0 0 0 1px rgba(22, 119, 255, 0.42);
 }
 
 .dark .loyalty-section-icon,

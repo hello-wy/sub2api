@@ -6,12 +6,14 @@ import AccountsView from '../AccountsView.vue'
 const {
   listAccounts,
   listWithEtag,
+  updateAccount,
   getBatchTodayStats,
   getAllProxies,
   getAllGroups
 } = vi.hoisted(() => ({
   listAccounts: vi.fn(),
   listWithEtag: vi.fn(),
+  updateAccount: vi.fn(),
   getBatchTodayStats: vi.fn(),
   getAllProxies: vi.fn(),
   getAllGroups: vi.fn()
@@ -22,6 +24,7 @@ vi.mock('@/api/admin', () => ({
     accounts: {
       list: listAccounts,
       listWithEtag,
+      update: updateAccount,
       getBatchTodayStats,
       getUpstreamBillingProbeSettings: vi.fn().mockResolvedValue({ enabled: true, interval_minutes: 30 }),
       delete: vi.fn(),
@@ -67,8 +70,13 @@ const DataTableStub = {
   props: ['columns', 'data'],
   template: `
     <div data-test="data-table">
-      <div v-for="row in data" :key="row.id" :data-test="'scheduler-score-' + row.id">
-        <slot name="cell-scheduler_score" :row="row" />
+      <div v-for="row in data" :key="row.id">
+        <div :data-test="'scheduler-score-' + row.id">
+          <slot name="cell-scheduler_score" :row="row" />
+        </div>
+        <div :data-test="'priority-' + row.id">
+          <slot name="cell-priority" :row="row" :value="row.priority" />
+        </div>
       </div>
     </div>
   `
@@ -135,6 +143,7 @@ describe('admin AccountsView scheduler score column', () => {
 
     listAccounts.mockReset()
     listWithEtag.mockReset()
+    updateAccount.mockReset()
     getBatchTodayStats.mockReset()
     getAllProxies.mockReset()
     getAllGroups.mockReset()
@@ -191,6 +200,12 @@ describe('admin AccountsView scheduler score column', () => {
     getBatchTodayStats.mockResolvedValue({ stats: {} })
     getAllProxies.mockResolvedValue([])
     getAllGroups.mockResolvedValue([])
+    updateAccount.mockImplementation((id: number, updates: Record<string, unknown>) => Promise.resolve({
+      ...baseAccount,
+      id,
+      name: `account-${id}`,
+      ...updates,
+    }))
   })
 
   it('falls back to the base score for ungrouped accounts instead of showing a dash', async () => {
@@ -216,6 +231,20 @@ describe('admin AccountsView scheduler score column', () => {
     expect(groupedCell.exists()).toBe(true)
     expect(groupedCell.text()).toContain('group-five')
     expect(groupedCell.text()).toContain('2')
+  })
+
+  it('updates priority directly from the table cell', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+
+    await wrapper.get('[data-testid="priority-edit-1"]').trigger('click')
+    const input = wrapper.get('input[aria-label="admin.accounts.priority"]')
+    await input.setValue('4')
+    await input.trigger('keydown.enter')
+    await flushPromises()
+
+    expect(updateAccount).toHaveBeenCalledWith(1, { priority: 4 })
+    expect(wrapper.get('[data-testid="priority-edit-1"]').text()).toContain('4')
   })
 
   it('keeps scheduler score hidden for old saved column settings until the admin opts in again', async () => {

@@ -5,15 +5,12 @@
         <div class="checkin-panel overflow-hidden p-6 sm:p-8">
           <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div class="flex min-w-0 flex-col gap-5 sm:flex-row sm:items-center">
-              <div class="relative mx-auto flex h-24 w-24 shrink-0 items-center justify-center sm:mx-0">
-                <div class="absolute inset-3 rounded-3xl bg-primary-200/60 blur-xl dark:bg-primary-600/25"></div>
-                <div class="relative flex h-20 w-20 items-center justify-center rounded-3xl border border-primary-200 bg-gradient-to-br from-primary-50 to-primary-100 text-primary-600 shadow-[0_18px_38px_rgba(22,119,255,0.24)] dark:border-primary-700/40 dark:from-primary-950 dark:to-dark-900 dark:text-primary-300">
-                  <Icon name="calendar" size="xl" :stroke-width="1.9" />
-                  <Icon name="check" size="lg" class="absolute -bottom-1 -right-1 rounded-full bg-white p-1 text-primary-500 shadow-lg dark:bg-dark-900" :stroke-width="2.6" />
-                </div>
-                <span class="absolute left-1 top-3 h-2 w-2 rounded-full bg-primary-300 shadow-[0_0_18px_rgba(22,119,255,0.55)]"></span>
-                <span class="absolute right-2 top-1 h-1.5 w-1.5 rounded-full bg-primary-400 shadow-[0_0_14px_rgba(64,150,255,0.55)]"></span>
-              </div>
+              <img
+                :src="checkinCalendarIcon"
+                alt=""
+                aria-hidden="true"
+                class="mx-auto h-24 w-24 shrink-0 object-contain sm:mx-0 sm:h-28 sm:w-28"
+              />
               <div class="min-w-0 text-center sm:text-left">
                 <h2 class="text-3xl font-bold tracking-normal text-slate-950 dark:text-white">每日签到</h2>
                 <p class="mt-2 text-base text-slate-600 dark:text-dark-300">完成每日签到并领取当日奖励，连续签到可获得更多奖励！</p>
@@ -90,23 +87,13 @@
             <div
               v-for="card in statCards"
               :key="card.label"
-              class="checkin-panel group relative min-h-[124px] overflow-hidden p-5"
+              class="checkin-panel min-h-[124px] p-5"
             >
-              <div class="flex items-start gap-4">
-                <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary-50 to-primary-100 text-primary-600 ring-1 ring-primary-100 transition group-hover:scale-105 dark:from-primary-950/70 dark:to-dark-900/70 dark:text-primary-300 dark:ring-primary-900/40">
-                  <Icon :name="card.icon" size="lg" :stroke-width="1.8" />
-                </div>
-                <div class="min-w-0">
-                  <p class="text-sm font-medium text-slate-500 dark:text-dark-300">{{ card.label }}</p>
-                  <p class="mt-2 text-3xl font-bold tracking-normal text-slate-950 dark:text-white" :class="card.valueClass">
-                    {{ card.value }}<span v-if="card.unit" class="ml-1 text-base font-semibold text-slate-700 dark:text-dark-300">{{ card.unit }}</span>
-                  </p>
-                  <p class="mt-1 text-xs text-slate-500 dark:text-dark-400">{{ card.hint }}</p>
-                </div>
-              </div>
-              <div class="pointer-events-none absolute bottom-2 right-3 text-primary-300/25 transition group-hover:scale-110 group-hover:text-primary-300/40 dark:text-primary-500/20">
-                <Icon :name="card.accentIcon" size="xl" :stroke-width="1.5" />
-              </div>
+              <p class="text-sm font-medium text-slate-500 dark:text-dark-300">{{ card.label }}</p>
+              <p class="mt-2 text-3xl font-bold tracking-normal text-slate-950 dark:text-white" :class="card.valueClass">
+                {{ card.value }}<span v-if="card.unit" class="ml-1 text-base font-semibold text-slate-700 dark:text-dark-300">{{ card.unit }}</span>
+              </p>
+              <p class="mt-1 text-xs text-slate-500 dark:text-dark-400">{{ card.hint }}</p>
             </div>
           </div>
 
@@ -131,19 +118,16 @@
 
               <div class="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 <div
-                  v-for="(rule, index) in rewardRules"
+                  v-for="rule in rewardRules"
                   :key="rule.day_count"
-                  class="reward-tile flex min-h-[124px] min-w-0 flex-col items-center justify-between rounded-2xl border border-primary-200 bg-primary-50 px-4 py-4 text-center dark:border-primary-700/70 dark:bg-dark-900"
+                  class="reward-tile flex min-h-[118px] min-w-0 flex-col rounded-2xl border border-primary-200 bg-primary-50 px-4 py-4 dark:border-primary-700/70 dark:bg-dark-900"
                 >
                   <div class="text-sm font-bold text-primary-800 dark:text-primary-200">
                     连续 {{ rule.day_count }} 天
                   </div>
-                  <div class="flex h-10 w-10 items-center justify-center rounded-full bg-white text-xl ring-1 ring-primary-100 dark:bg-dark-950 dark:ring-primary-800/70">
-                    {{ rewardRuleIcon(index) }}
-                  </div>
-                  <div class="flex w-full items-center justify-between gap-2">
-                    <span class="text-xs font-semibold uppercase text-primary-600/80 dark:text-primary-300/80">
-                      Extra
+                  <div class="mt-4 flex flex-col items-start gap-2">
+                    <span class="whitespace-nowrap text-xs font-semibold text-primary-600/80 dark:text-primary-300/80">
+                      额外奖励
                     </span>
                     <span class="whitespace-nowrap rounded-full bg-white px-2.5 py-1 text-xs font-bold text-primary-700 ring-1 ring-primary-200 dark:bg-dark-950 dark:text-primary-200 dark:ring-primary-800/70">
                       +{{ formatDollar(rule.extra_reward) }}
@@ -299,6 +283,7 @@ import AppLayout from '@/components/layout/AppLayout.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import Icon from '@/components/icons/Icon.vue'
+import checkinCalendarIcon from '@/assets/checkin-calendar.png'
 import { checkinAPI, type CheckinHistoryItem, type CheckinRewardRule, type CheckinStatusResponse } from '@/api'
 import { useAppStore } from '@/stores/app'
 import { useAuthStore } from '@/stores/auth'
@@ -342,8 +327,6 @@ const statCards = computed(() => [
     label: '今日可领',
     value: formatRewardRange(status.value?.today_reward_min ?? status.value?.today_reward ?? 0, status.value?.today_reward_max ?? status.value?.today_reward ?? 0),
     hint: `基础奖励 ${formatRewardRange(status.value?.base_reward_min ?? status.value?.base_reward ?? 0, status.value?.base_reward_max ?? status.value?.base_reward ?? 0)}`,
-    icon: 'dollar' as const,
-    accentIcon: 'trendingUp' as const,
     valueClass: 'text-primary-600 dark:text-primary-300',
   },
   {
@@ -351,8 +334,6 @@ const statCards = computed(() => [
     value: String(status.value?.current_streak ?? 0),
     unit: '天',
     hint: `今天：${alreadyCheckedIn.value ? '已签到' : '未签到'}`,
-    icon: 'fire' as const,
-    accentIcon: 'fire' as const,
     valueClass: '',
   },
   {
@@ -360,16 +341,12 @@ const statCards = computed(() => [
     value: String(status.value?.month_checkins ?? 0),
     unit: '天',
     hint: status.value?.timezone || 'Asia/Shanghai',
-    icon: 'calendar' as const,
-    accentIcon: 'calendar' as const,
     valueClass: '',
   },
   {
     label: '累计奖励',
     value: formatDollar(status.value?.total_reward ?? 0),
     hint: `合计可领 ${formatRewardRange(status.value?.today_reward_min ?? status.value?.today_reward ?? 0, status.value?.today_reward_max ?? status.value?.today_reward ?? 0)}`,
-    icon: 'gift' as const,
-    accentIcon: 'gift' as const,
     valueClass: 'text-primary-600 dark:text-primary-300',
   },
 ])
@@ -496,10 +473,6 @@ function formatCalendarWeekday(date: string): string {
   const d = new Date(`${date}T00:00:00`)
   const labels = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
   return labels[d.getDay()] || ''
-}
-
-function rewardRuleIcon(index: number): string {
-  return ['🌱', '⭐', '👑', '🏆'][index] ?? '✨'
 }
 
 function openQQGroupInvite(): void {

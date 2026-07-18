@@ -17,13 +17,9 @@ describe('SettingsView layout and button surfaces', () => {
     expect(settingsSource).not.toContain('.settings-tab::before')
   })
 
-  it('disables liquid-glass layers for teleported dialog buttons', () => {
-    const dialogOverrideIndex = globalStyles.indexOf('.modal-content :where(button, .btn)')
-    const componentLayerIndex = globalStyles.indexOf('@layer components')
-
-    expect(dialogOverrideIndex).toBeGreaterThan(-1)
-    expect(dialogOverrideIndex).toBeLessThan(componentLayerIndex)
-    expect(globalStyles).toMatch(/\.modal-content :where\(button, \.btn\)\s*\{[^}]*backdrop-filter: none;/s)
-    expect(globalStyles).toMatch(/\.modal-content :where\(button, \.btn\)::before\s*\{[^}]*content: none;/s)
+  it('does not inject liquid-glass layers into generic application buttons', () => {
+    expect(globalStyles).not.toMatch(/(?:^|\n):where\(button, \.btn\)\s*\{/)
+    expect(globalStyles).not.toMatch(/(?:^|\n):where\(button, \.btn\)::before\s*\{/)
+    expect(globalStyles).toContain('.liquid-glass-button')
   })
 })
