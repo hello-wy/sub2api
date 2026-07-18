@@ -103,4 +103,32 @@ describe('WalletBalanceHistory', () => {
     expect(list.classes()).toContain('max-h-[360px]')
     expect(list.classes()).toContain('overflow-y-auto')
   })
+
+  it('exposes a refresh method that reloads the visible history', async () => {
+    const wrapper = mount(WalletBalanceHistory, {
+      props: { compact: true },
+      global: {
+        stubs: { Icon: true },
+      },
+    })
+    await flushPromises()
+
+    getHistory.mockResolvedValueOnce([{
+      id: 4,
+      code: 'SUBSCRIPTION-2',
+      type: 'subscription_payment',
+      value: -500,
+      status: 'used',
+      used_at: '2026-07-18T17:10:00Z',
+      created_at: '2026-07-18T17:10:00Z',
+      notes: '高级包月',
+    }])
+
+    await (wrapper.vm as unknown as { refresh: () => Promise<void> }).refresh()
+    await flushPromises()
+
+    expect(getHistory).toHaveBeenLastCalledWith(200)
+    expect(wrapper.text()).toContain('-$500.00')
+    expect(wrapper.text()).toContain('高级包月')
+  })
 })

@@ -22,9 +22,20 @@ const showInfo = vi.hoisted(() => vi.fn())
 const showWarning = vi.hoisted(() => vi.fn())
 const getCheckoutInfo = vi.hoisted(() => vi.fn())
 const purchaseSubscriptionWithBalance = vi.hoisted(() => vi.fn())
+const refreshWalletHistory = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
 const bridgeInvoke = vi.hoisted(() => vi.fn())
 const activeSubscriptionsState = vi.hoisted(() => ({ items: [] as UserSubscription[] }))
 const authUserState = vi.hoisted(() => ({ user: { username: 'demo-user', balance: 0 } }))
+
+const WalletBalanceHistoryStub = {
+  name: 'WalletBalanceHistory',
+  template: '<section />',
+  methods: {
+    refresh() {
+      return refreshWalletHistory()
+    },
+  },
+}
 
 vi.mock('vue-router', async () => {
   const actual = await vi.importActual<typeof import('vue-router')>('vue-router')
@@ -224,6 +235,7 @@ async function mountSubscriptionConfirm(options: Parameters<typeof checkoutInfoW
   createOrder.mockReset()
   refreshUser.mockReset()
   fetchActiveSubscriptions.mockReset().mockResolvedValue(undefined)
+  refreshWalletHistory.mockReset().mockResolvedValue(undefined)
   showError.mockReset()
   showInfo.mockReset()
   showWarning.mockReset()
@@ -238,6 +250,7 @@ async function mountSubscriptionConfirm(options: Parameters<typeof checkoutInfoW
         AppLayout: {
           template: '<div><slot /></div>',
         },
+        WalletBalanceHistory: WalletBalanceHistoryStub,
         Teleport: true,
         Transition: false,
       },
@@ -261,6 +274,7 @@ async function mountRecharge(options: {
   createOrder.mockReset()
   refreshUser.mockReset()
   fetchActiveSubscriptions.mockReset().mockResolvedValue(undefined)
+  refreshWalletHistory.mockReset().mockResolvedValue(undefined)
   showError.mockReset()
   showInfo.mockReset()
   showWarning.mockReset()
@@ -287,6 +301,7 @@ async function mountRecharge(options: {
         AppLayout: {
           template: '<div><slot /></div>',
         },
+        WalletBalanceHistory: WalletBalanceHistoryStub,
         Teleport: true,
         Transition: false,
       },
@@ -418,6 +433,7 @@ describe('PaymentView inline subscription checkout', () => {
     expect(purchaseSubscriptionWithBalance).toHaveBeenCalledWith(7)
     expect(refreshUser).toHaveBeenCalled()
     expect(fetchActiveSubscriptions).toHaveBeenCalledWith(true)
+    expect(refreshWalletHistory).toHaveBeenCalledTimes(1)
     expect(showInfo).toHaveBeenCalledWith('wallet.subscriptionBalanceSuccess')
   })
 

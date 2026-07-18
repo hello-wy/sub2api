@@ -193,7 +193,7 @@
               </section>
 
               <div id="wallet-history" class="scroll-mt-6">
-                <WalletBalanceHistory compact />
+                <WalletBalanceHistory ref="walletHistoryRef" compact />
               </div>
             </aside>
           </div>
@@ -321,6 +321,7 @@ const selectedMethod = ref('')
 const submittingPlanId = ref<number | null>(null)
 const previewImage = ref('')
 const pendingSubscriptionPurchase = ref<{ plan: SubscriptionPlan, source: 'recharge' | 'balance' } | null>(null)
+const walletHistoryRef = ref<InstanceType<typeof WalletBalanceHistory> | null>(null)
 
 const paymentPhase = ref<'select' | 'paying'>('select')
 
@@ -832,6 +833,7 @@ async function executeSubscriptionPurchase(plan: SubscriptionPlan, source: 'rech
       await Promise.all([
         authStore.refreshUser(),
         subscriptionStore.fetchActiveSubscriptions(true),
+        walletHistoryRef.value?.refresh(),
       ])
       appStore.showInfo(t('wallet.subscriptionBalanceSuccess'))
     } catch (error) {

@@ -116,22 +116,23 @@
                 </div>
               </div>
 
-              <div class="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div class="mt-5 grid gap-2.5 sm:grid-cols-2">
                 <div
                   v-for="rule in rewardRules"
                   :key="rule.day_count"
-                  class="reward-tile flex min-h-[118px] min-w-0 flex-col rounded-2xl border border-primary-200 bg-primary-50 px-4 py-4 dark:border-primary-700/70 dark:bg-dark-900"
+                  class="reward-tile group flex min-h-[76px] min-w-0 items-center justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3.5 transition-colors hover:border-primary-200 hover:bg-primary-50/55 dark:border-dark-700 dark:bg-dark-900/55 dark:hover:border-primary-800 dark:hover:bg-primary-950/25"
                 >
-                  <div class="text-sm font-bold text-primary-800 dark:text-primary-200">
-                    连续 {{ rule.day_count }} 天
+                  <div class="min-w-0">
+                    <div class="text-xs font-semibold text-slate-500 dark:text-dark-400">连续签到</div>
+                    <div class="mt-1 text-lg font-bold leading-none text-slate-950 dark:text-white">
+                      {{ rule.day_count }}<span class="ml-1 text-xs font-semibold text-slate-500 dark:text-dark-400">天</span>
+                    </div>
                   </div>
-                  <div class="mt-4 flex flex-col items-start gap-2">
-                    <span class="whitespace-nowrap text-xs font-semibold text-primary-600/80 dark:text-primary-300/80">
-                      额外奖励
-                    </span>
-                    <span class="whitespace-nowrap rounded-full bg-white px-2.5 py-1 text-xs font-bold text-primary-700 ring-1 ring-primary-200 dark:bg-dark-950 dark:text-primary-200 dark:ring-primary-800/70">
+                  <div class="shrink-0 text-right">
+                    <div class="text-xs font-semibold text-slate-500 dark:text-dark-400">额外奖励</div>
+                    <div class="mt-1 text-base font-bold leading-none text-primary-600 dark:text-primary-300">
                       +{{ formatDollar(rule.extra_reward) }}
-                    </span>
+                    </div>
                   </div>
                 </div>
               </div>

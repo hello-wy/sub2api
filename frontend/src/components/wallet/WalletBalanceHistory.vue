@@ -81,7 +81,8 @@ function historyNote(item: RedeemHistoryItem): string {
   return note === title || note.startsWith(`${title} `) ? '' : note
 }
 
-onMounted(async () => {
+async function refresh() {
+  loading.value = true
   try {
     history.value = await redeemAPI.getHistory(props.compact ? 200 : 25)
   } catch (error) {
@@ -89,5 +90,11 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
+}
+
+defineExpose({ refresh })
+
+onMounted(() => {
+  void refresh()
 })
 </script>
