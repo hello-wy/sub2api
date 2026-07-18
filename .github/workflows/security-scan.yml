@@ -2,9 +2,21 @@ name: Security Scan
 
 on:
   push:
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE*'
   pull_request:
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE*'
   schedule:
     - cron: '0 3 * * 1'
+
+concurrency:
+  group: security-scan-${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -20,6 +32,7 @@ jobs:
         with:
           go-version-file: backend/go.mod
           check-latest: false
+          cache: true
           cache-dependency-path: backend/go.sum
       - name: Verify Go version
         run: |
@@ -46,7 +59,7 @@ jobs:
           cache-dependency-path: frontend/pnpm-lock.yaml
       - name: Install dependencies
         working-directory: frontend
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --prefer-offline
       - name: Run pnpm audit
         working-directory: frontend
         run: |

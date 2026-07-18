@@ -20,6 +20,7 @@ on:
 # tag push 触发时读取 vars.SIMPLE_RELEASE，workflow_dispatch 时使用输入参数
 env:
   SIMPLE_RELEASE: ${{ github.event.inputs.simple_release == 'true' || vars.SIMPLE_RELEASE == 'true' }}
+  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
 
 permissions:
   contents: write
@@ -70,7 +71,7 @@ jobs:
           cache-dependency-path: frontend/pnpm-lock.yaml
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --prefer-offline
         working-directory: frontend
 
       - name: Build frontend
@@ -87,6 +88,8 @@ jobs:
   release:
     needs: [update-version, build-frontend]
     runs-on: ubuntu-latest
+    outputs:
+      tag_message: ${{ steps.tag_message.outputs.message }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -111,6 +114,7 @@ jobs:
         with:
           go-version-file: backend/go.mod
           check-latest: false
+          cache: true
           cache-dependency-path: backend/go.sum
 
       - name: Verify Go version
@@ -185,12 +189,16 @@ jobs:
           GITHUB_REPO_NAME: ${{ github.event.repository.name }}
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME || 'skip' }}
 
-      # Update DockerHub description
+  update-dockerhub-description:
+    needs: [release]
+    if: ${{ needs.release.result == 'success' && env.SIMPLE_RELEASE != 'true' && env.DOCKERHUB_USERNAME != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
       - name: Update DockerHub description
-        if: ${{ env.SIMPLE_RELEASE != 'true' && env.DOCKERHUB_USERNAME != '' }}
         uses: peter-evans/dockerhub-description@v5
-        env:
-          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -198,16 +206,19 @@ jobs:
           short-description: "Sub2API - AI API Gateway Platform"
           readme-filepath: ./deploy/DOCKER.md
 
-      # Send Telegram notification
-      - name: Send Telegram Notification
-        if: ${{ env.SIMPLE_RELEASE != 'true' }}
+  notify-release:
+    needs: [release]
+    if: ${{ needs.release.result == 'success' && env.SIMPLE_RELEASE != 'true' }}
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Send Telegram notification
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-        continue-on-error: true
+          TAG_MESSAGE: ${{ needs.release.outputs.tag_message }}
         run: |
-          # 检查必要的环境变量
           if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
             echo "Telegram credentials not configured, skipping notification"
             exit 0
@@ -220,29 +231,21 @@ jobs:
           fi
           VERSION=${TAG_NAME#v}
           REPO="${{ github.repository }}"
-          GHCR_IMAGE="ghcr.io/${REPO,,}"  # ${,,} converts to lowercase
-
-          # 获取 tag message 内容并转义 Markdown 特殊字符
-          TAG_MESSAGE='${{ steps.tag_message.outputs.message }}'
+          GHCR_IMAGE="ghcr.io/${REPO,,}"
           TAG_MESSAGE=$(echo "$TAG_MESSAGE" | sed 's/\([_*`\[]\)/\\\1/g')
 
-          # 限制消息长度（Telegram 消息限制 4096 字符，预留空间给头尾固定内容）
           if [ ${#TAG_MESSAGE} -gt 3500 ]; then
             TAG_MESSAGE="${TAG_MESSAGE:0:3500}..."
           fi
 
-          # 构建消息内容
           MESSAGE="🚀 *Sub2API 新版本发布！*"$'\n'$'\n'
           MESSAGE+="📦 版本号: \`${VERSION}\`"$'\n'$'\n'
-
-          # 添加更新内容
           if [ -n "$TAG_MESSAGE" ]; then
             MESSAGE+="${TAG_MESSAGE}"$'\n'$'\n'
           fi
 
           MESSAGE+="🐳 *Docker 部署:*"$'\n'
           MESSAGE+="\`\`\`bash"$'\n'
-          # 根据是否配置 DockerHub 动态生成
           if [ -n "$DOCKERHUB_USERNAME" ]; then
             DOCKER_IMAGE="${DOCKERHUB_USERNAME}/sub2api"
             MESSAGE+="# Docker Hub"$'\n'
@@ -259,7 +262,6 @@ jobs:
           MESSAGE+="• [GitHub Packages](https://github.com/${REPO}/pkgs/container/sub2api)"$'\n'$'\n'
           MESSAGE+="#Sub2API #Release #${TAG_NAME//./_}"
 
-          # 发送消息
           curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             -H "Content-Type: application/json" \
             -d "$(jq -n \
