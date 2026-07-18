@@ -1,22 +1,18 @@
 <template>
   <AppLayout>
     <div class="checkin-shell relative -mx-4 -my-6 min-h-[calc(100vh-4rem)] overflow-hidden px-4 py-8 sm:-mx-6 lg:-mx-8 lg:px-8">
-      <div class="pointer-events-none absolute -left-20 -top-24 h-72 w-72 rounded-full bg-emerald-200/45 blur-3xl dark:bg-emerald-900/20"></div>
-      <div class="pointer-events-none absolute -right-16 top-56 h-64 w-64 rounded-full bg-cyan-200/40 blur-3xl dark:bg-cyan-900/20"></div>
-      <div class="pointer-events-none absolute bottom-0 left-0 h-44 w-44 rounded-full bg-teal-100/70 blur-2xl dark:bg-teal-900/20"></div>
-
       <div class="relative mx-auto max-w-6xl space-y-5">
         <div class="checkin-panel overflow-hidden p-6 sm:p-8">
           <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div class="flex min-w-0 flex-col gap-5 sm:flex-row sm:items-center">
               <div class="relative mx-auto flex h-24 w-24 shrink-0 items-center justify-center sm:mx-0">
-                <div class="absolute inset-3 rounded-3xl bg-emerald-200/60 blur-xl dark:bg-emerald-600/25"></div>
-                <div class="relative flex h-20 w-20 items-center justify-center rounded-3xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-100 text-emerald-600 shadow-[0_18px_38px_rgba(22,119,255,0.24)] dark:border-emerald-700/40 dark:from-emerald-950 dark:to-teal-950 dark:text-emerald-300">
+                <div class="absolute inset-3 rounded-3xl bg-primary-200/60 blur-xl dark:bg-primary-600/25"></div>
+                <div class="relative flex h-20 w-20 items-center justify-center rounded-3xl border border-primary-200 bg-gradient-to-br from-primary-50 to-primary-100 text-primary-600 shadow-[0_18px_38px_rgba(22,119,255,0.24)] dark:border-primary-700/40 dark:from-primary-950 dark:to-dark-900 dark:text-primary-300">
                   <Icon name="calendar" size="xl" :stroke-width="1.9" />
                   <Icon name="check" size="lg" class="absolute -bottom-1 -right-1 rounded-full bg-white p-1 text-primary-500 shadow-lg dark:bg-dark-900" :stroke-width="2.6" />
                 </div>
-                <span class="absolute left-1 top-3 h-2 w-2 rounded-full bg-teal-300 shadow-[0_0_18px_rgba(45,212,191,0.8)]"></span>
-                <span class="absolute right-2 top-1 h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_14px_rgba(52,211,153,0.8)]"></span>
+                <span class="absolute left-1 top-3 h-2 w-2 rounded-full bg-primary-300 shadow-[0_0_18px_rgba(22,119,255,0.55)]"></span>
+                <span class="absolute right-2 top-1 h-1.5 w-1.5 rounded-full bg-primary-400 shadow-[0_0_14px_rgba(64,150,255,0.55)]"></span>
               </div>
               <div class="min-w-0 text-center sm:text-left">
                 <h2 class="text-3xl font-bold tracking-normal text-slate-950 dark:text-white">每日签到</h2>
@@ -97,7 +93,7 @@
               class="checkin-panel group relative min-h-[124px] overflow-hidden p-5"
             >
               <div class="flex items-start gap-4">
-                <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-50 to-teal-100 text-teal-600 ring-1 ring-emerald-100 transition group-hover:scale-105 dark:from-emerald-950/70 dark:to-teal-950/70 dark:text-teal-300 dark:ring-emerald-900/40">
+                <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary-50 to-primary-100 text-primary-600 ring-1 ring-primary-100 transition group-hover:scale-105 dark:from-primary-950/70 dark:to-dark-900/70 dark:text-primary-300 dark:ring-primary-900/40">
                   <Icon :name="card.icon" size="lg" :stroke-width="1.8" />
                 </div>
                 <div class="min-w-0">
@@ -118,7 +114,7 @@
             <div class="checkin-panel p-5 sm:p-6">
               <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div class="flex items-start gap-3">
-                  <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-teal-600 ring-1 ring-emerald-100 dark:bg-emerald-950/60 dark:text-teal-300 dark:ring-emerald-900/40">
+                  <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-600 ring-1 ring-primary-100 dark:bg-primary-950/60 dark:text-primary-300 dark:ring-primary-900/40">
                     <Icon name="gift" size="md" />
                   </div>
                   <div>
@@ -137,19 +133,19 @@
                 <div
                   v-for="(rule, index) in rewardRules"
                   :key="rule.day_count"
-                  class="reward-tile flex min-h-[124px] min-w-0 flex-col items-center justify-between rounded-2xl border border-emerald-200/80 bg-gradient-to-br from-emerald-50/85 to-teal-50/85 px-4 py-4 text-center shadow-sm dark:border-emerald-900/45 dark:from-emerald-950/35 dark:to-teal-950/35"
+                  class="reward-tile flex min-h-[124px] min-w-0 flex-col items-center justify-between rounded-2xl border border-primary-200/80 bg-gradient-to-br from-primary-50/90 to-white/85 px-4 py-4 text-center shadow-sm dark:border-primary-900/45 dark:from-primary-950/35 dark:to-dark-900/35"
                 >
-                  <div class="text-sm font-bold text-emerald-800 dark:text-emerald-200">
+                  <div class="text-sm font-bold text-primary-800 dark:text-primary-200">
                     连续 {{ rule.day_count }} 天
                   </div>
-                  <div class="flex h-10 w-10 items-center justify-center rounded-full bg-white/85 text-xl shadow-sm ring-1 ring-emerald-100 dark:bg-dark-950/50 dark:ring-emerald-900/50">
+                  <div class="flex h-10 w-10 items-center justify-center rounded-full bg-white/85 text-xl shadow-sm ring-1 ring-primary-100 dark:bg-dark-950/50 dark:ring-primary-900/50">
                     {{ rewardRuleIcon(index) }}
                   </div>
                   <div class="flex w-full items-center justify-between gap-2">
-                    <span class="text-xs font-semibold uppercase text-emerald-600/80 dark:text-emerald-300/80">
+                    <span class="text-xs font-semibold uppercase text-primary-600/80 dark:text-primary-300/80">
                       Extra
                     </span>
-                    <span class="whitespace-nowrap rounded-full bg-white/85 px-2.5 py-1 text-xs font-bold text-emerald-700 shadow-sm ring-1 ring-emerald-200 dark:bg-dark-950/40 dark:text-emerald-200 dark:ring-emerald-900/50">
+                    <span class="whitespace-nowrap rounded-full bg-white/85 px-2.5 py-1 text-xs font-bold text-primary-700 shadow-sm ring-1 ring-primary-200 dark:bg-dark-950/40 dark:text-primary-200 dark:ring-primary-900/50">
                       +{{ formatDollar(rule.extra_reward) }}
                     </span>
                   </div>
@@ -159,7 +155,7 @@
 
             <div class="checkin-panel p-5 sm:p-6">
               <div class="flex items-start gap-3">
-                <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-teal-600 ring-1 ring-emerald-100 dark:bg-emerald-950/60 dark:text-teal-300 dark:ring-emerald-900/40">
+                <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-600 ring-1 ring-primary-100 dark:bg-primary-950/60 dark:text-primary-300 dark:ring-primary-900/40">
                   <Icon name="calendar" size="md" />
                 </div>
                 <h3 class="pt-1 text-lg font-bold tracking-normal text-slate-950 dark:text-white">近 7 天签到日历</h3>
@@ -171,19 +167,19 @@
                     :key="day.date"
                     class="group relative flex h-[104px] min-w-0 flex-col items-center justify-between rounded-xl border px-1.5 pb-2 pt-4 text-center transition hover:-translate-y-0.5 sm:h-[116px] sm:rounded-2xl sm:px-2 sm:pb-3 sm:pt-5"
                     :class="day.checked_in
-                      ? 'border-emerald-200 bg-emerald-50/90 text-emerald-700 shadow-sm dark:border-emerald-900/40 dark:bg-emerald-900/20 dark:text-emerald-300'
+                      ? 'border-primary-200 bg-primary-50/90 text-primary-700 shadow-sm dark:border-primary-900/40 dark:bg-primary-900/20 dark:text-primary-300'
                       : day.is_today
-                        ? 'border-teal-200 bg-teal-50/90 text-teal-700 shadow-sm dark:border-teal-900/40 dark:bg-teal-900/20 dark:text-teal-300'
+                        ? 'border-primary-200 bg-primary-50/70 text-primary-700 shadow-sm dark:border-primary-900/40 dark:bg-primary-900/15 dark:text-primary-300'
                         : 'border-slate-200 bg-white/70 text-slate-500 dark:border-dark-700 dark:bg-dark-900/60 dark:text-dark-400'"
                   >
                     <span
                       v-if="day.is_today"
-                      class="absolute right-1 top-1 inline-flex whitespace-nowrap rounded-full bg-emerald-100 px-1.5 py-0.5 text-[9px] font-bold leading-none text-emerald-700 ring-1 ring-emerald-200/70 dark:bg-emerald-900/40 dark:text-emerald-200 dark:ring-emerald-800/60 sm:right-2 sm:top-2 sm:px-2 sm:text-[10px]"
+                      class="absolute right-1 top-1 inline-flex whitespace-nowrap rounded-full bg-primary-100 px-1.5 py-0.5 text-[9px] font-bold leading-none text-primary-700 ring-1 ring-primary-200/70 dark:bg-primary-900/40 dark:text-primary-200 dark:ring-primary-800/60 sm:right-2 sm:top-2 sm:px-2 sm:text-[10px]"
                     >
                       今天
                     </span>
                     <div class="flex min-h-[22px] flex-col items-center">
-                      <div class="text-sm font-bold leading-none sm:text-base" :class="day.is_today ? 'text-teal-700 dark:text-teal-300' : 'text-slate-950 dark:text-white'">
+                      <div class="text-sm font-bold leading-none sm:text-base" :class="day.is_today ? 'text-primary-700 dark:text-primary-300' : 'text-slate-950 dark:text-white'">
                         {{ formatCalendarDay(day.date) }}
                       </div>
                     </div>
@@ -192,7 +188,7 @@
                       :class="day.checked_in
                         ? 'bg-gradient-to-br from-primary-400 to-primary-600 text-white shadow-[0_8px_18px_rgba(22,119,255,0.3)]'
                         : day.is_today
-                          ? 'bg-white text-teal-600 ring-1 ring-inset ring-teal-200 dark:bg-dark-950 dark:text-teal-300 dark:ring-teal-800'
+                          ? 'bg-white text-primary-600 ring-1 ring-inset ring-primary-200 dark:bg-dark-950 dark:text-primary-300 dark:ring-primary-800'
                           : 'bg-slate-50 text-slate-300 ring-1 ring-inset ring-slate-200 dark:bg-dark-800 dark:text-dark-500 dark:ring-dark-700'"
                     >
                       {{ day.checked_in ? '✓' : day.is_today ? '→' : '' }}
@@ -207,14 +203,14 @@
           </div>
 
           <transition name="fade">
-            <div v-if="message" class="checkin-panel border-emerald-200 bg-emerald-50/90 p-5 dark:border-emerald-900/40 dark:bg-emerald-900/20">
+            <div v-if="message" class="checkin-panel border-primary-200 bg-primary-50/90 p-5 dark:border-primary-900/40 dark:bg-primary-900/20">
               <div class="flex items-start gap-3">
-                <div class="rounded-xl bg-emerald-100 p-2 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-300">
+                <div class="rounded-xl bg-primary-100 p-2 text-primary-600 dark:bg-primary-900/40 dark:text-primary-300">
                   <Icon name="checkCircle" size="md" />
                 </div>
                 <div>
-                  <p class="font-semibold text-emerald-800 dark:text-emerald-200">{{ message }}</p>
-                  <p class="mt-1 text-sm text-emerald-700 dark:text-emerald-300">
+                  <p class="font-semibold text-primary-800 dark:text-primary-200">{{ message }}</p>
+                  <p class="mt-1 text-sm text-primary-700 dark:text-primary-300">
                     +{{ formatDollar(lastClaim?.total_reward ?? 0) }}
                     <span v-if="lastClaim"> · {{ lastClaim.current_streak }}天</span>
                   </p>
@@ -226,7 +222,7 @@
           <div class="checkin-panel p-5 sm:p-6">
             <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div class="flex items-start gap-3">
-                <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-teal-600 ring-1 ring-emerald-100 dark:bg-emerald-950/60 dark:text-teal-300 dark:ring-emerald-900/40">
+                <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-600 ring-1 ring-primary-100 dark:bg-primary-950/60 dark:text-primary-300 dark:ring-primary-900/40">
                   <Icon name="clipboard" size="md" />
                 </div>
                 <div>
@@ -241,7 +237,7 @@
             </div>
 
             <div v-if="history.length === 0" class="mt-5 rounded-2xl border border-dashed border-slate-200 bg-white/50 px-6 py-10 text-center dark:border-dark-700 dark:bg-dark-900/30">
-              <div class="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-emerald-50 to-teal-100 text-teal-600 shadow-sm ring-1 ring-emerald-100 dark:from-emerald-950/50 dark:to-teal-950/50 dark:text-teal-300 dark:ring-emerald-900/40">
+              <div class="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-primary-50 to-primary-100 text-primary-600 shadow-sm ring-1 ring-primary-100 dark:from-primary-950/50 dark:to-dark-900/50 dark:text-primary-300 dark:ring-primary-900/40">
                 <Icon name="search" size="xl" :stroke-width="1.6" />
               </div>
               <p class="mt-4 font-semibold text-slate-800 dark:text-dark-100">最近 7 天暂无签到记录</p>
@@ -278,11 +274,11 @@
                     <td class="px-3 py-4 text-slate-700 dark:text-dark-300">
                       {{ formatDollar(item.extra_reward) }}
                     </td>
-                    <td class="px-3 py-4 font-semibold text-emerald-600 dark:text-emerald-400">
+                    <td class="px-3 py-4 font-semibold text-primary-600 dark:text-primary-400">
                       {{ formatDollar(item.total_reward) }}
                     </td>
                     <td class="px-3 py-4">
-                      <span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                      <span class="inline-flex items-center rounded-full bg-primary-100 px-2.5 py-1 text-xs font-semibold text-primary-700 dark:bg-primary-900/30 dark:text-primary-300">
                         已签到
                       </span>
                     </td>
@@ -348,7 +344,7 @@ const statCards = computed(() => [
     hint: `基础奖励 ${formatRewardRange(status.value?.base_reward_min ?? status.value?.base_reward ?? 0, status.value?.base_reward_max ?? status.value?.base_reward ?? 0)}`,
     icon: 'dollar' as const,
     accentIcon: 'trendingUp' as const,
-    valueClass: 'text-emerald-600 dark:text-emerald-300',
+    valueClass: 'text-primary-600 dark:text-primary-300',
   },
   {
     label: '连续签到',
@@ -374,7 +370,7 @@ const statCards = computed(() => [
     hint: `合计可领 ${formatRewardRange(status.value?.today_reward_min ?? status.value?.today_reward ?? 0, status.value?.today_reward_max ?? status.value?.today_reward ?? 0)}`,
     icon: 'gift' as const,
     accentIcon: 'gift' as const,
-    valueClass: 'text-emerald-600 dark:text-emerald-300',
+    valueClass: 'text-primary-600 dark:text-primary-300',
   },
 ])
 
@@ -601,9 +597,7 @@ onMounted(() => {
 <style scoped>
 .checkin-shell {
   background:
-    radial-gradient(circle at 0% 0%, rgba(204, 251, 241, 0.9), transparent 28%),
-    radial-gradient(circle at 100% 70%, rgba(186, 230, 253, 0.55), transparent 30%),
-    linear-gradient(135deg, #f8fffd 0%, #f7fbff 48%, #f9fcff 100%);
+    linear-gradient(135deg, rgba(230, 244, 255, 0.84) 0%, rgba(248, 251, 255, 0.96) 46%, rgba(240, 247, 255, 0.9) 100%);
 }
 
 .checkin-shell::before {
@@ -641,14 +635,16 @@ onMounted(() => {
   }
 }
 
-:global(.dark) .checkin-shell {
+</style>
+
+<style>
+/* Kept unscoped so the global html.dark class reliably reaches this route. */
+.dark .checkin-shell {
   background:
-    radial-gradient(circle at 0% 0%, rgba(20, 83, 45, 0.25), transparent 30%),
-    radial-gradient(circle at 100% 70%, rgba(8, 47, 73, 0.32), transparent 30%),
-    linear-gradient(135deg, #071316 0%, #0b1220 100%);
+    linear-gradient(135deg, #071426 0%, #0b1220 52%, #0a1a30 100%);
 }
 
-:global(.dark) .checkin-panel {
+.dark .checkin-panel {
   border-color: rgba(51, 65, 85, 0.8);
   background: rgba(15, 23, 42, 0.78);
   box-shadow: 0 18px 46px rgba(0, 0, 0, 0.32);
