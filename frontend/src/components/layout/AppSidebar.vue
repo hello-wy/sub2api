@@ -1056,7 +1056,6 @@ watch(
   box-shadow: none;
 }
 
-:global(.sidebar-liquid-shell) .sidebar-header,
 :global(.sidebar-liquid-shell) .sidebar-footer {
   border-color: var(--app-chrome-border);
 }
@@ -1076,7 +1075,6 @@ watch(
   box-shadow: none;
 }
 
-:global(.dark .sidebar-liquid-shell) .sidebar-header,
 :global(.dark .sidebar-liquid-shell) .sidebar-footer {
   border-color: var(--app-chrome-border);
 }

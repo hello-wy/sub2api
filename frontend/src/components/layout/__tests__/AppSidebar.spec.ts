@@ -50,6 +50,7 @@ describe('AppSidebar header styles', () => {
     expect(sidebarHeaderBlockMatch).not.toBeNull()
     expect(sidebarBrandBlockMatch).not.toBeNull()
     expect(sidebarHeaderBlockMatch?.[0]).not.toContain('@apply overflow-hidden;')
+    expect(sidebarHeaderBlockMatch?.[0]).not.toContain('@apply border-b')
     expect(sidebarBrandBlockMatch?.[0]).not.toContain('overflow: hidden;')
   })
 })
