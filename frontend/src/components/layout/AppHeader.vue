@@ -44,6 +44,16 @@
           <span class="header-tool-label">{{ t('header.tutorial') }}</span>
         </button>
 
+        <router-link
+          v-if="user"
+          to="/checkin"
+          class="header-tool-button header-checkin-button"
+        >
+          <Icon name="calendar" size="md" />
+          <span class="header-tool-label">{{ t('header.checkin') }}</span>
+          <span v-if="checkinReminderVisible" class="header-checkin-dot" aria-hidden="true"></span>
+        </router-link>
+
         <LocaleSwitcher class="header-locale-switcher" toolbar />
 
         <button
@@ -56,25 +66,6 @@
           <Icon :name="isDark ? 'sun' : 'moon'" size="md" />
         </button>
 
-        <div
-          v-if="user"
-          class="header-balance-display"
-          :title="`${t('common.availableBalance')} ${formatHeaderMoney(availableBalance)}`"
-        >
-          <span class="header-balance-label">{{ t('header.balance') }}</span>
-          <strong>{{ formatHeaderMoney(availableBalance) }}</strong>
-        </div>
-
-        <router-link
-          v-if="user"
-          to="/checkin"
-          class="header-tool-button header-checkin-button"
-        >
-          <Icon name="calendar" size="md" />
-          <span class="header-tool-label">{{ t('header.checkin') }}</span>
-          <span v-if="checkinReminderVisible" class="header-checkin-dot" aria-hidden="true"></span>
-        </router-link>
-
         <router-link v-if="user" to="/purchase" class="header-tool-button header-recharge-button">
           <Icon name="creditCard" size="md" />
           <span class="header-tool-label">{{ t('header.recharge') }}</span>
@@ -86,7 +77,12 @@
             @click="toggleDropdown"
             class="header-user-button"
             aria-label="User Menu"
+            :title="`${t('common.availableBalance')} ${formatHeaderMoney(availableBalance)}`"
           >
+            <span class="header-user-balance">
+              <span class="header-user-balance-label">{{ t('header.balance') }}</span>
+              <strong>{{ formatHeaderMoney(availableBalance) }}</strong>
+            </span>
             <div class="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-primary-600 text-sm font-semibold text-white">
               <img
                 v-if="avatarUrl"
