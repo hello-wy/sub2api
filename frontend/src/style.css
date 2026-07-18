@@ -391,7 +391,10 @@
 }
 
 .app-page-panel {
-  min-height: calc(100dvh - 5.5rem);
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-gutter: stable;
   border: 1px solid var(--app-panel-border);
   border-radius: 1.25rem;
   background-color: var(--app-panel-surface);
@@ -406,7 +409,6 @@
   }
 
   .app-page-panel {
-    min-height: calc(100dvh - 5rem);
     border-radius: 1rem;
   }
 }

@@ -1,18 +1,18 @@
 <template>
-  <div class="app-shell min-h-screen">
+  <div class="app-shell h-dvh overflow-hidden">
     <!-- Sidebar -->
     <AppSidebar />
 
     <!-- Main Content Area -->
     <div
-      class="relative flex min-h-screen flex-col transition-all duration-300"
+      class="relative flex h-dvh min-h-0 flex-col transition-all duration-300"
       :class="[sidebarCollapsed ? 'lg:ml-[72px]' : 'lg:ml-64']"
     >
       <!-- Header -->
       <AppHeader />
 
       <!-- Main Workspace Panel -->
-      <div class="app-content-stage flex flex-1">
+      <div class="app-content-stage flex min-h-0 flex-1">
         <main class="app-page-content app-page-panel min-w-0 flex-1 p-4 md:p-6 lg:p-8">
           <slot />
         </main>
