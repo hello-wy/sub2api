@@ -79,10 +79,6 @@
             aria-label="User Menu"
             :title="`${t('common.availableBalance')} ${formatHeaderMoney(availableBalance)}`"
           >
-            <span class="header-user-balance">
-              <span class="header-user-balance-label">{{ t('header.balance') }}</span>
-              <strong>{{ formatHeaderMoney(availableBalance) }}</strong>
-            </span>
             <div class="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-primary-600 text-sm font-semibold text-white">
               <img
                 v-if="avatarUrl"
@@ -92,6 +88,10 @@
               >
               <span v-else>{{ userInitials }}</span>
             </div>
+            <span class="header-user-balance">
+              <span class="header-user-balance-label">{{ t('header.balance') }}</span>
+              <strong>{{ formatHeaderMoney(availableBalance) }}</strong>
+            </span>
             <Icon name="chevronDown" size="xs" class="text-gray-500 dark:text-dark-300" />
           </button>
 
