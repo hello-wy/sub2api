@@ -120,9 +120,10 @@ export default {
   header: {
     notifications: '通知',
     qqGroup: 'QQ 群',
-    serviceMonitor: '服务监测',
     tutorial: '教程',
     tutorialSoon: '教程即将上线',
+    balance: '余额',
+    checkin: '签到',
     recharge: '充值'
   },
 

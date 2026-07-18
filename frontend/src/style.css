@@ -448,15 +448,50 @@
   border-radius: 999px;
 }
 
+.header-balance-display {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: baseline;
+  gap: 0.375rem;
+  padding: 0 0.25rem;
+  color: #64748b;
+  font-size: 0.75rem;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.header-balance-display strong {
+  color: #0f172a;
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.header-checkin-button {
+  position: relative;
+}
+
+.header-checkin-dot {
+  position: absolute;
+  top: -0.3rem;
+  right: -0.25rem;
+  width: 0.5rem;
+  height: 0.5rem;
+  border: 2px solid var(--app-chrome-surface);
+  border-radius: 999px;
+  box-sizing: content-box;
+  background: #ef4444;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+}
+
 .header-recharge-button {
-  border-color: #111827;
-  background: #111827;
+  border-color: #2563eb;
+  background: #2563eb;
   color: #fff;
 }
 
 .header-recharge-button:hover {
-  border-color: #2563eb;
-  background: #2563eb;
+  border-color: #1d4ed8;
+  background: #1d4ed8;
   color: #fff;
 }
 
@@ -497,10 +532,18 @@
   color: #64748b;
 }
 
+.dark .header-balance-display {
+  color: #94a3b8;
+}
+
+.dark .header-balance-display strong {
+  color: #f8fafc;
+}
+
 .dark .header-recharge-button {
-  border-color: #f8fafc;
-  background: #f8fafc;
-  color: #0f172a;
+  border-color: #3b82f6;
+  background: #3b82f6;
+  color: #fff;
 }
 
 .dark .header-recharge-button:hover {
@@ -522,7 +565,8 @@
 
 @media (max-width: 639px) {
   .header-tool-optional,
-  .header-locale-switcher {
+  .header-locale-switcher,
+  .header-balance-display {
     display: none;
   }
 }

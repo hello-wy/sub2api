@@ -200,8 +200,8 @@ import VersionBadge from '@/components/common/VersionBadge.vue'
 import { sanitizeSvg } from '@/utils/sanitize'
 import { sanitizeUrl } from '@/utils/url'
 import { FeatureFlags, makeSidebarFlag } from '@/utils/featureFlags'
-import { checkinAPI } from '@/api'
 import { useBatchImageAccess } from '@/composables/useBatchImageAccess'
+import { useCheckinReminder } from '@/composables/useCheckinReminder'
 
 interface NavItem {
   path: string
@@ -248,12 +248,12 @@ const authStore = useAuthStore()
 const onboardingStore = useOnboardingStore()
 const adminSettingsStore = useAdminSettingsStore()
 const { canUseBatchImage, refreshBatchImageAccess } = useBatchImageAccess()
+const { checkinReminderVisible, refreshCheckinReminder } = useCheckinReminder()
 
 const sidebarCollapsed = computed(() => appStore.sidebarCollapsed)
 const mobileOpen = computed(() => appStore.mobileOpen)
 const isAdmin = computed(() => authStore.isAdmin)
 const sidebarNavRef = ref<HTMLElement | null>(null)
-const checkinReminderVisible = ref(false)
 
 const homePath = computed(() => (isAdmin.value ? '/admin/dashboard' : '/dashboard'))
 
@@ -891,19 +891,6 @@ function isGroupExpanded(item: NavItem): boolean {
 
 function shouldShowCheckinDot(path: string): boolean {
   return path === '/checkin' && checkinReminderVisible.value
-}
-
-async function refreshCheckinReminder(): Promise<void> {
-  if (!authStore.isAuthenticated || appStore.backendModeEnabled) {
-    checkinReminderVisible.value = false
-    return
-  }
-  try {
-    const status = await checkinAPI.getCheckinStatus()
-    checkinReminderVisible.value = !status.already_checked_in
-  } catch {
-    checkinReminderVisible.value = false
-  }
 }
 
 function toggleGroup(item: NavItem) {

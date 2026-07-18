@@ -310,10 +310,12 @@ import { useClipboard } from '@/composables/useClipboard'
 import { extractApiErrorMessage } from '@/utils/apiError'
 import { formatDateOnly } from '@/utils/format'
 import { QQ_GROUP_INVITE_URL, QQ_GROUP_NUMBER } from '@/constants/community'
+import { useCheckinReminder } from '@/composables/useCheckinReminder'
 
 const appStore = useAppStore()
 const authStore = useAuthStore()
 const { copyToClipboard } = useClipboard()
+const { markCheckinCompleted } = useCheckinReminder()
 
 const loading = ref(true)
 const checkingIn = ref(false)
@@ -557,6 +559,7 @@ async function handleCheckin(): Promise<void> {
   message.value = ''
   try {
     const resp = await checkinAPI.checkin()
+    markCheckinCompleted()
     lastClaim.value = {
       total_reward: resp.total_reward,
       current_streak: resp.current_streak,

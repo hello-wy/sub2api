@@ -120,9 +120,10 @@ export default {
   header: {
     notifications: 'Notifications',
     qqGroup: 'QQ Group',
-    serviceMonitor: 'Service Monitor',
     tutorial: 'Tutorial',
     tutorialSoon: 'Tutorial coming soon',
+    balance: 'Balance',
+    checkin: 'Check in',
     recharge: 'Recharge'
   },
 

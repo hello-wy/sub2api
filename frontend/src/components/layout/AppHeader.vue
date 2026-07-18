@@ -34,15 +34,6 @@
           <span class="header-tool-label">{{ t('header.qqGroup') }}</span>
         </a>
 
-        <router-link
-          v-if="user"
-          :to="monitorPath"
-          class="header-tool-button header-tool-optional"
-        >
-          <Icon name="server" size="md" />
-          <span class="header-tool-label">{{ t('header.serviceMonitor') }}</span>
-        </router-link>
-
         <button
           type="button"
           class="header-tool-button header-tool-optional"
@@ -64,6 +55,25 @@
         >
           <Icon :name="isDark ? 'sun' : 'moon'" size="md" />
         </button>
+
+        <div
+          v-if="user"
+          class="header-balance-display"
+          :title="`${t('common.availableBalance')} ${formatHeaderMoney(availableBalance)}`"
+        >
+          <span class="header-balance-label">{{ t('header.balance') }}</span>
+          <strong>{{ formatHeaderMoney(availableBalance) }}</strong>
+        </div>
+
+        <router-link
+          v-if="user"
+          to="/checkin"
+          class="header-tool-button header-checkin-button"
+        >
+          <Icon name="calendar" size="md" />
+          <span class="header-tool-label">{{ t('header.checkin') }}</span>
+          <span v-if="checkinReminderVisible" class="header-checkin-dot" aria-hidden="true"></span>
+        </router-link>
 
         <router-link v-if="user" to="/purchase" class="header-tool-button header-recharge-button">
           <Icon name="creditCard" size="md" />
@@ -211,7 +221,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAppStore, useAuthStore, useOnboardingStore } from '@/stores'
@@ -220,6 +230,7 @@ import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
 import AnnouncementBell from '@/components/common/AnnouncementBell.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { QQ_GROUP_INVITE_URL } from '@/constants/community'
+import { useCheckinReminder } from '@/composables/useCheckinReminder'
 
 const router = useRouter()
 const route = useRoute()
@@ -228,6 +239,7 @@ const appStore = useAppStore()
 const authStore = useAuthStore()
 const adminSettingsStore = useAdminSettingsStore()
 const onboardingStore = useOnboardingStore()
+const { checkinReminderVisible, refreshCheckinReminder } = useCheckinReminder()
 
 const user = computed(() => authStore.user)
 const dropdownOpen = ref(false)
@@ -239,7 +251,6 @@ const avatarUrl = computed(() => user.value?.avatar_url?.trim() || '')
 const availableBalance = computed(() => Number(user.value?.balance || 0))
 const frozenBalance = computed(() => Number(user.value?.frozen_balance || 0))
 const balanceFrozenText = computed(() => t('common.frozenBalance') === 'common.frozenBalance' ? '冻结金额' : t('common.frozenBalance'))
-const monitorPath = computed(() => authStore.isAdmin ? '/admin/ops' : '/monitor')
 
 // 只在标准模式的管理员下显示新手引导按钮
 const showOnboardingButton = computed(() => {
@@ -337,6 +348,7 @@ function handleClickOutside(event: MouseEvent) {
 
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
+  void refreshCheckinReminder()
   themeObserver = new MutationObserver(() => {
     isDark.value = document.documentElement.classList.contains('dark')
   })
@@ -347,6 +359,13 @@ onBeforeUnmount(() => {
   document.removeEventListener('click', handleClickOutside)
   themeObserver?.disconnect()
 })
+
+watch(
+  () => [authStore.isAuthenticated, route.path],
+  () => {
+    void refreshCheckinReminder()
+  }
+)
 </script>
 
 <style scoped>
