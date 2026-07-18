@@ -497,6 +497,61 @@
   color: #fff;
 }
 
+.header-wallet-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.header-subscription-status {
+  display: inline-flex;
+  flex: 0 0 auto;
+  height: 2.5rem;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 12rem;
+  padding: 0 0.75rem;
+  border: 1px solid rgba(37, 99, 235, 0.24);
+  border-radius: 0.75rem;
+  background: rgba(239, 246, 255, 0.82);
+  color: #2563eb;
+  transition: border-color 160ms ease, background-color 160ms ease, transform 160ms ease;
+}
+
+.header-subscription-status:hover {
+  border-color: rgba(37, 99, 235, 0.45);
+  background: rgba(219, 234, 254, 0.94);
+}
+
+.header-subscription-status:active {
+  transform: translateY(1px);
+}
+
+.header-subscription-copy {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+.header-subscription-name {
+  min-width: 0;
+  overflow: hidden;
+  color: #1e3a8a;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.header-subscription-state {
+  flex: 0 0 auto;
+  color: #059669;
+  font-weight: 700;
+}
+
 .header-notification-count {
   position: absolute;
   top: -0.4rem;
@@ -554,6 +609,31 @@
   color: #071525;
 }
 
+.dark .header-subscription-status {
+  border-color: rgba(96, 165, 250, 0.28);
+  background: rgba(30, 64, 175, 0.2);
+  color: #93c5fd;
+}
+
+.dark .header-subscription-status:hover {
+  border-color: rgba(96, 165, 250, 0.5);
+  background: rgba(30, 64, 175, 0.3);
+}
+
+.dark .header-subscription-name {
+  color: #dbeafe;
+}
+
+.dark .header-subscription-state {
+  color: #6ee7b7;
+}
+
+@media (max-width: 1400px) {
+  .header-subscription-name {
+    display: none;
+  }
+}
+
 @media (max-width: 1100px) {
   .header-tool-label {
     display: none;
@@ -567,12 +647,53 @@
   .header-user-balance-label {
     display: none;
   }
+
+  .header-subscription-status {
+    width: 2.5rem;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .header-subscription-copy {
+    display: none;
+  }
 }
 
 @media (max-width: 639px) {
   .header-tool-optional,
   .header-locale-switcher {
     display: none;
+  }
+
+  .header-wallet-actions {
+    position: relative;
+    display: block;
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+
+  .header-wallet-actions .header-subscription-status {
+    position: absolute;
+    top: -0.25rem;
+    right: -0.25rem;
+    width: 1rem;
+    height: 1rem;
+    padding: 0;
+    border: 2px solid var(--app-chrome-surface);
+    border-radius: 999px;
+    background: #059669;
+    color: #fff;
+  }
+
+  .header-wallet-actions .header-subscription-status:hover {
+    border-color: var(--app-chrome-surface);
+    background: #047857;
+    color: #fff;
+  }
+
+  .header-wallet-actions .header-subscription-status svg {
+    width: 0.65rem;
+    height: 0.65rem;
   }
 }
 

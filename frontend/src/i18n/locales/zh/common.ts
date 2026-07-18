@@ -124,7 +124,8 @@ export default {
     tutorialSoon: '教程即将上线',
     balance: '余额',
     checkin: '签到',
-    recharge: '充值'
+    recharge: '充值',
+    activeSubscriptionTitle: '当前订阅：{name}（有效）'
   },
 
   legal: {

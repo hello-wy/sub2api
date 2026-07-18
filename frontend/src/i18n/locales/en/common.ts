@@ -124,7 +124,8 @@ export default {
     tutorialSoon: 'Tutorial coming soon',
     balance: 'Balance',
     checkin: 'Check in',
-    recharge: 'Recharge'
+    recharge: 'Recharge',
+    activeSubscriptionTitle: 'Current subscription: {name} (active)'
   },
 
   legal: {

@@ -392,6 +392,8 @@ describe('PaymentView balance loyalty discount', () => {
     expect(text).toContain('$2.50 / $10.00')
     expect(text).toContain('userSubscriptions.weekly')
     expect(text).toContain('$8.00 / $40.00')
+    expect(text).toContain('wallet.singleSubscriptionNotice')
+    expect(text).not.toContain('wallet.balanceDescription')
     expect(wrapper.find('[style="width: 25%;"]').exists()).toBe(true)
   })
 })

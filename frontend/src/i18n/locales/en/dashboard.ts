@@ -591,6 +591,7 @@ export default {
     customCreditPlaceholder: 'Enter the USD balance to receive',
     estimatedPayment: 'Estimated payment',
     activeSubscriptions: 'Active subscriptions',
+    singleSubscriptionNotice: 'Only one active subscription is allowed per account. Purchasing or redeeming a new subscription replaces the current one.',
     availablePlans: 'Available plans',
     balanceHistory: 'Balance Activity',
     balanceHistoryHint: 'Review redeem, check-in, rebate, and admin adjustments',

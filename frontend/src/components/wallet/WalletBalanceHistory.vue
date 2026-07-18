@@ -13,7 +13,13 @@
     <div v-if="loading" class="flex items-center justify-center py-16">
       <span class="h-7 w-7 animate-spin rounded-full border-2 border-primary-500 border-t-transparent"></span>
     </div>
-    <div v-else-if="displayedHistory.length" :class="['divide-y divide-gray-100 dark:divide-dark-700', compact && 'max-h-[520px] overflow-y-auto']">
+    <div
+      v-else-if="displayedHistory.length"
+      :class="[
+        'wallet-history-list divide-y divide-gray-100 dark:divide-dark-700',
+        compact && displayedHistory.length > 5 && 'max-h-[360px] overflow-y-auto overscroll-contain',
+      ]"
+    >
       <div v-for="item in displayedHistory" :key="item.id" :class="['flex items-start px-5', compact ? 'gap-3 py-3.5' : 'gap-4 py-4']">
         <span :class="[
           'flex shrink-0 items-center justify-center rounded-lg',

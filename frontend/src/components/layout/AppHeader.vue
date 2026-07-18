@@ -66,10 +66,26 @@
           <Icon :name="isDark ? 'sun' : 'moon'" size="md" />
         </button>
 
-        <router-link v-if="user" to="/wallet" class="header-tool-button header-recharge-button">
-          <Icon name="creditCard" size="md" />
-          <span class="header-tool-label">{{ t('header.recharge') }}</span>
-        </router-link>
+        <div v-if="user" class="header-wallet-actions">
+          <router-link to="/wallet" class="header-tool-button header-recharge-button">
+            <Icon name="creditCard" size="md" />
+            <span class="header-tool-label">{{ t('header.recharge') }}</span>
+          </router-link>
+
+          <router-link
+            v-if="activeSubscription"
+            to="/membership"
+            class="header-subscription-status"
+            :aria-label="t('header.activeSubscriptionTitle', { name: activeSubscriptionName })"
+            :title="t('header.activeSubscriptionTitle', { name: activeSubscriptionName })"
+          >
+            <Icon name="checkCircle" size="md" />
+            <span class="header-subscription-copy">
+              <span class="header-subscription-name">{{ activeSubscriptionName }}</span>
+              <span class="header-subscription-state">{{ t('userSubscriptions.status.active') }}</span>
+            </span>
+          </router-link>
+        </div>
 
         <!-- User Dropdown -->
         <div v-if="user" class="relative" ref="dropdownRef">
@@ -220,7 +236,7 @@
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { useAppStore, useAuthStore, useOnboardingStore } from '@/stores'
+import { useAppStore, useAuthStore, useOnboardingStore, useSubscriptionStore } from '@/stores'
 import { useAdminSettingsStore } from '@/stores/adminSettings'
 import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
 import AnnouncementBell from '@/components/common/AnnouncementBell.vue'
@@ -235,6 +251,7 @@ const appStore = useAppStore()
 const authStore = useAuthStore()
 const adminSettingsStore = useAdminSettingsStore()
 const onboardingStore = useOnboardingStore()
+const subscriptionStore = useSubscriptionStore()
 const { checkinReminderVisible, refreshCheckinReminder } = useCheckinReminder()
 
 const user = computed(() => authStore.user)
@@ -247,6 +264,12 @@ const avatarUrl = computed(() => user.value?.avatar_url?.trim() || '')
 const availableBalance = computed(() => Number(user.value?.balance || 0))
 const frozenBalance = computed(() => Number(user.value?.frozen_balance || 0))
 const balanceFrozenText = computed(() => t('common.frozenBalance') === 'common.frozenBalance' ? '冻结金额' : t('common.frozenBalance'))
+const activeSubscription = computed(() => subscriptionStore.activeSubscriptions[0] || null)
+const activeSubscriptionName = computed(() => {
+  const subscription = activeSubscription.value
+  if (!subscription) return ''
+  return subscription.group?.name || t('payment.groupFallback', { id: subscription.group_id })
+})
 
 // 只在标准模式的管理员下显示新手引导按钮
 const showOnboardingButton = computed(() => {

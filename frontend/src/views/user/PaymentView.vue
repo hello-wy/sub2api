@@ -177,8 +177,7 @@
                     <Icon name="refresh" size="md" :class="{ 'animate-spin': refreshingSummary }" />
                   </button>
                 </div>
-                <p class="mt-4 text-sm leading-6 text-gray-500 dark:text-gray-400">{{ t('wallet.balanceDescription') }}</p>
-                <p class="mt-3 truncate text-xs text-gray-400 dark:text-gray-500">{{ t('payment.rechargeAccount') }}: {{ user?.username || '--' }}</p>
+                <p class="mt-5 truncate text-xs text-gray-400 dark:text-gray-500">{{ t('payment.rechargeAccount') }}: {{ user?.username || '--' }}</p>
               </section>
 
               <div id="wallet-redeem" class="scroll-mt-6">
@@ -190,6 +189,10 @@
                   <h2 class="text-base font-semibold text-gray-900 dark:text-white">{{ t('wallet.activeSubscriptions') }}</h2>
                   <span class="rounded-md bg-primary-50 px-2 py-1 text-xs font-semibold text-primary-700 dark:bg-primary-950/40 dark:text-primary-300">{{ activeSubscriptions.length }}</span>
                 </header>
+                <div class="flex items-start gap-2 border-b border-primary-100 bg-primary-50/60 px-5 py-3 text-xs leading-5 text-primary-700 dark:border-primary-900/50 dark:bg-primary-950/20 dark:text-primary-300">
+                  <Icon name="infoCircle" size="sm" class="mt-0.5 shrink-0" />
+                  <p>{{ t('wallet.singleSubscriptionNotice') }}</p>
+                </div>
                 <div v-if="activeSubscriptions.length" class="divide-y divide-gray-100 dark:divide-dark-700">
                   <div v-for="sub in activeSubscriptions" :key="sub.id" class="px-5 py-4">
                     <div class="flex items-center gap-2">

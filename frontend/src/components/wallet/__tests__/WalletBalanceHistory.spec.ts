@@ -65,4 +65,28 @@ describe('WalletBalanceHistory', () => {
     expect(wrapper.text()).not.toContain('每日签到 2026/07/18 15:46:36')
     expect(wrapper.text()).toContain('活动补发')
   })
+
+  it('uses an internal scrollbar after five records', async () => {
+    getHistory.mockResolvedValue(Array.from({ length: 6 }, (_, index) => ({
+      id: index + 1,
+      code: `ADMIN-${index + 1}`,
+      type: 'admin_balance',
+      value: 1,
+      status: 'used',
+      used_at: '2026-07-18T16:04:06Z',
+      created_at: '2026-07-18T16:04:06Z',
+    })))
+
+    const wrapper = mount(WalletBalanceHistory, {
+      props: { compact: true },
+      global: {
+        stubs: { Icon: true },
+      },
+    })
+    await flushPromises()
+
+    const list = wrapper.get('.wallet-history-list')
+    expect(list.classes()).toContain('max-h-[360px]')
+    expect(list.classes()).toContain('overflow-y-auto')
+  })
 })

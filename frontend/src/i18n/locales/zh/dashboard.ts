@@ -596,6 +596,7 @@ export default {
     customCreditPlaceholder: '输入希望到账的美元余额',
     estimatedPayment: '预计支付',
     activeSubscriptions: '当前有效订阅',
+    singleSubscriptionNotice: '每个账号只允许存在一个有效订阅，购买或兑换新订阅会覆盖当前订阅。',
     availablePlans: '可选订阅套餐',
     balanceHistory: '余额变动明细',
     balanceHistoryHint: '查看兑换、签到、返利和管理员调整记录',
