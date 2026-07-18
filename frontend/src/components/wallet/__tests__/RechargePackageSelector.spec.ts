@@ -44,6 +44,9 @@ describe('RechargePackageSelector', () => {
     expect(wrapper.text()).toContain('¥2.50')
     expect(wrapper.text()).toContain('$25.00')
     expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([2.5])
+    const creditRow = wrapper.get('[data-testid="custom-credit-row"]')
+    expect(creditRow.find('input').exists()).toBe(true)
+    expect(creditRow.text()).toContain('wallet.generalBalance')
 
     const emitCount = wrapper.emitted('update:modelValue')?.length
     await wrapper.get('input').setValue('invalid')

@@ -20,14 +20,11 @@
           />
         </template>
         <template v-else>
-          <header class="flex flex-col gap-4 px-1 sm:flex-row sm:items-end sm:justify-between">
+          <header class="px-1">
             <div>
               <h1 class="text-2xl font-semibold text-gray-950 dark:text-white">{{ t('wallet.catalogTitle') }}</h1>
               <p class="mt-1.5 max-w-2xl text-sm leading-6 text-gray-500 dark:text-gray-400">{{ t('wallet.catalogHint') }}</p>
             </div>
-            <span class="self-start rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 sm:self-auto dark:border-dark-600 dark:bg-dark-800 dark:text-gray-300">
-              {{ t('wallet.offersCount', { count: walletOfferCount }) }}
-            </span>
           </header>
 
           <div class="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
@@ -100,14 +97,9 @@
               </section>
 
               <section id="wallet-subscription" class="scroll-mt-6 space-y-5 rounded-lg border border-gray-200 bg-white p-5 dark:border-dark-600 dark:bg-dark-800 sm:p-6">
-                <div class="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <h2 class="text-lg font-semibold text-gray-950 dark:text-white">{{ t('wallet.subscriptionSectionTitle') }}</h2>
-                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ t('wallet.subscriptionSectionHint') }}</p>
-                  </div>
-                  <span class="rounded-md bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600 dark:bg-dark-700 dark:text-gray-300">
-                    {{ t('wallet.offersCount', { count: checkout.plans.length }) }}
-                  </span>
+                <div>
+                  <h2 class="text-lg font-semibold text-gray-950 dark:text-white">{{ t('wallet.subscriptionSectionTitle') }}</h2>
+                  <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ t('wallet.subscriptionSectionHint') }}</p>
                 </div>
                 <div v-if="checkout.plans.length === 0" class="rounded-lg bg-gray-50 py-14 text-center dark:bg-dark-700/60">
                   <Icon name="gift" size="xl" class="mx-auto mb-3 text-gray-300 dark:text-gray-500" />
@@ -162,13 +154,12 @@
 
               <section id="wallet-subscription-summary" class="scroll-mt-6 overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-dark-600 dark:bg-dark-800">
                 <header class="flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-4 dark:border-dark-700">
-                  <h2 class="text-base font-semibold text-gray-900 dark:text-white">{{ t('wallet.activeSubscriptions') }}</h2>
+                  <div class="flex items-center gap-1.5">
+                    <h2 class="text-base font-semibold text-gray-900 dark:text-white">{{ t('wallet.activeSubscriptions') }}</h2>
+                    <HelpTooltip :content="t('wallet.singleSubscriptionNotice')" width-class="w-72" />
+                  </div>
                   <span class="rounded-md bg-primary-50 px-2 py-1 text-xs font-semibold text-primary-700 dark:bg-primary-950/40 dark:text-primary-300">{{ activeSubscriptions.length }}</span>
                 </header>
-                <div class="flex items-start gap-2 border-b border-primary-100 bg-primary-50/60 px-5 py-3 text-xs leading-5 text-primary-700 dark:border-primary-900/50 dark:bg-primary-950/20 dark:text-primary-300">
-                  <Icon name="infoCircle" size="sm" class="mt-0.5 shrink-0" />
-                  <p>{{ t('wallet.singleSubscriptionNotice') }}</p>
-                </div>
                 <div v-if="activeSubscriptions.length" class="divide-y divide-gray-100 dark:divide-dark-700">
                   <div v-for="sub in activeSubscriptions" :key="sub.id" class="px-5 py-4">
                     <div class="flex items-center gap-2">
@@ -210,6 +201,14 @@
         </template>
       </template>
     </div>
+    <ConfirmDialog
+      :show="Boolean(pendingSubscriptionPurchase)"
+      :title="t('wallet.subscriptionOverrideTitle')"
+      :message="subscriptionOverrideMessage"
+      :confirm-text="t('wallet.subscriptionOverrideConfirm')"
+      @confirm="confirmSubscriptionOverride"
+      @cancel="cancelSubscriptionOverride"
+    />
     <!-- Image Preview Overlay -->
     <Teleport to="body">
       <Transition name="modal">
@@ -239,6 +238,8 @@ import PaymentMethodSelector from '@/components/payment/PaymentMethodSelector.vu
 import RechargePackageSelector from '@/components/wallet/RechargePackageSelector.vue'
 import WalletBalanceHistory from '@/components/wallet/WalletBalanceHistory.vue'
 import WalletRedeemPanel from '@/components/wallet/WalletRedeemPanel.vue'
+import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
+import HelpTooltip from '@/components/common/HelpTooltip.vue'
 import { METHOD_ORDER, getPaymentPopupFeatures, isBuiltInAlipayMethod, isBuiltInWxpayMethod } from '@/components/payment/providerConfig'
 import {
   PAYMENT_RECOVERY_STORAGE_KEY,
@@ -320,6 +321,7 @@ const amount = ref<number | null>(null)
 const selectedMethod = ref('')
 const submittingPlanId = ref<number | null>(null)
 const previewImage = ref('')
+const pendingSubscriptionPurchase = ref<{ plan: SubscriptionPlan, source: 'recharge' | 'balance' } | null>(null)
 
 const paymentPhase = ref<'select' | 'paying'>('select')
 
@@ -525,7 +527,6 @@ async function refreshWalletSummary() {
 
 const visibleMethods = computed(() => getVisibleMethods(checkout.value.methods))
 const enabledMethods = computed(() => Object.keys(visibleMethods.value))
-const walletOfferCount = computed(() => checkout.value.plans.length + (enabledMethods.value.length > 0 ? 6 : 0))
 const validAmount = computed(() => amount.value ?? 0)
 const balanceRechargeMultiplier = computed(() => {
   const multiplier = checkout.value.balance_recharge_multiplier
@@ -778,10 +779,50 @@ async function handleSubmitRecharge() {
   await createOrder(validAmount.value, 'balance')
 }
 
+const activeSubscriptionToReplace = computed(() => activeSubscriptions.value.find((subscription) => {
+  if (subscription.status !== 'active') return false
+  if (!subscription.expires_at) return true
+  return new Date(subscription.expires_at).getTime() > Date.now()
+}) ?? null)
+
+const subscriptionOverrideMessage = computed(() => {
+  const subscription = activeSubscriptionToReplace.value
+  if (!subscription) return ''
+  const name = subscription.group?.name || t('payment.groupFallback', { id: subscription.group_id })
+  if (!subscription.expires_at) {
+    return t('wallet.subscriptionOverrideNoExpiryMessage', { name })
+  }
+  return t('wallet.subscriptionOverrideMessage', {
+    name,
+    days: getDaysRemaining(subscription.expires_at),
+  })
+})
+
 async function subscribeToPlan(plan: SubscriptionPlan, source: 'recharge' | 'balance') {
   if (submitting.value) return
   if (source === 'balance' && !hasEnoughBalanceForPlan(plan)) return
   if (source === 'recharge' && !canRechargeSubscriptionPlan(plan)) return
+
+  if (activeSubscriptionToReplace.value) {
+    pendingSubscriptionPurchase.value = { plan, source }
+    return
+  }
+
+  await executeSubscriptionPurchase(plan, source)
+}
+
+function cancelSubscriptionOverride() {
+  pendingSubscriptionPurchase.value = null
+}
+
+async function confirmSubscriptionOverride() {
+  const pending = pendingSubscriptionPurchase.value
+  pendingSubscriptionPurchase.value = null
+  if (!pending) return
+  await executeSubscriptionPurchase(pending.plan, pending.source)
+}
+
+async function executeSubscriptionPurchase(plan: SubscriptionPlan, source: 'recharge' | 'balance') {
 
   submittingPlanId.value = plan.id
   if (source === 'balance') {

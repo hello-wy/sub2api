@@ -396,7 +396,9 @@ describe('PaymentView balance loyalty discount', () => {
     expect(text).toContain('$2.50 / $10.00')
     expect(text).toContain('userSubscriptions.weekly')
     expect(text).toContain('$8.00 / $40.00')
-    expect(text).toContain('wallet.singleSubscriptionNotice')
+    const subscriptionNotice = wrapper.findComponent({ name: 'HelpTooltip' })
+    expect(subscriptionNotice.props('content')).toBe('wallet.singleSubscriptionNotice')
+    expect(text).not.toContain('wallet.singleSubscriptionNotice')
     expect(text).not.toContain('wallet.balanceDescription')
     expect(wrapper.find('[style="width: 25%;"]').exists()).toBe(true)
   })
@@ -417,6 +419,58 @@ describe('PaymentView inline subscription checkout', () => {
     expect(refreshUser).toHaveBeenCalled()
     expect(fetchActiveSubscriptions).toHaveBeenCalledWith(true)
     expect(showInfo).toHaveBeenCalledWith('wallet.subscriptionBalanceSuccess')
+  })
+
+  it('requires confirmation before replacing an active subscription', async () => {
+    authUserState.user = { username: 'demo-user', balance: 600 }
+    activeSubscriptionsState.items = [{
+      id: 9,
+      user_id: 1,
+      group_id: 3,
+      status: 'active',
+      starts_at: '2026-07-01T00:00:00Z',
+      expires_at: '2099-08-01T00:00:00Z',
+      daily_usage_usd: 2.5,
+      weekly_usage_usd: 8,
+      monthly_usage_usd: 0,
+      daily_window_start: '2026-07-18T00:00:00Z',
+      weekly_window_start: '2026-07-14T00:00:00Z',
+      monthly_window_start: null,
+      created_at: '2026-07-01T00:00:00Z',
+      updated_at: '2026-07-18T00:00:00Z',
+      group: {
+        id: 3,
+        name: 'OpenAI Pro',
+        platform: 'openai',
+        rate_multiplier: 1,
+        daily_limit_usd: 10,
+        weekly_limit_usd: 40,
+        monthly_limit_usd: null,
+      },
+    } as UserSubscription]
+    purchaseSubscriptionWithBalance.mockResolvedValue({
+      data: { order_id: 99, amount: 200, new_balance: 400, subscription: {} },
+    })
+
+    const wrapper = await mountSubscriptionConfirm({
+      checkout: { balance_recharge_multiplier: 10 },
+      plan: { price: 20 },
+    })
+    const card = wrapper.findComponent({ name: 'SubscriptionPlanCard' })
+    card.vm.$emit('subscribe', card.props('plan'), 'balance')
+    await flushPromises()
+
+    expect(purchaseSubscriptionWithBalance).not.toHaveBeenCalled()
+    const dialog = wrapper.findComponent({ name: 'ConfirmDialog' })
+    expect(dialog.props('show')).toBe(true)
+    expect(dialog.props('title')).toBe('wallet.subscriptionOverrideTitle')
+    expect(dialog.props('message')).toBe('wallet.subscriptionOverrideMessage')
+
+    dialog.vm.$emit('confirm')
+    await flushPromises()
+
+    expect(purchaseSubscriptionWithBalance).toHaveBeenCalledWith(7)
+    expect(refreshUser).toHaveBeenCalled()
   })
 
   it('disables balance subscription when the account balance is insufficient', async () => {

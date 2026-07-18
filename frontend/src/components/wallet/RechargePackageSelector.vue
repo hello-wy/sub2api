@@ -60,20 +60,22 @@
         ]"
       >
         <label for="custom-wallet-credit" class="block text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('wallet.customRecharge') }}</label>
-        <div class="relative">
-          <span class="absolute left-0 top-1/2 -translate-y-1/2 text-2xl font-bold text-gray-950 dark:text-white">$</span>
-          <input
-            id="custom-wallet-credit"
-            :value="customText"
-            type="text"
-            inputmode="decimal"
-            class="w-full border-0 bg-transparent py-1 pl-5 pr-2 text-2xl font-bold text-gray-950 outline-none placeholder:text-gray-300 focus:ring-0 dark:text-white dark:placeholder:text-gray-600"
-            placeholder="0.00"
-            @focus="activateCustom"
-            @input="handleCustomInput"
-          />
+        <div data-testid="custom-credit-row" class="flex items-center gap-2">
+          <div class="relative min-w-0 flex-1">
+            <span class="absolute left-0 top-1/2 -translate-y-1/2 text-2xl font-bold text-gray-950 dark:text-white">$</span>
+            <input
+              id="custom-wallet-credit"
+              :value="customText"
+              type="text"
+              inputmode="decimal"
+              class="w-full border-0 bg-transparent py-1 pl-5 pr-2 text-2xl font-bold text-gray-950 outline-none placeholder:text-gray-300 focus:ring-0 dark:text-white dark:placeholder:text-gray-600"
+              placeholder="0.00"
+              @focus="activateCustom"
+              @input="handleCustomInput"
+            />
+          </div>
+          <span class="shrink-0 text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('wallet.generalBalance') }}</span>
         </div>
-        <span class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('wallet.generalBalance') }}</span>
         <span class="mt-2 block text-xs font-medium uppercase text-primary-600 dark:text-primary-400">{{ t('wallet.payAsYouGo') }}</span>
         <dl class="mt-4 grid grid-cols-2 gap-x-3 gap-y-2 border-t border-gray-100 pt-3 text-xs dark:border-dark-600">
           <div>
