@@ -66,7 +66,7 @@
           <Icon :name="isDark ? 'sun' : 'moon'" size="md" />
         </button>
 
-        <router-link v-if="user" to="/purchase" class="header-tool-button header-recharge-button">
+        <router-link v-if="user" to="/wallet?tab=recharge" class="header-tool-button header-recharge-button">
           <Icon name="creditCard" size="md" />
           <span class="header-tool-label">{{ t('header.recharge') }}</span>
         </router-link>

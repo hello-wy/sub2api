@@ -316,7 +316,7 @@ describe('PaymentView balance loyalty discount', () => {
       },
     })
 
-    wrapper.findComponent({ name: 'AmountInput' }).vm.$emit('update:modelValue', 100)
+    wrapper.findComponent({ name: 'RechargePackageSelector' }).vm.$emit('update:modelValue', 100)
     await flushPromises()
 
     const text = wrapper.text()

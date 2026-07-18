@@ -568,6 +568,36 @@ export default {
     }
   },
 
+  wallet: {
+    title: 'My Wallet',
+    description: 'Manage balance top-ups, subscriptions, balance activity, and redeem codes',
+    tabs: {
+      recharge: 'Balance Top-up',
+      subscription: 'Subscriptions',
+      history: 'Balance Activity',
+      redeem: 'Redeem Code'
+    },
+    rechargePackages: 'Balance Top-up Packages',
+    rechargePackagesHint: 'Choose a fixed credited balance or enter a custom amount',
+    generalBalance: 'General Balance',
+    payAsYouGo: 'Pay as you go',
+    conversionRate: 'Conversion rate',
+    customRecharge: 'Custom Top-up',
+    customRechargeHint: 'Enter the balance you need',
+    customCreditAmount: 'Custom credited balance',
+    customCreditPlaceholder: 'Enter the USD balance to receive',
+    estimatedPayment: 'Estimated payment',
+    activeSubscriptions: 'Active subscriptions',
+    availablePlans: 'Available plans',
+    balanceHistory: 'Balance Activity',
+    balanceHistoryHint: 'Review redeem, check-in, rebate, and admin adjustments',
+    recordsCount: '{count} records',
+    noBalanceHistory: 'No balance activity yet',
+    noBalanceHistoryHint: 'Balance changes will appear here',
+    redeemTitle: 'Redeem a Code',
+    redeemHint: 'Redeem balance, concurrency, or subscription access'
+  },
+
   // Redeem
   redeem: {
     title: 'Redeem Code',

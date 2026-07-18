@@ -1,16 +1,35 @@
 <template>
   <AppLayout>
-    <div class="mx-auto max-w-4xl space-y-6">
+    <div class="mx-auto max-w-6xl space-y-6">
+      <section class="card overflow-hidden">
+        <div class="grid divide-y divide-gray-100 sm:grid-cols-3 sm:divide-x sm:divide-y-0 dark:divide-dark-700">
+          <div class="p-5">
+            <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('redeem.currentBalance') }}</p>
+            <p class="mt-2 text-2xl font-bold tabular-nums text-gray-950 dark:text-white">${{ user?.balance?.toFixed(2) || '0.00' }}</p>
+          </div>
+          <div class="p-5">
+            <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('wallet.activeSubscriptions') }}</p>
+            <p class="mt-2 text-2xl font-bold tabular-nums text-gray-950 dark:text-white">{{ activeSubscriptions.length }}</p>
+          </div>
+          <div class="p-5">
+            <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('payment.rechargeAccount') }}</p>
+            <p class="mt-2 truncate text-base font-semibold text-gray-950 dark:text-white">{{ user?.username || '--' }}</p>
+          </div>
+        </div>
+      </section>
       <div v-if="loading" class="flex items-center justify-center py-20">
         <div class="h-8 w-8 animate-spin rounded-full border-4 border-primary-500 border-t-transparent"></div>
       </div>
       <template v-else>
         <!-- Tab Switcher (hide during payment and subscription confirm) -->
-        <div v-if="tabs.length > 1 && paymentPhase === 'select' && !selectedPlan" class="flex space-x-1 rounded-xl bg-gray-100 p-1 dark:bg-dark-800">
+        <div v-if="tabs.length > 1 && paymentPhase === 'select' && !selectedPlan" class="grid grid-cols-2 gap-1 rounded-lg bg-gray-100 p-1 md:grid-cols-4 dark:bg-dark-800">
           <button v-for="tab in tabs" :key="tab.key"
-            class="flex-1 rounded-lg px-4 py-2.5 text-sm font-medium transition-all"
+            class="flex items-center justify-center gap-2 rounded-md px-3 py-2.5 text-sm font-medium transition-all"
             :class="activeTab === tab.key ? 'bg-white text-gray-900 shadow dark:bg-dark-700 dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'"
-            @click="activeTab = tab.key">{{ tab.label }}</button>
+            @click="selectWalletTab(tab.key)">
+            <Icon :name="tab.icon" size="sm" />
+            {{ tab.label }}
+          </button>
         </div>
         <!-- Payment in progress (shared by recharge and subscription) -->
         <template v-if="paymentPhase === 'paying'">
@@ -42,20 +61,21 @@
             </div>
             <template v-else>
             <div class="card p-6">
-              <AmountInput
-                v-model="amount"
-                :amounts="[10, 20, 50, 100, 200, 500, 1000, 2000, 5000]"
-                :min="globalMinAmount"
-                :max="globalMaxAmount"
-              />
-              <p v-if="amountError" class="mt-2 text-xs text-amber-600 dark:text-amber-300">{{ amountError }}</p>
-            </div>
-            <div v-if="enabledMethods.length >= 1" class="card p-6">
               <PaymentMethodSelector
                 :methods="methodOptions"
                 :selected="selectedMethod"
                 @select="selectedMethod = $event"
               />
+            </div>
+            <div class="card p-6">
+              <RechargePackageSelector
+                v-model="amount"
+                :multiplier="balanceRechargeMultiplier"
+                :min="globalMinAmount"
+                :max="globalMaxAmount"
+                :format-amount="formatSelectedPaymentAmount"
+              />
+              <p v-if="amountError" class="mt-3 text-xs text-amber-600 dark:text-amber-300">{{ amountError }}</p>
             </div>
             <div v-if="validAmount > 0" class="card p-6">
               <div class="space-y-2 text-sm">
@@ -99,6 +119,26 @@
           </template>
           <!-- Subscribe Tab -->
           <template v-else-if="activeTab === 'subscription'">
+            <div v-if="!selectedPlan" class="grid gap-4 sm:grid-cols-2">
+              <div class="card flex items-center justify-between p-5">
+                <div>
+                  <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('wallet.activeSubscriptions') }}</p>
+                  <p class="mt-2 text-2xl font-bold tabular-nums text-gray-950 dark:text-white">{{ activeSubscriptions.length }}</p>
+                </div>
+                <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-50 text-primary-600 dark:bg-primary-950/40 dark:text-primary-400">
+                  <Icon name="badge" size="lg" />
+                </span>
+              </div>
+              <div class="card flex items-center justify-between p-5">
+                <div>
+                  <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('wallet.availablePlans') }}</p>
+                  <p class="mt-2 text-2xl font-bold tabular-nums text-gray-950 dark:text-white">{{ checkout.plans.length }}</p>
+                </div>
+                <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">
+                  <Icon name="gift" size="lg" />
+                </span>
+              </div>
+            </div>
             <!-- Subscription confirm (inline, replaces plan list) -->
             <template v-if="selectedPlan">
               <div class="card p-5">
@@ -220,8 +260,10 @@
               </div>
             </template>
           </template>
+          <WalletBalanceHistory v-else-if="activeTab === 'history'" />
+          <WalletRedeemPanel v-else-if="activeTab === 'redeem'" />
         </template>
-        <div v-if="(checkout.help_text || checkout.help_image_url) && paymentPhase === 'select' && !selectedPlan" class="card p-4">
+        <div v-if="(checkout.help_text || checkout.help_image_url) && paymentPhase === 'select' && !selectedPlan && (activeTab === 'recharge' || activeTab === 'subscription')" class="card p-4">
           <div class="flex flex-col items-center gap-3">
             <img v-if="checkout.help_image_url" :src="checkout.help_image_url" alt=""
               class="h-40 max-w-full cursor-pointer rounded-lg object-contain transition-opacity hover:opacity-80"
@@ -273,8 +315,10 @@ import { isMobileDevice } from '@/utils/device'
 import { hasPeakRate, formatPeakRateWindow, serverTimezoneLabel, type PeakRateFields } from '@/utils/peak-rate'
 import type { SubscriptionPlan, CheckoutInfoResponse, CreateOrderResult, OrderType } from '@/types/payment'
 import AppLayout from '@/components/layout/AppLayout.vue'
-import AmountInput from '@/components/payment/AmountInput.vue'
 import PaymentMethodSelector from '@/components/payment/PaymentMethodSelector.vue'
+import RechargePackageSelector from '@/components/wallet/RechargePackageSelector.vue'
+import WalletBalanceHistory from '@/components/wallet/WalletBalanceHistory.vue'
+import WalletRedeemPanel from '@/components/wallet/WalletRedeemPanel.vue'
 import { METHOD_ORDER, getPaymentPopupFeatures, isBuiltInAlipayMethod, isBuiltInWxpayMethod } from '@/components/payment/providerConfig'
 import {
   PAYMENT_RECOVERY_STORAGE_KEY,
@@ -325,7 +369,10 @@ const loading = ref(true)
 const submitting = ref(false)
 const errorMessage = ref('')
 const errorHintMessage = ref('')
-const activeTab = ref<'recharge' | 'subscription'>('recharge')
+type WalletTab = 'recharge' | 'subscription' | 'history' | 'redeem'
+type WalletIconName = InstanceType<typeof Icon>['$props']['name']
+
+const activeTab = ref<WalletTab>('recharge')
 const amount = ref<number | null>(null)
 const selectedMethod = ref('')
 const selectedPlan = ref<SubscriptionPlan | null>(null)
@@ -452,7 +499,7 @@ function buildWechatOAuthAuthorizeUrl(
 
   try {
     const targetUrl = new URL(normalizedUrl, window.location.origin)
-    const redirectPath = targetUrl.searchParams.get('redirect') || '/purchase'
+    const redirectPath = targetUrl.searchParams.get('redirect') || '/wallet'
     const redirectUrl = new URL(redirectPath, window.location.origin)
     const paymentType = normalizeVisibleMethod(context.paymentType) || context.paymentType.trim() || 'wxpay'
 
@@ -506,11 +553,23 @@ const checkout = ref<CheckoutInfoResponse>({
 })
 
 const tabs = computed(() => {
-  const result: { key: 'recharge' | 'subscription'; label: string }[] = []
-  if (!checkout.value.balance_disabled) result.push({ key: 'recharge', label: t('payment.tabTopUp') })
-  result.push({ key: 'subscription', label: t('payment.tabSubscribe') })
+  const result: { key: WalletTab; label: string; icon: WalletIconName }[] = []
+  if (!checkout.value.balance_disabled) result.push({ key: 'recharge', label: t('wallet.tabs.recharge'), icon: 'creditCard' })
+  result.push(
+    { key: 'subscription', label: t('wallet.tabs.subscription'), icon: 'badge' },
+    { key: 'history', label: t('wallet.tabs.history'), icon: 'clock' },
+    { key: 'redeem', label: t('wallet.tabs.redeem'), icon: 'gift' },
+  )
   return result
 })
+
+function selectWalletTab(tab: WalletTab) {
+  activeTab.value = tab
+  selectedPlan.value = null
+  if (route.path === '/wallet' && route.query.tab !== tab) {
+    void router.replace({ path: route.path, query: { ...route.query, tab } })
+  }
+}
 
 const visibleMethods = computed(() => getVisibleMethods(checkout.value.methods))
 const enabledMethods = computed(() => Object.keys(visibleMethods.value))
@@ -1174,9 +1233,12 @@ onMounted(async () => {
     if (checkout.value.balance_disabled) {
       activeTab.value = 'subscription'
     }
-    // Handle renewal navigation: ?tab=subscription&group=123
-    if (route.query.tab === 'subscription') {
-      activeTab.value = 'subscription'
+    // Handle wallet tab and renewal navigation: ?tab=subscription&group=123
+    const requestedTab = typeof route.query.tab === 'string' ? route.query.tab : ''
+    if (['recharge', 'subscription', 'history', 'redeem'].includes(requestedTab)) {
+      activeTab.value = requestedTab as WalletTab
+    }
+    if (requestedTab === 'subscription') {
       if (route.query.group) {
         const groupId = Number(route.query.group)
         const groupPlans = checkout.value.plans.filter(p => p.group_id === groupId)

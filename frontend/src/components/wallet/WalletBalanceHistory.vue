@@ -1,0 +1,76 @@
+<template>
+  <section class="card overflow-hidden">
+    <header class="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-5 py-4 dark:border-dark-700">
+      <div>
+        <h2 class="text-base font-semibold text-gray-900 dark:text-white">{{ t('wallet.balanceHistory') }}</h2>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ t('wallet.balanceHistoryHint') }}</p>
+      </div>
+      <span class="rounded-md bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600 dark:bg-dark-700 dark:text-gray-300">
+        {{ t('wallet.recordsCount', { count: balanceHistory.length }) }}
+      </span>
+    </header>
+
+    <div v-if="loading" class="flex items-center justify-center py-16">
+      <span class="h-7 w-7 animate-spin rounded-full border-2 border-primary-500 border-t-transparent"></span>
+    </div>
+    <div v-else-if="balanceHistory.length" class="divide-y divide-gray-100 dark:divide-dark-700">
+      <div v-for="item in balanceHistory" :key="item.id" class="flex items-center gap-4 px-5 py-4">
+        <span :class="[
+          'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg',
+          item.value >= 0 ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400' : 'bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400',
+        ]">
+          <Icon name="dollar" size="md" />
+        </span>
+        <div class="min-w-0 flex-1">
+          <p class="truncate text-sm font-medium text-gray-900 dark:text-white">{{ itemTitle(item) }}</p>
+          <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{{ formatDateTime(item.used_at) }}</p>
+        </div>
+        <div class="text-right">
+          <p :class="['text-sm font-semibold tabular-nums', item.value >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400']">
+            {{ item.value >= 0 ? '+' : '' }}${{ item.value.toFixed(2) }}
+          </p>
+          <p v-if="item.notes" class="mt-0.5 max-w-[220px] truncate text-xs text-gray-400" :title="item.notes">{{ item.notes }}</p>
+        </div>
+      </div>
+    </div>
+    <div v-else class="flex flex-col items-center py-16 text-center">
+      <span class="flex h-12 w-12 items-center justify-center rounded-lg bg-gray-100 text-gray-400 dark:bg-dark-700 dark:text-gray-500">
+        <Icon name="clock" size="lg" />
+      </span>
+      <p class="mt-3 text-sm font-medium text-gray-700 dark:text-gray-200">{{ t('wallet.noBalanceHistory') }}</p>
+      <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ t('wallet.noBalanceHistoryHint') }}</p>
+    </div>
+  </section>
+</template>
+
+<script setup lang="ts">
+import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { redeemAPI, type RedeemHistoryItem } from '@/api'
+import Icon from '@/components/icons/Icon.vue'
+import { formatDateTime } from '@/utils/format'
+
+const { t } = useI18n()
+const history = ref<RedeemHistoryItem[]>([])
+const loading = ref(true)
+
+const balanceHistory = computed(() => history.value.filter((item) =>
+  ['balance', 'admin_balance', 'daily_checkin', 'usage_rebate'].includes(item.type)))
+
+function itemTitle(item: RedeemHistoryItem): string {
+  if (item.type === 'balance') return t('redeem.balanceAddedRedeem')
+  if (item.type === 'daily_checkin') return t('redeem.balanceAddedDailyCheckin')
+  if (item.type === 'usage_rebate') return t('redeem.balanceAddedUsageRebate')
+  return item.value >= 0 ? t('redeem.balanceAddedAdmin') : t('redeem.balanceDeductedAdmin')
+}
+
+onMounted(async () => {
+  try {
+    history.value = await redeemAPI.getHistory()
+  } catch (error) {
+    console.error('Failed to fetch wallet balance history:', error)
+  } finally {
+    loading.value = false
+  }
+})
+</script>

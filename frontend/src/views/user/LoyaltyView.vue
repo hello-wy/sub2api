@@ -452,7 +452,7 @@ async function loadAttributes(): Promise<void> {
 }
 
 function goRecharge(): void {
-  void router.push('/purchase')
+  void router.push({ path: '/wallet', query: { tab: 'recharge' } })
 }
 
 onMounted(() => {

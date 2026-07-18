@@ -242,16 +242,20 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
-    path: '/redeem',
-    name: 'Redeem',
-    component: () => import('@/views/user/RedeemView.vue'),
+    path: '/wallet',
+    name: 'Wallet',
+    component: () => import('@/views/user/PaymentView.vue'),
     meta: {
       requiresAuth: true,
       requiresAdmin: false,
-      title: 'Redeem Code',
-      titleKey: 'redeem.title',
-      descriptionKey: 'redeem.description'
+      title: 'My Wallet',
+      titleKey: 'wallet.title',
+      descriptionKey: 'wallet.description'
     }
+  },
+  {
+    path: '/redeem',
+    redirect: { path: '/wallet', query: { tab: 'redeem' } }
   },
   {
     path: '/checkin',
@@ -332,28 +336,11 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/subscriptions',
-    name: 'Subscriptions',
-    component: () => import('@/views/user/SubscriptionsView.vue'),
-    meta: {
-      requiresAuth: true,
-      requiresAdmin: false,
-      title: 'My Subscriptions',
-      titleKey: 'userSubscriptions.title',
-      descriptionKey: 'userSubscriptions.description'
-    }
+    redirect: { path: '/wallet', query: { tab: 'subscription' } }
   },
   {
     path: '/purchase',
-    name: 'PurchaseSubscription',
-    component: () => import('@/views/user/PaymentView.vue'),
-    meta: {
-      requiresAuth: true,
-      requiresAdmin: false,
-      title: 'Purchase Subscription',
-      titleKey: 'nav.buySubscription',
-      descriptionKey: 'purchase.description',
-      requiresPayment: true
-    }
+    redirect: (to) => ({ path: '/wallet', query: to.query })
   },
   {
     path: '/orders',
@@ -957,6 +944,7 @@ router.beforeEach(async (to, _from, next) => {
       '/admin/groups',
       '/admin/subscriptions',
       '/admin/redeem',
+      '/wallet',
       '/subscriptions',
       '/redeem'
     ]

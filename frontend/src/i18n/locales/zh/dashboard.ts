@@ -573,6 +573,36 @@ export default {
     }
   },
 
+  wallet: {
+    title: '我的钱包',
+    description: '统一管理余额充值、订阅套餐、余额明细和兑换码',
+    tabs: {
+      recharge: '余额充值',
+      subscription: '订阅统计',
+      history: '余额明细',
+      redeem: '兑换码'
+    },
+    rechargePackages: '余额充值套餐',
+    rechargePackagesHint: '选择固定到账余额，或使用自定义充值',
+    generalBalance: '通用余额',
+    payAsYouGo: '按量',
+    conversionRate: '换算倍率',
+    customRecharge: '自定义充值',
+    customRechargeHint: '按需填写到账余额',
+    customCreditAmount: '自定义到账余额',
+    customCreditPlaceholder: '输入希望到账的美元余额',
+    estimatedPayment: '预计支付',
+    activeSubscriptions: '当前有效订阅',
+    availablePlans: '可选订阅套餐',
+    balanceHistory: '余额变动明细',
+    balanceHistoryHint: '查看兑换、签到、返利和管理员调整记录',
+    recordsCount: '{count} 条记录',
+    noBalanceHistory: '暂无余额变动',
+    noBalanceHistoryHint: '产生余额变动后将在这里显示',
+    redeemTitle: '兑换码兑换',
+    redeemHint: '兑换余额、并发额度或订阅权限'
+  },
+
   // Redeem
   redeem: {
     title: '兑换码',

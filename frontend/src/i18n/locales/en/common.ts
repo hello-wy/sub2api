@@ -192,6 +192,7 @@ export default {
     github: 'GitHub',
     mySubscriptions: 'My Subscriptions',
     buySubscription: 'Recharge / Subscription',
+    wallet: 'My Wallet',
     loyalty: 'Membership Program',
     docs: 'Docs',
     myOrders: 'My Orders',
