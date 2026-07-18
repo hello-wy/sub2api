@@ -10,12 +10,6 @@
           </span>
         </router-link>
 
-        <div class="docs-header-context" aria-live="polite">
-          <span>指南</span>
-          <Icon name="chevronRight" size="xs" />
-          <strong>{{ activeSection.title }}</strong>
-        </div>
-
         <div class="docs-header-actions">
           <span class="docs-reading-label">已阅读 {{ readingProgress }}%</span>
           <button
@@ -772,10 +766,10 @@ watch(activeId, () => {
   width: min(1360px, calc(100% - 40px));
   height: 68px;
   margin: 0 auto;
-  display: grid;
-  grid-template-columns: 240px minmax(0, 1fr) auto;
+  display: flex;
   align-items: center;
-  gap: 28px;
+  justify-content: space-between;
+  gap: 24px;
 }
 
 .docs-header-brand {
@@ -810,24 +804,6 @@ watch(activeId, () => {
   color: var(--docs-muted);
   font-size: 11px;
   font-weight: 600;
-}
-
-.docs-header-context {
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--docs-muted);
-  font-size: 12px;
-}
-
-.docs-header-context strong {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--docs-text-soft);
-  font-weight: 700;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .docs-header-actions {
@@ -1373,14 +1349,6 @@ watch(activeId, () => {
 }
 
 @media (max-width: 980px) {
-  .docs-header-inner {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-
-  .docs-header-context {
-    display: none;
-  }
-
   .docs-layout {
     display: block;
     width: min(900px, calc(100% - 40px));
