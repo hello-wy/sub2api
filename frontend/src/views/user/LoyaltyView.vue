@@ -89,10 +89,7 @@
                 <span class="loyalty-plan-badge shrink-0">{{ plan.badge }}</span>
               </div>
 
-              <div
-                class="mt-5 grid gap-3 sm:grid-cols-2"
-                :class="plan.tiers.length === 3 ? 'lg:grid-cols-3' : 'lg:grid-cols-4'"
-              >
+              <div class="loyalty-tier-grid mt-5">
                 <div
                   v-for="tier in plan.tiers"
                   :key="`${plan.key}-${tier.rule.level}`"
@@ -579,6 +576,7 @@ onMounted(() => {
 
 .loyalty-tier-tile {
   display: flex;
+  min-width: 0;
   min-height: 7rem;
   flex-direction: column;
   align-items: center;
@@ -586,8 +584,14 @@ onMounted(() => {
   border-radius: 0.5rem;
   border: 1px solid rgba(186, 224, 255, 0.82);
   background: rgba(255, 255, 255, 0.7);
-  padding: 0.95rem 0.75rem;
+  padding: 0.9rem 0.65rem;
   text-align: center;
+}
+
+.loyalty-tier-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
+  gap: 0.75rem;
 }
 
 .loyalty-tier-tile.is-current {
@@ -611,6 +615,7 @@ onMounted(() => {
 
 .loyalty-tier-main {
   display: flex;
+  min-width: 0;
   min-height: 3.75rem;
   flex-direction: column;
   align-items: center;
@@ -626,6 +631,8 @@ onMounted(() => {
 
 .loyalty-tier-condition {
   margin-top: 0.6rem;
+  max-width: 100%;
+  overflow-wrap: anywhere;
   font-size: 0.8125rem;
   font-weight: 750;
   line-height: 1.35;
@@ -659,12 +666,14 @@ onMounted(() => {
 
 .loyalty-discount-pill {
   display: inline-flex;
+  max-width: 100%;
   align-items: center;
   justify-content: center;
+  white-space: nowrap;
   border-radius: 9999px;
   background: rgba(230, 244, 255, 0.88);
-  padding: 0.375rem 0.75rem;
-  font-size: 0.75rem;
+  padding: 0.3rem 0.55rem;
+  font-size: 0.6875rem;
   font-weight: 900;
   color: #1677ff;
   box-shadow: inset 0 0 0 1px rgba(145, 202, 255, 0.76);

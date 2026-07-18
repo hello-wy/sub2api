@@ -41,4 +41,10 @@ describe('wallet, check-in, and loyalty layout cleanup', () => {
     expect(loyaltySource).toContain('background: transparent;')
     expect(loyaltySource).toContain('box-shadow: none;')
   })
+
+  it('uses a container-aware tier grid for both membership plans', () => {
+    expect(loyaltySource).toContain('class="loyalty-tier-grid mt-5"')
+    expect(loyaltySource).toContain('grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));')
+    expect(loyaltySource).not.toContain("'lg:grid-cols-4'")
+  })
 })
