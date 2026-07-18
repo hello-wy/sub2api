@@ -603,6 +603,15 @@
   content: none;
 }
 
+.modal-content :where(button, .btn) {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.modal-content :where(button, .btn)::before {
+  content: none;
+}
+
 @media (max-width: 767px) {
   .app-content-stage {
     padding: 0.5rem;
