@@ -193,7 +193,7 @@ import { useRouter } from 'vue-router'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import Icon from '@/components/icons/Icon.vue'
-import membershipVipImage from '@/assets/membership-vip.jpg'
+import membershipVipImage from '@/assets/membership-vip.png'
 import { paymentAPI, userAPI } from '@/api'
 import { useAppStore } from '@/stores/app'
 import { extractApiErrorMessage } from '@/utils/apiError'
@@ -485,7 +485,7 @@ onMounted(() => {
   overflow: hidden;
   border-radius: 1.25rem;
   border: 1px solid rgba(145, 202, 255, 0.72);
-  background: #ffffff;
+  background: transparent;
   box-shadow: 0 12px 26px rgba(22, 119, 255, 0.14);
 }
 
@@ -813,10 +813,6 @@ onMounted(() => {
   border-color: rgba(64, 150, 255, 0.36);
   background: rgba(0, 44, 140, 0.32);
   box-shadow: 0 14px 30px rgba(0, 0, 0, 0.26);
-}
-
-.dark .loyalty-mascot-image {
-  background: #ffffff;
 }
 
 .dark .loyalty-mascot-inner {
