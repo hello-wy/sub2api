@@ -1,8 +1,8 @@
 <template>
-  <AuthLayout>
-    <div class="space-y-6">
+  <AuthLayout variant="home">
+    <div class="login-form space-y-6">
       <!-- Title -->
-      <div class="text-center">
+      <div class="login-heading">
         <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
           {{ t('auth.welcomeBack') }}
         </h2>
@@ -11,7 +11,7 @@
         </p>
       </div>
       <!-- Login Form -->
-      <form @submit.prevent="handleLogin" class="space-y-5">
+      <form @submit.prevent="handleLogin" class="login-fields space-y-5">
         <!-- Email Input -->
         <div>
           <label for="email" class="input-label">
@@ -93,7 +93,7 @@
         <button
           type="submit"
           :disabled="authActionDisabled || (turnstileEnabled && !turnstileToken)"
-          class="btn btn-primary w-full"
+          class="btn btn-primary login-submit w-full"
         >
           <svg
             v-if="isLoading"
@@ -554,6 +554,67 @@ function handle2FACancel(): void {
 </script>
 
 <style scoped>
+.login-heading {
+  text-align: left;
+}
+
+.login-form .input-label {
+  margin-bottom: 7px;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.login-form .input {
+  min-height: 46px;
+  border-color: #dbe3ee;
+  border-radius: 7px;
+  background: #f8fafc;
+  box-shadow: none;
+}
+
+.login-form .input:hover:not(:disabled) {
+  border-color: #a8b8cc;
+}
+
+.login-form .input:focus {
+  border-color: #1677ff;
+  box-shadow: 0 0 0 3px rgba(22, 119, 255, 0.12);
+}
+
+.login-submit {
+  min-height: 46px;
+  border-radius: 7px;
+  background: #1677ff;
+  box-shadow: none;
+  font-weight: 650;
+}
+
+.login-submit:hover:not(:disabled) {
+  background: #0f68df;
+  box-shadow: 0 8px 20px rgba(22, 119, 255, 0.2);
+  transform: none;
+}
+
+.dark .login-form .input-label {
+  color: #cbd5e1;
+}
+
+.dark .login-form .input {
+  border-color: #334155;
+  background: #101c2d;
+  color: #f8fafc;
+}
+
+.dark .login-form .input:hover:not(:disabled) {
+  border-color: #52647b;
+}
+
+.dark .login-form .input:focus {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.13);
+}
+
 .fade-enter-active,
 .fade-leave-active {
   transition: all 0.3s ease;

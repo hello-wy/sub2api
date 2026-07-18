@@ -217,6 +217,8 @@ export default {
 
   // Auth
   auth: {
+    backToHome: '返回首页',
+    secureAccess: '安全访问',
     welcomeBack: '欢迎回来',
     signInToAccount: '登录您的账户以继续',
     signIn: '登录',
