@@ -893,6 +893,11 @@ router.beforeEach(async (to, _from, next) => {
     return
   }
 
+  if (to.name === 'Dashboard' && authStore.isAdmin) {
+    next('/admin/dashboard')
+    return
+  }
+
   // Check admin requirement
   if (requiresAdmin && !authStore.isAdmin) {
     // User is authenticated but not admin, redirect to user dashboard

@@ -6,6 +6,7 @@
       { '-translate-x-full lg:translate-x-0': !mobileOpen }
     ]"
   >
+    <LiquidGlass class="sidebar-liquid-shell relative flex h-full flex-col border-r border-white/50 dark:border-white/10">
     <!-- Logo/Brand -->
     <div class="sidebar-header" :class="{ 'sidebar-header-collapsed': sidebarCollapsed }">
       <!-- Custom Logo or Default Logo -->
@@ -163,7 +164,7 @@
     </nav>
 
     <!-- Bottom Section -->
-    <div class="mt-auto border-t border-gray-100 p-3 dark:border-dark-800">
+    <div class="sidebar-footer mt-auto border-t p-3">
       <!-- Theme Toggle -->
       <button
         @click="toggleTheme"
@@ -190,6 +191,7 @@
         <span class="sidebar-label" :class="{ 'sidebar-label-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'">{{ t('nav.collapse') }}</span>
       </button>
     </div>
+    </LiquidGlass>
   </aside>
 
   <!-- Mobile Overlay -->
@@ -207,6 +209,7 @@ import { computed, h, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'v
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAdminSettingsStore, useAppStore, useAuthStore, useOnboardingStore } from '@/stores'
+import LiquidGlass from '@/components/common/LiquidGlass.vue'
 import VersionBadge from '@/components/common/VersionBadge.vue'
 import { sanitizeSvg } from '@/utils/sanitize'
 import { sanitizeUrl } from '@/utils/url'
@@ -1036,6 +1039,30 @@ watch(
 </script>
 
 <style scoped>
+.sidebar-liquid-shell {
+  background-image:
+    linear-gradient(180deg, rgba(239, 246, 255, 0.62), rgba(219, 234, 254, 0.7)),
+    url('/home/solid-api-blue-core-light.jpg');
+  background-position: center;
+  background-size: cover;
+}
+
+.sidebar-liquid-shell .sidebar-header,
+.sidebar-liquid-shell .sidebar-footer {
+  border-color: rgba(148, 184, 222, 0.22);
+}
+
+.dark .sidebar-liquid-shell {
+  background-image:
+    linear-gradient(180deg, rgba(5, 22, 48, 0.46), rgba(4, 18, 40, 0.66)),
+    url('/home/solid-api-blue-core.jpg');
+}
+
+.dark .sidebar-liquid-shell .sidebar-header,
+.dark .sidebar-liquid-shell .sidebar-footer {
+  border-color: rgba(163, 207, 255, 0.1);
+}
+
 .sidebar-logo {
   flex: 0 0 2.25rem;
   min-width: 2.25rem;
