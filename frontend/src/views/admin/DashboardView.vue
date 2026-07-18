@@ -29,18 +29,22 @@
 
         <section class="hero-metrics" aria-label="今日核心指标">
           <article class="hero-card hero-card--primary">
-            <span>今日 API 调用</span>
-            <strong>{{ formatNumber(stats.today_requests) }}</strong>
-            <small>累计 {{ formatNumber(stats.total_requests) }} 次</small>
+            <span>今日 Token</span>
+            <strong>{{ formatTokens(stats.today_tokens) }}</strong>
+            <small class="cost-breakdown">
+              <span>实际 ¥{{ formatCost(stats.today_actual_cost) }}</span>
+              <span>成本 ¥{{ formatCost(stats.today_account_cost) }}</span>
+              <span>标准 ¥{{ formatCost(stats.today_cost) }}</span>
+            </small>
             <svg v-if="hasTrendData" class="metric-sparkline" viewBox="0 0 300 78" preserveAspectRatio="none" aria-hidden="true">
               <polyline :points="sparklinePoints" />
             </svg>
           </article>
 
           <article class="hero-card">
-            <span>今日 Token</span>
-            <strong>{{ formatTokens(stats.today_tokens) }}</strong>
-            <small>近 5 分钟 {{ formatNumber(stats.tpm) }} TPM</small>
+            <span>今日 API 调用</span>
+            <strong>{{ formatNumber(stats.today_requests) }}</strong>
+            <small>累计 {{ formatNumber(stats.total_requests) }} 次</small>
             <svg v-if="hasTrendData" class="metric-sparkline metric-sparkline--mint" viewBox="0 0 300 78" preserveAspectRatio="none" aria-hidden="true">
               <polyline :points="sparklinePoints" />
             </svg>
@@ -280,6 +284,7 @@ onMounted(() => { updateDateRange(); loadDashboard() })
 .hero-card > span { display:block; color:#61708a; font-size:13px; font-weight:650; }
 .hero-card strong { display:block; margin:8px 0 9px; color:var(--dashboard-ink); font-size:31px; font-weight:760; letter-spacing:-.045em; line-height:1; }
 .hero-card small { color:var(--dashboard-muted); font-size:12px; }
+.cost-breakdown { display:flex; flex-wrap:wrap; gap:4px 12px; font-variant-numeric:tabular-nums; }
 .hero-card--primary { border-color:#8db8ff; background:linear-gradient(118deg,#5c9dff 0%,#7fbbff 49%,#97e4ec 100%); box-shadow:0 15px 34px rgba(66,135,232,.23),inset 0 1px rgba(255,255,255,.42); }
 .hero-card--primary > span,.hero-card--primary small,.hero-card--primary strong { color:#fff; }
 .metric-sparkline { position:absolute; right:20px; bottom:15px; left:20px; width:calc(100% - 40px); height:69px; opacity:.9; }

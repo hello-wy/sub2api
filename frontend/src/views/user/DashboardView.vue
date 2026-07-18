@@ -16,7 +16,7 @@
         </header>
 
         <section class="hero-metrics">
-          <article class="hero-card hero-card--primary"><span>今日 Token</span><strong>{{ formatTokens(stats.today_tokens) }}</strong><small>近 5 分钟 {{ formatNumber(stats.tpm) }} TPM</small><svg v-if="hasTrendData" class="metric-sparkline" viewBox="0 0 300 78" preserveAspectRatio="none"><polyline :points="sparklinePoints" /></svg></article>
+          <article class="hero-card hero-card--primary"><span>账户余额</span><strong>¥{{ formatCost(user?.balance || 0) }}</strong><small>个人账户可用</small></article>
           <article class="hero-card"><span>今日 API 调用</span><strong>{{ formatNumber(stats.today_requests) }}</strong><small>全部请求 {{ formatNumber(stats.total_requests) }} 次</small><svg v-if="hasTrendData" class="metric-sparkline metric-sparkline--mint" viewBox="0 0 300 78" preserveAspectRatio="none"><polyline :points="sparklinePoints" /></svg></article>
           <article v-if="!authStore.isSimpleMode" class="hero-card"><span>今日消费</span><strong>¥{{ formatCost(stats.today_actual_cost) }}</strong><small>当前余额 ¥{{ formatCost(user?.balance || 0) }}</small><svg v-if="hasTrendData" class="metric-sparkline metric-sparkline--violet" viewBox="0 0 300 78" preserveAspectRatio="none"><polyline :points="sparklinePoints" /></svg></article>
           <article v-else class="hero-card"><span>响应速度</span><strong>{{ formatDuration(stats.average_duration_ms) }}</strong><small>近 5 分钟 {{ formatNumber(stats.rpm) }} RPM</small><svg v-if="hasTrendData" class="metric-sparkline metric-sparkline--violet" viewBox="0 0 300 78" preserveAspectRatio="none"><polyline :points="sparklinePoints" /></svg></article>
