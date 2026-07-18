@@ -590,6 +590,15 @@
   backdrop-filter: blur(14px) saturate(1.04);
 }
 
+.app-page-panel :where(button, .btn) {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.app-page-panel :where(button, .btn)::before {
+  content: none;
+}
+
 @media (max-width: 767px) {
   .app-content-stage {
     padding: 0.5rem;
@@ -1150,12 +1159,17 @@
     padding-right: 0.875rem;
   }
 
-  .sidebar-link:hover {
-    background-color: rgba(22, 119, 255, 0.055);
+  .sidebar-link:not(.sidebar-link-active):hover {
+    transform: translateX(0.1875rem);
+    border-color: rgba(59, 130, 246, 0.2);
+    background-color: rgba(22, 119, 255, 0.08);
+    box-shadow: 0 6px 18px rgba(44, 111, 184, 0.07);
   }
 
-  .dark .sidebar-link:hover {
-    background-color: rgba(126, 192, 255, 0.055);
+  .dark .sidebar-link:not(.sidebar-link-active):hover {
+    border-color: rgba(126, 192, 255, 0.16);
+    background-color: rgba(126, 192, 255, 0.08);
+    box-shadow: 0 7px 20px rgba(0, 0, 0, 0.12);
   }
 
   .sidebar-link-active {
