@@ -309,6 +309,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useClipboard } from '@/composables/useClipboard'
 import { extractApiErrorMessage } from '@/utils/apiError'
 import { formatDateOnly } from '@/utils/format'
+import { QQ_GROUP_INVITE_URL, QQ_GROUP_NUMBER } from '@/constants/community'
 
 const appStore = useAppStore()
 const authStore = useAuthStore()
@@ -323,8 +324,8 @@ const history = ref<CheckinHistoryItem[]>([])
 const lastClaim = ref<{ total_reward: number; current_streak: number; message: string } | null>(null)
 const message = ref('')
 const checkedDateOverrides = ref(new Set<string>())
-const qqGroupNumber = '927283206'
-const qqGroupInviteUrl = 'https://qun.qq.com/universal-share/share?ac=1&authKey=bX90tpoDTuJyqbtjWFnUNMlrNOmmxtn5DmBObdnf568pvIuJjtnDC8nbFQkiXTTw&busi_data=eyJncm91cENvZGUiOiI5MjcyODMyMDYiLCJ0b2tlbiI6IlIrUWwrMjVtNGNkcTNQWm8zY0dMRkVsN0FQeFdpNE14S2lMa1hSazVBRFJHbzR0RHI5eWFDZWVHbDFHbWN0dmsiLCJ1aW4iOiIxMDY0Njc1MzQ3In0%3D&data=-lf6bECiiKLJYxzdqr1HQqPhWWul4lTWS5W_4oQTA2udq_CyVF_GvD-3SjawK_-G8sBr59JYFPmPHAu8hR-tjA&svctype=4&tempid=h5_group_info'
+const qqGroupNumber = QQ_GROUP_NUMBER
+const qqGroupInviteUrl = QQ_GROUP_INVITE_URL
 
 const rewardRules = computed<CheckinRewardRule[]>(() => {
   const rules = status.value?.reward_rules?.length

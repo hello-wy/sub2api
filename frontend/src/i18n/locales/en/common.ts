@@ -117,6 +117,15 @@ export default {
     acceptFailed: 'Failed to submit acknowledgment'
   },
 
+  header: {
+    notifications: 'Notifications',
+    qqGroup: 'QQ Group',
+    serviceMonitor: 'Service Monitor',
+    tutorial: 'Tutorial',
+    tutorialSoon: 'Tutorial coming soon',
+    recharge: 'Recharge'
+  },
+
   legal: {
     loadFailed: 'Failed to load document',
     retryLater: 'Refresh the page and try again later.',

@@ -1,0 +1,4 @@
+export const QQ_GROUP_NUMBER = '927283206'
+
+export const QQ_GROUP_INVITE_URL =
+  'https://qun.qq.com/universal-share/share?ac=1&authKey=bX90tpoDTuJyqbtjWFnUNMlrNOmmxtn5DmBObdnf568pvIuJjtnDC8nbFQkiXTTw&busi_data=eyJncm91cENvZGUiOiI5MjcyODMyMDYiLCJ0b2tlbiI6IlIrUWwrMjVtNGNkcTNQWm8zY0dMRkVsN0FQeFdpNE14S2lMa1hSazVBRFJHbzR0RHI5eWFDZWVHbDFHbWN0dmsiLCJ1aW4iOiIxMDY0Njc1MzQ3In0%3D&data=-lf6bECiiKLJYxzdqr1HQqPhWWul4lTWS5W_4oQTA2udq_CyVF_GvD-3SjawK_-G8sBr59JYFPmPHAu8hR-tjA&svctype=4&tempid=h5_group_info'

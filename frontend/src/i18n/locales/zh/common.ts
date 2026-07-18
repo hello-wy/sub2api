@@ -117,6 +117,15 @@ export default {
     acceptFailed: '提交确认失败'
   },
 
+  header: {
+    notifications: '通知',
+    qqGroup: 'QQ 群',
+    serviceMonitor: '服务监测',
+    tutorial: '教程',
+    tutorialSoon: '教程即将上线',
+    recharge: '充值'
+  },
+
   legal: {
     loadFailed: '文档加载失败',
     retryLater: '请稍后刷新页面重试。',
