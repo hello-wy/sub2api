@@ -109,81 +109,24 @@
                     {{ t('wallet.offersCount', { count: checkout.plans.length }) }}
                   </span>
                 </div>
-                <template v-if="selectedPlan">
-                  <div class="rounded-lg border border-primary-200 bg-primary-50/40 p-5 dark:border-primary-500/25 dark:bg-primary-500/5">
-                    <div class="mb-3 flex flex-wrap items-center gap-2">
-                      <span class="rounded-md border border-primary-200 bg-white px-2 py-0.5 text-xs font-medium text-primary-700 dark:border-primary-500/30 dark:bg-dark-800 dark:text-primary-300">{{ platformLabel(selectedPlan.group_platform || '') }}</span>
-                      <h3 class="text-lg font-bold text-gray-900 dark:text-white">{{ selectedPlan.name }}</h3>
-                    </div>
-                    <div class="flex items-baseline gap-2">
-                      <span v-if="selectedPlan.original_price" class="text-sm text-gray-400 line-through dark:text-gray-500">{{ formatSubscriptionCatalogPrice(selectedPlan.original_price) }}</span>
-                      <span class="text-3xl font-bold text-gray-950 dark:text-white">{{ formatSubscriptionCatalogPrice(selectedPlan.price) }}</span>
-                      <span class="text-sm text-gray-500 dark:text-gray-400">/ {{ planValiditySuffix }}</span>
-                    </div>
-                    <p v-if="selectedPlan.description" class="mt-2 text-sm leading-relaxed text-gray-500 dark:text-gray-400">{{ selectedPlan.description }}</p>
-                    <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                      <div>
-                        <span class="text-xs text-gray-400 dark:text-gray-500">{{ t('payment.planCard.rate') }}</span>
-                        <div class="text-lg font-bold text-primary-600 dark:text-primary-400">×{{ selectedPlan.rate_multiplier ?? 1 }}</div>
-                      </div>
-                      <div v-if="selectedPlan.daily_limit_usd != null"><span class="text-xs text-gray-400 dark:text-gray-500">{{ t('payment.planCard.dailyLimit') }}</span><div class="text-lg font-semibold text-gray-800 dark:text-gray-200">${{ selectedPlan.daily_limit_usd }}</div></div>
-                      <div v-if="selectedPlan.weekly_limit_usd != null"><span class="text-xs text-gray-400 dark:text-gray-500">{{ t('payment.planCard.weeklyLimit') }}</span><div class="text-lg font-semibold text-gray-800 dark:text-gray-200">${{ selectedPlan.weekly_limit_usd }}</div></div>
-                      <div v-if="selectedPlan.monthly_limit_usd != null"><span class="text-xs text-gray-400 dark:text-gray-500">{{ t('payment.planCard.monthlyLimit') }}</span><div class="text-lg font-semibold text-gray-800 dark:text-gray-200">${{ selectedPlan.monthly_limit_usd }}</div></div>
-                    </div>
-                  </div>
-                  <div class="space-y-3 rounded-lg border border-gray-200 p-4 dark:border-dark-600">
-                    <p class="text-sm font-medium text-gray-800 dark:text-gray-200">{{ t('wallet.subscriptionPaymentTitle') }}</p>
-                    <div class="grid gap-3 sm:grid-cols-2">
-                      <button
-                        type="button"
-                        :class="subscriptionPaymentSource === 'recharge' ? subscriptionSourceActiveClass : subscriptionSourceIdleClass"
-                        @click="subscriptionPaymentSource = 'recharge'"
-                      >
-                        <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary-50 text-primary-600 dark:bg-primary-500/10 dark:text-primary-300"><Icon name="creditCard" size="sm" /></span>
-                        <span class="min-w-0 text-left"><strong class="block text-sm">{{ t('wallet.subscriptionPaymentRecharge') }}</strong><small class="mt-0.5 block text-xs font-normal opacity-70">{{ t('wallet.subscriptionPaymentRechargeHint') }}</small></span>
-                      </button>
-                      <button
-                        type="button"
-                        :class="subscriptionPaymentSource === 'balance' ? subscriptionSourceActiveClass : subscriptionSourceIdleClass"
-                        @click="subscriptionPaymentSource = 'balance'"
-                      >
-                        <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary-50 text-primary-600 dark:bg-primary-500/10 dark:text-primary-300"><Icon name="dollar" size="sm" /></span>
-                        <span class="min-w-0 text-left"><strong class="block text-sm">{{ t('wallet.subscriptionPaymentBalance') }}</strong><small class="mt-0.5 block text-xs font-normal opacity-70">{{ t('wallet.subscriptionPaymentBalanceHint') }}</small></span>
-                      </button>
-                    </div>
-                  </div>
-                  <div v-if="subscriptionPaymentSource === 'recharge' && enabledMethods.length >= 1" class="rounded-lg border border-gray-200 p-4 dark:border-dark-600">
-                    <PaymentMethodSelector :methods="subMethodOptions" :selected="selectedMethod" @select="selectedMethod = $event" />
-                  </div>
-                  <div v-else-if="subscriptionPaymentSource === 'recharge'" class="rounded-lg bg-amber-50 p-4 text-sm text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
-                    {{ t('payment.notAvailable') }}
-                  </div>
-                  <div v-if="subscriptionPaymentSource === 'recharge' && feeRate > 0 && selectedPlan.price > 0" class="grid gap-3 rounded-lg bg-gray-50 p-4 text-sm sm:grid-cols-3 dark:bg-dark-700/60">
-                    <div><p class="text-xs text-gray-500 dark:text-gray-400">{{ t('payment.amountLabel') }}</p><p class="mt-1 font-semibold text-gray-900 dark:text-white">{{ formatSelectedPaymentAmount(subPaymentAmount) }}</p></div>
-                    <div><p class="text-xs text-gray-500 dark:text-gray-400">{{ t('payment.fee') }} ({{ feeRate }}%)</p><p class="mt-1 font-semibold text-gray-900 dark:text-white">{{ formatSelectedPaymentAmount(subFeeAmount) }}</p></div>
-                    <div><p class="text-xs text-gray-500 dark:text-gray-400">{{ t('payment.actualPay') }}</p><p class="mt-1 text-lg font-bold text-primary-600 dark:text-primary-400">{{ formatSelectedPaymentAmount(subTotalAmount) }}</p></div>
-                  </div>
-                  <div v-if="subscriptionPaymentSource === 'balance'" class="grid gap-3 rounded-lg bg-gray-50 p-4 text-sm sm:grid-cols-2 dark:bg-dark-700/60">
-                    <div><p class="text-xs text-gray-500 dark:text-gray-400">{{ t('wallet.subscriptionBalanceRequired') }}</p><p class="mt-1 text-lg font-bold text-gray-950 dark:text-white">${{ subscriptionBalancePrice.toFixed(2) }}</p></div>
-                    <div><p class="text-xs text-gray-500 dark:text-gray-400">{{ t('wallet.subscriptionBalanceAvailable') }}</p><p :class="['mt-1 text-lg font-bold', hasEnoughSubscriptionBalance ? 'text-primary-600 dark:text-primary-400' : 'text-red-600 dark:text-red-400']">${{ availableBalance.toFixed(2) }}</p></div>
-                    <p v-if="!hasEnoughSubscriptionBalance" class="sm:col-span-2 text-xs text-red-600 dark:text-red-400">{{ t('wallet.subscriptionBalanceInsufficient') }}</p>
-                  </div>
-                  <div class="flex flex-col gap-3 sm:flex-row">
-                    <button :class="['btn flex-1 py-3 text-sm font-semibold', subscriptionPaymentSource === 'balance' ? 'btn-primary' : paymentButtonClass]" :disabled="!canSubmitSubscription || submitting" @click="confirmSubscribe">
-                      {{ submitting ? t('common.processing') : subscriptionSubmitLabel }}
-                    </button>
-                    <button class="btn btn-secondary sm:min-w-[120px]" @click="selectedPlan = null">{{ t('common.cancel') }}</button>
-                  </div>
-                </template>
-                <template v-else>
-                  <div v-if="checkout.plans.length === 0" class="rounded-lg bg-gray-50 py-14 text-center dark:bg-dark-700/60">
-                    <Icon name="gift" size="xl" class="mx-auto mb-3 text-gray-300 dark:text-gray-500" />
-                    <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('payment.noPlans') }}</p>
-                  </div>
-                  <div v-else :class="planGridClass">
-                    <SubscriptionPlanCard v-for="plan in checkout.plans" :key="plan.id" :plan="plan" :subscription-usd-to-cny-rate="subscriptionUsdToCnyRate" @select="selectPlan" />
-                  </div>
-                </template>
+                <div v-if="checkout.plans.length === 0" class="rounded-lg bg-gray-50 py-14 text-center dark:bg-dark-700/60">
+                  <Icon name="gift" size="xl" class="mx-auto mb-3 text-gray-300 dark:text-gray-500" />
+                  <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('payment.noPlans') }}</p>
+                </div>
+                <div v-else :class="planGridClass">
+                  <SubscriptionPlanCard
+                    v-for="plan in checkout.plans"
+                    :key="plan.id"
+                    :plan="plan"
+                    :subscription-usd-to-cny-rate="subscriptionUsdToCnyRate"
+                    :available-balance="availableBalance"
+                    :recharge-available="canRechargeSubscriptionPlan(plan)"
+                    :recharge-amount-label="formatSubscriptionRechargeAmount(plan)"
+                    :disabled="submitting"
+                    :submitting="submitting && submittingPlanId === plan.id"
+                    @subscribe="subscribeToPlan"
+                  />
+                </div>
               </section>
 
               <section v-if="checkout.help_text || checkout.help_image_url" class="rounded-lg border border-gray-200 bg-white p-4 dark:border-dark-600 dark:bg-dark-800">
@@ -263,23 +206,6 @@
         </template>
       </template>
     </div>
-    <!-- Renewal Plan Selection Modal -->
-    <Teleport to="body">
-      <Transition name="modal">
-        <div v-if="showRenewalModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" @click.self="closeRenewalModal">
-          <div class="relative w-full max-w-lg rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl dark:border-dark-700 dark:bg-dark-900">
-            <!-- Close button -->
-            <button class="absolute right-4 top-4 rounded-lg p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-dark-700 dark:hover:text-gray-200" @click="closeRenewalModal">
-              <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-            </button>
-            <h3 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">{{ t('payment.selectPlan') }}</h3>
-            <div class="space-y-4">
-              <SubscriptionPlanCard v-for="plan in renewalPlans" :key="plan.id" :plan="plan" :subscription-usd-to-cny-rate="subscriptionUsdToCnyRate" @select="selectPlanFromModal" />
-            </div>
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
     <!-- Image Preview Overlay -->
     <Teleport to="body">
       <Transition name="modal">
@@ -321,7 +247,7 @@ import {
   type PaymentRecoverySnapshot,
   writePaymentRecoverySnapshot,
 } from '@/components/payment/paymentFlow'
-import { platformAccentBarClass, platformLabel } from '@/utils/platformColors'
+import { platformAccentBarClass } from '@/utils/platformColors'
 import SubscriptionPlanCard from '@/components/payment/SubscriptionPlanCard.vue'
 import PaymentStatusPanel from '@/components/payment/PaymentStatusPanel.vue'
 import Icon from '@/components/icons/Icon.vue'
@@ -388,8 +314,7 @@ const errorHintMessage = ref('')
 const refreshingSummary = ref(false)
 const amount = ref<number | null>(null)
 const selectedMethod = ref('')
-const selectedPlan = ref<SubscriptionPlan | null>(null)
-const subscriptionPaymentSource = ref<'recharge' | 'balance'>('recharge')
+const submittingPlanId = ref<number | null>(null)
 const previewImage = ref('')
 
 const paymentPhase = ref<'select' | 'paying'>('select')
@@ -542,7 +467,6 @@ function buildWechatOAuthAuthorizeUrl(
 function onPaymentDone() {
   const wasSubscription = paymentState.value.orderType === 'subscription'
   resetPayment()
-  selectedPlan.value = null
   if (wasSubscription) {
     subscriptionStore.fetchActiveSubscriptions(true).catch(() => {})
   }
@@ -620,7 +544,7 @@ const loyaltyDiscountPercent = computed(() => {
 const planGridClass = computed(() => {
   const n = checkout.value.plans.length
   if (n <= 2) return 'grid grid-cols-1 gap-5 sm:grid-cols-2'
-  return 'grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3'
+  return 'grid grid-cols-1 gap-5 sm:grid-cols-2 2xl:grid-cols-3'
 })
 
 // Check if an amount fits a method's [min, max]. 0 = no limit.
@@ -696,14 +620,6 @@ function formatRechargeRatio(value: number): string {
   return Number.isInteger(value) ? String(value) : String(Number(value.toFixed(2)))
 }
 
-function formatSubscriptionCatalogPrice(value: number): string {
-  return formatPaymentAmount(
-    subscriptionPaymentAmountForCurrency(value, DEFAULT_PAYMENT_CURRENCY),
-    DEFAULT_PAYMENT_CURRENCY,
-    localeCode.value,
-  )
-}
-
 const feeRate = computed(() => checkout.value?.recharge_fee_rate ?? 0)
 
 function balancePaymentBaseForCurrency(value: number, currency: string): number {
@@ -777,21 +693,6 @@ const canSubmit = computed(() =>
     && selectedLimit.value?.available !== false
 )
 
-const subPaymentAmount = computed(() => {
-  const price = selectedPlan.value?.price ?? 0
-  return subscriptionPaymentAmountForCurrency(price, selectedCurrency.value)
-})
-
-const subFeeAmount = computed(() => {
-  if (feeRate.value <= 0 || subPaymentAmount.value <= 0) return 0
-  return ceilPaymentAmount((subPaymentAmount.value * feeRate.value) / 100, selectedCurrency.value)
-})
-
-const subTotalAmount = computed(() => {
-  if (feeRate.value <= 0 || subPaymentAmount.value <= 0) return subPaymentAmount.value
-  return roundPaymentAmount(subPaymentAmount.value + subFeeAmount.value, selectedCurrency.value)
-})
-
 function subscriptionTotalAmountForCurrency(value: number, currency: string): number {
   const paymentAmount = subscriptionPaymentAmountForCurrency(value, currency)
   if (feeRate.value <= 0 || paymentAmount <= 0) return paymentAmount
@@ -799,43 +700,25 @@ function subscriptionTotalAmountForCurrency(value: number, currency: string): nu
   return roundPaymentAmount(paymentAmount + fee, currency)
 }
 
-// Subscription-specific: method options based on gateway pay amount
-const subMethodOptions = computed<PaymentMethodOption[]>(() => {
-  const price = selectedPlan.value?.price ?? 0
-  return enabledMethods.value.map((type) => {
-    const ml = visibleMethods.value[type]
-    const currency = normalizePaymentCurrency(ml?.currency)
-    return {
-      type,
-      display_name: ml?.display_name,
-      fee_rate: ml?.fee_rate ?? 0,
-      available: ml?.available !== false && amountFitsMethod(subscriptionTotalAmountForCurrency(price, currency), type),
-    }
-  })
-})
-
-const subscriptionBalancePrice = computed(() => selectedPlan.value?.price ?? 0)
 const availableBalance = computed(() => Number(user.value?.balance ?? 0))
-const hasEnoughSubscriptionBalance = computed(() =>
-  subscriptionBalancePrice.value > 0 && availableBalance.value + 1e-9 >= subscriptionBalancePrice.value
-)
-const canSubmitSubscription = computed(() => {
-  if (!selectedPlan.value) return false
-  if (subscriptionPaymentSource.value === 'balance') return hasEnoughSubscriptionBalance.value
+
+function subscriptionTotalAmountForPlan(plan: SubscriptionPlan): number {
+  return subscriptionTotalAmountForCurrency(plan.price, selectedCurrency.value)
+}
+
+function canRechargeSubscriptionPlan(plan: SubscriptionPlan): boolean {
   return enabledMethods.value.length > 0
-    && amountFitsMethod(subTotalAmount.value, selectedMethod.value)
+    && amountFitsMethod(subscriptionTotalAmountForPlan(plan), selectedMethod.value)
     && selectedLimit.value?.available !== false
-})
+}
 
-const subscriptionSubmitLabel = computed(() => {
-  if (subscriptionPaymentSource.value === 'balance') {
-    return `${t('wallet.subscribeAction')} $${subscriptionBalancePrice.value.toFixed(2)}`
-  }
-  return `${t('wallet.subscribeAction')} ${formatSelectedPaymentAmount(subTotalAmount.value)}`
-})
+function formatSubscriptionRechargeAmount(plan: SubscriptionPlan): string {
+  return formatSelectedPaymentAmount(subscriptionTotalAmountForPlan(plan))
+}
 
-const subscriptionSourceActiveClass = 'flex min-h-[68px] items-center gap-3 rounded-lg border border-primary-400 bg-primary-50/60 px-3 py-2.5 text-primary-800 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary-500/40 dark:border-primary-500/60 dark:bg-primary-500/10 dark:text-primary-200'
-const subscriptionSourceIdleClass = 'flex min-h-[68px] items-center gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-gray-700 outline-none transition-colors hover:border-primary-300 hover:bg-primary-50/30 focus-visible:ring-2 focus-visible:ring-primary-500/40 dark:border-dark-600 dark:bg-dark-800 dark:text-gray-300 dark:hover:border-primary-500/50'
+function hasEnoughBalanceForPlan(plan: SubscriptionPlan): boolean {
+  return plan.price > 0 && availableBalance.value + 1e-9 >= plan.price
+}
 
 // Auto-switch to first available method when current selection can't handle the amount
 watch(() => [validAmount.value, selectedMethod.value] as const, ([amt, method]) => {
@@ -855,67 +738,37 @@ const paymentButtonClass = computed(() => {
   return 'btn-primary'
 })
 
-// Renewal modal state
-const showRenewalModal = ref(false)
-const renewGroupId = ref<number | null>(null)
-const renewalPlans = computed(() => {
-  if (renewGroupId.value == null) return []
-  return checkout.value.plans.filter(p => p.group_id === renewGroupId.value)
-})
-
-const planValiditySuffix = computed(() => {
-  if (!selectedPlan.value) return ''
-  const u = selectedPlan.value.validity_unit || 'day'
-  if (u === 'month') return t('payment.perMonth')
-  if (u === 'year') return t('payment.perYear')
-  return `${selectedPlan.value.validity_days}${t('payment.days')}`
-})
-
-function selectPlan(plan: SubscriptionPlan) {
-  selectedPlan.value = plan
-  subscriptionPaymentSource.value = 'recharge'
-  errorMessage.value = ''
-}
-
-function selectPlanFromModal(plan: SubscriptionPlan) {
-  showRenewalModal.value = false
-  renewGroupId.value = null
-  selectedPlan.value = plan
-  subscriptionPaymentSource.value = 'recharge'
-  errorMessage.value = ''
-}
-
-function closeRenewalModal() {
-  showRenewalModal.value = false
-  renewGroupId.value = null
-}
-
 async function handleSubmitRecharge() {
   if (!canSubmit.value || submitting.value) return
   await createOrder(validAmount.value, 'balance')
 }
 
-async function confirmSubscribe() {
-  if (!selectedPlan.value || submitting.value) return
-  if (subscriptionPaymentSource.value === 'balance') {
+async function subscribeToPlan(plan: SubscriptionPlan, source: 'recharge' | 'balance') {
+  if (submitting.value) return
+  if (source === 'balance' && !hasEnoughBalanceForPlan(plan)) return
+  if (source === 'recharge' && !canRechargeSubscriptionPlan(plan)) return
+
+  submittingPlanId.value = plan.id
+  if (source === 'balance') {
     submitting.value = true
     errorMessage.value = ''
     try {
-      await paymentAPI.purchaseSubscriptionWithBalance(selectedPlan.value.id)
+      await paymentAPI.purchaseSubscriptionWithBalance(plan.id)
       await Promise.all([
         authStore.refreshUser(),
         subscriptionStore.fetchActiveSubscriptions(true),
       ])
-      selectedPlan.value = null
       appStore.showInfo(t('wallet.subscriptionBalanceSuccess'))
     } catch (error) {
       appStore.showError(extractApiErrorMessage(error, t('common.error')))
     } finally {
       submitting.value = false
+      submittingPlanId.value = null
     }
     return
   }
-  await createOrder(selectedPlan.value.price, 'subscription', selectedPlan.value.id)
+  await createOrder(plan.price, 'subscription', plan.id)
+  submittingPlanId.value = null
 }
 
 async function createOrder(orderAmount: number, orderType: OrderType, planId?: number, options: CreateOrderOptions = {}) {
@@ -1224,10 +1077,6 @@ async function resumeWechatPaymentFromQuery() {
   if (resume.orderType === 'balance' && resume.orderAmount > 0) {
     amount.value = resume.orderAmount
   }
-  if (resume.orderType === 'subscription' && resume.planId) {
-    selectedPlan.value = checkout.value.plans.find(plan => plan.id === resume.planId) ?? null
-  }
-
   await router.replace({ path: route.path, query: stripWechatResumeQuery(route.query) })
 
   if (resume.wechatResumeToken) {
@@ -1287,20 +1136,6 @@ onMounted(async () => {
       }
     }
     await resumeWechatPaymentFromQuery()
-    // Handle renewal navigation: ?tab=subscription&group=123
-    const requestedTab = typeof route.query.tab === 'string' ? route.query.tab : ''
-    if (requestedTab === 'subscription') {
-      if (route.query.group) {
-        const groupId = Number(route.query.group)
-        const groupPlans = checkout.value.plans.filter(p => p.group_id === groupId)
-        if (groupPlans.length === 1) {
-          selectedPlan.value = groupPlans[0]
-        } else if (groupPlans.length > 1) {
-          renewGroupId.value = groupId
-          showRenewalModal.value = true
-        }
-      }
-    }
   } catch (err: unknown) { appStore.showError(extractI18nErrorMessage(err, t, 'payment.errors', t('common.error'))) }
   finally { loading.value = false }
   // Fetch active subscriptions (uses cache, non-blocking)

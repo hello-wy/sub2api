@@ -6,52 +6,52 @@
 
     <div class="flex flex-1 flex-col p-4">
       <!-- Header: name + badge + price -->
-      <div class="mb-3 flex items-start justify-between gap-2">
-        <div class="min-w-0 flex-1">
-          <div class="flex items-center gap-2">
-            <h3 class="truncate text-base font-bold text-gray-900 dark:text-white">{{ plan.name }}</h3>
-            <span class="shrink-0 rounded-md border border-primary-200 bg-primary-50 px-2 py-0.5 text-[11px] font-medium text-primary-700 dark:border-primary-500/30 dark:bg-primary-500/10 dark:text-primary-300">
-              {{ pLabel }}
-            </span>
-          </div>
-          <p v-if="plan.description" class="mt-0.5 text-xs leading-relaxed text-gray-500 dark:text-dark-400 line-clamp-2">
-            {{ plan.description }}
-          </p>
+      <div class="mb-3">
+        <div class="flex min-w-0 items-center justify-between gap-2">
+          <h3 class="truncate text-base font-bold text-gray-900 dark:text-white">{{ plan.name }}</h3>
+          <span class="shrink-0 rounded-md border border-primary-200 bg-primary-50 px-2 py-0.5 text-[11px] font-medium text-primary-700 dark:border-primary-500/30 dark:bg-primary-500/10 dark:text-primary-300">
+            {{ pLabel }}
+          </span>
         </div>
-        <div class="shrink-0 text-right">
+        <p v-if="plan.description" class="mt-0.5 text-xs leading-relaxed text-gray-500 dark:text-dark-400 line-clamp-2">
+          {{ plan.description }}
+        </p>
+        <div class="mt-3 flex items-end justify-between gap-3">
           <div class="flex items-baseline gap-1">
             <span class="text-sm font-semibold text-primary-600 dark:text-primary-400">¥</span>
             <span class="text-2xl font-extrabold tracking-tight text-gray-950 dark:text-white">{{ displayPrice }}</span>
           </div>
-          <span class="text-[11px] text-gray-400 dark:text-dark-500">/ {{ validitySuffix }}</span>
-          <div v-if="plan.original_price" class="mt-0.5 flex items-center justify-end gap-1.5">
-            <span class="text-xs text-gray-400 line-through dark:text-dark-500">¥{{ displayOriginalPrice }}</span>
-            <span class="rounded bg-primary-50 px-1.5 py-0.5 text-[10px] font-semibold text-primary-700 dark:bg-primary-500/10 dark:text-primary-300">{{ discountText }}</span>
+          <div class="shrink-0 text-right">
+            <span class="text-[11px] text-gray-400 dark:text-dark-500">/ {{ validitySuffix }}</span>
+            <div v-if="plan.original_price" class="mt-0.5 flex items-center justify-end gap-1.5">
+              <span class="text-xs text-gray-400 line-through dark:text-dark-500">¥{{ displayOriginalPrice }}</span>
+              <span class="rounded bg-primary-50 px-1.5 py-0.5 text-[10px] font-semibold text-primary-700 dark:bg-primary-500/10 dark:text-primary-300">{{ discountText }}</span>
+            </div>
           </div>
         </div>
       </div>
 
       <!-- Group quota info (compact) -->
       <div class="mb-3 grid grid-cols-2 gap-x-3 gap-y-1 rounded-lg bg-gray-50 px-3 py-2 text-xs dark:bg-dark-700/50">
-        <div class="flex items-center justify-between">
+        <div class="flex items-center justify-between gap-2">
           <span class="text-gray-400 dark:text-dark-500">{{ t('payment.planCard.rate') }}</span>
-          <span class="font-medium text-gray-700 dark:text-gray-300">{{ rateDisplay }}</span>
+          <span class="shrink-0 font-medium text-gray-700 dark:text-gray-300">{{ rateDisplay }}</span>
         </div>
         <div v-if="hasPeakRate" class="col-span-2 flex items-center justify-between gap-2">
           <span class="text-gray-400 dark:text-dark-500">{{ t('payment.planCard.peakRate') }}</span>
           <span class="text-right font-medium text-amber-700 dark:text-amber-300">{{ peakRateDisplay }}</span>
         </div>
-        <div v-if="plan.daily_limit_usd != null" class="flex items-center justify-between">
+        <div v-if="plan.daily_limit_usd != null" class="flex items-center justify-between gap-2">
           <span class="text-gray-400 dark:text-dark-500">{{ t('payment.planCard.dailyLimit') }}</span>
-          <span class="font-medium text-gray-700 dark:text-gray-300">${{ plan.daily_limit_usd }}</span>
+          <span class="shrink-0 font-medium text-gray-700 dark:text-gray-300">${{ plan.daily_limit_usd }}</span>
         </div>
-        <div v-if="plan.weekly_limit_usd != null" class="flex items-center justify-between">
+        <div v-if="plan.weekly_limit_usd != null" class="flex items-center justify-between gap-2">
           <span class="text-gray-400 dark:text-dark-500">{{ t('payment.planCard.weeklyLimit') }}</span>
-          <span class="font-medium text-gray-700 dark:text-gray-300">${{ plan.weekly_limit_usd }}</span>
+          <span class="shrink-0 font-medium text-gray-700 dark:text-gray-300">${{ plan.weekly_limit_usd }}</span>
         </div>
-        <div v-if="plan.monthly_limit_usd != null" class="flex items-center justify-between">
+        <div v-if="plan.monthly_limit_usd != null" class="flex items-center justify-between gap-2">
           <span class="text-gray-400 dark:text-dark-500">{{ t('payment.planCard.monthlyLimit') }}</span>
-          <span class="font-medium text-gray-700 dark:text-gray-300">${{ plan.monthly_limit_usd }}</span>
+          <span class="shrink-0 font-medium text-gray-700 dark:text-gray-300">${{ plan.monthly_limit_usd }}</span>
         </div>
         <div v-if="plan.daily_limit_usd == null && plan.weekly_limit_usd == null && plan.monthly_limit_usd == null" class="flex items-center justify-between">
           <span class="text-gray-400 dark:text-dark-500">{{ t('payment.planCard.quota') }}</span>
@@ -80,34 +80,88 @@
 
       <div class="flex-1" />
 
-      <!-- Subscribe Button -->
+      <div class="mb-3 grid grid-cols-2 rounded-lg bg-gray-100 p-1 dark:bg-dark-700/70">
+        <button
+          type="button"
+          :class="paymentSource === 'recharge' ? sourceActiveClass : sourceIdleClass"
+          :aria-pressed="paymentSource === 'recharge'"
+          :disabled="disabled || !rechargeAvailable"
+          @click="paymentSource = 'recharge'"
+        >
+          <Icon name="creditCard" size="sm" />
+          {{ t('wallet.subscriptionPaymentRecharge') }}
+        </button>
+        <button
+          type="button"
+          :class="paymentSource === 'balance' ? sourceActiveClass : sourceIdleClass"
+          :aria-pressed="paymentSource === 'balance'"
+          :disabled="disabled"
+          @click="paymentSource = 'balance'"
+        >
+          <Icon name="dollar" size="sm" />
+          {{ t('wallet.subscriptionPaymentBalance') }}
+        </button>
+      </div>
+
+      <div class="mb-3 flex min-h-5 items-center justify-between gap-3 text-xs">
+        <template v-if="paymentSource === 'recharge'">
+          <span class="text-gray-500 dark:text-gray-400">{{ t('payment.actualPay') }}</span>
+          <strong :class="rechargeAvailable ? 'text-gray-900 dark:text-white' : 'text-amber-600 dark:text-amber-300'">
+            {{ rechargeAvailable ? rechargeAmountLabel : t('payment.notAvailable') }}
+          </strong>
+        </template>
+        <template v-else>
+          <span :class="hasEnoughBalance ? 'text-gray-500 dark:text-gray-400' : 'text-red-600 dark:text-red-400'">
+            {{ hasEnoughBalance ? `${t('wallet.subscriptionBalanceRequired')} $${plan.price.toFixed(2)}` : t('wallet.subscriptionBalanceInsufficient') }}
+          </span>
+          <strong :class="hasEnoughBalance ? 'text-primary-600 dark:text-primary-400' : 'text-red-600 dark:text-red-400'">
+            {{ t('wallet.subscriptionBalanceAvailable') }} ${{ availableBalance.toFixed(2) }}
+          </strong>
+        </template>
+      </div>
+
       <button
         type="button"
         class="btn btn-primary w-full py-2.5 text-sm font-semibold"
-        @click="emit('select', plan)"
+        :disabled="submitDisabled"
+        @click="emit('subscribe', plan, paymentSource)"
       >
-        {{ t('wallet.subscribeAction') }}
+        {{ submitting ? t('common.processing') : t('wallet.subscribeAction') }}
       </button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { SubscriptionPlan } from '@/types/payment'
 import { useAppStore } from '@/stores/app'
+import Icon from '@/components/icons/Icon.vue'
 import { hasPeakRate as groupHasPeakRate, formatPeakRateWindow, serverTimezoneLabel } from '@/utils/peak-rate'
 import { platformLabel } from '@/utils/platformColors'
 
 const props = withDefaults(defineProps<{
   plan: SubscriptionPlan
   subscriptionUsdToCnyRate?: number
+  availableBalance?: number
+  rechargeAvailable?: boolean
+  rechargeAmountLabel?: string
+  disabled?: boolean
+  submitting?: boolean
 }>(), {
   subscriptionUsdToCnyRate: 0,
+  availableBalance: 0,
+  rechargeAvailable: true,
+  rechargeAmountLabel: '',
+  disabled: false,
+  submitting: false,
 })
-const emit = defineEmits<{ select: [plan: SubscriptionPlan] }>()
+const emit = defineEmits<{
+  subscribe: [plan: SubscriptionPlan, source: 'recharge' | 'balance']
+}>()
 const { t } = useI18n()
+const paymentSource = ref<'recharge' | 'balance'>(props.rechargeAvailable ? 'recharge' : 'balance')
 
 const platform = computed(() => props.plan.group_platform || '')
 const pLabel = computed(() => platformLabel(platform.value))
@@ -124,6 +178,13 @@ function cnyPrice(value: number): string {
 
 const displayPrice = computed(() => cnyPrice(props.plan.price))
 const displayOriginalPrice = computed(() => cnyPrice(props.plan.original_price ?? 0))
+const hasEnoughBalance = computed(() => props.plan.price > 0 && props.availableBalance + 1e-9 >= props.plan.price)
+const submitDisabled = computed(() => props.disabled
+  || props.submitting
+  || (paymentSource.value === 'recharge' ? !props.rechargeAvailable : !hasEnoughBalance.value))
+
+const sourceActiveClass = 'flex min-h-9 items-center justify-center gap-1.5 rounded-md bg-white px-2 text-xs font-semibold text-primary-700 shadow-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary-500/40 dark:bg-dark-800 dark:text-primary-300'
+const sourceIdleClass = 'flex min-h-9 items-center justify-center gap-1.5 rounded-md px-2 text-xs font-medium text-gray-500 outline-none transition-colors hover:text-gray-800 focus-visible:ring-2 focus-visible:ring-primary-500/40 disabled:cursor-not-allowed disabled:opacity-40 dark:text-gray-400 dark:hover:text-gray-200'
 
 const discountText = computed(() => {
   if (!props.plan.original_price || props.plan.original_price <= 0) return ''

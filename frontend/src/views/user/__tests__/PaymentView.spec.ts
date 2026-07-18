@@ -402,24 +402,15 @@ describe('PaymentView balance loyalty discount', () => {
   })
 })
 
-describe('PaymentView subscription confirmation amounts', () => {
+describe('PaymentView inline subscription checkout', () => {
   it('purchases a subscription with account balance and refreshes the wallet summary', async () => {
     authUserState.user = { username: 'demo-user', balance: 200 }
     purchaseSubscriptionWithBalance.mockResolvedValue({
       data: { order_id: 99, amount: 128, new_balance: 72, subscription: {} },
     })
     const wrapper = await mountSubscriptionConfirm()
-
-    const balanceButton = wrapper.findAll('button').find(button => button.text().includes('wallet.subscriptionPaymentBalance'))
-    expect(balanceButton).toBeTruthy()
-    await balanceButton?.trigger('click')
-    await flushPromises()
-
-    expect(wrapper.text()).toContain('$128.00')
-    expect(wrapper.text()).toContain('$200.00')
-    const submitButton = wrapper.findAll('button').find(button => button.text().includes('wallet.subscribeAction $128.00'))
-    expect(submitButton).toBeTruthy()
-    await submitButton?.trigger('click')
+    const card = wrapper.findComponent({ name: 'SubscriptionPlanCard' })
+    card.vm.$emit('subscribe', card.props('plan'), 'balance')
     await flushPromises()
 
     expect(purchaseSubscriptionWithBalance).toHaveBeenCalledWith(7)
@@ -431,14 +422,11 @@ describe('PaymentView subscription confirmation amounts', () => {
   it('disables balance subscription when the account balance is insufficient', async () => {
     authUserState.user = { username: 'demo-user', balance: 12 }
     const wrapper = await mountSubscriptionConfirm()
-
-    const balanceButton = wrapper.findAll('button').find(button => button.text().includes('wallet.subscriptionPaymentBalance'))
-    await balanceButton?.trigger('click')
+    const card = wrapper.findComponent({ name: 'SubscriptionPlanCard' })
+    card.vm.$emit('subscribe', card.props('plan'), 'balance')
     await flushPromises()
 
-    expect(wrapper.text()).toContain('wallet.subscriptionBalanceInsufficient')
-    const submitButton = wrapper.findAll('button').find(button => button.text().includes('wallet.subscribeAction $128.00'))
-    expect(submitButton?.attributes('disabled')).toBeDefined()
+    expect(card.props('availableBalance')).toBe(12)
     expect(purchaseSubscriptionWithBalance).not.toHaveBeenCalled()
   })
 
@@ -457,16 +445,14 @@ describe('PaymentView subscription confirmation amounts', () => {
       },
     })
 
-    const text = wrapper.text()
     const convertedPrice = formatPaymentAmount(71.43, 'CNY')
-    const convertedOriginalPrice = formatPaymentAmount(92.88, 'CNY')
+    const card = wrapper.findComponent({ name: 'SubscriptionPlanCard' })
 
-    expect(text).toContain(convertedPrice)
-    expect(text).toContain(convertedOriginalPrice)
-    expect(text).not.toContain(formatPaymentAmount(9.99, 'CNY'))
+    expect(card.props('subscriptionUsdToCnyRate')).toBe(7.15)
+    expect(card.props('rechargeAmountLabel')).toBe(convertedPrice)
     // 换算必须使用订阅汇率（×7.15），而不是余额倍率（÷0.14 = 71.36）
-    expect(text).not.toContain(formatPaymentAmount(71.36, 'CNY'))
-    expect(wrapper.findAll('button').some(button => button.text().includes(convertedPrice))).toBe(true)
+    expect(card.props('rechargeAmountLabel')).not.toBe(formatPaymentAmount(71.36, 'CNY'))
+    expect(wrapper.text()).not.toContain('wallet.subscriptionPaymentTitle')
   })
 
   it('keeps the catalog price in yuan while preserving the provider currency at checkout', async () => {
@@ -484,9 +470,10 @@ describe('PaymentView subscription confirmation amounts', () => {
       },
     })
 
-    expect(cnyWrapper.text()).toContain(formatPaymentAmount(7.99, 'CNY'))
-    expect(cnyWrapper.text()).not.toContain(formatPaymentAmount(57.07, 'CNY'))
-    expect(cnyWrapper.text()).not.toContain(formatPaymentAmount(57.13, 'CNY'))
+    const cnyCard = cnyWrapper.findComponent({ name: 'SubscriptionPlanCard' })
+    expect(cnyCard.props('rechargeAmountLabel')).toBe(formatPaymentAmount(7.99, 'CNY'))
+    expect(cnyCard.props('rechargeAmountLabel')).not.toBe(formatPaymentAmount(57.07, 'CNY'))
+    expect(cnyCard.props('rechargeAmountLabel')).not.toBe(formatPaymentAmount(57.13, 'CNY'))
 
     const usdWrapper = await mountSubscriptionConfirm({
       checkout: {
@@ -501,10 +488,9 @@ describe('PaymentView subscription confirmation amounts', () => {
       },
     })
 
-    expect(usdWrapper.text()).toContain(formatPaymentAmount(7.99 * 7.15, 'CNY'))
-    expect(usdWrapper.text()).toContain(formatPaymentAmount(9.99 * 7.15, 'CNY'))
-    expect(usdWrapper.findAll('button').some(button => button.text().includes(formatPaymentAmount(7.99, 'USD')))).toBe(true)
-    expect(usdWrapper.text()).not.toContain(formatPaymentAmount(9.99, 'USD'))
+    const usdCard = usdWrapper.findComponent({ name: 'SubscriptionPlanCard' })
+    expect(usdCard.props('subscriptionUsdToCnyRate')).toBe(7.15)
+    expect(usdCard.props('rechargeAmountLabel')).toBe(formatPaymentAmount(7.99, 'USD'))
   })
 
   it('adds fee rate after CNY rate conversion to match backend pay_amount', async () => {
@@ -521,15 +507,10 @@ describe('PaymentView subscription confirmation amounts', () => {
       },
     })
 
-    const text = wrapper.text()
-    const convertedPrice = formatPaymentAmount(71.43, 'CNY')
-    const fee = formatPaymentAmount(1.79, 'CNY')
     const total = formatPaymentAmount(73.22, 'CNY')
+    const card = wrapper.findComponent({ name: 'SubscriptionPlanCard' })
 
-    expect(text).toContain(convertedPrice)
-    expect(text).toContain(fee)
-    expect(text).toContain(total)
-    expect(wrapper.findAll('button').some(button => button.text().includes(total))).toBe(true)
+    expect(card.props('rechargeAmountLabel')).toBe(total)
   })
 })
 

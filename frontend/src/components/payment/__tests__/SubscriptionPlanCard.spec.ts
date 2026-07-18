@@ -14,6 +14,8 @@ const i18n = createI18n({
       payment: {
         days: "days",
         models: "Models",
+        actualPay: "Actual pay",
+        notAvailable: "Unavailable",
         planCard: {
           quota: "Quota",
           rate: "Rate",
@@ -22,15 +24,26 @@ const i18n = createI18n({
       },
       wallet: {
         subscribeAction: "Subscribe",
+        subscriptionPaymentRecharge: "Recharge payment",
+        subscriptionPaymentBalance: "Balance payment",
+        subscriptionBalanceAvailable: "Available balance",
+        subscriptionBalanceInsufficient: "Insufficient balance",
       },
+      common: { processing: "Processing" },
     },
   },
 });
 
-const mountPlanCard = (groupPlatform: string, subscriptionUsdToCnyRate = 0) =>
+const mountPlanCard = (
+  groupPlatform: string,
+  subscriptionUsdToCnyRate = 0,
+  overrides: Record<string, unknown> = {},
+) =>
   mount(SubscriptionPlanCard, {
     props: {
       subscriptionUsdToCnyRate,
+      availableBalance: 25,
+      rechargeAmountLabel: "¥71.50",
       plan: {
         id: 1,
         group_id: 10,
@@ -45,6 +58,7 @@ const mountPlanCard = (groupPlatform: string, subscriptionUsdToCnyRate = 0) =>
         supported_model_scopes: ["claude", "gemini_text", "gemini_image"],
         is_active: true,
       },
+      ...overrides,
     },
     global: { plugins: [i18n, createPinia()] },
   });
@@ -71,6 +85,30 @@ describe("SubscriptionPlanCard", () => {
 
     expect(wrapper.text()).toContain("¥71.50");
     expect(wrapper.text()).not.toContain("$10");
-    expect(wrapper.get("button").text()).toBe("wallet.subscribeAction");
+    expect(wrapper.findAll("button").at(-1)?.text()).toBe("wallet.subscribeAction");
+  });
+
+  it("selects the payment source and subscribes directly inside the card", async () => {
+    const wrapper = mountPlanCard("openai", 7.15);
+    const balanceButton = wrapper.findAll("button").find(button =>
+      button.text().includes("wallet.subscriptionPaymentBalance"),
+    );
+
+    await balanceButton?.trigger("click");
+    expect(wrapper.text()).toContain("$25.00");
+
+    await wrapper.findAll("button").at(-1)?.trigger("click");
+    expect(wrapper.emitted("subscribe")?.[0]?.[1]).toBe("balance");
+  });
+
+  it("disables balance subscription when the available balance is insufficient", async () => {
+    const wrapper = mountPlanCard("openai", 7.15, { availableBalance: 5 });
+    const balanceButton = wrapper.findAll("button").find(button =>
+      button.text().includes("wallet.subscriptionPaymentBalance"),
+    );
+
+    await balanceButton?.trigger("click");
+    expect(wrapper.text()).toContain("wallet.subscriptionBalanceInsufficient");
+    expect(wrapper.findAll("button").at(-1)?.attributes("disabled")).toBeDefined();
   });
 });
