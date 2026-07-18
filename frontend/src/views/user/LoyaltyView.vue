@@ -70,7 +70,7 @@
             </article>
           </section>
 
-          <section class="grid gap-5 xl:grid-cols-2">
+          <section class="grid gap-5 md:grid-cols-2">
             <article
               v-for="plan in planCards"
               :key="plan.key"
@@ -454,21 +454,21 @@ onMounted(() => {
 }
 
 .loyalty-panel {
-  border: 1px solid rgba(145, 202, 255, 0.32);
+  border: 1px solid #dbeafe;
   border-radius: 0.5rem;
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 12px 30px rgba(47, 94, 143, 0.08);
+  background: #ffffff;
+  box-shadow: none;
 }
 
 .loyalty-hero {
   min-height: 8rem;
-  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.065);
+  box-shadow: none;
 }
 
 .loyalty-alert-panel {
   border-color: rgba(245, 158, 11, 0.38);
-  background: rgba(255, 251, 235, 0.94);
-  box-shadow: 0 10px 30px rgba(146, 64, 14, 0.08);
+  background: #fffbeb;
+  box-shadow: none;
 }
 
 .loyalty-mascot {
@@ -541,76 +541,73 @@ onMounted(() => {
 .loyalty-table-plan-icon {
   height: 2.75rem;
   width: 2.75rem;
-  background: rgba(230, 244, 255, 0.88);
+  background: #e6f4ff;
   color: #1677ff;
-  box-shadow: inset 0 0 0 1px rgba(145, 202, 255, 0.72);
+  box-shadow: none;
 }
 
 .loyalty-stat-card {
   min-height: 7.75rem;
-  border: 1px solid rgba(145, 202, 255, 0.32);
+  border: 1px solid #dbeafe;
   border-radius: 0.5rem;
-  background: rgba(255, 255, 255, 0.94);
+  background: #ffffff;
   padding: 1.25rem;
-  box-shadow: 0 10px 26px rgba(47, 94, 143, 0.07);
+  box-shadow: none;
 }
 
 .loyalty-stat-icon {
   height: 3.25rem;
   width: 3.25rem;
-  background: linear-gradient(135deg, rgba(230, 244, 255, 0.92), rgba(186, 224, 255, 0.76));
+  background: #e6f4ff;
   color: #1677ff;
-  box-shadow: inset 0 0 0 1px rgba(145, 202, 255, 0.72);
+  box-shadow: none;
 }
 
 .loyalty-plan-badge {
   width: fit-content;
   border-radius: 9999px;
-  background: rgba(248, 250, 252, 0.9);
+  background: #f8fafc;
   padding: 0.375rem 0.75rem;
   font-size: 0.75rem;
   font-weight: 900;
   color: #64748b;
-  box-shadow: inset 0 0 0 1px rgba(226, 232, 240, 0.9);
+  box-shadow: none;
 }
 
 .loyalty-tier-tile {
   display: flex;
   min-width: 0;
-  min-height: 7rem;
+  min-height: 6.75rem;
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
   border-radius: 0.5rem;
   border: 1px solid rgba(186, 224, 255, 0.82);
-  background: rgba(255, 255, 255, 0.7);
-  padding: 0.9rem 0.65rem;
+  background: #ffffff;
+  padding: 0.75rem 0.4rem;
   text-align: center;
 }
 
 .loyalty-tier-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
-  gap: 0.75rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.5rem;
 }
 
 .loyalty-tier-tile.is-current {
   border-color: rgba(64, 150, 255, 0.86);
-  background:
-    linear-gradient(180deg, rgba(230, 244, 255, 0.98), rgba(186, 224, 255, 0.72));
-  box-shadow:
-    inset 0 0 0 1px rgba(22, 119, 255, 0.18),
-    0 16px 34px rgba(22, 119, 255, 0.18);
+  background: #e6f4ff;
+  box-shadow: none;
 }
 
 .loyalty-tier-tile.is-unlocked {
   border-color: rgba(145, 202, 255, 0.9);
-  background: rgba(230, 244, 255, 0.72);
+  background: #f0f7ff;
 }
 
 .loyalty-tier-tile.is-locked {
   border-color: rgba(226, 232, 240, 0.98);
-  background: rgba(248, 250, 252, 0.76);
+  background: #f8fafc;
 }
 
 .loyalty-tier-main {
@@ -633,7 +630,7 @@ onMounted(() => {
   margin-top: 0.6rem;
   max-width: 100%;
   overflow-wrap: anywhere;
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   font-weight: 750;
   line-height: 1.35;
   color: #64748b;
@@ -659,9 +656,9 @@ onMounted(() => {
 }
 
 .loyalty-tier-tile.is-locked .loyalty-discount-pill {
-  background: rgba(241, 245, 249, 0.9);
+  background: #f1f5f9;
   color: #94a3b8;
-  box-shadow: inset 0 0 0 1px rgba(226, 232, 240, 0.95);
+  box-shadow: none;
 }
 
 .loyalty-discount-pill {
@@ -671,17 +668,16 @@ onMounted(() => {
   justify-content: center;
   white-space: nowrap;
   border-radius: 9999px;
-  background: rgba(230, 244, 255, 0.88);
-  padding: 0.3rem 0.55rem;
-  font-size: 0.6875rem;
+  background: #e6f4ff;
+  padding: 0.25rem 0.35rem;
+  font-size: 0.625rem;
   font-weight: 900;
   color: #1677ff;
-  box-shadow: inset 0 0 0 1px rgba(145, 202, 255, 0.76);
+  box-shadow: none;
 }
 
 .loyalty-rules-panel {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.88));
+  background: #ffffff;
 }
 
 .loyalty-rules-list {
@@ -697,9 +693,9 @@ onMounted(() => {
   min-height: 7rem;
   border: 1px solid rgba(186, 224, 255, 0.72);
   border-radius: 0.5rem;
-  background: rgba(255, 255, 255, 0.62);
+  background: #ffffff;
   padding: 1rem 1rem 1rem 2.25rem;
-  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.035);
+  box-shadow: none;
 }
 
 .loyalty-rule-item::before {
@@ -793,66 +789,62 @@ onMounted(() => {
 <style>
 .dark .loyalty-panel,
 .dark .loyalty-stat-card {
-  border-color: rgba(71, 85, 105, 0.74);
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(17, 24, 39, 0.86));
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.32);
+  border-color: #334155;
+  background: #0f172a;
+  box-shadow: none;
 }
 
 .dark .loyalty-hero {
-  background:
-    linear-gradient(135deg, rgba(15, 23, 42, 0.94), rgba(0, 62, 179, 0.26)),
-    rgba(15, 23, 42, 0.9);
-  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.34);
+  background: #0f1d38;
+  box-shadow: none;
 }
 
 .dark .loyalty-alert-panel {
   border-color: rgba(245, 158, 11, 0.42);
-  background: linear-gradient(135deg, rgba(120, 53, 15, 0.34), rgba(15, 23, 42, 0.9));
-  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.28);
+  background: #3b250e;
+  box-shadow: none;
 }
 
 .dark .loyalty-alert-icon {
-  background: rgba(120, 53, 15, 0.42);
+  background: #5b3410;
   color: #fbbf24;
   box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.46);
 }
 
 .dark .loyalty-plan-badge {
-  background: rgba(30, 41, 59, 0.7);
+  background: #1e293b;
   color: #cbd5e1;
-  box-shadow: inset 0 0 0 1px rgba(71, 85, 105, 0.82);
+  box-shadow: none;
 }
 
 .dark .loyalty-section-icon,
 .dark .loyalty-table-plan-icon,
 .dark .loyalty-stat-icon {
-  background: rgba(0, 44, 140, 0.34);
+  background: #102b5c;
   color: #91caff;
-  box-shadow: inset 0 0 0 1px rgba(22, 119, 255, 0.34);
+  box-shadow: none;
 }
 
 .dark .loyalty-tier-tile.is-current {
   border-color: rgba(105, 177, 255, 0.62);
-  background: linear-gradient(180deg, rgba(0, 62, 179, 0.48), rgba(15, 23, 42, 0.66));
-  box-shadow:
-    inset 0 0 0 1px rgba(22, 119, 255, 0.24),
-    0 14px 30px rgba(0, 0, 0, 0.22);
+  background: #102f68;
+  box-shadow: none;
 }
 
 .dark .loyalty-tier-tile.is-unlocked {
   border-color: rgba(64, 150, 255, 0.4);
-  background: rgba(0, 44, 140, 0.24);
+  background: #102b5c;
 }
 
 .dark .loyalty-tier-tile.is-locked {
   border-color: rgba(71, 85, 105, 0.82);
-  background: rgba(15, 23, 42, 0.42);
+  background: #111827;
 }
 
 .dark .loyalty-discount-pill {
-  background: rgba(0, 44, 140, 0.38);
+  background: #102b5c;
   color: #91caff;
-  box-shadow: inset 0 0 0 1px rgba(22, 119, 255, 0.38);
+  box-shadow: none;
 }
 
 .dark .loyalty-tier-level {
@@ -874,7 +866,7 @@ onMounted(() => {
 .dark .loyalty-tier-tile.is-current .loyalty-discount-pill {
   background: #1677ff;
   color: white;
-  box-shadow: 0 8px 18px rgba(22, 119, 255, 0.22);
+  box-shadow: none;
 }
 
 .dark .loyalty-tier-tile.is-locked .loyalty-tier-level,
@@ -883,19 +875,18 @@ onMounted(() => {
 }
 
 .dark .loyalty-tier-tile.is-locked .loyalty-discount-pill {
-  background: rgba(30, 41, 59, 0.72);
+  background: #1e293b;
   color: #64748b;
-  box-shadow: inset 0 0 0 1px rgba(71, 85, 105, 0.78);
+  box-shadow: none;
 }
 
 .dark .loyalty-rules-panel {
-  background:
-    linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(17, 24, 39, 0.82));
+  background: #0f172a;
 }
 
 .dark .loyalty-rule-item {
   border-color: rgba(64, 150, 255, 0.26);
-  background: rgba(15, 23, 42, 0.46);
+  background: #111827;
 }
 
 .dark .loyalty-rule-item::before {
@@ -904,7 +895,7 @@ onMounted(() => {
 }
 
 .dark .loyalty-table th {
-  background: rgba(30, 41, 59, 0.44);
+  background: #1e293b;
   color: #94a3b8;
 }
 
@@ -914,11 +905,11 @@ onMounted(() => {
 }
 
 .dark .loyalty-table tbody tr:hover {
-  background: rgba(0, 44, 140, 0.2);
+  background: #102b5c;
 }
 
 .dark .loyalty-table tbody tr.is-current {
-  background: rgba(0, 44, 140, 0.3);
+  background: #102f68;
 }
 
 .dark .loyalty-table tbody tr.is-current td {
@@ -931,20 +922,20 @@ onMounted(() => {
 }
 
 .dark .loyalty-status-pill.is-current {
-  background: rgba(0, 44, 140, 0.44);
+  background: #102f68;
   color: #91caff;
-  box-shadow: inset 0 0 0 1px rgba(22, 119, 255, 0.44);
+  box-shadow: none;
 }
 
 .dark .loyalty-status-pill.is-unlocked {
-  background: rgba(0, 44, 140, 0.38);
+  background: #102b5c;
   color: #69b1ff;
-  box-shadow: inset 0 0 0 1px rgba(64, 150, 255, 0.42);
+  box-shadow: none;
 }
 
 .dark .loyalty-status-pill.is-locked {
-  background: rgba(30, 41, 59, 0.68);
+  background: #1e293b;
   color: #64748b;
-  box-shadow: inset 0 0 0 1px rgba(71, 85, 105, 0.78);
+  box-shadow: none;
 }
 </style>
