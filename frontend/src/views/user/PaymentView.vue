@@ -202,12 +202,44 @@
     </div>
     <ConfirmDialog
       :show="Boolean(pendingSubscriptionPurchase)"
-      :title="t('wallet.subscriptionOverrideTitle')"
-      :message="subscriptionOverrideMessage"
-      :confirm-text="t('wallet.subscriptionOverrideConfirm')"
-      @confirm="confirmSubscriptionOverride"
-      @cancel="cancelSubscriptionOverride"
-    />
+      :title="subscriptionPurchaseDialogTitle"
+      :message="subscriptionPurchaseDialogMessage"
+      :confirm-text="subscriptionPurchaseDialogConfirmText"
+      @confirm="confirmPendingSubscriptionPurchase"
+      @cancel="cancelPendingSubscriptionPurchase"
+    >
+      <dl
+        v-if="pendingSubscriptionPurchase?.stage === 'balance'"
+        class="overflow-hidden rounded-lg border border-gray-200 bg-gray-50 dark:border-dark-600 dark:bg-dark-700/60"
+      >
+        <div class="flex items-center justify-between gap-4 border-b border-gray-200 px-4 py-3 dark:border-dark-600">
+          <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('wallet.subscriptionConfirmPlan') }}</dt>
+          <dd class="min-w-0 truncate text-sm font-semibold text-gray-900 dark:text-white">
+            {{ pendingSubscriptionPurchase.plan.name }}
+          </dd>
+        </div>
+        <div class="grid grid-cols-3 divide-x divide-gray-200 px-1 py-3 dark:divide-dark-600">
+          <div class="px-3">
+            <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('wallet.subscriptionBalanceRequired') }}</dt>
+            <dd class="mt-1 text-sm font-semibold tabular-nums text-gray-900 dark:text-white">
+              ${{ pendingSubscriptionBalancePrice.toFixed(2) }}
+            </dd>
+          </div>
+          <div class="px-3 text-center">
+            <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('wallet.subscriptionBalanceAvailable') }}</dt>
+            <dd class="mt-1 text-sm font-semibold tabular-nums text-gray-700 dark:text-gray-200">
+              ${{ availableBalance.toFixed(2) }}
+            </dd>
+          </div>
+          <div class="px-3 text-right">
+            <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('wallet.subscriptionBalanceSettlement') }}</dt>
+            <dd class="mt-1 text-sm font-semibold tabular-nums text-primary-600 dark:text-primary-400">
+              ${{ pendingSubscriptionBalanceAfterPayment.toFixed(2) }}
+            </dd>
+          </div>
+        </div>
+      </dl>
+    </ConfirmDialog>
     <!-- Image Preview Overlay -->
     <Teleport to="body">
       <Transition name="modal">
@@ -320,7 +352,16 @@ const amount = ref<number | null>(null)
 const selectedMethod = ref('')
 const submittingPlanId = ref<number | null>(null)
 const previewImage = ref('')
-const pendingSubscriptionPurchase = ref<{ plan: SubscriptionPlan, source: 'recharge' | 'balance' } | null>(null)
+type SubscriptionPaymentSource = 'recharge' | 'balance'
+type SubscriptionPurchaseStage = 'override' | 'balance'
+
+interface PendingSubscriptionPurchase {
+  plan: SubscriptionPlan
+  source: SubscriptionPaymentSource
+  stage: SubscriptionPurchaseStage
+}
+
+const pendingSubscriptionPurchase = ref<PendingSubscriptionPurchase | null>(null)
 const walletHistoryRef = ref<InstanceType<typeof WalletBalanceHistory> | null>(null)
 
 const paymentPhase = ref<'select' | 'paying'>('select')
@@ -798,31 +839,67 @@ const subscriptionOverrideMessage = computed(() => {
   })
 })
 
-async function subscribeToPlan(plan: SubscriptionPlan, source: 'recharge' | 'balance') {
+const subscriptionPurchaseDialogTitle = computed(() => {
+  return pendingSubscriptionPurchase.value?.stage === 'balance'
+    ? t('wallet.subscriptionBalanceConfirmTitle')
+    : t('wallet.subscriptionOverrideTitle')
+})
+
+const subscriptionPurchaseDialogMessage = computed(() => {
+  if (pendingSubscriptionPurchase.value?.stage !== 'balance') {
+    return subscriptionOverrideMessage.value
+  }
+  return activeSubscriptionToReplace.value
+    ? t('wallet.subscriptionBalanceConfirmWithOverrideMessage', { warning: subscriptionOverrideMessage.value })
+    : t('wallet.subscriptionBalanceConfirmMessage')
+})
+
+const subscriptionPurchaseDialogConfirmText = computed(() => {
+  return pendingSubscriptionPurchase.value?.stage === 'balance'
+    ? t('wallet.subscriptionBalanceConfirmAction')
+    : t('wallet.subscriptionOverrideConfirm')
+})
+
+const pendingSubscriptionBalancePrice = computed(() => {
+  const plan = pendingSubscriptionPurchase.value?.plan
+  return plan ? subscriptionBalancePrice(plan) : 0
+})
+
+const pendingSubscriptionBalanceAfterPayment = computed(() => {
+  return Math.max(0, availableBalance.value - pendingSubscriptionBalancePrice.value)
+})
+
+async function subscribeToPlan(plan: SubscriptionPlan, source: SubscriptionPaymentSource) {
   if (submitting.value) return
   if (source === 'balance' && !hasEnoughBalanceForPlan(plan)) return
   if (source === 'recharge' && !canRechargeSubscriptionPlan(plan)) return
 
+  if (source === 'balance') {
+    pendingSubscriptionPurchase.value = { plan, source, stage: 'balance' }
+    return
+  }
+
   if (activeSubscriptionToReplace.value) {
-    pendingSubscriptionPurchase.value = { plan, source }
+    pendingSubscriptionPurchase.value = { plan, source, stage: 'override' }
     return
   }
 
   await executeSubscriptionPurchase(plan, source)
 }
 
-function cancelSubscriptionOverride() {
+function cancelPendingSubscriptionPurchase() {
   pendingSubscriptionPurchase.value = null
 }
 
-async function confirmSubscriptionOverride() {
+async function confirmPendingSubscriptionPurchase() {
   const pending = pendingSubscriptionPurchase.value
-  pendingSubscriptionPurchase.value = null
   if (!pending) return
+
+  pendingSubscriptionPurchase.value = null
   await executeSubscriptionPurchase(pending.plan, pending.source)
 }
 
-async function executeSubscriptionPurchase(plan: SubscriptionPlan, source: 'recharge' | 'balance') {
+async function executeSubscriptionPurchase(plan: SubscriptionPlan, source: SubscriptionPaymentSource) {
 
   submittingPlanId.value = plan.id
   if (source === 'balance') {

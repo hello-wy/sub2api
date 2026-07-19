@@ -420,7 +420,7 @@ describe('PaymentView balance loyalty discount', () => {
 })
 
 describe('PaymentView inline subscription checkout', () => {
-  it('purchases a subscription with account balance and refreshes the wallet summary', async () => {
+  it('confirms a balance subscription before purchase and refreshes the wallet summary', async () => {
     authUserState.user = { username: 'demo-user', balance: 200 }
     purchaseSubscriptionWithBalance.mockResolvedValue({
       data: { order_id: 99, amount: 128, new_balance: 72, subscription: {} },
@@ -430,6 +430,16 @@ describe('PaymentView inline subscription checkout', () => {
     card.vm.$emit('subscribe', card.props('plan'), 'balance')
     await flushPromises()
 
+    expect(purchaseSubscriptionWithBalance).not.toHaveBeenCalled()
+    const dialog = wrapper.findComponent({ name: 'ConfirmDialog' })
+    expect(dialog.props('show')).toBe(true)
+    expect(dialog.props('title')).toBe('wallet.subscriptionBalanceConfirmTitle')
+    expect(dialog.props('message')).toBe('wallet.subscriptionBalanceConfirmMessage')
+    expect(dialog.props('confirmText')).toBe('wallet.subscriptionBalanceConfirmAction')
+
+    dialog.vm.$emit('confirm')
+    await flushPromises()
+
     expect(purchaseSubscriptionWithBalance).toHaveBeenCalledWith(7)
     expect(refreshUser).toHaveBeenCalled()
     expect(fetchActiveSubscriptions).toHaveBeenCalledWith(true)
@@ -437,7 +447,7 @@ describe('PaymentView inline subscription checkout', () => {
     expect(showInfo).toHaveBeenCalledWith('wallet.subscriptionBalanceSuccess')
   })
 
-  it('requires confirmation before replacing an active subscription', async () => {
+  it('combines the balance purchase confirmation with the active subscription warning', async () => {
     authUserState.user = { username: 'demo-user', balance: 600 }
     activeSubscriptionsState.items = [{
       id: 9,
@@ -479,14 +489,30 @@ describe('PaymentView inline subscription checkout', () => {
     expect(purchaseSubscriptionWithBalance).not.toHaveBeenCalled()
     const dialog = wrapper.findComponent({ name: 'ConfirmDialog' })
     expect(dialog.props('show')).toBe(true)
-    expect(dialog.props('title')).toBe('wallet.subscriptionOverrideTitle')
-    expect(dialog.props('message')).toBe('wallet.subscriptionOverrideMessage')
+    expect(dialog.props('title')).toBe('wallet.subscriptionBalanceConfirmTitle')
+    expect(dialog.props('message')).toBe('wallet.subscriptionBalanceConfirmWithOverrideMessage')
 
     dialog.vm.$emit('confirm')
     await flushPromises()
 
     expect(purchaseSubscriptionWithBalance).toHaveBeenCalledWith(7)
     expect(refreshUser).toHaveBeenCalled()
+  })
+
+  it('does not purchase a balance subscription when confirmation is cancelled', async () => {
+    authUserState.user = { username: 'demo-user', balance: 200 }
+    const wrapper = await mountSubscriptionConfirm()
+    const card = wrapper.findComponent({ name: 'SubscriptionPlanCard' })
+
+    card.vm.$emit('subscribe', card.props('plan'), 'balance')
+    await flushPromises()
+
+    const dialog = wrapper.findComponent({ name: 'ConfirmDialog' })
+    dialog.vm.$emit('cancel')
+    await flushPromises()
+
+    expect(dialog.props('show')).toBe(false)
+    expect(purchaseSubscriptionWithBalance).not.toHaveBeenCalled()
   })
 
   it('disables balance subscription when the account balance is insufficient', async () => {
