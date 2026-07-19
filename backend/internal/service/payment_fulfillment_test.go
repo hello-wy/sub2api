@@ -76,7 +76,7 @@ func (r *paymentFulfillmentAffiliateRepoStub) BindInviter(context.Context, int64
 	panic("unexpected BindInviter call")
 }
 
-func (r *paymentFulfillmentAffiliateRepoStub) AccrueQuota(_ context.Context, inviterID, inviteeUserID int64, amount float64, freezeHours int, sourceOrderID *int64) (bool, error) {
+func (r *paymentFulfillmentAffiliateRepoStub) AccrueQuota(_ context.Context, inviterID, inviteeUserID int64, amount, perInviteeCap float64, freezeHours int, sourceOrderID *int64) (float64, error) {
 	var sourceCopy *int64
 	if sourceOrderID != nil {
 		v := *sourceOrderID
@@ -89,7 +89,7 @@ func (r *paymentFulfillmentAffiliateRepoStub) AccrueQuota(_ context.Context, inv
 		freezeHours:   freezeHours,
 		sourceOrderID: sourceCopy,
 	})
-	return true, nil
+	return amount, nil
 }
 
 func (r *paymentFulfillmentAffiliateRepoStub) GetAccruedRebateFromInvitee(context.Context, int64, int64) (float64, error) {
