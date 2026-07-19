@@ -1002,10 +1002,10 @@ watch(
 }
 
 .sidebar-logo {
-  flex: 0 0 12rem;
-  width: 12rem;
-  min-width: 12rem;
-  height: 4rem;
+  flex: 0 0 9.75rem;
+  width: 9.75rem;
+  min-width: 9.75rem;
+  height: 3.25rem;
   overflow: visible;
   transition:
     width 0.2s ease,
@@ -1016,7 +1016,7 @@ watch(
 
 .sidebar-logo-lockup {
   display: block;
-  width: 12rem;
+  width: 9.75rem;
   height: auto;
   object-fit: contain;
 }
@@ -1047,7 +1047,7 @@ watch(
 }
 
 .sidebar-header:not(.sidebar-header-collapsed) {
-  height: 4.75rem;
+  height: 4rem;
   justify-content: center;
   padding-right: 0.75rem;
   padding-left: 0.75rem;
