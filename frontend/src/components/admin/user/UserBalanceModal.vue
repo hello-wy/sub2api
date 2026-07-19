@@ -32,11 +32,34 @@ import { adminAPI } from '@/api/admin'
 import type { AdminUser } from '@/types'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 
-const props = defineProps<{ show: boolean, user: AdminUser | null, operation: 'add' | 'subtract' }>()
-const emit = defineEmits(['close', 'success']); const { t } = useI18n(); const appStore = useAppStore()
+const props = defineProps<{
+  show: boolean
+  user: AdminUser | null
+  operation: 'add' | 'subtract'
+}>()
+const emit = defineEmits(['close', 'success'])
+const { t } = useI18n()
+const appStore = useAppStore()
 
-const submitting = ref(false); const form = reactive({ amount: 0, notes: '' })
-watch(() => props.show, (v) => { if(v) { form.amount = 0; form.notes = '' } })
+const submitting = ref(false)
+const form = reactive({ amount: 0, notes: '' })
+const operationIdempotencyKey = ref('')
+watch(
+  () => props.show,
+  (visible) => {
+    if (visible) {
+      form.amount = 0
+      form.notes = ''
+      operationIdempotencyKey.value = ''
+    }
+  },
+)
+watch(
+  [() => form.amount, () => form.notes, () => props.operation],
+  () => {
+    if (!submitting.value) operationIdempotencyKey.value = ''
+  },
+)
 
 // 格式化余额：显示完整精度，去除尾部多余的0
 const formatBalance = (value: number) => {
@@ -74,13 +97,28 @@ const handleBalanceSubmit = async () => {
     appStore.showError(t('admin.users.insufficientBalance'))
     return
   }
+
   submitting.value = true
   try {
-    await adminAPI.users.updateBalance(props.user.id, form.amount, props.operation, form.notes)
-    appStore.showSuccess(t('common.success')); emit('success'); emit('close')
+    if (!operationIdempotencyKey.value) {
+      operationIdempotencyKey.value =
+        globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`
+    }
+    await adminAPI.users.updateBalance(
+      props.user.id,
+      form.amount,
+      props.operation,
+      form.notes,
+      operationIdempotencyKey.value,
+    )
+    appStore.showSuccess(t('common.success'))
+    emit('success')
+    emit('close')
   } catch (e: any) {
     console.error('Failed to update balance:', e)
     appStore.showError(e.response?.data?.detail || t('common.error'))
-  } finally { submitting.value = false }
+  } finally {
+    submitting.value = false
+  }
 }
 </script>

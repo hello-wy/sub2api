@@ -175,13 +175,18 @@ export async function updateBalance(
   id: number,
   balance: number,
   operation: 'set' | 'add' | 'subtract' = 'set',
-  notes?: string
+  notes?: string,
+  idempotencyKey?: string,
 ): Promise<AdminUser> {
-  const { data } = await apiClient.post<AdminUser>(`/admin/users/${id}/balance`, {
-    balance,
-    operation,
-    notes: notes || ''
-  })
+  const requestID =
+    idempotencyKey ||
+    globalThis.crypto?.randomUUID?.() ||
+    `${Date.now()}-${Math.random().toString(36).slice(2)}`
+  const { data } = await apiClient.post<AdminUser>(
+    `/admin/users/${id}/balance`,
+    { balance, operation, notes: notes || '' },
+    { headers: { 'Idempotency-Key': `admin-balance-${id}-${requestID}` } },
+  )
   return data
 }
 

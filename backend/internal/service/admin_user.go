@@ -493,10 +493,71 @@ func (s *adminServiceImpl) BatchUpdateLimits(ctx context.Context, userIDs []int6
 }
 
 func (s *adminServiceImpl) UpdateUserBalance(ctx context.Context, userID int64, balance float64, operation string, notes string) (*User, error) {
+	if operation != "set" && operation != "add" && operation != "subtract" {
+		return nil, fmt.Errorf("invalid balance operation: %s", operation)
+	}
 	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
+	if adjustmentRepo, ok := s.userRepo.(AdminBalanceAdjustmentRepository); ok && s.entClient != nil && s.redeemCodeRepo != nil {
+		return s.updateUserBalanceAtomic(ctx, user, balance, operation, notes, adjustmentRepo)
+	}
+	return s.updateUserBalanceLegacy(ctx, user, balance, operation, notes)
+}
+
+func (s *adminServiceImpl) updateUserBalanceAtomic(
+	ctx context.Context,
+	user *User,
+	amount float64,
+	operation string,
+	notes string,
+	adjustmentRepo AdminBalanceAdjustmentRepository,
+) (*User, error) {
+	tx, err := s.entClient.Tx(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("begin admin balance transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	txCtx := dbent.NewTxContext(ctx, tx)
+
+	oldBalance, newBalance, err := adjustmentRepo.ApplyAdminBalanceAdjustment(txCtx, user.ID, amount, operation)
+	if err != nil {
+		return nil, err
+	}
+	balanceDiff := newBalance - oldBalance
+	if balanceDiff != 0 {
+		code, err := GenerateRedeemCode()
+		if err != nil {
+			return nil, fmt.Errorf("generate balance adjustment code: %w", err)
+		}
+		now := time.Now()
+		adjustmentRecord := &RedeemCode{
+			Code:   code,
+			Type:   AdjustmentTypeAdminBalance,
+			Value:  balanceDiff,
+			Status: StatusUsed,
+			UsedBy: &user.ID,
+			UsedAt: &now,
+			Notes:  notes,
+		}
+		if err := s.redeemCodeRepo.Create(txCtx, adjustmentRecord); err != nil {
+			return nil, fmt.Errorf("record admin balance adjustment: %w", err)
+		}
+	}
+	if _, err := s.accrueAffiliateRebateForAdminRecharge(txCtx, user.ID, operation, amount); err != nil {
+		return nil, fmt.Errorf("accrue affiliate rebate for admin recharge: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("commit admin balance transaction: %w", err)
+	}
+
+	user.Balance = newBalance
+	s.afterAdminBalanceCommit(ctx, user.ID, balanceDiff)
+	return user, nil
+}
+
+func (s *adminServiceImpl) updateUserBalanceLegacy(ctx context.Context, user *User, balance float64, operation string, notes string) (*User, error) {
 
 	oldBalance := user.Balance
 
@@ -517,20 +578,7 @@ func (s *adminServiceImpl) UpdateUserBalance(ctx context.Context, userID int64, 
 		return nil, err
 	}
 	balanceDiff := user.Balance - oldBalance
-	if s.authCacheInvalidator != nil && balanceDiff != 0 {
-		s.authCacheInvalidator.InvalidateAuthCacheByUserID(ctx, userID)
-	}
-	s.tryAccrueAffiliateRebateForAdminRecharge(ctx, userID, operation, balance)
-
-	if s.billingCacheService != nil {
-		go func() {
-			cacheCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer cancel()
-			if err := s.billingCacheService.InvalidateUserBalance(cacheCtx, userID); err != nil {
-				logger.LegacyPrintf("service.admin", "invalidate user balance cache failed: user_id=%d err=%v", userID, err)
-			}
-		}()
-	}
+	s.tryAccrueAffiliateRebateForAdminRecharge(ctx, user.ID, operation, balance)
 
 	if balanceDiff != 0 {
 		code, err := GenerateRedeemCode()
@@ -555,18 +603,12 @@ func (s *adminServiceImpl) UpdateUserBalance(ctx context.Context, userID int64, 
 		}
 	}
 
+	s.afterAdminBalanceCommit(ctx, user.ID, balanceDiff)
 	return user, nil
 }
 
 func (s *adminServiceImpl) tryAccrueAffiliateRebateForAdminRecharge(ctx context.Context, userID int64, operation string, amount float64) {
-	if operation != "add" || amount <= 0 || s.settingService == nil || s.affiliateService == nil {
-		return
-	}
-	if !s.settingService.IsAffiliateAdminRechargeEnabled(ctx) {
-		return
-	}
-
-	rebate, err := s.affiliateService.AccrueInviteRebate(ctx, userID, amount)
+	rebate, err := s.accrueAffiliateRebateForAdminRecharge(ctx, userID, operation, amount)
 	if err != nil {
 		logger.LegacyPrintf("service.admin", "affiliate rebate failed for admin recharge: user_id=%d amount=%.8f err=%v", userID, amount, err)
 		return
@@ -574,6 +616,32 @@ func (s *adminServiceImpl) tryAccrueAffiliateRebateForAdminRecharge(ctx context.
 	if rebate > 0 {
 		logger.LegacyPrintf("service.admin", "affiliate rebate accrued for admin recharge: user_id=%d amount=%.8f rebate=%.8f", userID, amount, rebate)
 	}
+}
+
+func (s *adminServiceImpl) accrueAffiliateRebateForAdminRecharge(ctx context.Context, userID int64, operation string, amount float64) (float64, error) {
+	if operation != "add" || amount <= 0 || s.settingService == nil || s.affiliateService == nil {
+		return 0, nil
+	}
+	if !s.settingService.IsAffiliateAdminRechargeEnabled(ctx) {
+		return 0, nil
+	}
+	return s.affiliateService.AccrueInviteRebate(ctx, userID, amount)
+}
+
+func (s *adminServiceImpl) afterAdminBalanceCommit(ctx context.Context, userID int64, balanceDiff float64) {
+	if s.authCacheInvalidator != nil && balanceDiff != 0 {
+		s.authCacheInvalidator.InvalidateAuthCacheByUserID(ctx, userID)
+	}
+	if s.billingCacheService == nil {
+		return
+	}
+	go func() {
+		cacheCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := s.billingCacheService.InvalidateUserBalance(cacheCtx, userID); err != nil {
+			logger.LegacyPrintf("service.admin", "invalidate user balance cache failed: user_id=%d err=%v", userID, err)
+		}
+	}()
 }
 
 func (s *adminServiceImpl) GetUserAPIKeys(ctx context.Context, userID int64, page, pageSize int, sortBy, sortOrder string) ([]APIKey, int64, error) {
