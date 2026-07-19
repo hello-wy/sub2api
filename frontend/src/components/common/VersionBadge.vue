@@ -9,10 +9,10 @@
           toolbar
             ? 'header-tool-button header-version-button'
             : 'rounded-lg px-2 py-1',
-          hasUpdate
-            ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-900/50'
-            : toolbar
-              ? 'text-gray-600 dark:text-dark-300'
+          toolbar
+            ? 'text-gray-600 dark:text-dark-300'
+            : hasUpdate
+              ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-900/50'
               : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-800 dark:text-dark-400 dark:hover:bg-dark-700'
         ]"
         :aria-label="
@@ -29,12 +29,7 @@
           class="version-trigger-label h-3 w-12 animate-pulse rounded bg-gray-200 font-medium dark:bg-dark-600"
         ></span>
         <!-- Update indicator -->
-        <span v-if="hasUpdate" class="relative flex h-2 w-2">
-          <span
-            class="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75"
-          ></span>
-          <span class="relative inline-flex h-2 w-2 rounded-full bg-amber-500"></span>
-        </span>
+        <span v-if="hasUpdate" class="header-version-dot" aria-hidden="true"></span>
       </button>
 
       <!-- Dropdown -->
