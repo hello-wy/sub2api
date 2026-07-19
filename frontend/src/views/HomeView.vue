@@ -19,11 +19,8 @@
     :style="{ fontFamily: `'Inter', sans-serif` }"
   >
     <nav class="fixed left-0 right-0 top-0 z-[100] flex h-[76px] items-center justify-between px-4 sm:px-6 lg:px-8">
-      <router-link to="/home" class="flex items-center gap-3" aria-label="Solid API home">
-        <span class="flex h-10 w-10 items-center justify-center">
-          <img :src="siteLogo || '/logo.png'" alt="Solid API" class="h-8 w-8 object-contain" />
-        </span>
-        <span class="text-[21px] font-semibold tracking-[-0.04em] text-[#06111f] dark:text-white">Solid API</span>
+      <router-link to="/home" class="flex h-11 items-center transition-opacity hover:opacity-80" aria-label="SolidAPI 首页">
+        <img :src="brandLockup" alt="SolidAPI" class="h-9 w-auto object-contain" />
       </router-link>
 
       <div
@@ -214,10 +211,6 @@ const SPOTLIGHT_R = 260
 const authStore = useAuthStore()
 const appStore = useAppStore()
 
-const siteLogo = computed(() => sanitizeUrl(appStore.cachedPublicSettings?.site_logo || appStore.siteLogo || '', {
-  allowRelative: true,
-  allowDataUrl: true
-}))
 const docUrl = computed(() => sanitizeUrl(appStore.cachedPublicSettings?.doc_url || appStore.docUrl || ''))
 const homeContent = computed(() => appStore.cachedPublicSettings?.home_content || '')
 
@@ -246,6 +239,9 @@ const isHomeContentUrl = computed(() => {
 })
 
 const isDark = ref(document.documentElement.classList.contains('dark'))
+const brandLockup = computed(() =>
+  isDark.value ? '/brand/solidapi-lockup-dark.png' : '/brand/solidapi-lockup-light.png'
+)
 const cursorPos = ref({ x: -999, y: -999 })
 const mouse = { x: -999, y: -999 }
 const smooth = { x: -999, y: -999 }

@@ -9,23 +9,32 @@
     <LiquidGlass class="sidebar-liquid-shell relative flex h-full flex-col">
     <!-- Logo/Brand -->
     <div class="sidebar-header" :class="{ 'sidebar-header-collapsed': sidebarCollapsed }">
-      <!-- Custom Logo or Default Logo -->
       <router-link
         :to="homePath"
-        class="sidebar-logo flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl shadow-glow transition-opacity hover:opacity-80"
+        class="sidebar-logo flex items-center transition-opacity hover:opacity-80"
+        :aria-label="sidebarCollapsed ? 'SolidAPI' : 'SolidAPI 首页'"
         @click="handleMenuItemClick(homePath)"
       >
-        <img v-if="settingsLoaded" :src="siteLogo || '/logo.png'" alt="Logo" class="h-full w-full object-contain" />
+        <img
+          v-if="sidebarCollapsed"
+          src="/brand/solidapi-mark.png"
+          alt="SolidAPI"
+          class="sidebar-logo-mark"
+        />
+        <template v-else>
+          <img
+            src="/brand/solidapi-lockup-light.png"
+            alt="SolidAPI"
+            class="sidebar-logo-lockup sidebar-logo-lockup-light"
+          />
+          <img
+            src="/brand/solidapi-lockup-dark.png"
+            alt="SolidAPI"
+            class="sidebar-logo-lockup sidebar-logo-lockup-dark"
+          />
+        </template>
       </router-link>
       <div class="sidebar-brand" :class="{ 'sidebar-brand-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'">
-        <router-link
-          :to="homePath"
-          class="sidebar-brand-title text-lg font-bold text-gray-900 transition-colors hover:text-primary-600 dark:text-white dark:hover:text-primary-400"
-          @click="handleMenuItemClick(homePath)"
-        >
-          {{ siteName }}
-        </router-link>
-        <!-- Version Badge -->
         <VersionBadge :version="siteVersion" />
       </div>
     </div>
@@ -198,7 +207,6 @@ import { useAdminSettingsStore, useAppStore, useAuthStore, useOnboardingStore } 
 import LiquidGlass from '@/components/common/LiquidGlass.vue'
 import VersionBadge from '@/components/common/VersionBadge.vue'
 import { sanitizeSvg } from '@/utils/sanitize'
-import { sanitizeUrl } from '@/utils/url'
 import { FeatureFlags, makeSidebarFlag } from '@/utils/featureFlags'
 import { useBatchImageAccess } from '@/composables/useBatchImageAccess'
 import { useCheckinReminder } from '@/composables/useCheckinReminder'
@@ -260,11 +268,7 @@ const homePath = computed(() => (isAdmin.value ? '/admin/dashboard' : '/dashboar
 // Track which parent nav groups are expanded
 const expandedGroups = ref<Set<string>>(new Set())
 
-// Site settings from appStore (cached, no flicker)
-const siteName = computed(() => appStore.siteName)
-const siteLogo = computed(() => sanitizeUrl(appStore.siteLogo || '', { allowRelative: true, allowDataUrl: true }))
 const siteVersion = computed(() => appStore.siteVersion)
-const settingsLoaded = computed(() => appStore.publicSettingsLoaded)
 
 // SVG Icon Components
 const DashboardIcon = {
@@ -1004,14 +1008,54 @@ watch(
 }
 
 .sidebar-logo {
-  flex: 0 0 2.25rem;
-  min-width: 2.25rem;
+  flex: 0 0 6.75rem;
+  width: 6.75rem;
+  min-width: 6.75rem;
+  height: 2.5rem;
+  overflow: visible;
+  transition:
+    width 0.2s ease,
+    min-width 0.2s ease,
+    flex-basis 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.sidebar-logo-lockup {
+  display: block;
+  width: 6.75rem;
+  height: auto;
+  object-fit: contain;
+}
+
+.sidebar-logo-lockup-dark {
+  display: none;
+}
+
+:global(.dark .sidebar-logo-lockup-light) {
+  display: none;
+}
+
+:global(.dark .sidebar-logo-lockup-dark) {
+  display: block;
+}
+
+.sidebar-logo-mark {
+  display: block;
+  width: 2.25rem;
+  height: 2.25rem;
+  object-fit: contain;
 }
 
 .sidebar-header-collapsed {
   gap: 0;
   padding-left: 1.125rem;
   padding-right: 1.125rem;
+}
+
+.sidebar-header-collapsed .sidebar-logo {
+  flex-basis: 2.25rem;
+  width: 2.25rem;
+  min-width: 2.25rem;
 }
 
 .sidebar-brand {
@@ -1031,13 +1075,6 @@ watch(
   opacity: 0;
   transform: translateX(-4px);
   pointer-events: none;
-}
-
-.sidebar-brand-title {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .sidebar-link-collapsed {
