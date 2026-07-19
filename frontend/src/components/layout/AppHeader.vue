@@ -1,8 +1,8 @@
 <template>
   <header class="app-header-surface sticky top-0 z-30">
-    <div class="flex h-16 items-center justify-between px-4 md:px-6">
+    <div class="flex h-16 items-center justify-between gap-4 px-4 md:px-6">
       <!-- Left: Mobile Menu Toggle + Page Title -->
-      <div class="flex min-w-0 items-center gap-4">
+      <div class="flex min-w-0 flex-1 items-center gap-4 overflow-hidden">
         <button
           @click="toggleMobileSidebar"
           class="btn-ghost btn-icon lg:hidden"
@@ -23,7 +23,7 @@
         </div>
       </div>
 
-      <div class="app-header-toolbar flex min-w-0 items-center gap-2">
+      <div class="app-header-toolbar flex shrink-0 items-center gap-2">
         <VersionBadge
           v-if="authStore.isAdmin"
           :version="siteVersion"

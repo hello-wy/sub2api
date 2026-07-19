@@ -19,7 +19,7 @@ const adminComplianceStore = useAdminComplianceStore()
 const adminSettingsStore = useAdminSettingsStore()
 const pageTransitionDuration = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   ? 0
-  : { enter: 220, leave: 140 }
+  : { enter: 480, leave: 190 }
 
 function updateDocumentTitle() {
   const customMenuItems = [

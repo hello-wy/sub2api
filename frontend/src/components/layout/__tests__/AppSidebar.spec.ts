@@ -62,9 +62,14 @@ describe('AppSidebar header styles', () => {
     expect(headerSource).toContain('class="app-header-page-copy header-page-copy"')
     expect(styleSource).toContain('.page-fade-enter-active .app-header-page-copy')
     expect(styleSource).toContain('.page-fade-leave-active .app-header-page-copy')
-    expect(styleSource).toContain('page-content-fade-in 220ms cubic-bezier(0.16, 1, 0.3, 1)')
-    expect(styleSource).toContain('page-content-fade-out 140ms ease-in')
+    expect(styleSource).toContain('page-content-fade-in 290ms cubic-bezier(0.16, 1, 0.3, 1) 190ms both')
+    expect(styleSource).toContain('page-content-fade-out 190ms cubic-bezier(0.4, 0, 1, 1) both')
     expect(styleSource).toMatch(/prefers-reduced-motion:[\s\S]*?\.page-fade-enter-active \.app-header-page-copy/)
+  })
+
+  it('keeps the right toolbar fixed while route titles change width', () => {
+    expect(headerSource).toContain('class="flex min-w-0 flex-1 items-center gap-4 overflow-hidden"')
+    expect(headerSource).toContain('class="app-header-toolbar flex shrink-0 items-center gap-2"')
   })
 })
 

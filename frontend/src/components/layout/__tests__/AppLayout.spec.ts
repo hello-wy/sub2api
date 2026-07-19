@@ -21,4 +21,12 @@ describe('AppLayout workspace scrolling', () => {
     expect(appSource).toContain('<Transition name="page-fade" :duration="pageTransitionDuration">')
     expect(appSource).not.toContain('mode="out-in"')
   })
+
+  it('overlays route shells and hands off the stable toolbar before revealing new content', () => {
+    expect(appSource).toContain('{ enter: 480, leave: 190 }')
+    expect(styleSource).toMatch(/\.page-fade-enter-active,\s*\n\.page-fade-leave-active\s*\{[\s\S]*?position: fixed;/)
+    expect(styleSource).toContain('page-content-fade-in 290ms cubic-bezier(0.16, 1, 0.3, 1) 190ms both')
+    expect(styleSource).toContain('page-content-fade-out 190ms cubic-bezier(0.4, 0, 1, 1) both')
+    expect(styleSource).toContain('route-toolbar-handoff 1ms step-end 189ms both')
+  })
 })
