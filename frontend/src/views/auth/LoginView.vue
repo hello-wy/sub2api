@@ -1,5 +1,7 @@
 <template>
-  <AuthLayout variant="minimal">
+  <div class="auth-route-view">
+    <!-- Keep auth content on one route root so App.vue can animate the dashboard handoff. -->
+    <AuthLayout variant="minimal">
     <div class="login-form space-y-6">
       <!-- Title -->
       <div class="login-heading">
@@ -184,17 +186,18 @@
         </router-link>
       </p>
     </template>
-  </AuthLayout>
+    </AuthLayout>
 
-  <!-- 2FA Modal -->
-  <TotpLoginModal
-    v-if="show2FAModal"
-    ref="totpModalRef"
-    :temp-token="totpTempToken"
-    :user-email-masked="totpUserEmailMasked"
-    @verify="handle2FAVerify"
-    @cancel="handle2FACancel"
-  />
+    <!-- 2FA Modal -->
+    <TotpLoginModal
+      v-if="show2FAModal"
+      ref="totpModalRef"
+      :temp-token="totpTempToken"
+      :user-email-masked="totpUserEmailMasked"
+      @verify="handle2FAVerify"
+      @cancel="handle2FACancel"
+    />
+  </div>
 </template>
 
 <script setup lang="ts">

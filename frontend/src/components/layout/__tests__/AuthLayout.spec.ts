@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest'
 const dir = dirname(fileURLToPath(import.meta.url))
 const layoutSource = readFileSync(resolve(dir, '../AuthLayout.vue'), 'utf8')
 const loginSource = readFileSync(resolve(dir, '../../../views/auth/LoginView.vue'), 'utf8')
+const styleSource = readFileSync(resolve(dir, '../../../style.css'), 'utf8')
 const brandDir = resolve(dir, '../../../../public/brand')
 
 describe('AuthLayout branded login variant', () => {
@@ -56,5 +57,12 @@ describe('AuthLayout branded login variant', () => {
     expect(loginSource).toContain(':google-enabled="false"')
     expect(loginSource).not.toContain('googleOAuthEnabled')
     expect(loginSource).not.toContain('settings.google_oauth_enabled')
+  })
+
+  it('provides a single route surface for the login-to-dashboard transition', () => {
+    expect(loginSource).toMatch(/<template>\s*<div class="auth-route-view">/)
+    expect(styleSource).toContain('.page-fade-enter-active.auth-route-view')
+    expect(styleSource).toContain('.page-fade-leave-active.auth-route-view')
+    expect(styleSource).toMatch(/prefers-reduced-motion:[\s\S]*?\.page-fade-enter-active\.auth-route-view/)
   })
 })
