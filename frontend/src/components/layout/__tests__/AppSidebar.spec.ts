@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest'
 
 const componentPath = resolve(dirname(fileURLToPath(import.meta.url)), '../AppSidebar.vue')
 const componentSource = readFileSync(componentPath, 'utf8')
+const headerSource = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '../AppHeader.vue'), 'utf8')
 const stylePath = resolve(dirname(fileURLToPath(import.meta.url)), '../../../style.css')
 const styleSource = readFileSync(stylePath, 'utf8')
 
@@ -43,19 +44,17 @@ describe('AppSidebar scroll position persistence', () => {
 })
 
 describe('AppSidebar header styles', () => {
-  it('shows the version badge to administrators only', () => {
-    expect(componentSource).toMatch(/<div v-if="isAdmin" class="sidebar-brand"[\s\S]*?<VersionBadge/)
+  it('moves the admin-only version control into the top toolbar', () => {
+    expect(componentSource).not.toContain('VersionBadge')
+    expect(headerSource).toMatch(/<VersionBadge[\s\S]*?v-if="authStore\.isAdmin"[\s\S]*?toolbar/)
   })
 
-  it('does not clip the version badge dropdown', () => {
+  it('does not clip the sidebar logo', () => {
     const sidebarHeaderBlockMatch = styleSource.match(/\.sidebar-header\s*\{[\s\S]*?\n {2}\}/)
-    const sidebarBrandBlockMatch = componentSource.match(/\.sidebar-brand\s*\{[\s\S]*?\n\}/)
 
     expect(sidebarHeaderBlockMatch).not.toBeNull()
-    expect(sidebarBrandBlockMatch).not.toBeNull()
     expect(sidebarHeaderBlockMatch?.[0]).not.toContain('@apply overflow-hidden;')
     expect(sidebarHeaderBlockMatch?.[0]).not.toContain('@apply border-b')
-    expect(sidebarBrandBlockMatch?.[0]).not.toContain('overflow: hidden;')
   })
 })
 

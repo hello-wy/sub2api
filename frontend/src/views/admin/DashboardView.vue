@@ -22,7 +22,7 @@
 
         <section class="hero-metrics" aria-label="今日核心指标">
           <article
-            class="hero-card hero-card--primary hero-card--with-sparkline"
+            class="hero-card hero-card--primary"
             @pointermove="updatePrimaryCardSpotlight"
             @pointerleave="hidePrimaryCardSpotlight"
           >
@@ -36,27 +36,18 @@
               <span class="cost-breakdown__account">成本 ${{ formatCost(stats.today_account_cost) }}</span>
               <span class="cost-breakdown__standard">标准 ${{ formatCost(stats.today_cost) }}</span>
             </small>
-            <svg v-if="hasTrendData" class="metric-sparkline" viewBox="0 0 300 78" preserveAspectRatio="none" aria-hidden="true">
-              <path :d="tokenSparklinePath" />
-            </svg>
           </article>
 
-          <article class="hero-card hero-card--with-sparkline">
+          <article class="hero-card">
             <span>今日 API 调用</span>
             <strong>{{ formatNumber(stats.today_requests) }}</strong>
             <small>累计 {{ formatNumber(stats.total_requests) }} 次</small>
-            <svg v-if="hasTrendData" class="metric-sparkline metric-sparkline--mint" viewBox="0 0 300 78" preserveAspectRatio="none" aria-hidden="true">
-              <path :d="requestSparklinePath" />
-            </svg>
           </article>
 
-          <article class="hero-card hero-card--with-sparkline">
+          <article class="hero-card">
             <span>今日消耗</span>
             <strong>${{ formatCost(stats.today_actual_cost) }}</strong>
             <small>标准成本 ${{ formatCost(stats.today_cost) }}</small>
-            <svg v-if="hasTrendData" class="metric-sparkline metric-sparkline--violet" viewBox="0 0 300 78" preserveAspectRatio="none" aria-hidden="true">
-              <path :d="costSparklinePath" />
-            </svg>
           </article>
         </section>
 
@@ -142,7 +133,6 @@ import Icon from '@/components/icons/Icon.vue'
 import DashboardRangeSelect, { type DashboardTimeRange } from '@/components/dashboard/DashboardRangeSelect.vue'
 import TokenUsageTrend from '@/components/charts/TokenUsageTrend.vue'
 import { useAuthStore } from '@/stores/auth'
-import { buildSmoothSparklinePath } from '@/utils/sparkline'
 import type { DashboardStats, ModelStat, TrendDataPoint, UserSpendingRankingItem } from '@/types'
 
 const router = useRouter()
@@ -161,13 +151,6 @@ const rangeOptions: Array<{ value: DashboardTimeRange; label: string }> = [{ val
 const endDate = ref('')
 const startDate = ref('')
 const granularity = computed<'hour' | 'day'>(() => timeRange.value === '24h' ? 'hour' : 'day')
-const trendValues = computed(() => trendData.value.map((item) => item.total_tokens || 0))
-const requestTrendValues = computed(() => trendData.value.map((item) => item.requests || 0))
-const costTrendValues = computed(() => trendData.value.map((item) => item.actual_cost || 0))
-const hasTrendData = computed(() => trendData.value.length > 0)
-const tokenSparklinePath = computed(() => buildSmoothSparklinePath(trendValues.value, 300, 78))
-const requestSparklinePath = computed(() => buildSmoothSparklinePath(requestTrendValues.value, 300, 78))
-const costSparklinePath = computed(() => buildSmoothSparklinePath(costTrendValues.value, 300, 78))
 const maxModelTokens = computed(() => Math.max(...modelStats.value.map((item) => item.total_tokens), 1))
 const totalModelTokens = computed(() => modelStats.value.reduce((total, item) => total + item.total_tokens, 0))
 const displayName = computed(() => authStore.user?.username || authStore.user?.email?.split('@')[0] || '管理员')
@@ -266,8 +249,6 @@ onMounted(() => { updateDateRange(); loadDashboard() })
 .refresh-button:disabled { cursor:wait; opacity:.66; }
 .hero-metrics { display:grid; grid-template-columns:1.18fr .9fr .9fr; gap:16px; }
 .hero-card { position:relative; min-height:174px; overflow:hidden; border:1px solid var(--dashboard-line); border-radius:16px; background:var(--dashboard-surface); padding:24px; box-shadow:0 10px 28px rgba(27,59,113,.055); }
-.hero-card--with-sparkline { min-height:196px; padding-bottom:78px; }
-.hero-card--with-sparkline > :not(.metric-sparkline) { position:relative; z-index:2; }
 .hero-card > span { display:block; color:#61708a; font-size:13px; font-weight:650; }
 .hero-card strong { display:block; margin:8px 0 9px; color:var(--dashboard-ink); font-size:31px; font-weight:760; letter-spacing:-.045em; line-height:1; }
 .hero-card small { color:var(--dashboard-muted); font-size:12px; }
@@ -284,10 +265,6 @@ onMounted(() => { updateDateRange(); loadDashboard() })
 .hero-card--primary > * { position:relative; z-index:1; }
 .hero-card--primary:hover { border-color:rgba(186,224,255,.96); box-shadow:0 18px 40px rgba(45,117,221,.25),inset 0 1px rgba(255,255,255,.48); }
 .hero-card--primary > span,.hero-card--primary small,.hero-card--primary strong { color:#fff; }
-.metric-sparkline { position:absolute; z-index:1; right:20px; bottom:13px; left:20px; width:calc(100% - 40px); height:46px; opacity:.72; pointer-events:none; }
-.metric-sparkline path { fill:none; stroke:#fff; stroke-width:1.65; stroke-linecap:round; stroke-linejoin:round; vector-effect:non-scaling-stroke; }
-.metric-sparkline--mint path { stroke:#2bc4ad; }
-.metric-sparkline--violet path { stroke:#9570f7; }
 .operation-strip { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); margin:16px 0; overflow:hidden; border:1px solid var(--dashboard-line); border-radius:15px; background:var(--dashboard-surface); box-shadow:0 8px 20px rgba(28,56,104,.035); }
 .strip-item { display:flex; align-items:center; min-width:0; gap:10px; padding:15px 14px; border-right:1px solid var(--dashboard-line); }
 .strip-item:last-child { border-right:0; }

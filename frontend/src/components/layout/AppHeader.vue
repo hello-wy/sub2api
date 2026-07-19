@@ -54,6 +54,13 @@
           <span v-if="checkinReminderVisible" class="header-checkin-dot" aria-hidden="true"></span>
         </router-link>
 
+        <VersionBadge
+          v-if="authStore.isAdmin"
+          :version="siteVersion"
+          toolbar
+          class="header-version-control"
+        />
+
         <LocaleSwitcher class="header-locale-switcher" toolbar />
 
         <button
@@ -240,6 +247,7 @@ import { useAppStore, useAuthStore, useOnboardingStore, useSubscriptionStore } f
 import { useAdminSettingsStore } from '@/stores/adminSettings'
 import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
 import AnnouncementBell from '@/components/common/AnnouncementBell.vue'
+import VersionBadge from '@/components/common/VersionBadge.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { QQ_GROUP_INVITE_URL } from '@/constants/community'
 import { useCheckinReminder } from '@/composables/useCheckinReminder'
@@ -261,6 +269,7 @@ const dropdownRef = ref<HTMLElement | null>(null)
 const isDark = ref(document.documentElement.classList.contains('dark'))
 let themeObserver: MutationObserver | null = null
 const contactInfo = computed(() => appStore.contactInfo)
+const siteVersion = computed(() => appStore.siteVersion)
 const avatarUrl = computed(() => user.value?.avatar_url?.trim() || '')
 const availableBalance = computed(() => Number(user.value?.balance || 0))
 const frozenBalance = computed(() => Number(user.value?.frozen_balance || 0))

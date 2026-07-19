@@ -564,6 +564,10 @@
     padding: 0;
   }
 
+  .header-version-button .version-trigger-label {
+    display: none;
+  }
+
   .header-user-balance-label {
     display: none;
   }

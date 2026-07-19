@@ -34,9 +34,6 @@
           />
         </template>
       </router-link>
-      <div v-if="isAdmin" class="sidebar-brand" :class="{ 'sidebar-brand-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'">
-        <VersionBadge :version="siteVersion" />
-      </div>
     </div>
 
     <!-- Navigation -->
@@ -205,7 +202,6 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAdminSettingsStore, useAppStore, useAuthStore, useOnboardingStore } from '@/stores'
 import LiquidGlass from '@/components/common/LiquidGlass.vue'
-import VersionBadge from '@/components/common/VersionBadge.vue'
 import { sanitizeSvg } from '@/utils/sanitize'
 import { FeatureFlags, makeSidebarFlag } from '@/utils/featureFlags'
 import { useBatchImageAccess } from '@/composables/useBatchImageAccess'
@@ -267,8 +263,6 @@ const homePath = computed(() => (isAdmin.value ? '/admin/dashboard' : '/dashboar
 
 // Track which parent nav groups are expanded
 const expandedGroups = ref<Set<string>>(new Set())
-
-const siteVersion = computed(() => appStore.siteVersion)
 
 // SVG Icon Components
 const DashboardIcon = {
@@ -1008,9 +1002,9 @@ watch(
 }
 
 .sidebar-logo {
-  flex: 0 0 6.75rem;
-  width: 6.75rem;
-  min-width: 6.75rem;
+  flex: 0 0 7.5rem;
+  width: 7.5rem;
+  min-width: 7.5rem;
   height: 2.5rem;
   overflow: visible;
   transition:
@@ -1022,7 +1016,7 @@ watch(
 
 .sidebar-logo-lockup {
   display: block;
-  width: 6.75rem;
+  width: 7.5rem;
   height: auto;
   object-fit: contain;
 }
@@ -1052,29 +1046,15 @@ watch(
   padding-right: 1.125rem;
 }
 
+.sidebar-header:not(.sidebar-header-collapsed) {
+  padding-right: 1.25rem;
+  padding-left: 1.25rem;
+}
+
 .sidebar-header-collapsed .sidebar-logo {
   flex-basis: 2.25rem;
   width: 2.25rem;
   min-width: 2.25rem;
-}
-
-.sidebar-brand {
-  min-width: 0;
-  flex: 1 1 auto;
-  white-space: nowrap;
-  transition:
-    max-width 0.22s ease,
-    opacity 0.14s ease,
-    transform 0.14s ease;
-  max-width: 12rem;
-}
-
-.sidebar-brand-collapsed {
-  max-width: 0;
-  overflow: hidden;
-  opacity: 0;
-  transform: translateX(-4px);
-  pointer-events: none;
 }
 
 .sidebar-link-collapsed {

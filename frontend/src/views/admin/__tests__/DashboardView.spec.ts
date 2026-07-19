@@ -133,7 +133,7 @@ describe('admin DashboardView', () => {
     }))
     expect(wrapper.text()).toContain('晚上好，Kuhne')
     expect(wrapper.findAll('.hero-card')).toHaveLength(3)
-    expect(wrapper.findAll('.hero-card--with-sparkline')).toHaveLength(3)
+    expect(wrapper.findAll('.metric-sparkline')).toHaveLength(0)
     expect(wrapper.findAll('.hero-card')[0].text()).toContain('今日 Token')
     expect(wrapper.findAll('.hero-card')[1].text()).toContain('今日 API 调用')
     expect(wrapper.find('[data-testid="token-usage-trend"]').exists()).toBe(true)
