@@ -52,13 +52,6 @@
     </main>
   </div>
 
-  <div v-else-if="isEmbeddedVariant" class="auth-embedded-shell">
-    <slot />
-    <div class="auth-embedded-footer">
-      <slot name="footer" />
-    </div>
-  </div>
-
   <div v-else class="relative flex min-h-screen items-center justify-center overflow-hidden p-4">
     <div
       class="absolute inset-0 bg-gradient-to-br from-gray-50 via-primary-50/30 to-gray-100 dark:from-dark-950 dark:via-dark-900 dark:to-dark-950"
@@ -119,7 +112,7 @@ import { useAppStore } from '@/stores'
 import { sanitizeUrl } from '@/utils/url'
 
 const props = withDefaults(defineProps<{
-  variant?: 'default' | 'home' | 'embedded'
+  variant?: 'default' | 'home'
 }>(), {
   variant: 'default'
 })
@@ -130,7 +123,6 @@ const isDark = ref(false)
 let themeObserver: MutationObserver | null = null
 
 const isHomeVariant = computed(() => props.variant === 'home')
-const isEmbeddedVariant = computed(() => props.variant === 'embedded')
 const siteName = computed(() => appStore.siteName || 'Sub2API')
 const siteLogo = computed(() => sanitizeUrl(appStore.siteLogo || '', { allowRelative: true, allowDataUrl: true }))
 const siteSubtitle = computed(() => appStore.cachedPublicSettings?.site_subtitle || 'Subscription to API Conversion Platform')
@@ -174,16 +166,6 @@ onBeforeUnmount(() => {
 <style scoped>
 .text-gradient {
   @apply bg-gradient-to-r from-primary-600 to-primary-500 bg-clip-text text-transparent;
-}
-
-.auth-embedded-shell {
-  width: 100%;
-}
-
-.auth-embedded-footer {
-  margin-top: 18px;
-  text-align: center;
-  font-size: 13px;
 }
 
 .auth-home-shell {
