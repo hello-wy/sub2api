@@ -563,8 +563,8 @@ function handle2FACancel(): void {
 }
 
 .login-form .input {
-  min-height: 48px;
-  border-color: rgba(148, 163, 184, 0.42);
+  min-height: 46px;
+  border-color: rgba(148, 163, 184, 0.34);
   border-radius: 14px;
   background: rgba(248, 251, 255, 0.7);
   box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
@@ -581,16 +581,16 @@ function handle2FACancel(): void {
 }
 
 .login-submit {
-  min-height: 48px;
+  min-height: 46px;
   border-radius: 999px;
-  background: #1677ff;
-  box-shadow: 0 12px 26px rgba(22, 119, 255, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  background: #126ee8;
+  box-shadow: 0 8px 18px rgba(18, 110, 232, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.2);
   font-weight: 650;
 }
 
 .login-submit:hover:not(:disabled) {
-  background: #0f68df;
-  box-shadow: 0 8px 20px rgba(22, 119, 255, 0.2);
+  background: #0f65d6;
+  box-shadow: 0 7px 16px rgba(18, 110, 232, 0.18);
   transform: none;
 }
 

@@ -1,14 +1,12 @@
 <template>
   <div v-if="isMinimalVariant" class="auth-minimal-shell">
     <router-link to="/home" class="auth-corner-brand" :aria-label="`${siteName} 首页`">
-      <img :src="siteLogo || '/logo.png'" alt="" class="auth-corner-logo" />
-      <span>{{ siteName }}</span>
+      <img :src="brandLockup" :alt="siteName" class="auth-corner-lockup" />
     </router-link>
 
     <div class="auth-minimal-stack">
       <router-link to="/home" class="auth-minimal-brand" :aria-label="`${siteName} 首页`">
-        <img :src="siteLogo || '/logo.png'" alt="" class="auth-minimal-logo" />
-        <span>{{ siteName }}</span>
+        <img :src="brandLockup" :alt="siteName" class="auth-minimal-lockup" />
       </router-link>
 
       <main class="auth-minimal-card" aria-label="账户登录">
@@ -110,6 +108,11 @@ const siteLogo = computed(() => sanitizeUrl(appStore.siteLogo || '', { allowRela
 const siteSubtitle = computed(() => appStore.cachedPublicSettings?.site_subtitle || 'Subscription to API Conversion Platform')
 const settingsLoaded = computed(() => appStore.publicSettingsLoaded)
 const currentYear = computed(() => new Date().getFullYear())
+const brandLockup = computed(() => (
+  isDark.value
+    ? '/brand/solidapi-lockup-dark.png'
+    : '/brand/solidapi-lockup-light.png'
+))
 
 function updateThemeState() {
   isDark.value = document.documentElement.classList.contains('dark')
@@ -154,22 +157,27 @@ onBeforeUnmount(() => {
   color: #111827;
 }
 
+.auth-minimal-shell::before {
+  position: fixed;
+  inset: 0;
+  background:
+    linear-gradient(135deg, rgba(52, 124, 215, 0.12) 0%, rgba(52, 124, 215, 0) 43%),
+    linear-gradient(315deg, rgba(73, 183, 216, 0.1) 0%, rgba(73, 183, 216, 0) 46%);
+  content: '';
+  pointer-events: none;
+}
+
 .auth-corner-brand {
   position: absolute;
   top: 24px;
   left: 28px;
   display: flex;
   align-items: center;
-  gap: 9px;
-  color: #111827;
-  font-size: 17px;
-  font-weight: 700;
 }
 
-.auth-corner-logo {
-  width: 34px;
-  height: 34px;
-  border-radius: 8px;
+.auth-corner-lockup {
+  width: 144px;
+  height: auto;
   object-fit: contain;
 }
 
@@ -181,17 +189,12 @@ onBeforeUnmount(() => {
   display: flex;
   width: fit-content;
   align-items: center;
-  gap: 12px;
   margin: 0 auto 24px;
-  color: #111827;
-  font-size: 22px;
-  font-weight: 700;
 }
 
-.auth-minimal-logo {
-  width: 46px;
-  height: 46px;
-  border-radius: 10px;
+.auth-minimal-lockup {
+  width: 178px;
+  height: auto;
   object-fit: contain;
   filter: drop-shadow(0 8px 16px rgba(30, 64, 175, 0.16));
 }
@@ -201,9 +204,12 @@ onBeforeUnmount(() => {
   width: 100%;
   border: 1px solid rgba(255, 255, 255, 0.72);
   border-radius: 20px;
-  background: rgba(255, 255, 255, 0.58);
-  padding: 68px 34px 34px;
-  box-shadow: 0 30px 76px rgba(37, 74, 128, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.78);
+  background: rgba(255, 255, 255, 0.5);
+  padding: 34px;
+  box-shadow:
+    0 2px 7px rgba(39, 72, 112, 0.08),
+    0 18px 42px rgba(39, 72, 112, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
   backdrop-filter: blur(22px) saturate(1.2);
   -webkit-backdrop-filter: blur(22px) saturate(1.2);
 }
@@ -214,27 +220,30 @@ onBeforeUnmount(() => {
   right: 18px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid rgba(112, 145, 181, 0.2);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.34);
 }
 
 .auth-minimal-tools :deep(.header-tool-button),
 .auth-minimal-tool-button {
   display: inline-flex;
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(112, 145, 181, 0.28);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.54);
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
   color: #334155;
   transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease;
 }
 
 .auth-minimal-tools :deep(.header-tool-button:hover:not(:disabled)),
 .auth-minimal-tool-button:hover {
-  border-color: rgba(59, 130, 246, 0.48);
-  background: rgba(255, 255, 255, 0.84);
+  background: rgba(255, 255, 255, 0.72);
   color: #1677ff;
 }
 
@@ -249,29 +258,36 @@ onBeforeUnmount(() => {
   color: #f8fafc;
 }
 
-.dark .auth-corner-brand,
-.dark .auth-minimal-brand {
-  color: #f8fafc;
+.dark .auth-minimal-shell::before {
+  background:
+    linear-gradient(135deg, rgba(40, 103, 174, 0.2) 0%, rgba(40, 103, 174, 0) 44%),
+    linear-gradient(315deg, rgba(24, 111, 139, 0.18) 0%, rgba(24, 111, 139, 0) 47%);
+}
+
+.dark .auth-minimal-tools {
+  border-color: rgba(163, 207, 255, 0.12);
+  background: rgba(17, 38, 62, 0.42);
 }
 
 .dark .auth-minimal-tools :deep(.header-tool-button),
 .dark .auth-minimal-tool-button {
-  border-color: rgba(163, 207, 255, 0.16);
-  background: rgba(17, 38, 62, 0.7);
+  background: transparent;
   color: #cbd5e1;
 }
 
 .dark .auth-minimal-tools :deep(.header-tool-button:hover:not(:disabled)),
 .dark .auth-minimal-tool-button:hover {
-  border-color: rgba(96, 165, 250, 0.48);
-  background: rgba(28, 57, 88, 0.88);
+  background: rgba(42, 75, 108, 0.72);
   color: #60a5fa;
 }
 
 .dark .auth-minimal-card {
   border-color: rgba(148, 191, 236, 0.2);
-  background: rgba(11, 23, 39, 0.64);
-  box-shadow: 0 32px 84px rgba(0, 0, 0, 0.48), inset 0 1px 0 rgba(191, 219, 254, 0.1);
+  background: rgba(8, 16, 28, 0.62);
+  box-shadow:
+    0 2px 7px rgba(0, 0, 0, 0.22),
+    0 20px 46px rgba(0, 0, 0, 0.32),
+    inset 0 1px 0 rgba(191, 219, 254, 0.11);
 }
 
 @media (max-width: 480px) {
@@ -282,7 +298,7 @@ onBeforeUnmount(() => {
 
   .auth-minimal-card {
     border-radius: 18px;
-    padding: 66px 20px 26px;
+    padding: 30px 20px 26px;
   }
 
   .auth-minimal-brand {
@@ -294,8 +310,10 @@ onBeforeUnmount(() => {
     left: 18px;
   }
 
-  .auth-corner-brand span {
-    display: none;
+  .auth-corner-lockup {
+    width: 120px;
+    height: auto;
+    object-fit: contain;
   }
 }
 </style>

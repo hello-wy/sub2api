@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest'
 const dir = dirname(fileURLToPath(import.meta.url))
 const layoutSource = readFileSync(resolve(dir, '../AuthLayout.vue'), 'utf8')
 const loginSource = readFileSync(resolve(dir, '../../../views/auth/LoginView.vue'), 'utf8')
+const brandDir = resolve(dir, '../../../../public/brand')
 
 describe('AuthLayout branded login variant', () => {
   it('uses the dedicated minimal variant only for the login page', () => {
@@ -18,9 +19,9 @@ describe('AuthLayout branded login variant', () => {
   it('renders one frosted login card over the application shell background', () => {
     expect(layoutSource).toContain('class="auth-minimal-card"')
     expect(layoutSource).toContain('class="auth-minimal-brand"')
-    expect(layoutSource).toContain('class="auth-minimal-logo"')
+    expect(layoutSource).toContain('class="auth-minimal-lockup"')
     expect(layoutSource).toMatch(/\.auth-minimal-card\s*\{[\s\S]*?border-radius: 20px;/)
-    expect(layoutSource).toMatch(/\.auth-minimal-card\s*\{[\s\S]*?background: rgba\(255, 255, 255, 0\.58\);/)
+    expect(layoutSource).toMatch(/\.auth-minimal-card\s*\{[\s\S]*?background: rgba\(255, 255, 255, 0\.5\);/)
     expect(layoutSource).toMatch(/\.auth-minimal-card\s*\{[\s\S]*?backdrop-filter: blur\(22px\)/)
     expect(layoutSource).toMatch(/\.auth-minimal-shell\s*\{[\s\S]*?background-color: #f0f7ff;/)
     expect(layoutSource).toMatch(/\.dark \.auth-minimal-shell\s*\{[\s\S]*?background-color: #0c1d31;/)
@@ -42,6 +43,10 @@ describe('AuthLayout branded login variant', () => {
 
   it('shows a corner brand and provides locale and theme controls on the panel', () => {
     expect(layoutSource).toContain('class="auth-corner-brand"')
+    expect(layoutSource).toContain("'/brand/solidapi-lockup-dark.png'")
+    expect(layoutSource).toContain("'/brand/solidapi-lockup-light.png'")
+    expect(existsSync(resolve(brandDir, 'solidapi-lockup-light.png'))).toBe(true)
+    expect(existsSync(resolve(brandDir, 'solidapi-lockup-dark.png'))).toBe(true)
     expect(layoutSource).toContain('<LocaleSwitcher class="auth-minimal-locale" toolbar />')
     expect(layoutSource).toContain('class="auth-minimal-tool-button"')
     expect(layoutSource).toContain('@click="toggleTheme"')
