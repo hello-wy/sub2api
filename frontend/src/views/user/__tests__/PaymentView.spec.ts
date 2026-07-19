@@ -222,7 +222,10 @@ function oauthOrderFixture() {
   }
 }
 
-async function mountSubscriptionConfirm(options: Parameters<typeof checkoutInfoWithPlansFixture>[0] = {}) {
+async function mountSubscriptionConfirm(
+  options: Parameters<typeof checkoutInfoWithPlansFixture>[0] = {},
+  mountOptions: { clearStorage?: boolean } = {},
+) {
   vi.useRealTimers()
   routeState.path = '/purchase'
   routeState.query = {
@@ -241,7 +244,7 @@ async function mountSubscriptionConfirm(options: Parameters<typeof checkoutInfoW
   showWarning.mockReset()
   getCheckoutInfo.mockReset().mockResolvedValue(checkoutInfoWithPlansFixture(options))
   bridgeInvoke.mockReset()
-  window.localStorage.clear()
+  if (mountOptions.clearStorage !== false) window.localStorage.clear()
   ;(window as Window & { WeixinJSBridge?: { invoke: typeof bridgeInvoke } }).WeixinJSBridge = undefined
 
   const wrapper = shallowMount(PaymentView, {
@@ -440,7 +443,10 @@ describe('PaymentView inline subscription checkout', () => {
     dialog.vm.$emit('confirm')
     await flushPromises()
 
-    expect(purchaseSubscriptionWithBalance).toHaveBeenCalledWith(7)
+    expect(purchaseSubscriptionWithBalance).toHaveBeenCalledWith(
+      7,
+      expect.stringMatching(/^balance-subscription-7-/),
+    )
     expect(refreshUser).toHaveBeenCalled()
     expect(fetchActiveSubscriptions).toHaveBeenCalledWith(true)
     expect(refreshWalletHistory).toHaveBeenCalledTimes(1)
@@ -496,8 +502,59 @@ describe('PaymentView inline subscription checkout', () => {
     dialog.vm.$emit('confirm')
     await flushPromises()
 
-    expect(purchaseSubscriptionWithBalance).toHaveBeenCalledWith(7)
+    expect(purchaseSubscriptionWithBalance).toHaveBeenCalledWith(
+      7,
+      expect.stringMatching(/^balance-subscription-7-/),
+    )
     expect(refreshUser).toHaveBeenCalled()
+  })
+
+  it('reuses the balance subscription idempotency key after a lost response and page reload', async () => {
+    authUserState.user = { username: 'demo-user', balance: 200 }
+    purchaseSubscriptionWithBalance
+      .mockRejectedValueOnce(new Error('network response lost'))
+      .mockResolvedValueOnce({
+        data: { order_id: 99, amount: 128, new_balance: 72, subscription: {} },
+      })
+
+    const firstWrapper = await mountSubscriptionConfirm()
+    const firstCard = firstWrapper.findComponent({ name: 'SubscriptionPlanCard' })
+    firstCard.vm.$emit('subscribe', firstCard.props('plan'), 'balance')
+    await flushPromises()
+    firstWrapper.findComponent({ name: 'ConfirmDialog' }).vm.$emit('confirm')
+    await flushPromises()
+
+    const firstKey = purchaseSubscriptionWithBalance.mock.calls[0]?.[1]
+    expect(firstKey).toMatch(/^balance-subscription-7-/)
+    firstWrapper.unmount()
+
+    const secondWrapper = await mountSubscriptionConfirm({}, { clearStorage: false })
+    const secondCard = secondWrapper.findComponent({ name: 'SubscriptionPlanCard' })
+    secondCard.vm.$emit('subscribe', secondCard.props('plan'), 'balance')
+    await flushPromises()
+    secondWrapper.findComponent({ name: 'ConfirmDialog' }).vm.$emit('confirm')
+    await flushPromises()
+
+    expect(purchaseSubscriptionWithBalance).toHaveBeenNthCalledWith(2, 7, firstKey)
+    expect(showInfo).toHaveBeenCalledWith('wallet.subscriptionBalanceSuccess')
+    expect(window.localStorage.length).toBe(0)
+  })
+
+  it('does not report a completed purchase as failed when summary refresh fails', async () => {
+    authUserState.user = { username: 'demo-user', balance: 200 }
+    purchaseSubscriptionWithBalance.mockResolvedValue({
+      data: { order_id: 99, amount: 128, new_balance: 72, subscription: {} },
+    })
+    const wrapper = await mountSubscriptionConfirm()
+    refreshUser.mockRejectedValueOnce(new Error('refresh failed'))
+    const card = wrapper.findComponent({ name: 'SubscriptionPlanCard' })
+    card.vm.$emit('subscribe', card.props('plan'), 'balance')
+    await flushPromises()
+    wrapper.findComponent({ name: 'ConfirmDialog' }).vm.$emit('confirm')
+    await flushPromises()
+
+    expect(showInfo).toHaveBeenCalledWith('wallet.subscriptionBalanceSuccess')
+    expect(showError).not.toHaveBeenCalled()
   })
 
   it('does not purchase a balance subscription when confirmation is cancelled', async () => {

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -312,23 +313,29 @@ func (h *PaymentHandler) PurchaseSubscriptionWithBalance(c *gin.Context) {
 		response.BadRequest(c, "Invalid request: "+err.Error())
 		return
 	}
-	result, err := h.paymentService.PurchaseSubscriptionWithBalance(c.Request.Context(), service.BalanceSubscriptionPurchaseRequest{
-		UserID:   subject.UserID,
-		PlanID:   req.PlanID,
-		ClientIP: c.ClientIP(),
-		SrcHost:  c.Request.Host,
-		SrcURL:   c.Request.Referer(),
-		Locale:   c.GetHeader("Accept-Language"),
-	})
-	if err != nil {
-		response.ErrorFrom(c, err)
-		return
-	}
-	response.Success(c, gin.H{
-		"order_id":     result.OrderID,
-		"amount":       result.Amount,
-		"new_balance":  result.NewBalance,
-		"subscription": dto.UserSubscriptionFromService(result.Subscription),
+	payload := struct {
+		UserID int64 `json:"user_id"`
+		PlanID int64 `json:"plan_id"`
+	}{UserID: subject.UserID, PlanID: req.PlanID}
+	executeUserIdempotentJSON(c, "payment.subscriptions.balance.purchase", payload, service.DefaultWriteIdempotencyTTL(), func(ctx context.Context) (any, error) {
+		result, err := h.paymentService.PurchaseSubscriptionWithBalance(ctx, service.BalanceSubscriptionPurchaseRequest{
+			UserID:         subject.UserID,
+			PlanID:         req.PlanID,
+			ClientIP:       c.ClientIP(),
+			SrcHost:        c.Request.Host,
+			SrcURL:         c.Request.Referer(),
+			Locale:         c.GetHeader("Accept-Language"),
+			IdempotencyKey: c.GetHeader("Idempotency-Key"),
+		})
+		if err != nil {
+			return nil, err
+		}
+		return gin.H{
+			"order_id":     result.OrderID,
+			"amount":       result.Amount,
+			"new_balance":  result.NewBalance,
+			"subscription": dto.UserSubscriptionFromService(result.Subscription),
+		}, nil
 	})
 }
 

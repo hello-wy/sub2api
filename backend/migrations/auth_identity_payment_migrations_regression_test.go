@@ -240,3 +240,15 @@ func TestMigration173AllowsCyberBlockedUsageRequestType(t *testing.T) {
 	require.Contains(t, sql, "ADD CONSTRAINT usage_logs_request_type_check")
 	require.Contains(t, sql, "CHECK (request_type IN (0, 1, 2, 3, 4)) NOT VALID")
 }
+
+func TestMigration183AddsBalanceSubscriptionIdempotencyConstraint(t *testing.T) {
+	content, err := FS.ReadFile("183_balance_subscription_idempotency_notx.sql")
+	require.NoError(t, err)
+
+	sql := string(content)
+	require.Contains(t, sql, "CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS idx_payment_orders_balance_subscription_idempotency")
+	require.Contains(t, sql, "ON payment_orders (user_id, payment_trade_no)")
+	require.Contains(t, sql, "payment_type = 'balance'")
+	require.Contains(t, sql, "order_type = 'subscription'")
+	require.Contains(t, sql, "payment_trade_no <> ''")
+}

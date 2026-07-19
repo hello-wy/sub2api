@@ -741,6 +741,56 @@ const canSubmit = computed(() =>
 )
 
 const availableBalance = computed(() => Number(user.value?.balance ?? 0))
+const balanceSubscriptionOperationKeys = new Map<string, string>()
+const balanceSubscriptionOperationStoragePrefix = 'sub2api:balance-subscription-operation'
+
+function balanceSubscriptionOperationStorageKey(planId: number): string {
+  const actor = user.value?.id || user.value?.username || 'unknown'
+  return `${balanceSubscriptionOperationStoragePrefix}:${actor}:${planId}`
+}
+
+function readStoredBalanceSubscriptionOperationKey(storageKey: string): string {
+  try {
+    const key = window.localStorage.getItem(storageKey) || ''
+    return /^[\x21-\x7e]{1,128}$/.test(key) ? key : ''
+  } catch {
+    return ''
+  }
+}
+
+function persistBalanceSubscriptionOperationKey(storageKey: string, key: string) {
+  try {
+    window.localStorage.setItem(storageKey, key)
+  } catch {
+    // The in-memory map still protects retries while this page remains open.
+  }
+}
+
+function balanceSubscriptionOperationKey(planId: number): string {
+  const storageKey = balanceSubscriptionOperationStorageKey(planId)
+  const existing = balanceSubscriptionOperationKeys.get(storageKey)
+  if (existing) return existing
+  const stored = readStoredBalanceSubscriptionOperationKey(storageKey)
+  if (stored) {
+    balanceSubscriptionOperationKeys.set(storageKey, stored)
+    return stored
+  }
+  const requestID = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`
+  const key = `balance-subscription-${planId}-${requestID}`
+  balanceSubscriptionOperationKeys.set(storageKey, key)
+  persistBalanceSubscriptionOperationKey(storageKey, key)
+  return key
+}
+
+function clearBalanceSubscriptionOperationKey(planId: number) {
+  const storageKey = balanceSubscriptionOperationStorageKey(planId)
+  balanceSubscriptionOperationKeys.delete(storageKey)
+  try {
+    window.localStorage.removeItem(storageKey)
+  } catch {
+    // No cleanup is needed when storage is unavailable.
+  }
+}
 
 function subscriptionBeforeDiscountAmount(plan: SubscriptionPlan, currency: string): number {
   return subscriptionPaymentAmountForCurrency(plan.price, currency)
@@ -903,14 +953,14 @@ async function confirmPendingSubscriptionPurchase() {
 }
 
 async function executeSubscriptionPurchase(plan: SubscriptionPlan, source: SubscriptionPaymentSource) {
-
   submittingPlanId.value = plan.id
   if (source === 'balance') {
     submitting.value = true
     errorMessage.value = ''
     try {
-      await paymentAPI.purchaseSubscriptionWithBalance(plan.id)
-      await Promise.all([
+      await paymentAPI.purchaseSubscriptionWithBalance(plan.id, balanceSubscriptionOperationKey(plan.id))
+      clearBalanceSubscriptionOperationKey(plan.id)
+      await Promise.allSettled([
         authStore.refreshUser(),
         subscriptionStore.fetchActiveSubscriptions(true),
         walletHistoryRef.value?.refresh(),
