@@ -1002,10 +1002,10 @@ watch(
 }
 
 .sidebar-logo {
-  flex: 0 0 7.5rem;
-  width: 7.5rem;
-  min-width: 7.5rem;
-  height: 2.5rem;
+  flex: 0 0 12rem;
+  width: 12rem;
+  min-width: 12rem;
+  height: 4rem;
   overflow: visible;
   transition:
     width 0.2s ease,
@@ -1016,7 +1016,7 @@ watch(
 
 .sidebar-logo-lockup {
   display: block;
-  width: 7.5rem;
+  width: 12rem;
   height: auto;
   object-fit: contain;
 }
@@ -1047,14 +1047,17 @@ watch(
 }
 
 .sidebar-header:not(.sidebar-header-collapsed) {
-  padding-right: 1.25rem;
-  padding-left: 1.25rem;
+  height: 4.75rem;
+  justify-content: center;
+  padding-right: 0.75rem;
+  padding-left: 0.75rem;
 }
 
 .sidebar-header-collapsed .sidebar-logo {
   flex-basis: 2.25rem;
   width: 2.25rem;
   min-width: 2.25rem;
+  height: 2.5rem;
 }
 
 .sidebar-link-collapsed {

@@ -22,6 +22,13 @@
       </div>
 
       <div class="app-header-toolbar flex min-w-0 items-center gap-2">
+        <VersionBadge
+          v-if="authStore.isAdmin"
+          :version="siteVersion"
+          toolbar
+          class="header-version-control"
+        />
+
         <AnnouncementBell v-if="user" toolbar />
 
         <a
@@ -53,13 +60,6 @@
           <span class="header-tool-label">{{ t('header.checkin') }}</span>
           <span v-if="checkinReminderVisible" class="header-checkin-dot" aria-hidden="true"></span>
         </router-link>
-
-        <VersionBadge
-          v-if="authStore.isAdmin"
-          :version="siteVersion"
-          toolbar
-          class="header-version-control"
-        />
 
         <LocaleSwitcher class="header-locale-switcher" toolbar />
 

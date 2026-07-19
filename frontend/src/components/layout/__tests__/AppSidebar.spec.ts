@@ -47,6 +47,7 @@ describe('AppSidebar header styles', () => {
   it('moves the admin-only version control into the top toolbar', () => {
     expect(componentSource).not.toContain('VersionBadge')
     expect(headerSource).toMatch(/<VersionBadge[\s\S]*?v-if="authStore\.isAdmin"[\s\S]*?toolbar/)
+    expect(headerSource.indexOf('<VersionBadge')).toBeLessThan(headerSource.indexOf('<AnnouncementBell'))
   })
 
   it('does not clip the sidebar logo', () => {
