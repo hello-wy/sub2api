@@ -22,7 +22,7 @@
 
         <section class="hero-metrics" aria-label="今日核心指标">
           <article
-            class="hero-card hero-card--primary"
+            class="hero-card hero-card--primary hero-card--with-sparkline"
             @pointermove="updatePrimaryCardSpotlight"
             @pointerleave="hidePrimaryCardSpotlight"
           >
@@ -41,7 +41,7 @@
             </svg>
           </article>
 
-          <article class="hero-card">
+          <article class="hero-card hero-card--with-sparkline">
             <span>今日 API 调用</span>
             <strong>{{ formatNumber(stats.today_requests) }}</strong>
             <small>累计 {{ formatNumber(stats.total_requests) }} 次</small>
@@ -50,7 +50,7 @@
             </svg>
           </article>
 
-          <article class="hero-card">
+          <article class="hero-card hero-card--with-sparkline">
             <span>今日消耗</span>
             <strong>${{ formatCost(stats.today_actual_cost) }}</strong>
             <small>标准成本 ${{ formatCost(stats.today_cost) }}</small>
@@ -266,6 +266,8 @@ onMounted(() => { updateDateRange(); loadDashboard() })
 .refresh-button:disabled { cursor:wait; opacity:.66; }
 .hero-metrics { display:grid; grid-template-columns:1.18fr .9fr .9fr; gap:16px; }
 .hero-card { position:relative; min-height:174px; overflow:hidden; border:1px solid var(--dashboard-line); border-radius:16px; background:var(--dashboard-surface); padding:24px; box-shadow:0 10px 28px rgba(27,59,113,.055); }
+.hero-card--with-sparkline { min-height:196px; padding-bottom:78px; }
+.hero-card--with-sparkline > :not(.metric-sparkline) { position:relative; z-index:2; }
 .hero-card > span { display:block; color:#61708a; font-size:13px; font-weight:650; }
 .hero-card strong { display:block; margin:8px 0 9px; color:var(--dashboard-ink); font-size:31px; font-weight:760; letter-spacing:-.045em; line-height:1; }
 .hero-card small { color:var(--dashboard-muted); font-size:12px; }
@@ -282,7 +284,7 @@ onMounted(() => { updateDateRange(); loadDashboard() })
 .hero-card--primary > * { position:relative; z-index:1; }
 .hero-card--primary:hover { border-color:rgba(186,224,255,.96); box-shadow:0 18px 40px rgba(45,117,221,.25),inset 0 1px rgba(255,255,255,.48); }
 .hero-card--primary > span,.hero-card--primary small,.hero-card--primary strong { color:#fff; }
-.metric-sparkline { position:absolute; right:20px; bottom:15px; left:20px; width:calc(100% - 40px); height:69px; opacity:.9; }
+.metric-sparkline { position:absolute; z-index:1; right:20px; bottom:13px; left:20px; width:calc(100% - 40px); height:46px; opacity:.72; pointer-events:none; }
 .metric-sparkline path { fill:none; stroke:#fff; stroke-width:1.65; stroke-linecap:round; stroke-linejoin:round; vector-effect:non-scaling-stroke; }
 .metric-sparkline--mint path { stroke:#2bc4ad; }
 .metric-sparkline--violet path { stroke:#9570f7; }
@@ -327,6 +329,13 @@ onMounted(() => { updateDateRange(); loadDashboard() })
 .dark .dashboard-page { --dashboard-ink:#eef4ff; --dashboard-muted:#9aa9c3; --dashboard-line:rgba(152,180,224,.16); --dashboard-surface:#0e192b; }
 .dark .hero-card:not(.hero-card--primary),.dark .operation-strip,.dark .dashboard-card,.dark .refresh-button { background:#0e192b; }
 .dark .hero-card strong,.dark .strip-item strong,.dark .card-heading h2,.dark .recent-row strong { color:#eef4ff; }
+.dark .hero-card--primary { border-color:rgba(124,185,255,.72); background:linear-gradient(118deg,#255fc8 0%,#2c82d2 52%,#277c94 100%); box-shadow:0 16px 38px rgba(17,76,164,.32),inset 0 1px rgba(255,255,255,.26); }
+.dark .hero-card--primary > span { color:#f5f9ff; }
+.dark .hero-card--primary .token-pair p > span { color:#dbeafe; }
+.dark .hero-card--primary strong { color:#fff; text-shadow:0 2px 12px rgba(3,19,48,.3); }
+.dark .hero-card--primary .cost-breakdown__actual { color:#a7f3d0; }
+.dark .hero-card--primary .cost-breakdown__account { color:#fed7aa; }
+.dark .hero-card--primary .cost-breakdown__standard { color:#e8eef8; }
 .dark .recent-row { border-color:rgba(152,180,224,.13); }
 .dark .model-row span,.dark .model-mark,.dark .strip-icon { background:rgba(77,132,224,.14); }
 </style>

@@ -99,6 +99,7 @@ describe('user DashboardView', () => {
 
     const cards = wrapper.findAll('.hero-card')
     expect(cards).toHaveLength(3)
+    expect(wrapper.findAll('.hero-card--with-sparkline')).toHaveLength(2)
     expect(cards[0].text()).toContain('账户余额')
     expect(cards[0].text()).toContain('$42.75')
     expect(cards[0].text()).toContain('周积分 36')
