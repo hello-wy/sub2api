@@ -4,7 +4,7 @@
       <!-- Title -->
       <div class="login-heading">
         <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
-          {{ t('auth.welcomeBack') }}
+          {{ t('auth.signIn') }}
         </h2>
         <p class="mt-2 text-sm text-gray-500 dark:text-dark-400">
           {{ t('auth.signInToAccount') }}
@@ -143,7 +143,7 @@
           <EmailOAuthButtons
             :disabled="authActionDisabled"
             :github-enabled="githubOAuthEnabled"
-            :google-enabled="googleOAuthEnabled"
+            :google-enabled="false"
             :show-divider="false"
           />
 
@@ -244,7 +244,6 @@ const backendModeEnabled = ref<boolean>(false)
 const oidcOAuthEnabled = ref<boolean>(false)
 const oidcOAuthProviderName = ref<string>('OIDC')
 const githubOAuthEnabled = ref<boolean>(false)
-const googleOAuthEnabled = ref<boolean>(false)
 const passwordResetEnabled = ref<boolean>(false)
 const loginAgreementEnabled = ref<boolean>(false)
 const loginAgreementMode = ref<'modal' | 'checkbox' | string>('modal')
@@ -294,8 +293,7 @@ const showOAuthLogin = computed(
       dingtalkOAuthEnabled.value ||
       wechatOAuthEnabled.value ||
       oidcOAuthEnabled.value ||
-      githubOAuthEnabled.value ||
-      googleOAuthEnabled.value)
+      githubOAuthEnabled.value)
 )
 
 watch(validationToastMessage, (value, previousValue) => {
@@ -326,7 +324,6 @@ onMounted(async () => {
     oidcOAuthEnabled.value = settings.oidc_oauth_enabled
     oidcOAuthProviderName.value = settings.oidc_oauth_provider_name || 'OIDC'
     githubOAuthEnabled.value = settings.github_oauth_enabled
-    googleOAuthEnabled.value = settings.google_oauth_enabled
     backendModeEnabled.value = settings.backend_mode_enabled
     passwordResetEnabled.value = settings.password_reset_enabled
     applyLoginAgreementSettings(settings)
@@ -555,7 +552,7 @@ function handle2FACancel(): void {
 
 <style scoped>
 .login-heading {
-  text-align: left;
+  text-align: center;
 }
 
 .login-form .input-label {

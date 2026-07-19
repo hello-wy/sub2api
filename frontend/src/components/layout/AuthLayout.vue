@@ -1,11 +1,18 @@
 <template>
   <div v-if="isMinimalVariant" class="auth-minimal-shell">
-    <main class="auth-minimal-card" aria-label="账户登录">
-      <slot />
-      <div class="auth-minimal-footer">
-        <slot name="footer" />
-      </div>
-    </main>
+    <div class="auth-minimal-stack">
+      <router-link to="/home" class="auth-minimal-brand" :aria-label="`${siteName} 首页`">
+        <img :src="siteLogo || '/logo.png'" alt="" class="auth-minimal-logo" />
+        <span>{{ siteName }}</span>
+      </router-link>
+
+      <main class="auth-minimal-card" aria-label="账户登录">
+        <slot />
+        <div class="auth-minimal-footer">
+          <slot name="footer" />
+        </div>
+      </main>
+    </div>
   </div>
 
   <div v-else class="relative flex min-h-screen items-center justify-center overflow-hidden p-4">
@@ -97,17 +104,43 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   padding: 24px 16px;
-  background: #ffffff;
+  background:
+    linear-gradient(128deg, rgba(255, 224, 228, 0.78) 0%, rgba(255, 255, 255, 0) 31%),
+    linear-gradient(308deg, rgba(207, 244, 246, 0.86) 0%, rgba(255, 255, 255, 0) 30%),
+    linear-gradient(28deg, rgba(255, 244, 204, 0.46) 0%, rgba(255, 255, 255, 0) 34%),
+    #f7f9fc;
   color: #111827;
 }
 
-.auth-minimal-card {
+.auth-minimal-stack {
   width: min(100%, 420px);
+}
+
+.auth-minimal-brand {
+  display: flex;
+  width: fit-content;
+  align-items: center;
+  gap: 11px;
+  margin: 0 auto 22px;
+  color: #111827;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.auth-minimal-logo {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  object-fit: contain;
+}
+
+.auth-minimal-card {
+  width: 100%;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   background: #ffffff;
-  padding: 30px;
-  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.08);
+  padding: 32px;
+  box-shadow: 0 24px 64px rgba(49, 64, 85, 0.14);
 }
 
 .auth-minimal-footer {
@@ -117,7 +150,15 @@ onMounted(() => {
 }
 
 .dark .auth-minimal-shell {
-  background: #070b12;
+  background:
+    linear-gradient(128deg, rgba(91, 39, 59, 0.38) 0%, rgba(7, 11, 18, 0) 34%),
+    linear-gradient(308deg, rgba(16, 74, 91, 0.48) 0%, rgba(7, 11, 18, 0) 32%),
+    linear-gradient(28deg, rgba(99, 78, 28, 0.24) 0%, rgba(7, 11, 18, 0) 34%),
+    #070b12;
+  color: #f8fafc;
+}
+
+.dark .auth-minimal-brand {
   color: #f8fafc;
 }
 
@@ -135,6 +176,10 @@ onMounted(() => {
 
   .auth-minimal-card {
     padding: 24px 20px;
+  }
+
+  .auth-minimal-brand {
+    margin-bottom: 18px;
   }
 }
 </style>
