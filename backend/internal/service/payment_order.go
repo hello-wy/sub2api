@@ -69,8 +69,6 @@ func (s *PaymentService) CreateOrder(ctx context.Context, req CreateOrderRequest
 			return nil, err
 		}
 	}
-	gatewayOriginalAmount := limitAmount
-	gatewayBaseAmount := limitAmount
 	var loyaltyInfo *PaymentLoyaltyInfo
 	if req.OrderType == payment.OrderTypeBalance || req.OrderType == payment.OrderTypeSubscription {
 		loyaltyInfo, err = s.GetLoyaltyInfo(ctx, req.UserID)
@@ -78,7 +76,7 @@ func (s *PaymentService) CreateOrder(ctx context.Context, req CreateOrderRequest
 			return nil, fmt.Errorf("get loyalty info: %w", err)
 		}
 	}
-	gatewayOriginalAmount, gatewayBaseAmount = calculateCreateOrderGatewayAmounts(
+	gatewayOriginalAmount, gatewayBaseAmount := calculateCreateOrderGatewayAmounts(
 		limitAmount,
 		loyaltyDiscountPercent(loyaltyInfo),
 		methodCurrency,

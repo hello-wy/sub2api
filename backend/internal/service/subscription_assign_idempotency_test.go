@@ -105,12 +105,6 @@ func (s *subscriptionGroupRepoStub) GetByID(context.Context, int64) (*Group, err
 
 type userSubRepoNoop struct{}
 
-type userSubRepoListEmpty struct{ userSubRepoNoop }
-
-func (userSubRepoListEmpty) ListByUserID(context.Context, int64) ([]UserSubscription, error) {
-	return nil, nil
-}
-
 func (userSubRepoNoop) Create(context.Context, *UserSubscription) error {
 	panic("unexpected Create call")
 }
@@ -134,7 +128,7 @@ func (userSubRepoNoop) Restore(context.Context, int64, string) (*UserSubscriptio
 	panic("unexpected Restore call")
 }
 func (userSubRepoNoop) ListByUserID(context.Context, int64) ([]UserSubscription, error) {
-	panic("unexpected ListByUserID call")
+	return nil, nil
 }
 func (userSubRepoNoop) ListActiveByUserID(context.Context, int64) ([]UserSubscription, error) {
 	panic("unexpected ListActiveByUserID call")
