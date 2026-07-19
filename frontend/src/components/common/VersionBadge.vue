@@ -15,6 +15,11 @@
               ? 'text-gray-600 dark:text-dark-300'
               : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-800 dark:text-dark-400 dark:hover:bg-dark-700'
         ]"
+        :aria-label="
+          hasUpdate
+            ? `${t('version.updateAvailable')}: v${latestVersion}`
+            : `${t('version.currentVersion')}: v${currentVersion}`
+        "
         :title="hasUpdate ? t('version.updateAvailable') : t('version.upToDate')"
       >
         <Icon v-if="toolbar" name="download" size="sm" :stroke-width="2" />

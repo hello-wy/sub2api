@@ -1002,10 +1002,10 @@ watch(
 }
 
 .sidebar-logo {
-  flex: 0 0 9.75rem;
-  width: 9.75rem;
-  min-width: 9.75rem;
-  height: 3.25rem;
+  flex: 0 0 8.25rem;
+  width: 8.25rem;
+  min-width: 8.25rem;
+  height: 2.75rem;
   overflow: visible;
   transition:
     width 0.2s ease,
@@ -1016,7 +1016,7 @@ watch(
 
 .sidebar-logo-lockup {
   display: block;
-  width: 9.75rem;
+  width: 8.25rem;
   height: auto;
   object-fit: contain;
 }
@@ -1048,9 +1048,9 @@ watch(
 
 .sidebar-header:not(.sidebar-header-collapsed) {
   height: 4rem;
-  justify-content: center;
-  padding-right: 0.75rem;
-  padding-left: 0.75rem;
+  justify-content: flex-start;
+  padding-right: 1.25rem;
+  padding-left: 1.25rem;
 }
 
 .sidebar-header-collapsed .sidebar-logo {

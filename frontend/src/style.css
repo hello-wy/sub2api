@@ -392,6 +392,15 @@
   padding: 0;
 }
 
+.header-version-button {
+  width: 2.5rem;
+  padding: 0;
+}
+
+.header-version-button .version-trigger-label {
+  display: none;
+}
+
 .header-user-button {
   gap: 0.5rem;
   padding: 0 0.5rem 0 0.25rem;
@@ -562,10 +571,6 @@
   .header-tool-button {
     width: 2.5rem;
     padding: 0;
-  }
-
-  .header-version-button .version-trigger-label {
-    display: none;
   }
 
   .header-user-balance-label {
