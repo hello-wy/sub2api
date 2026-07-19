@@ -217,8 +217,6 @@ export default {
 
   // Auth
   auth: {
-    backToHome: 'Back to Home',
-    secureAccess: 'Secure Access',
     welcomeBack: 'Welcome Back',
     signInToAccount: 'Sign in to your account to continue',
     signIn: 'Sign In',

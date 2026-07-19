@@ -1,5 +1,5 @@
 <template>
-  <AuthLayout variant="home">
+  <AuthLayout variant="minimal">
     <div class="login-form space-y-6">
       <!-- Title -->
       <div class="login-heading">

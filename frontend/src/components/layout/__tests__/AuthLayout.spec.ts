@@ -8,26 +8,25 @@ const dir = dirname(fileURLToPath(import.meta.url))
 const layoutSource = readFileSync(resolve(dir, '../AuthLayout.vue'), 'utf8')
 const loginSource = readFileSync(resolve(dir, '../../../views/auth/LoginView.vue'), 'utf8')
 
-describe('AuthLayout home-inspired login variant', () => {
-  it('uses the dedicated home variant only for the login page', () => {
-    expect(loginSource).toContain('<AuthLayout variant="home">')
-    expect(layoutSource).toContain("variant?: 'default' | 'home'")
+describe('AuthLayout minimal login variant', () => {
+  it('uses the dedicated minimal variant only for the login page', () => {
+    expect(loginSource).toContain('<AuthLayout variant="minimal">')
+    expect(layoutSource).toContain("variant?: 'default' | 'minimal'")
     expect(layoutSource).toContain("variant: 'default'")
   })
 
-  it('reuses both home hero assets and renders a solid login panel', () => {
-    expect(layoutSource).toContain('/home/solid-api-blue-core-light.webp')
-    expect(layoutSource).toContain('/home/solid-api-blue-core.webp')
-    expect(layoutSource).toContain('class="auth-home-card"')
-    expect(layoutSource).toMatch(/\.auth-home-card\s*\{[\s\S]*?background: #ffffff;/)
-    expect(layoutSource).not.toMatch(/\.auth-home-card\s*\{[\s\S]*?backdrop-filter:/)
+  it('renders one solid login card without a hero background', () => {
+    expect(layoutSource).toContain('class="auth-minimal-card"')
+    expect(layoutSource).toMatch(/\.auth-minimal-card\s*\{[\s\S]*?background: #ffffff;/)
+    expect(layoutSource).not.toContain('/home/solid-api-blue-core-light.webp')
+    expect(layoutSource).not.toContain('/home/solid-api-blue-core.webp')
+    expect(layoutSource).not.toContain('backdrop-filter:')
   })
 
-  it('provides home navigation and an accessible theme switch', () => {
-    expect(layoutSource).toContain('to="/home" class="auth-home-link"')
-    expect(layoutSource).toContain("t('auth.backToHome')")
-    expect(layoutSource).toContain("t('home.switchToLight')")
-    expect(layoutSource).toContain("t('home.switchToDark')")
-    expect(layoutSource).toContain('@click="toggleTheme"')
+  it('does not render peripheral navigation or decorative content', () => {
+    expect(layoutSource).not.toContain('class="auth-home-header"')
+    expect(layoutSource).not.toContain('class="auth-home-brand"')
+    expect(layoutSource).not.toContain('@click="toggleTheme"')
+    expect(layoutSource).toContain('class="auth-minimal-footer"')
   })
 })
