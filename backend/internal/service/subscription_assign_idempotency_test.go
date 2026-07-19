@@ -105,6 +105,12 @@ func (s *subscriptionGroupRepoStub) GetByID(context.Context, int64) (*Group, err
 
 type userSubRepoNoop struct{}
 
+type userSubRepoListEmpty struct{ userSubRepoNoop }
+
+func (userSubRepoListEmpty) ListByUserID(context.Context, int64) ([]UserSubscription, error) {
+	return nil, nil
+}
+
 func (userSubRepoNoop) Create(context.Context, *UserSubscription) error {
 	panic("unexpected Create call")
 }
