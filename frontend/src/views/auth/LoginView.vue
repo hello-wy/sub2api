@@ -565,7 +565,7 @@ function handle2FACancel(): void {
 .login-form .input {
   min-height: 48px;
   border-color: rgba(148, 163, 184, 0.42);
-  border-radius: 10px;
+  border-radius: 14px;
   background: rgba(248, 251, 255, 0.7);
   box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
 }

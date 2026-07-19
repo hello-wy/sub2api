@@ -1,5 +1,10 @@
 <template>
   <div v-if="isMinimalVariant" class="auth-minimal-shell">
+    <router-link to="/home" class="auth-corner-brand" :aria-label="`${siteName} 首页`">
+      <img :src="siteLogo || '/logo.png'" alt="" class="auth-corner-logo" />
+      <span>{{ siteName }}</span>
+    </router-link>
+
     <div class="auth-minimal-stack">
       <router-link to="/home" class="auth-minimal-brand" :aria-label="`${siteName} 首页`">
         <img :src="siteLogo || '/logo.png'" alt="" class="auth-minimal-logo" />
@@ -7,6 +12,19 @@
       </router-link>
 
       <main class="auth-minimal-card" aria-label="账户登录">
+        <div class="auth-minimal-tools">
+          <LocaleSwitcher class="auth-minimal-locale" toolbar />
+          <button
+            type="button"
+            class="auth-minimal-tool-button"
+            :aria-label="isDark ? t('nav.lightMode') : t('nav.darkMode')"
+            :title="isDark ? t('nav.lightMode') : t('nav.darkMode')"
+            @click="toggleTheme"
+          >
+            <Icon :name="isDark ? 'sun' : 'moon'" size="md" />
+          </button>
+        </div>
+
         <slot />
         <div class="auth-minimal-footer">
           <slot name="footer" />
@@ -68,7 +86,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
+import Icon from '@/components/icons/Icon.vue'
 import { useAppStore } from '@/stores'
 import { sanitizeUrl } from '@/utils/url'
 
@@ -79,6 +100,9 @@ const props = withDefaults(defineProps<{
 })
 
 const appStore = useAppStore()
+const { t } = useI18n()
+const isDark = ref(document.documentElement.classList.contains('dark'))
+let themeObserver: MutationObserver | null = null
 
 const isMinimalVariant = computed(() => props.variant === 'minimal')
 const siteName = computed(() => appStore.siteName || 'Sub2API')
@@ -87,8 +111,29 @@ const siteSubtitle = computed(() => appStore.cachedPublicSettings?.site_subtitle
 const settingsLoaded = computed(() => appStore.publicSettingsLoaded)
 const currentYear = computed(() => new Date().getFullYear())
 
+function updateThemeState() {
+  isDark.value = document.documentElement.classList.contains('dark')
+}
+
+function toggleTheme() {
+  const nextIsDark = !isDark.value
+  document.documentElement.classList.toggle('dark', nextIsDark)
+  localStorage.setItem('theme', nextIsDark ? 'dark' : 'light')
+  isDark.value = nextIsDark
+}
+
 onMounted(() => {
   appStore.fetchPublicSettings()
+  updateThemeState()
+  themeObserver = new MutationObserver(updateThemeState)
+  themeObserver.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['class']
+  })
+})
+
+onBeforeUnmount(() => {
+  themeObserver?.disconnect()
 })
 </script>
 
@@ -98,16 +143,34 @@ onMounted(() => {
 }
 
 .auth-minimal-shell {
+  position: relative;
   display: flex;
   min-height: 100vh;
   min-height: 100dvh;
   align-items: center;
   justify-content: center;
   padding: 24px 16px;
-  background:
-    linear-gradient(132deg, rgba(199, 221, 255, 0.94) 0%, rgba(246, 250, 255, 0.78) 43%, rgba(207, 240, 255, 0.9) 100%),
-    #eef6ff;
+  background-color: #f0f7ff;
   color: #111827;
+}
+
+.auth-corner-brand {
+  position: absolute;
+  top: 24px;
+  left: 28px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #111827;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.auth-corner-logo {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  object-fit: contain;
 }
 
 .auth-minimal-stack {
@@ -134,14 +197,45 @@ onMounted(() => {
 }
 
 .auth-minimal-card {
+  position: relative;
   width: 100%;
   border: 1px solid rgba(255, 255, 255, 0.72);
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.58);
-  padding: 34px;
+  padding: 68px 34px 34px;
   box-shadow: 0 30px 76px rgba(37, 74, 128, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.78);
   backdrop-filter: blur(22px) saturate(1.2);
   -webkit-backdrop-filter: blur(22px) saturate(1.2);
+}
+
+.auth-minimal-tools {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.auth-minimal-tools :deep(.header-tool-button),
+.auth-minimal-tool-button {
+  display: inline-flex;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(112, 145, 181, 0.28);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.54);
+  color: #334155;
+  transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease;
+}
+
+.auth-minimal-tools :deep(.header-tool-button:hover:not(:disabled)),
+.auth-minimal-tool-button:hover {
+  border-color: rgba(59, 130, 246, 0.48);
+  background: rgba(255, 255, 255, 0.84);
+  color: #1677ff;
 }
 
 .auth-minimal-footer {
@@ -151,14 +245,27 @@ onMounted(() => {
 }
 
 .dark .auth-minimal-shell {
-  background:
-    linear-gradient(132deg, rgba(18, 48, 86, 0.88) 0%, rgba(6, 14, 26, 0.96) 46%, rgba(7, 42, 61, 0.9) 100%),
-    #060e1a;
+  background-color: #0c1d31;
   color: #f8fafc;
 }
 
+.dark .auth-corner-brand,
 .dark .auth-minimal-brand {
   color: #f8fafc;
+}
+
+.dark .auth-minimal-tools :deep(.header-tool-button),
+.dark .auth-minimal-tool-button {
+  border-color: rgba(163, 207, 255, 0.16);
+  background: rgba(17, 38, 62, 0.7);
+  color: #cbd5e1;
+}
+
+.dark .auth-minimal-tools :deep(.header-tool-button:hover:not(:disabled)),
+.dark .auth-minimal-tool-button:hover {
+  border-color: rgba(96, 165, 250, 0.48);
+  background: rgba(28, 57, 88, 0.88);
+  color: #60a5fa;
 }
 
 .dark .auth-minimal-card {
@@ -175,11 +282,20 @@ onMounted(() => {
 
   .auth-minimal-card {
     border-radius: 18px;
-    padding: 26px 20px;
+    padding: 66px 20px 26px;
   }
 
   .auth-minimal-brand {
     margin-bottom: 18px;
+  }
+
+  .auth-corner-brand {
+    top: 18px;
+    left: 18px;
+  }
+
+  .auth-corner-brand span {
+    display: none;
   }
 }
 </style>
