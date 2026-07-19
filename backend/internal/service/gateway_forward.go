@@ -97,6 +97,13 @@ func (s *GatewayService) Forward(ctx context.Context, c *gin.Context, account *A
 	if account != nil && s.shouldEmulateWebSearch(ctx, account, parsed.GroupID, parsed.Body.Bytes()) {
 		return s.handleWebSearchEmulation(ctx, c, account, parsed)
 	}
+	mappedPricingModel := parsed.Model
+	if account != nil {
+		mappedPricingModel = account.GetMappedModel(parsed.Model)
+	}
+	if err := s.validatePricingBeforeForward(ctx, c, parsed.Model, mappedPricingModel); err != nil {
+		return nil, err
+	}
 
 	if account != nil && account.IsAnthropicAPIKeyPassthroughEnabled() {
 		passthroughBody := parsed.Body.Bytes()
