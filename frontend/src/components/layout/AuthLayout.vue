@@ -105,10 +105,8 @@ onMounted(() => {
   justify-content: center;
   padding: 24px 16px;
   background:
-    linear-gradient(128deg, rgba(255, 224, 228, 0.78) 0%, rgba(255, 255, 255, 0) 31%),
-    linear-gradient(308deg, rgba(207, 244, 246, 0.86) 0%, rgba(255, 255, 255, 0) 30%),
-    linear-gradient(28deg, rgba(255, 244, 204, 0.46) 0%, rgba(255, 255, 255, 0) 34%),
-    #f7f9fc;
+    linear-gradient(132deg, rgba(199, 221, 255, 0.94) 0%, rgba(246, 250, 255, 0.78) 43%, rgba(207, 240, 255, 0.9) 100%),
+    #eef6ff;
   color: #111827;
 }
 
@@ -120,27 +118,30 @@ onMounted(() => {
   display: flex;
   width: fit-content;
   align-items: center;
-  gap: 11px;
-  margin: 0 auto 22px;
+  gap: 12px;
+  margin: 0 auto 24px;
   color: #111827;
   font-size: 22px;
   font-weight: 700;
 }
 
 .auth-minimal-logo {
-  width: 44px;
-  height: 44px;
-  border-radius: 8px;
+  width: 46px;
+  height: 46px;
+  border-radius: 10px;
   object-fit: contain;
+  filter: drop-shadow(0 8px 16px rgba(30, 64, 175, 0.16));
 }
 
 .auth-minimal-card {
   width: 100%;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  background: #ffffff;
-  padding: 32px;
-  box-shadow: 0 24px 64px rgba(49, 64, 85, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.58);
+  padding: 34px;
+  box-shadow: 0 30px 76px rgba(37, 74, 128, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(22px) saturate(1.2);
+  -webkit-backdrop-filter: blur(22px) saturate(1.2);
 }
 
 .auth-minimal-footer {
@@ -151,10 +152,8 @@ onMounted(() => {
 
 .dark .auth-minimal-shell {
   background:
-    linear-gradient(128deg, rgba(91, 39, 59, 0.38) 0%, rgba(7, 11, 18, 0) 34%),
-    linear-gradient(308deg, rgba(16, 74, 91, 0.48) 0%, rgba(7, 11, 18, 0) 32%),
-    linear-gradient(28deg, rgba(99, 78, 28, 0.24) 0%, rgba(7, 11, 18, 0) 34%),
-    #070b12;
+    linear-gradient(132deg, rgba(18, 48, 86, 0.88) 0%, rgba(6, 14, 26, 0.96) 46%, rgba(7, 42, 61, 0.9) 100%),
+    #060e1a;
   color: #f8fafc;
 }
 
@@ -163,9 +162,9 @@ onMounted(() => {
 }
 
 .dark .auth-minimal-card {
-  border-color: #263548;
-  background: #0b1422;
-  box-shadow: 0 22px 56px rgba(0, 0, 0, 0.34);
+  border-color: rgba(148, 191, 236, 0.2);
+  background: rgba(11, 23, 39, 0.64);
+  box-shadow: 0 32px 84px rgba(0, 0, 0, 0.48), inset 0 1px 0 rgba(191, 219, 254, 0.1);
 }
 
 @media (max-width: 480px) {
@@ -175,7 +174,8 @@ onMounted(() => {
   }
 
   .auth-minimal-card {
-    padding: 24px 20px;
+    border-radius: 18px;
+    padding: 26px 20px;
   }
 
   .auth-minimal-brand {

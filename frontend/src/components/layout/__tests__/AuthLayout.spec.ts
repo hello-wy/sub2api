@@ -15,15 +15,23 @@ describe('AuthLayout branded login variant', () => {
     expect(layoutSource).toContain("variant: 'default'")
   })
 
-  it('renders one solid login card over a CSS gradient background', () => {
+  it('renders one frosted login card over a blue-white gradient background', () => {
     expect(layoutSource).toContain('class="auth-minimal-card"')
     expect(layoutSource).toContain('class="auth-minimal-brand"')
     expect(layoutSource).toContain('class="auth-minimal-logo"')
-    expect(layoutSource).toMatch(/\.auth-minimal-card\s*\{[\s\S]*?background: #ffffff;/)
+    expect(layoutSource).toMatch(/\.auth-minimal-card\s*\{[\s\S]*?border-radius: 20px;/)
+    expect(layoutSource).toMatch(/\.auth-minimal-card\s*\{[\s\S]*?background: rgba\(255, 255, 255, 0\.58\);/)
+    expect(layoutSource).toMatch(/\.auth-minimal-card\s*\{[\s\S]*?backdrop-filter: blur\(22px\)/)
     expect(layoutSource).toMatch(/\.auth-minimal-shell\s*\{[\s\S]*?linear-gradient\(/)
+    expect(layoutSource).toContain('rgba(199, 221, 255, 0.94)')
     expect(layoutSource).not.toContain('/home/solid-api-blue-core-light.webp')
     expect(layoutSource).not.toContain('/home/solid-api-blue-core.webp')
-    expect(layoutSource).not.toContain('backdrop-filter:')
+  })
+
+  it('uses rounded translucent inputs and a pill-shaped primary action', () => {
+    expect(loginSource).toMatch(/\.login-form \.input\s*\{[\s\S]*?border-radius: 10px;/)
+    expect(loginSource).toMatch(/\.login-form \.input\s*\{[\s\S]*?background: rgba\(248, 251, 255, 0\.7\);/)
+    expect(loginSource).toMatch(/\.login-submit\s*\{[\s\S]*?border-radius: 999px;/)
   })
 
   it('does not render peripheral navigation or decorative content', () => {

@@ -563,15 +563,16 @@ function handle2FACancel(): void {
 }
 
 .login-form .input {
-  min-height: 46px;
-  border-color: #dbe3ee;
-  border-radius: 7px;
-  background: #f8fafc;
-  box-shadow: none;
+  min-height: 48px;
+  border-color: rgba(148, 163, 184, 0.42);
+  border-radius: 10px;
+  background: rgba(248, 251, 255, 0.7);
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
 .login-form .input:hover:not(:disabled) {
-  border-color: #a8b8cc;
+  border-color: rgba(96, 165, 250, 0.72);
+  background: rgba(255, 255, 255, 0.84);
 }
 
 .login-form .input:focus {
@@ -580,10 +581,10 @@ function handle2FACancel(): void {
 }
 
 .login-submit {
-  min-height: 46px;
-  border-radius: 7px;
+  min-height: 48px;
+  border-radius: 999px;
   background: #1677ff;
-  box-shadow: none;
+  box-shadow: 0 12px 26px rgba(22, 119, 255, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.22);
   font-weight: 650;
 }
 
@@ -598,13 +599,15 @@ function handle2FACancel(): void {
 }
 
 .dark .login-form .input {
-  border-color: #334155;
-  background: #101c2d;
+  border-color: rgba(119, 154, 194, 0.38);
+  background: rgba(7, 17, 30, 0.58);
   color: #f8fafc;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.24);
 }
 
 .dark .login-form .input:hover:not(:disabled) {
-  border-color: #52647b;
+  border-color: rgba(96, 165, 250, 0.72);
+  background: rgba(13, 31, 51, 0.76);
 }
 
 .dark .login-form .input:focus {
