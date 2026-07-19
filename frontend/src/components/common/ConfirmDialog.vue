@@ -1,7 +1,15 @@
 <template>
   <BaseDialog :show="show" :title="title" width="narrow" @close="handleCancel">
     <div class="space-y-4">
-      <p class="text-sm text-gray-600 dark:text-gray-400">{{ message }}</p>
+      <p v-if="message" class="text-sm text-gray-600 dark:text-gray-400">{{ message }}</p>
+      <div
+        v-if="warningMessage"
+        role="alert"
+        class="flex items-start gap-2.5 rounded-lg border border-red-200 bg-red-50 px-3.5 py-3 text-red-700 dark:border-red-500/35 dark:bg-red-500/10 dark:text-red-300"
+      >
+        <Icon name="exclamationTriangle" size="sm" class="mt-0.5 shrink-0" />
+        <p class="text-sm font-semibold leading-6">{{ warningMessage }}</p>
+      </div>
       <slot></slot>
     </div>
 
@@ -41,7 +49,8 @@ const { t } = useI18n()
 interface Props {
   show: boolean
   title: string
-  message: string
+  message?: string
+  warningMessage?: string
   confirmText?: string
   cancelText?: string
   danger?: boolean

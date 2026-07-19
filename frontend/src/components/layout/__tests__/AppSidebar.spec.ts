@@ -57,6 +57,15 @@ describe('AppSidebar header styles', () => {
     expect(sidebarHeaderBlockMatch?.[0]).not.toContain('@apply overflow-hidden;')
     expect(sidebarHeaderBlockMatch?.[0]).not.toContain('@apply border-b')
   })
+
+  it('animates route titles and subtitles with the page transition timing', () => {
+    expect(headerSource).toContain('class="app-header-page-copy header-page-copy"')
+    expect(styleSource).toContain('.page-fade-enter-active .app-header-page-copy')
+    expect(styleSource).toContain('.page-fade-leave-active .app-header-page-copy')
+    expect(styleSource).toContain('page-content-fade-in 220ms cubic-bezier(0.16, 1, 0.3, 1)')
+    expect(styleSource).toContain('page-content-fade-out 140ms ease-in')
+    expect(styleSource).toMatch(/prefers-reduced-motion:[\s\S]*?\.page-fade-enter-active \.app-header-page-copy/)
+  })
 })
 
 describe('AppSidebar liquid glass states', () => {

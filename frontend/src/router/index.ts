@@ -374,6 +374,7 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: false,
       title: 'Payment',
       titleKey: 'payment.qr.scanToPay',
+      descriptionKey: 'payment.qr.description',
       requiresPayment: true
     }
   },
@@ -410,6 +411,7 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: false,
       title: 'Airwallex Payment',
       titleKey: 'payment.airwallexPay',
+      descriptionKey: 'payment.airwallexDescription',
       requiresPayment: false
     }
   },
@@ -727,6 +729,7 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: true,
       title: 'Payment Dashboard',
       titleKey: 'nav.paymentDashboard',
+      descriptionKey: 'payment.admin.dashboardDescription',
       requiresPayment: true
     }
   },
@@ -739,6 +742,7 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: true,
       title: 'Order Management',
       titleKey: 'nav.orderManagement',
+      descriptionKey: 'payment.admin.ordersDescription',
       requiresPayment: true
     }
   },
@@ -751,6 +755,7 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: true,
       title: 'Subscription Plans',
       titleKey: 'nav.paymentPlans',
+      descriptionKey: 'payment.admin.plansDescription',
       requiresPayment: true
     }
   },

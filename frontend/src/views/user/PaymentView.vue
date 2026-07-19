@@ -204,6 +204,7 @@
       :show="Boolean(pendingSubscriptionPurchase)"
       :title="subscriptionPurchaseDialogTitle"
       :message="subscriptionPurchaseDialogMessage"
+      :warning-message="subscriptionPurchaseDialogWarningMessage"
       :confirm-text="subscriptionPurchaseDialogConfirmText"
       @confirm="confirmPendingSubscriptionPurchase"
       @cancel="cancelPendingSubscriptionPurchase"
@@ -846,12 +847,14 @@ const subscriptionPurchaseDialogTitle = computed(() => {
 })
 
 const subscriptionPurchaseDialogMessage = computed(() => {
-  if (pendingSubscriptionPurchase.value?.stage !== 'balance') {
-    return subscriptionOverrideMessage.value
-  }
-  return activeSubscriptionToReplace.value
-    ? t('wallet.subscriptionBalanceConfirmWithOverrideMessage', { warning: subscriptionOverrideMessage.value })
-    : t('wallet.subscriptionBalanceConfirmMessage')
+  return pendingSubscriptionPurchase.value?.stage === 'balance'
+    ? t('wallet.subscriptionBalanceConfirmMessage')
+    : ''
+})
+
+const subscriptionPurchaseDialogWarningMessage = computed(() => {
+  if (!pendingSubscriptionPurchase.value || !activeSubscriptionToReplace.value) return ''
+  return subscriptionOverrideMessage.value
 })
 
 const subscriptionPurchaseDialogConfirmText = computed(() => {

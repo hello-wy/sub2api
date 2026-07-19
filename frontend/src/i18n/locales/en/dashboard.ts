@@ -490,7 +490,7 @@ export default {
   // Available Channels (user-facing)
   availableChannels: {
     title: 'Available Channels',
-    description: 'Channels you can access, along with their supported models and pricing',
+    description: 'Browse accessible channels, models, and pricing',
     searchPlaceholder: 'Search channels or models...',
     empty: 'No available channels',
     noModels: 'No models configured',
@@ -527,7 +527,7 @@ export default {
 
   affiliate: {
     title: 'Affiliate Rebates',
-    description: 'Invite new users and convert your rebate quota into account balance',
+    description: 'Manage invitations and rebate balance',
     yourCode: 'Your Affiliate Code',
     inviteLink: 'Invite Link',
     copyCode: 'Copy Code',
@@ -574,7 +574,7 @@ export default {
 
   wallet: {
     title: 'My Wallet',
-    description: 'Manage balance top-ups, subscriptions, balance activity, and redeem codes',
+    description: 'Manage top-ups, subscriptions, and balance activity',
     catalogTitle: 'Choose an offer',
     catalogHint: 'Subscription plans and balance top-ups are listed below for direct purchase, top-up, or redemption.',
     rechargeSectionTitle: 'Balance top-up offers',
@@ -600,7 +600,6 @@ export default {
     subscriptionBalanceSuccess: 'Subscription activated',
     subscriptionBalanceConfirmTitle: 'Confirm balance purchase',
     subscriptionBalanceConfirmMessage: 'Review the plan and payment details. Your balance will be charged and the subscription activated after confirmation.',
-    subscriptionBalanceConfirmWithOverrideMessage: 'Review the plan and payment details. {warning}',
     subscriptionBalanceConfirmAction: 'Confirm purchase',
     subscriptionConfirmPlan: 'Subscription plan',
     refreshBalance: 'Refresh balance and subscriptions',
@@ -854,7 +853,7 @@ export default {
   loyalty: {
     eyebrow: 'Recharge Benefits',
     title: 'Membership Program',
-    description: 'Accumulate recharge points, level up weekly membership benefits, and unlock lifetime discounts from total recharge.',
+    description: 'Earn points and unlock better recharge discounts.',
     currentPoints: 'Current Points',
     weeklyPoints: 'Weekly Points',
     permanentPoints: 'Lifetime Points',
@@ -932,7 +931,7 @@ export default {
 
   modelSquare: {
     title: 'Model Square',
-    description: 'Browse available models, platforms, group multipliers, and dynamically calculated prices.',
+    description: 'Browse available models, rates, and pricing.',
     eyebrow: 'Model Atlas',
     searchPlaceholder: 'Search models, platforms, channels, or groups...',
     empty: 'No matching models',

@@ -490,7 +490,8 @@ describe('PaymentView inline subscription checkout', () => {
     const dialog = wrapper.findComponent({ name: 'ConfirmDialog' })
     expect(dialog.props('show')).toBe(true)
     expect(dialog.props('title')).toBe('wallet.subscriptionBalanceConfirmTitle')
-    expect(dialog.props('message')).toBe('wallet.subscriptionBalanceConfirmWithOverrideMessage')
+    expect(dialog.props('message')).toBe('wallet.subscriptionBalanceConfirmMessage')
+    expect(dialog.props('warningMessage')).toBe('wallet.subscriptionOverrideMessage')
 
     dialog.vm.$emit('confirm')
     await flushPromises()

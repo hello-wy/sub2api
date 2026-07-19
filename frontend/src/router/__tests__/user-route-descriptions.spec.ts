@@ -30,4 +30,27 @@ describe('user route subtitles', () => {
     expect(zhDashboard.channelStatus.description).toBe('查看渠道可用性、延迟和近期状态')
     expect(zhMisc.payment.orders.description).toBe('查看充值与订阅订单记录')
   })
+
+  it('adds concise subtitles to payment pages that use the app header', () => {
+    expect(routerSource).toMatch(
+      /path: '\/payment\/qrcode'[\s\S]*descriptionKey: 'payment\.qr\.description'/,
+    )
+    expect(routerSource).toMatch(
+      /path: '\/payment\/airwallex'[\s\S]*descriptionKey: 'payment\.airwallexDescription'/,
+    )
+    expect(routerSource).toMatch(
+      /path: '\/admin\/orders\/dashboard'[\s\S]*descriptionKey: 'payment\.admin\.dashboardDescription'/,
+    )
+    expect(routerSource).toMatch(
+      /path: '\/admin\/orders'[\s\S]*descriptionKey: 'payment\.admin\.ordersDescription'/,
+    )
+    expect(routerSource).toMatch(
+      /path: '\/admin\/orders\/plans'[\s\S]*descriptionKey: 'payment\.admin\.plansDescription'/,
+    )
+    expect(zhMisc.payment.qr.description).toBe('扫码完成本次支付')
+    expect(zhMisc.payment.airwallexDescription).toBe('安全完成本次在线支付')
+    expect(zhMisc.payment.admin.dashboardDescription).toBe('查看支付收入与订单趋势')
+    expect(zhMisc.payment.admin.ordersDescription).toBe('管理充值与订阅订单')
+    expect(zhMisc.payment.admin.plansDescription).toBe('配置可售订阅套餐')
+  })
 })

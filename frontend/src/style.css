@@ -679,12 +679,14 @@
   }
 }
 
-.page-fade-enter-active .app-page-content {
+.page-fade-enter-active .app-page-content,
+.page-fade-enter-active .app-header-page-copy {
   animation: page-content-fade-in 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
   will-change: opacity, transform;
 }
 
-.page-fade-leave-active .app-page-content {
+.page-fade-leave-active .app-page-content,
+.page-fade-leave-active .app-header-page-copy {
   animation: page-content-fade-out 140ms ease-in both;
   will-change: opacity, transform;
 }
@@ -698,7 +700,9 @@
   }
 
   .page-fade-enter-active .app-page-content,
-  .page-fade-leave-active .app-page-content {
+  .page-fade-leave-active .app-page-content,
+  .page-fade-enter-active .app-header-page-copy,
+  .page-fade-leave-active .app-header-page-copy {
     animation: none;
   }
 }

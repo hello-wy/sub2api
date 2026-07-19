@@ -1,7 +1,7 @@
 export default {
     settings: {
       title: '系统设置',
-      description: '管理注册、邮箱验证、默认值和 SMTP 设置',
+      description: '管理系统功能、认证与通知',
       tabs: {
         general: '通用设置',
         agreement: '登录条款',

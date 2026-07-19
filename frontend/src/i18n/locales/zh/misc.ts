@@ -351,6 +351,7 @@ export default {
     },
     qr: {
       scanToPay: '请扫码支付',
+      description: '扫码完成本次支付',
       scanAlipay: '支付宝扫码支付',
       scanWxpay: '微信扫码支付',
       scanAlipayHint: '请使用手机打开支付宝，扫描二维码完成支付',
@@ -464,6 +465,7 @@ export default {
       REFUND_FAILED: '退款失败',
     },
     airwallexPay: 'Airwallex 支付',
+    airwallexDescription: '安全完成本次在线支付',
     stripePay: '立即支付',
     stripeSuccessProcessing: '支付成功，正在处理订单...',
     stripePopup: {
@@ -494,6 +496,9 @@ export default {
     perMonth: '月',
     perYear: '年',
     admin: {
+      dashboardDescription: '查看支付收入与订单趋势',
+      ordersDescription: '管理充值与订阅订单',
+      plansDescription: '配置可售订阅套餐',
       tabs: {
         overview: '概览',
         orders: '订单管理',

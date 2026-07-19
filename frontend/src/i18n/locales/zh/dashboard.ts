@@ -495,7 +495,7 @@ export default {
   // Available Channels (user-facing)
   availableChannels: {
     title: '可用渠道',
-    description: '查看您可访问的渠道与其支持的模型、定价',
+    description: '查看可用渠道、模型与价格',
     searchPlaceholder: '搜索渠道或模型...',
     empty: '暂无可用渠道',
     noModels: '未配置模型',
@@ -532,7 +532,7 @@ export default {
 
   affiliate: {
     title: '邀请返利',
-    description: '邀请新用户注册，并将返利额度转入账户余额',
+    description: '管理邀请关系与返利余额',
     yourCode: '我的邀请码',
     inviteLink: '邀请链接',
     copyCode: '复制邀请码',
@@ -579,7 +579,7 @@ export default {
 
   wallet: {
     title: '我的钱包',
-    description: '统一管理余额充值、订阅套餐、余额明细和兑换码',
+    description: '管理充值、订阅与余额明细',
     catalogTitle: '选择套餐',
     catalogHint: '订阅套餐和余额充值直接展示在下方，按需开通、充值或兑换。',
     rechargeSectionTitle: '余额充值套餐',
@@ -605,7 +605,6 @@ export default {
     subscriptionBalanceSuccess: '订阅成功',
     subscriptionBalanceConfirmTitle: '确认使用余额订阅',
     subscriptionBalanceConfirmMessage: '请核对套餐与扣款信息。确认后将立即扣除账户余额并开通订阅。',
-    subscriptionBalanceConfirmWithOverrideMessage: '请核对套餐与扣款信息。{warning}',
     subscriptionBalanceConfirmAction: '确认购买',
     subscriptionConfirmPlan: '订阅套餐',
     refreshBalance: '刷新余额与订阅',
@@ -937,7 +936,7 @@ export default {
 
   modelSquare: {
     title: '模型广场',
-    description: '浏览当前可用模型、平台、分组倍率和动态计算后的价格。',
+    description: '浏览可用模型、倍率与价格',
     eyebrow: 'Model Atlas',
     searchPlaceholder: '搜索模型、平台、渠道或分组...',
     empty: '暂无匹配模型',

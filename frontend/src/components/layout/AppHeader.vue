@@ -11,13 +11,15 @@
           <Icon name="menu" size="md" />
         </button>
 
-        <div class="hidden lg:block">
-          <h1 class="text-lg font-semibold text-gray-900 dark:text-white">
-            {{ pageTitle }}
-          </h1>
-          <p v-if="pageDescription" class="text-xs text-gray-500 dark:text-dark-400">
-            {{ pageDescription }}
-          </p>
+        <div class="hidden min-w-0 lg:block">
+          <div class="app-header-page-copy header-page-copy">
+            <h1 class="truncate text-lg font-semibold text-gray-900 dark:text-white">
+              {{ pageTitle }}
+            </h1>
+            <p v-if="pageDescription" class="truncate text-xs text-gray-500 dark:text-dark-400">
+              {{ pageDescription }}
+            </p>
+          </div>
         </div>
       </div>
 
@@ -401,6 +403,15 @@ watch(
 </script>
 
 <style scoped>
+.header-page-copy {
+  display: flex;
+  min-height: 2.5rem;
+  max-width: min(34rem, 38vw);
+  min-width: 0;
+  flex-direction: column;
+  justify-content: center;
+}
+
 .dropdown-enter-active,
 .dropdown-leave-active {
   transition: all 0.2s ease;
