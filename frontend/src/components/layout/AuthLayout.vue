@@ -1,9 +1,5 @@
 <template>
   <div v-if="isMinimalVariant" class="auth-minimal-shell">
-    <router-link to="/home" class="auth-corner-brand" :aria-label="`${siteName} 首页`">
-      <img :src="brandLockup" :alt="siteName" class="auth-corner-lockup" />
-    </router-link>
-
     <div class="auth-minimal-stack">
       <router-link to="/home" class="auth-minimal-brand" :aria-label="`${siteName} 首页`">
         <img :src="brandLockup" :alt="siteName" class="auth-minimal-lockup" />
@@ -167,20 +163,6 @@ onBeforeUnmount(() => {
   pointer-events: none;
 }
 
-.auth-corner-brand {
-  position: absolute;
-  top: 24px;
-  left: 28px;
-  display: flex;
-  align-items: center;
-}
-
-.auth-corner-lockup {
-  width: 144px;
-  height: auto;
-  object-fit: contain;
-}
-
 .auth-minimal-stack {
   width: min(100%, 420px);
 }
@@ -303,17 +285,6 @@ onBeforeUnmount(() => {
 
   .auth-minimal-brand {
     margin-bottom: 18px;
-  }
-
-  .auth-corner-brand {
-    top: 18px;
-    left: 18px;
-  }
-
-  .auth-corner-lockup {
-    width: 120px;
-    height: auto;
-    object-fit: contain;
   }
 }
 </style>

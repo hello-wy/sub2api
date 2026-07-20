@@ -1,6 +1,7 @@
 <template>
   <AppLayout>
-    <div class="dashboard-page">
+    <ScrollablePageLayout>
+      <div class="dashboard-page">
       <div v-if="loading" class="flex items-center justify-center py-20"><LoadingSpinner /></div>
       <template v-else-if="stats">
         <header class="dashboard-header">
@@ -49,6 +50,7 @@
       </template>
       <div v-else class="dashboard-load-error"><strong>仪表盘数据暂不可用</strong><span>{{ errorMessage || '请稍后重试。' }}</span><button type="button" class="refresh-button" @click="refreshAll">重新加载</button></div>
     </div>
+    </ScrollablePageLayout>
   </AppLayout>
 </template>
 
@@ -57,6 +59,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { usageAPI, type UserDashboardStats as UserStatsType } from '@/api/usage'
 import AppLayout from '@/components/layout/AppLayout.vue'
+import ScrollablePageLayout from '@/components/layout/ScrollablePageLayout.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import Icon from '@/components/icons/Icon.vue'
 import DashboardRangeSelect, { type DashboardTimeRange } from '@/components/dashboard/DashboardRangeSelect.vue'

@@ -1,6 +1,7 @@
 <template>
   <AppLayout>
-    <div class="leaderboard-page">
+    <ScrollablePageLayout>
+      <div class="leaderboard-page">
       <!-- Animated background particles -->
       <div class="bg-particles">
         <div v-for="n in 20" :key="n" class="particle" :style="particleStyle(n)" />
@@ -174,6 +175,7 @@
         <p>每 60 秒自动刷新</p>
       </footer>
     </div>
+    </ScrollablePageLayout>
   </AppLayout>
 </template>
 
@@ -182,6 +184,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { getUserSpendingRanking } from '@/api/admin/dashboard'
 import type { UserSpendingRankingItem } from '@/types'
 import AppLayout from '@/components/layout/AppLayout.vue'
+import ScrollablePageLayout from '@/components/layout/ScrollablePageLayout.vue'
 import { useAuthStore } from '@/stores'
 import { maskLeaderboardEmail } from '@/utils/leaderboardEmail'
 

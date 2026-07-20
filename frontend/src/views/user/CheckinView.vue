@@ -1,6 +1,7 @@
 <template>
   <AppLayout>
-    <div class="checkin-shell relative -mx-4 -my-6 min-h-[calc(100vh-4rem)] overflow-hidden px-4 py-8 sm:-mx-6 lg:-mx-8 lg:px-8">
+    <ScrollablePageLayout content-class="-mx-4 -my-6 px-4 py-8 sm:-mx-6 lg:-mx-8 lg:px-8">
+      <div class="checkin-shell relative min-h-full">
       <div class="relative mx-auto max-w-6xl space-y-5">
         <div class="checkin-panel overflow-hidden p-6 sm:p-8">
           <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
@@ -275,12 +276,14 @@
         </template>
       </div>
     </div>
+    </ScrollablePageLayout>
   </AppLayout>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import AppLayout from '@/components/layout/AppLayout.vue'
+import ScrollablePageLayout from '@/components/layout/ScrollablePageLayout.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import Icon from '@/components/icons/Icon.vue'

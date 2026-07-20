@@ -1,6 +1,7 @@
 <template>
   <AppLayout>
-    <div class="min-h-full overflow-hidden rounded-2xl bg-white text-gray-900 shadow-card dark:bg-dark-900 dark:text-gray-100">
+    <ScrollablePageLayout>
+      <div class="min-h-full rounded-2xl bg-white text-gray-900 shadow-card dark:bg-dark-900 dark:text-gray-100">
       <div class="grid min-h-full lg:grid-cols-[258px_minmax(0,1fr)]">
         <aside
           data-test="filter-sidebar"
@@ -192,6 +193,7 @@
         </main>
       </div>
     </div>
+    </ScrollablePageLayout>
   </AppLayout>
 </template>
 
@@ -199,6 +201,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
+import ScrollablePageLayout from '@/components/layout/ScrollablePageLayout.vue'
 import Icon from '@/components/icons/Icon.vue'
 import Pagination from '@/components/common/Pagination.vue'
 import Select from '@/components/common/Select.vue'

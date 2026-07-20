@@ -1,6 +1,7 @@
 <template>
   <AppLayout>
-    <div class="loyalty-shell -mx-4 -my-6 min-h-[calc(100vh-4rem)] overflow-hidden px-4 py-6 sm:-mx-6 sm:py-7 lg:-mx-8 lg:px-8">
+    <ScrollablePageLayout content-class="-mx-4 -my-6 px-4 py-6 sm:-mx-6 sm:py-7 lg:-mx-8 lg:px-8">
+      <div class="loyalty-shell min-h-full">
       <div class="relative mx-auto max-w-[1180px] space-y-4">
         <section class="loyalty-hero loyalty-panel p-5 sm:p-6 lg:p-7">
           <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_230px] lg:items-center">
@@ -181,6 +182,7 @@
         </template>
       </div>
     </div>
+    </ScrollablePageLayout>
   </AppLayout>
 </template>
 
@@ -189,6 +191,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import AppLayout from '@/components/layout/AppLayout.vue'
+import ScrollablePageLayout from '@/components/layout/ScrollablePageLayout.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import Icon from '@/components/icons/Icon.vue'
 import membershipVipImage from '@/assets/membership-vip.png'

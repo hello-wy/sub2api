@@ -19,8 +19,8 @@
     :style="{ fontFamily: `'Inter', sans-serif` }"
   >
     <nav class="fixed left-0 right-0 top-0 z-[100] flex h-[76px] items-center justify-between px-4 sm:px-6 lg:px-8">
-      <router-link to="/home" class="flex h-11 items-center transition-opacity hover:opacity-80" aria-label="SolidAPI 首页">
-        <img :src="brandLockup" alt="SolidAPI" class="h-9 w-auto object-contain" />
+      <router-link to="/home" class="flex h-14 items-center transition-opacity hover:opacity-80" aria-label="SolidAPI 首页">
+        <img :src="brandLockup" alt="SolidAPI" class="h-full w-auto object-contain" />
       </router-link>
 
       <div

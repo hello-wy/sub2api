@@ -9,12 +9,24 @@ const componentSource = readFileSync(resolve(dir, '../AppLayout.vue'), 'utf8')
 const appSource = readFileSync(resolve(dir, '../../../App.vue'), 'utf8')
 const styleSource = readFileSync(resolve(dir, '../../../style.css'), 'utf8')
 
-describe('AppLayout workspace scrolling', () => {
-  it('keeps the app in the viewport and delegates scrolling to the content panel', () => {
+describe('AppLayout viewport containment', () => {
+  it('keeps the app in the viewport without page-panel scrolling or shared padding', () => {
     expect(componentSource).toContain('class="app-shell h-dvh overflow-hidden"')
-    expect(componentSource).toContain('class="app-content-stage flex min-h-0 flex-1"')
-    expect(styleSource).toMatch(/\.app-page-panel\s*\{[\s\S]*?overflow-y: auto;/)
-    expect(styleSource).toMatch(/\.app-page-panel\s*\{[\s\S]*?scrollbar-gutter: stable;/)
+    expect(componentSource).toContain('class="app-content-stage flex min-h-0 min-w-0 flex-1 overflow-hidden"')
+    expect(componentSource).toContain('class="app-page-content app-page-panel min-h-0 min-w-0 flex-1 overflow-hidden"')
+    expect(componentSource).not.toContain('p-4 md:p-6 lg:p-8')
+    expect(styleSource).toMatch(/\.app-content-stage\s*\{[^}]*min-width: 0;/)
+    expect(styleSource).not.toMatch(/\.app-content-stage\s*\{[^}]*padding:/)
+    expect(styleSource).toMatch(/\.app-page-panel\s*\{[\s\S]*?overflow: hidden;/)
+    expect(styleSource).not.toMatch(/\.app-page-panel\s*\{[\s\S]*?overflow-y: auto;/)
+    expect(styleSource).not.toMatch(/\.app-page-panel\s*\{[\s\S]*?scrollbar-gutter:/)
+  })
+
+  it('uses a flat shared canvas without page-panel scrolling', () => {
+    expect(componentSource).not.toContain('flatPanel')
+    expect(componentSource).not.toContain('app-page-panel--flat')
+    expect(styleSource).toMatch(/\.app-page-panel\s*\{[\s\S]*?background: transparent;/)
+    expect(styleSource).not.toContain('.app-page-panel--flat')
   })
 
   it('mounts async route content without waiting for the previous page to leave', () => {

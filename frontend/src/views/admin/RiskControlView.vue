@@ -1,6 +1,7 @@
 <template>
   <AppLayout>
-    <div class="space-y-6">
+    <ScrollablePageLayout>
+      <div class="space-y-6">
       <div v-if="loading" class="flex items-center justify-center py-16">
         <div class="h-8 w-8 animate-spin rounded-full border-b-2 border-primary-600"></div>
       </div>
@@ -1110,6 +1111,7 @@
         </template>
       </BaseDialog>
     </div>
+    </ScrollablePageLayout>
   </AppLayout>
 </template>
 
@@ -1117,6 +1119,7 @@
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
+import ScrollablePageLayout from '@/components/layout/ScrollablePageLayout.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import Icon from '@/components/icons/Icon.vue'
 import Select from '@/components/common/Select.vue'

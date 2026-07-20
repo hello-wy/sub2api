@@ -1,6 +1,7 @@
 <template>
   <AppLayout>
-    <div class="space-y-4">
+    <ScrollablePageLayout>
+      <div class="space-y-4">
       <!-- Filters -->
       <div class="card p-4">
         <div class="flex flex-wrap items-center gap-3">
@@ -77,6 +78,7 @@
         </div>
       </template>
     </BaseDialog>
+    </ScrollablePageLayout>
   </AppLayout>
 </template>
 
@@ -89,6 +91,7 @@ import { paymentAPI } from '@/api/payment'
 import { extractI18nErrorMessage } from '@/utils/apiError'
 import type { PaymentOrder } from '@/types/payment'
 import AppLayout from '@/components/layout/AppLayout.vue'
+import ScrollablePageLayout from '@/components/layout/ScrollablePageLayout.vue'
 import Pagination from '@/components/common/Pagination.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import Select from '@/components/common/Select.vue'

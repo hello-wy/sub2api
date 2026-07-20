@@ -1,6 +1,7 @@
 <template>
   <AppLayout>
-    <div class="dashboard-page">
+    <ScrollablePageLayout>
+      <div class="dashboard-page">
       <div v-if="loading" class="dashboard-state dashboard-state--loading">
         <LoadingSpinner />
       </div>
@@ -120,6 +121,7 @@
         <strong>仪表盘数据暂时无法加载</strong><span>请检查网络后重试。</span><button type="button" class="refresh-button" @click="loadDashboard"><Icon name="refresh" size="sm" />重新加载</button>
       </div>
     </div>
+    </ScrollablePageLayout>
   </AppLayout>
 </template>
 
@@ -128,6 +130,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { adminAPI } from '@/api/admin'
 import AppLayout from '@/components/layout/AppLayout.vue'
+import ScrollablePageLayout from '@/components/layout/ScrollablePageLayout.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import Icon from '@/components/icons/Icon.vue'
 import DashboardRangeSelect, { type DashboardTimeRange } from '@/components/dashboard/DashboardRangeSelect.vue'

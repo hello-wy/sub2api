@@ -1,6 +1,7 @@
 <template>
   <AppLayout>
-    <div class="mx-auto max-w-7xl space-y-6">
+    <ScrollablePageLayout>
+      <div class="mx-auto max-w-7xl space-y-6">
       <div v-if="loading" class="flex items-center justify-center py-20">
         <div class="h-8 w-8 animate-spin rounded-full border-4 border-primary-500 border-t-transparent"></div>
       </div>
@@ -249,6 +250,7 @@
         </div>
       </Transition>
     </Teleport>
+    </ScrollablePageLayout>
   </AppLayout>
 </template>
 
@@ -266,6 +268,7 @@ import { isMobileDevice } from '@/utils/device'
 import type { SubscriptionPlan, CheckoutInfoResponse, CreateOrderResult, OrderType } from '@/types/payment'
 import type { UserSubscription } from '@/types'
 import AppLayout from '@/components/layout/AppLayout.vue'
+import ScrollablePageLayout from '@/components/layout/ScrollablePageLayout.vue'
 import PaymentMethodSelector from '@/components/payment/PaymentMethodSelector.vue'
 import RechargePackageSelector from '@/components/wallet/RechargePackageSelector.vue'
 import WalletBalanceHistory from '@/components/wallet/WalletBalanceHistory.vue'

@@ -1,6 +1,7 @@
 <template>
   <AppLayout>
-    <div class="mx-auto max-w-6xl space-y-6">
+    <ScrollablePageLayout>
+      <div class="mx-auto max-w-6xl space-y-6">
       <!-- Loading State -->
       <div v-if="loading" class="flex items-center justify-center py-12">
         <div
@@ -7728,6 +7729,7 @@
         @cancel="cancelAffiliateConfirm"
       />
     </div>
+    </ScrollablePageLayout>
   </AppLayout>
 </template>
 
@@ -7767,6 +7769,7 @@ import type {
 } from "@/types";
 import type { ProviderInstance } from "@/types/payment";
 import AppLayout from "@/components/layout/AppLayout.vue";
+import ScrollablePageLayout from "@/components/layout/ScrollablePageLayout.vue"
 import Icon from "@/components/icons/Icon.vue";
 import Select from "@/components/common/Select.vue";
 import ConfirmDialog from "@/components/common/ConfirmDialog.vue";

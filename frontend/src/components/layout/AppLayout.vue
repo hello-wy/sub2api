@@ -12,8 +12,8 @@
       <AppHeader />
 
       <!-- Main Workspace Panel -->
-      <div class="app-content-stage flex min-h-0 flex-1">
-        <main class="app-page-content app-page-panel min-w-0 flex-1 p-4 md:p-6 lg:p-8">
+      <div class="app-content-stage flex min-h-0 min-w-0 flex-1 overflow-hidden">
+        <main class="app-page-content app-page-panel min-h-0 min-w-0 flex-1 overflow-hidden">
           <slot />
         </main>
       </div>

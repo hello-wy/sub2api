@@ -629,29 +629,18 @@
 
 .app-content-stage {
   min-width: 0;
-  padding: 0.75rem;
 }
 
 .app-page-panel {
   min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior-y: contain;
-  scrollbar-gutter: stable;
-  border: 1px solid var(--app-panel-border);
-  border-radius: 1.25rem;
-  background-color: var(--app-panel-surface);
-  box-shadow: var(--app-panel-shadow);
-  -webkit-backdrop-filter: blur(14px) saturate(1.04);
-  backdrop-filter: blur(14px) saturate(1.04);
+  overflow: hidden;
+  padding-inline: 1.5rem;
+  background: transparent;
 }
 
-@media (max-width: 767px) {
-  .app-content-stage {
-    padding: 0.5rem;
-  }
-
+@media (max-width: 1023px) {
   .app-page-panel {
-    border-radius: 1rem;
+    padding-inline: 1rem;
   }
 }
 
@@ -724,6 +713,12 @@
 .page-fade-leave-active .app-header-page-copy {
   animation: page-content-fade-out 190ms cubic-bezier(0.4, 0, 1, 1) both;
   will-change: opacity, transform;
+}
+
+.page-fade-enter-active .sidebar-liquid-shell,
+.page-fade-leave-active .sidebar-liquid-shell {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 .page-fade-enter-active .app-header-toolbar {
