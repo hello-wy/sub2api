@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"strconv"
+
 	"github.com/Wei-Shaw/sub2api/internal/handler/dto"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
 	middleware2 "github.com/Wei-Shaw/sub2api/internal/server/middleware"
@@ -68,8 +70,12 @@ func (h *RedeemHandler) GetHistory(c *gin.Context) {
 		return
 	}
 
-	// Default limit is 25
 	limit := 25
+	if raw := c.Query("limit"); raw != "" {
+		if parsed, err := strconv.Atoi(raw); err == nil && parsed > 0 {
+			limit = min(parsed, 200)
+		}
+	}
 
 	codes, err := h.redeemService.GetUserHistory(c.Request.Context(), subject.UserID, limit)
 	if err != nil {

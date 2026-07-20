@@ -3,18 +3,28 @@
     <!-- 铃铛按钮 -->
     <button
       @click="openModal"
-      class="relative flex h-9 w-9 items-center justify-center rounded-lg text-gray-600 transition-all hover:bg-gray-100 hover:scale-105 dark:text-gray-400 dark:hover:bg-dark-800"
-      :class="{ 'text-blue-600 dark:text-blue-400': unreadCount > 0 }"
+      :class="[
+        toolbar
+          ? 'header-tool-button relative'
+          : 'relative flex h-9 w-9 items-center justify-center rounded-lg text-gray-600 transition-all hover:bg-gray-100 hover:scale-105 dark:text-gray-400 dark:hover:bg-dark-800',
+        { 'text-blue-600 dark:text-blue-400': unreadCount > 0 }
+      ]"
       :aria-label="t('announcements.title')"
     >
       <Icon name="bell" size="md" />
+      <span v-if="toolbar" class="header-tool-label">{{ t('header.notifications') }}</span>
       <!-- 未读红点 -->
       <span
         v-if="unreadCount > 0"
-        class="absolute right-1 top-1 flex h-2 w-2"
+        :class="toolbar
+          ? 'header-notification-count'
+          : 'absolute right-1 top-1 flex h-2 w-2'"
       >
-        <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75"></span>
-        <span class="relative inline-flex h-2 w-2 rounded-full bg-red-500"></span>
+        <template v-if="toolbar">{{ unreadCount > 99 ? '99+' : unreadCount }}</template>
+        <template v-else>
+          <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75"></span>
+          <span class="relative inline-flex h-2 w-2 rounded-full bg-red-500"></span>
+        </template>
       </span>
     </button>
 
@@ -322,6 +332,10 @@ import { useAnnouncementStore } from '@/stores/announcements'
 import { formatRelativeTime, formatRelativeWithDateTime } from '@/utils/format'
 import type { UserAnnouncement } from '@/types'
 import Icon from '@/components/icons/Icon.vue'
+
+withDefaults(defineProps<{ toolbar?: boolean }>(), {
+  toolbar: false,
+})
 
 const { t } = useI18n()
 const appStore = useAppStore()

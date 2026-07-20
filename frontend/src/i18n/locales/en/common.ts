@@ -117,6 +117,17 @@ export default {
     acceptFailed: 'Failed to submit acknowledgment'
   },
 
+  header: {
+    notifications: 'Notifications',
+    qqGroup: 'QQ Group',
+    tutorial: 'Tutorial',
+    tutorialSoon: 'Tutorial coming soon',
+    balance: 'Balance',
+    checkin: 'Check in',
+    recharge: 'Recharge',
+    activeSubscriptionTitle: 'Current subscription: {name}, {percentage}% used'
+  },
+
   legal: {
     loadFailed: 'Failed to load document',
     retryLater: 'Refresh the page and try again later.',
@@ -182,6 +193,7 @@ export default {
     github: 'GitHub',
     mySubscriptions: 'My Subscriptions',
     buySubscription: 'Recharge / Subscription',
+    wallet: 'My Wallet',
     loyalty: 'Membership Program',
     docs: 'Docs',
     myOrders: 'My Orders',

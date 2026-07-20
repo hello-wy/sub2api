@@ -545,13 +545,13 @@ func (s *PaymentService) ensurePaymentSubscriptionAssigned(ctx context.Context, 
 		case lookupErr != nil && !errors.Is(lookupErr, ErrSubscriptionNotFound):
 			return fmt.Errorf("check existing subscription assignment: %w", lookupErr)
 		default:
-			if _, _, err := s.subscriptionSvc.assignOrExtendSubscription(txCtx, &AssignSubscriptionInput{
+			if _, err := s.subscriptionSvc.replaceSubscriptionForPayment(txCtx, &AssignSubscriptionInput{
 				UserID:       o.UserID,
 				GroupID:      groupID,
 				ValidityDays: days,
 				AssignedBy:   0,
 				Notes:        orderNote,
-			}, true); err != nil {
+			}); err != nil {
 				return fmt.Errorf("assign subscription: %w", err)
 			}
 		}
@@ -584,9 +584,19 @@ func (s *PaymentService) ensurePaymentSubscriptionAssigned(ctx context.Context, 
 		return fmt.Errorf("commit subscription fulfillment tx: %w", err)
 	}
 	// Assignment cache invalidation is deferred while this transaction is open,
-	// then performed synchronously against the committed subscription.
-	if err := s.subscriptionSvc.invalidateSubscriptionCaches(o.UserID, groupID); err != nil {
-		return fmt.Errorf("invalidate subscription cache after fulfillment: %w", err)
+	// then performed synchronously for the new plan and every plan it replaced.
+	subscriptions, err := s.subscriptionSvc.userSubRepo.ListByUserID(ctx, o.UserID)
+	if err != nil {
+		return fmt.Errorf("list subscriptions after fulfillment: %w", err)
+	}
+	groups := map[int64]struct{}{groupID: {}}
+	for i := range subscriptions {
+		groups[subscriptions[i].GroupID] = struct{}{}
+	}
+	for affectedGroupID := range groups {
+		if err := s.subscriptionSvc.invalidateSubscriptionCaches(o.UserID, affectedGroupID); err != nil {
+			return fmt.Errorf("invalidate subscription cache after fulfillment: %w", err)
+		}
 	}
 	return nil
 }
@@ -702,6 +712,9 @@ func (s *PaymentService) applyAffiliateRebateForOrder(ctx context.Context, o *db
 
 func affiliateRebateBaseAmount(o *dbent.PaymentOrder) float64 {
 	if o == nil {
+		return 0
+	}
+	if o.PaymentType == "balance" {
 		return 0
 	}
 	switch o.OrderType {

@@ -292,8 +292,11 @@ export default {
     quickAmounts: 'Quick Amounts',
     customAmount: 'Custom Amount',
     enterAmount: 'Enter amount',
+    helpImageAlt: 'Payment help',
     paymentMethod: 'Payment Method',
     fee: 'Fee',
+    loyaltyDiscount: 'Member Discount ({discount}%)',
+    discountedPaymentAmount: 'Discounted Amount',
     actualPay: 'Actual Payment',
     createOrder: 'Confirm Payment',
     methods: {
@@ -324,6 +327,7 @@ export default {
     },
     qr: {
       scanToPay: 'Scan to Pay',
+      description: 'Scan the code to complete payment',
       scanAlipay: 'Alipay QR Payment',
       scanWxpay: 'WeChat QR Payment',
       scanAlipayHint: 'Open Alipay on your phone and scan the QR code to pay',
@@ -341,6 +345,7 @@ export default {
     },
     orders: {
       title: 'My Orders',
+      description: 'Review your balance and subscription orders',
       empty: 'No orders yet',
       orderId: 'Order ID',
       orderNo: 'Order No.',
@@ -436,6 +441,7 @@ export default {
       REFUND_FAILED: 'Refund failed.',
     },
     airwallexPay: 'Airwallex Payment',
+    airwallexDescription: 'Complete this online payment securely',
     stripePay: 'Pay Now',
     stripeSuccessProcessing: 'Payment successful, processing your order...',
     stripePopup: {
@@ -466,6 +472,9 @@ export default {
     perMonth: 'month',
     perYear: 'year',
     admin: {
+      dashboardDescription: 'Review payment revenue and order trends',
+      ordersDescription: 'Manage top-up and subscription orders',
+      plansDescription: 'Configure subscription plans for sale',
       tabs: {
         overview: 'Overview',
         orders: 'Orders',

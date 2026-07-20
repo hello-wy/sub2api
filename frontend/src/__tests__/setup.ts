@@ -91,7 +91,7 @@ globalThis.ResizeObserver = MockResizeObserver as unknown as typeof ResizeObserv
 
 // Vue Test Utils 全局配置
 config.global.stubs = {
-  // 可以在这里添加全局 stub
+  ScrollablePageLayout: { template: '<div><slot /></div>' }
 }
 
 // 设置全局测试超时

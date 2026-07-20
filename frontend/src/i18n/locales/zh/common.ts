@@ -117,6 +117,17 @@ export default {
     acceptFailed: '提交确认失败'
   },
 
+  header: {
+    notifications: '通知',
+    qqGroup: 'QQ 群',
+    tutorial: '教程',
+    tutorialSoon: '教程即将上线',
+    balance: '余额',
+    checkin: '签到',
+    recharge: '充值',
+    activeSubscriptionTitle: '当前订阅：{name}，已使用 {percentage}%'
+  },
+
   legal: {
     loadFailed: '文档加载失败',
     retryLater: '请稍后刷新页面重试。',
@@ -182,6 +193,7 @@ export default {
     github: 'GitHub',
     mySubscriptions: '我的订阅',
     buySubscription: '充值/订阅',
+    wallet: '我的钱包',
     loyalty: '会员计划',
     docs: '文档',
     myOrders: '我的订单',

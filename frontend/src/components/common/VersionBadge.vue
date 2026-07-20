@@ -4,26 +4,32 @@
     <template v-if="isAdmin">
       <button
         @click="toggleDropdown"
-        class="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs transition-colors"
+        class="flex items-center gap-1.5 text-xs transition-colors"
         :class="[
-          hasUpdate
-            ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-900/50'
-            : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-800 dark:text-dark-400 dark:hover:bg-dark-700'
+          toolbar
+            ? 'header-tool-button header-version-button'
+            : 'rounded-lg px-2 py-1',
+          toolbar
+            ? 'text-gray-600 dark:text-dark-300'
+            : hasUpdate
+              ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-900/50'
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-800 dark:text-dark-400 dark:hover:bg-dark-700'
         ]"
+        :aria-label="
+          hasUpdate
+            ? `${t('version.updateAvailable')}: v${latestVersion}`
+            : `${t('version.currentVersion')}: v${currentVersion}`
+        "
         :title="hasUpdate ? t('version.updateAvailable') : t('version.upToDate')"
       >
-        <span v-if="currentVersion" class="font-medium">v{{ currentVersion }}</span>
+        <Icon v-if="toolbar" name="download" size="sm" :stroke-width="2" />
+        <span v-if="currentVersion" class="version-trigger-label font-medium">v{{ currentVersion }}</span>
         <span
           v-else
-          class="h-3 w-12 animate-pulse rounded bg-gray-200 font-medium dark:bg-dark-600"
+          class="version-trigger-label h-3 w-12 animate-pulse rounded bg-gray-200 font-medium dark:bg-dark-600"
         ></span>
         <!-- Update indicator -->
-        <span v-if="hasUpdate" class="relative flex h-2 w-2">
-          <span
-            class="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75"
-          ></span>
-          <span class="relative inline-flex h-2 w-2 rounded-full bg-amber-500"></span>
-        </span>
+        <span v-if="hasUpdate" class="header-version-dot" aria-hidden="true"></span>
       </button>
 
       <!-- Dropdown -->
@@ -31,8 +37,11 @@
         <div
           v-if="dropdownOpen"
           ref="dropdownRef"
-          class="absolute left-0 z-50 mt-2 overflow-hidden whitespace-normal rounded-xl border border-gray-200 bg-white shadow-lg transition-all duration-200 dark:border-dark-700 dark:bg-dark-800"
-          :class="rollbackPanelOpen && isReleaseBuild ? 'w-80' : 'w-64'"
+          class="absolute z-50 mt-2 overflow-hidden whitespace-normal rounded-xl border border-gray-200 bg-white shadow-lg transition-all duration-200 dark:border-dark-700 dark:bg-dark-800"
+          :class="[
+            toolbar ? 'right-0' : 'left-0',
+            rollbackPanelOpen && isReleaseBuild ? 'w-80' : 'w-64'
+          ]"
         >
           <!-- Header with refresh button -->
           <div
@@ -630,10 +639,6 @@
       </transition>
     </template>
 
-    <!-- Non-admin: Simple static version text -->
-    <span v-else-if="version" class="text-xs text-gray-500 dark:text-dark-400">
-      v{{ version }}
-    </span>
   </div>
 </template>
 
@@ -659,6 +664,7 @@ const { t } = useI18n()
 
 const props = defineProps<{
   version?: string
+  toolbar?: boolean
 }>()
 
 const authStore = useAuthStore()

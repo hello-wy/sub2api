@@ -131,6 +131,12 @@ type RedeemUserAdjustmentRepository interface {
 	ApplyRedeemConcurrencyAdjustment(ctx context.Context, id int64, delta int) error
 }
 
+// AdminBalanceAdjustmentRepository serializes administrative balance changes
+// against concurrent usage billing and returns the committed before/after values.
+type AdminBalanceAdjustmentRepository interface {
+	ApplyAdminBalanceAdjustment(ctx context.Context, id int64, amount float64, operation string) (oldBalance, newBalance float64, err error)
+}
+
 type UserAuthIdentityRecord struct {
 	ProviderType    string
 	ProviderKey     string

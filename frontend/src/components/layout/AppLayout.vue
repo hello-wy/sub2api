@@ -1,23 +1,22 @@
 <template>
-  <div class="min-h-screen bg-gray-50 dark:bg-dark-950">
-    <!-- Background Decoration -->
-    <div class="pointer-events-none fixed inset-0 bg-mesh-gradient"></div>
-
+  <div class="app-shell h-dvh overflow-hidden">
     <!-- Sidebar -->
     <AppSidebar />
 
     <!-- Main Content Area -->
     <div
-      class="relative min-h-screen transition-all duration-300"
-      :class="[sidebarCollapsed ? 'lg:ml-[72px]' : 'lg:ml-64']"
+      class="relative flex h-dvh min-h-0 flex-col transition-all duration-300"
+      :class="[sidebarCollapsed ? 'lg:ml-[84px]' : 'lg:ml-[236px]']"
     >
       <!-- Header -->
       <AppHeader />
 
-      <!-- Main Content -->
-      <main class="p-4 md:p-6 lg:p-8">
-        <slot />
-      </main>
+      <!-- Main Workspace Panel -->
+      <div class="app-content-stage flex min-h-0 min-w-0 flex-1 overflow-hidden">
+        <main class="app-page-content app-page-panel min-h-0 min-w-0 flex-1 overflow-hidden">
+          <slot />
+        </main>
+      </div>
     </div>
   </div>
 </template>

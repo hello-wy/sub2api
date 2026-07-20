@@ -1,7 +1,7 @@
 export default {
   audit: {
     title: 'Audit Logs',
-    description: 'Records management-plane operations by admins and users. Header credentials keep only their first/last characters and request bodies are redacted. Entries cannot be deleted individually; clearing all requires two-factor verification.',
+    description: 'Review redacted management activity',
     clearAll: 'Clear All',
     empty: 'No audit logs yet',
     loadFailed: 'Failed to load audit logs',

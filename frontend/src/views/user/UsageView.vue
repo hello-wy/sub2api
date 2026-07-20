@@ -1,6 +1,7 @@
 <template>
   <AppLayout>
-    <div class="space-y-6">
+    <ScrollablePageLayout>
+      <div class="space-y-6">
       <UsageStatsCards :stats="usageStats" :show-account-cost="false" :strike-standard-cost="true" />
 
       <div class="space-y-4">
@@ -208,6 +209,7 @@
         @ipGeoBatchFailed="handleIpGeoBatchFailed"
       />
     </div>
+    </ScrollablePageLayout>
   </AppLayout>
 
 </template>
@@ -218,6 +220,7 @@ import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 import { keysAPI, usageAPI, userGroupsAPI } from '@/api'
 import AppLayout from '@/components/layout/AppLayout.vue'
+import ScrollablePageLayout from '@/components/layout/ScrollablePageLayout.vue'
 import Pagination from '@/components/common/Pagination.vue'
 import Select, { type SelectOption } from '@/components/common/Select.vue'
 import DateRangePicker from '@/components/common/DateRangePicker.vue'

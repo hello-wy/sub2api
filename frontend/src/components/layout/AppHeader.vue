@@ -1,8 +1,8 @@
 <template>
-  <header class="glass sticky top-0 z-30 border-b border-gray-200/50 dark:border-dark-700/50">
-    <div class="flex h-16 items-center justify-between px-4 md:px-6">
+  <header class="app-header-surface sticky top-0 z-30">
+    <div class="flex h-16 items-center justify-between gap-4 px-4 md:px-6">
       <!-- Left: Mobile Menu Toggle + Page Title -->
-      <div class="flex items-center gap-4">
+      <div class="flex min-w-0 flex-1 items-center gap-4 overflow-hidden">
         <button
           @click="toggleMobileSidebar"
           class="btn-ghost btn-icon lg:hidden"
@@ -11,94 +11,100 @@
           <Icon name="menu" size="md" />
         </button>
 
-        <div class="hidden lg:block">
-          <h1 class="text-lg font-semibold text-gray-900 dark:text-white">
-            {{ pageTitle }}
-          </h1>
-          <p v-if="pageDescription" class="text-xs text-gray-500 dark:text-dark-400">
-            {{ pageDescription }}
-          </p>
+        <div class="hidden min-w-0 lg:block">
+          <div class="app-header-page-copy header-page-copy">
+            <h1 class="truncate text-lg font-semibold text-gray-900 dark:text-white">
+              {{ pageTitle }}
+            </h1>
+            <p v-if="pageDescription" class="truncate text-xs text-gray-500 dark:text-dark-400">
+              {{ pageDescription }}
+            </p>
+          </div>
         </div>
       </div>
 
-      <!-- Right: Announcements + Docs + Language + Subscriptions + Balance + User Dropdown -->
-      <div class="flex items-center gap-3">
-        <!-- Announcement Bell -->
-        <AnnouncementBell v-if="user" />
+      <div class="app-header-toolbar flex shrink-0 items-center gap-2">
+        <VersionBadge
+          v-if="authStore.isAdmin"
+          :version="siteVersion"
+          toolbar
+          class="header-version-control"
+        />
 
-        <!-- Docs Link -->
+        <AnnouncementBell v-if="user" toolbar />
+
         <a
-          v-if="docUrl"
-          :href="docUrl"
+          :href="QQ_GROUP_INVITE_URL"
           target="_blank"
           rel="noopener noreferrer"
-          class="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-white"
+          class="header-tool-button header-tool-optional"
         >
-          <Icon name="book" size="sm" />
-          <span class="hidden sm:inline">{{ t('nav.docs') }}</span>
+          <Icon name="users" size="md" />
+          <span class="header-tool-label">{{ t('header.qqGroup') }}</span>
         </a>
 
-        <!-- Language Switcher -->
-        <LocaleSwitcher />
-
-        <!-- Subscription Progress (for users with active subscriptions) -->
-        <SubscriptionProgressMini v-if="user" />
-
-        <!-- Balance Display -->
-        <div
-          v-if="user"
-          class="group relative hidden items-center gap-2 rounded-xl bg-primary-50 px-3 py-1.5 dark:bg-primary-900/20 sm:flex"
+        <button
+          type="button"
+          class="header-tool-button header-tool-optional"
+          disabled
+          :title="t('header.tutorialSoon')"
         >
-          <svg
-            class="h-4 w-4 text-primary-600 dark:text-primary-400"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            stroke-width="1.5"
+          <Icon name="book" size="md" />
+          <span class="header-tool-label">{{ t('header.tutorial') }}</span>
+        </button>
+
+        <router-link
+          v-if="user"
+          to="/checkin"
+          class="header-tool-button header-checkin-button"
+        >
+          <Icon name="calendar" size="md" />
+          <span class="header-tool-label">{{ t('header.checkin') }}</span>
+          <span v-if="checkinReminderVisible" class="header-checkin-dot" aria-hidden="true"></span>
+        </router-link>
+
+        <LocaleSwitcher class="header-locale-switcher" toolbar />
+
+        <button
+          type="button"
+          class="header-tool-button header-tool-icon-button"
+          :aria-label="isDark ? t('nav.lightMode') : t('nav.darkMode')"
+          :title="isDark ? t('nav.lightMode') : t('nav.darkMode')"
+          @click="toggleTheme"
+        >
+          <Icon :name="isDark ? 'sun' : 'moon'" size="md" />
+        </button>
+
+        <div v-if="user" class="header-wallet-actions">
+          <router-link to="/wallet" class="header-tool-button header-recharge-button">
+            <Icon name="creditCard" size="md" />
+            <span class="header-tool-label">{{ t('header.recharge') }}</span>
+          </router-link>
+
+          <router-link
+            v-if="activeSubscription"
+            to="/wallet"
+            class="header-tool-button header-subscription-status"
+            :aria-label="t('header.activeSubscriptionTitle', { name: activeSubscriptionName, percentage: activeSubscriptionUsagePercentage })"
+            :title="t('header.activeSubscriptionTitle', { name: activeSubscriptionName, percentage: activeSubscriptionUsagePercentage })"
           >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z"
-            />
-          </svg>
-          <span class="text-sm font-semibold text-primary-700 dark:text-primary-300">
-            {{ formatHeaderMoney(availableBalance) }}
-          </span>
-          <span
-            v-if="frozenBalance > 0"
-            class="rounded-full bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-200"
-          >
-            {{ balanceFrozenLabel }}
-          </span>
-          <div
-            class="pointer-events-none absolute right-0 top-full mt-2 hidden w-56 rounded-lg border border-gray-200 bg-white p-3 text-xs shadow-lg group-hover:block dark:border-dark-700 dark:bg-dark-800"
-          >
-            <div class="flex items-center justify-between">
-              <span class="text-gray-500 dark:text-dark-400">{{ balanceAvailableText }}</span>
-              <span class="font-medium text-gray-900 dark:text-white">{{ formatHeaderMoney(availableBalance) }}</span>
-            </div>
-            <div class="mt-2 flex items-center justify-between">
-              <span class="text-gray-500 dark:text-dark-400">{{ balanceFrozenText }}</span>
-              <span class="font-medium text-amber-700 dark:text-amber-200">{{ formatHeaderMoney(frozenBalance) }}</span>
-            </div>
-            <div class="mt-2 border-t border-gray-100 pt-2 dark:border-dark-700">
-              <div class="flex items-center justify-between">
-                <span class="text-gray-500 dark:text-dark-400">{{ balanceTotalText }}</span>
-                <span class="font-semibold text-gray-900 dark:text-white">{{ formatHeaderMoney(totalBalance) }}</span>
-              </div>
-            </div>
-          </div>
+            <span class="header-subscription-dot" aria-hidden="true"></span>
+            <span class="header-subscription-copy">
+              <span class="header-subscription-name">{{ activeSubscriptionName }}</span>
+              <span class="header-subscription-state">{{ activeSubscriptionUsagePercentage }}%</span>
+            </span>
+          </router-link>
         </div>
 
         <!-- User Dropdown -->
         <div v-if="user" class="relative" ref="dropdownRef">
           <button
             @click="toggleDropdown"
-            class="flex items-center gap-2 rounded-xl p-1.5 transition-colors hover:bg-gray-100 dark:hover:bg-dark-800"
+            class="header-user-button"
             aria-label="User Menu"
+            :title="`${t('common.availableBalance')} ${formatHeaderMoney(availableBalance)}`"
           >
-            <div class="flex h-8 w-8 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 text-sm font-medium text-white shadow-sm">
+            <div class="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-primary-600 text-sm font-semibold text-white">
               <img
                 v-if="avatarUrl"
                 :src="avatarUrl"
@@ -107,15 +113,11 @@
               >
               <span v-else>{{ userInitials }}</span>
             </div>
-            <div class="hidden text-left md:block">
-              <div class="text-sm font-medium text-gray-900 dark:text-white">
-                {{ displayName }}
-              </div>
-              <div class="text-xs capitalize text-gray-500 dark:text-dark-400">
-                {{ user.role }}
-              </div>
-            </div>
-            <Icon name="chevronDown" size="sm" class="hidden text-gray-400 md:block" />
+            <span class="header-user-balance">
+              <span class="header-user-balance-label">{{ t('header.balance') }}</span>
+              <strong>{{ formatHeaderMoney(availableBalance) }}</strong>
+            </span>
+            <Icon name="chevronDown" size="xs" class="text-gray-500 dark:text-dark-300" />
           </button>
 
           <!-- Dropdown Menu -->
@@ -240,16 +242,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { useAppStore, useAuthStore, useOnboardingStore } from '@/stores'
+import { useAppStore, useAuthStore, useOnboardingStore, useSubscriptionStore } from '@/stores'
 import { useAdminSettingsStore } from '@/stores/adminSettings'
 import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
-import SubscriptionProgressMini from '@/components/common/SubscriptionProgressMini.vue'
 import AnnouncementBell from '@/components/common/AnnouncementBell.vue'
+import VersionBadge from '@/components/common/VersionBadge.vue'
 import Icon from '@/components/icons/Icon.vue'
-import { sanitizeUrl } from '@/utils/url'
+import { QQ_GROUP_INVITE_URL } from '@/constants/community'
+import { useCheckinReminder } from '@/composables/useCheckinReminder'
+import { getHighestSubscriptionUsagePercentage } from '@/utils/subscriptionQuota'
 
 const router = useRouter()
 const route = useRoute()
@@ -258,20 +262,29 @@ const appStore = useAppStore()
 const authStore = useAuthStore()
 const adminSettingsStore = useAdminSettingsStore()
 const onboardingStore = useOnboardingStore()
+const subscriptionStore = useSubscriptionStore()
+const { checkinReminderVisible, refreshCheckinReminder } = useCheckinReminder()
 
 const user = computed(() => authStore.user)
 const dropdownOpen = ref(false)
 const dropdownRef = ref<HTMLElement | null>(null)
+const isDark = ref(document.documentElement.classList.contains('dark'))
+let themeObserver: MutationObserver | null = null
 const contactInfo = computed(() => appStore.contactInfo)
-const docUrl = computed(() => sanitizeUrl(appStore.docUrl))
+const siteVersion = computed(() => appStore.siteVersion)
 const avatarUrl = computed(() => user.value?.avatar_url?.trim() || '')
 const availableBalance = computed(() => Number(user.value?.balance || 0))
 const frozenBalance = computed(() => Number(user.value?.frozen_balance || 0))
-const totalBalance = computed(() => availableBalance.value + frozenBalance.value)
-const balanceAvailableText = computed(() => t('common.availableBalance') === 'common.availableBalance' ? '可用余额' : t('common.availableBalance'))
 const balanceFrozenText = computed(() => t('common.frozenBalance') === 'common.frozenBalance' ? '冻结金额' : t('common.frozenBalance'))
-const balanceTotalText = computed(() => t('common.totalBalance') === 'common.totalBalance' ? '总余额' : t('common.totalBalance'))
-const balanceFrozenLabel = computed(() => `${balanceFrozenText.value} ${formatHeaderMoney(frozenBalance.value)}`)
+const activeSubscription = computed(() => subscriptionStore.activeSubscriptions[0] || null)
+const activeSubscriptionName = computed(() => {
+  const subscription = activeSubscription.value
+  if (!subscription) return ''
+  return subscription.group?.name || t('payment.groupFallback', { id: subscription.group_id })
+})
+const activeSubscriptionUsagePercentage = computed(() => {
+  return getHighestSubscriptionUsagePercentage(activeSubscription.value)
+})
 
 // 只在标准模式的管理员下显示新手引导按钮
 const showOnboardingButton = computed(() => {
@@ -325,6 +338,13 @@ function toggleMobileSidebar() {
   appStore.toggleMobileSidebar()
 }
 
+function toggleTheme() {
+  const nextIsDark = !document.documentElement.classList.contains('dark')
+  document.documentElement.classList.toggle('dark', nextIsDark)
+  localStorage.setItem('theme', nextIsDark ? 'dark' : 'light')
+  isDark.value = nextIsDark
+}
+
 function toggleDropdown() {
   dropdownOpen.value = !dropdownOpen.value
 }
@@ -362,14 +382,36 @@ function handleClickOutside(event: MouseEvent) {
 
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
+  void refreshCheckinReminder()
+  themeObserver = new MutationObserver(() => {
+    isDark.value = document.documentElement.classList.contains('dark')
+  })
+  themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
 })
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', handleClickOutside)
+  themeObserver?.disconnect()
 })
+
+watch(
+  () => [authStore.isAuthenticated, route.path],
+  () => {
+    void refreshCheckinReminder()
+  }
+)
 </script>
 
 <style scoped>
+.header-page-copy {
+  display: flex;
+  min-height: 2.5rem;
+  max-width: min(34rem, 38vw);
+  min-width: 0;
+  flex-direction: column;
+  justify-content: center;
+}
+
 .dropdown-enter-active,
 .dropdown-leave-active {
   transition: all 0.2s ease;

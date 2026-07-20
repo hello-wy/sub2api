@@ -5,6 +5,7 @@ package repository
 import (
 	"context"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -145,9 +146,9 @@ func TestAffiliateRepository_AccrueQuota_ReusesOuterTransaction(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, bound, "invitee must bind to inviter")
 
-	applied, err := repo.AccrueQuota(txCtx, inviter.ID, invitee.ID, 3.5, 0, nil)
+	applied, err := repo.AccrueQuota(txCtx, inviter.ID, invitee.ID, 3.5, 0, 0, nil)
 	require.NoError(t, err)
-	require.True(t, applied, "AccrueQuota must report applied=true")
+	require.InDelta(t, 3.5, applied, 1e-9, "AccrueQuota must report the applied amount")
 
 	// Visible inside the outer tx.
 	innerQuota := querySingleFloat(t, txCtx, client,
@@ -168,6 +169,50 @@ func TestAffiliateRepository_AccrueQuota_ReusesOuterTransaction(t *testing.T) {
 	require.NoError(t, rows.Scan(&postRollbackCount))
 	require.Equal(t, 0, postRollbackCount,
 		"AccrueQuota must propagate the outer tx — found persisted rows after rollback")
+}
+
+func TestAffiliateRepository_AccrueQuota_ConcurrentCapIsAtomic(t *testing.T) {
+	ctx := context.Background()
+	repo := NewAffiliateRepository(integrationEntClient, integrationDB)
+	inviter := mustCreateUser(t, integrationEntClient, &service.User{
+		Email: fmt.Sprintf("affiliate-cap-inviter-%d@example.com", time.Now().UnixNano()), PasswordHash: "hash", Role: service.RoleUser, Status: service.StatusActive,
+	})
+	invitee := mustCreateUser(t, integrationEntClient, &service.User{
+		Email: fmt.Sprintf("affiliate-cap-invitee-%d@example.com", time.Now().UnixNano()+1), PasswordHash: "hash", Role: service.RoleUser, Status: service.StatusActive,
+	})
+	_, err := repo.EnsureUserAffiliate(ctx, inviter.ID)
+	require.NoError(t, err)
+	_, err = repo.EnsureUserAffiliate(ctx, invitee.ID)
+	require.NoError(t, err)
+	bound, err := repo.BindInviter(ctx, invitee.ID, inviter.ID)
+	require.NoError(t, err)
+	require.True(t, bound)
+
+	const workers = 8
+	const capAmount = 10.0
+	var wg sync.WaitGroup
+	errs := make([]error, workers)
+	applied := make([]float64, workers)
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func(index int) {
+			defer wg.Done()
+			applied[index], errs[index] = repo.AccrueQuota(ctx, inviter.ID, invitee.ID, 3, capAmount, 0, nil)
+		}(i)
+	}
+	wg.Wait()
+
+	var totalApplied float64
+	for i := range errs {
+		require.NoError(t, errs[i], "worker %d", i)
+		totalApplied += applied[i]
+	}
+	require.InDelta(t, capAmount, totalApplied, 1e-8)
+	persisted := querySingleFloat(t, ctx, integrationEntClient, `
+SELECT COALESCE(SUM(amount), 0)::double precision
+FROM user_affiliate_ledger
+WHERE user_id = $1 AND source_user_id = $2 AND action = 'accrue'`, inviter.ID, invitee.ID)
+	require.InDelta(t, capAmount, persisted, 1e-8)
 }
 
 func TestAffiliateRepository_TransferQuotaToBalance_EmptyQuota(t *testing.T) {

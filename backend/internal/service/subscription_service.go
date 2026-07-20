@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"math/rand/v2"
@@ -281,6 +282,62 @@ func (s *SubscriptionService) assignOrExtendSubscription(ctx context.Context, in
 	s.maybeInvalidateAssignmentCaches(input.UserID, input.GroupID, deferCacheInvalidation)
 
 	return sub, false, nil // false 表示是新建
+}
+
+// replaceSubscriptionForPayment applies purchase semantics: a paid plan starts a
+// fresh term immediately and replaces every other active plan for the user.
+func (s *SubscriptionService) replaceSubscriptionForPayment(ctx context.Context, input *AssignSubscriptionInput) (*UserSubscription, error) {
+	group, err := s.groupRepo.GetByID(ctx, input.GroupID)
+	if err != nil {
+		return nil, fmt.Errorf("group not found: %w", err)
+	}
+	if !group.IsSubscriptionType() {
+		return nil, ErrGroupNotSubscriptionType
+	}
+
+	now := time.Now()
+	validityDays := normalizeAssignValidityDays(input.ValidityDays)
+	expiresAt := now.AddDate(0, 0, validityDays)
+	if expiresAt.After(MaxExpiresAt) {
+		expiresAt = MaxExpiresAt
+	}
+
+	activeSubscriptions, err := s.userSubRepo.ListActiveByUserID(ctx, input.UserID)
+	if err != nil {
+		return nil, fmt.Errorf("list active subscriptions: %w", err)
+	}
+	for i := range activeSubscriptions {
+		current := activeSubscriptions[i]
+		if current.GroupID == input.GroupID {
+			continue
+		}
+		current.Status = SubscriptionStatusExpired
+		current.ExpiresAt = now
+		current.Notes = appendSubscriptionNotes(current.Notes, "replaced by "+input.Notes)
+		if err := s.userSubRepo.Update(ctx, &current); err != nil {
+			return nil, fmt.Errorf("replace previous subscription: %w", err)
+		}
+	}
+
+	existing, err := s.userSubRepo.GetByUserIDAndGroupID(ctx, input.UserID, input.GroupID)
+	if err != nil && !errors.Is(err, ErrSubscriptionNotFound) {
+		return nil, fmt.Errorf("get subscription to replace: %w", err)
+	}
+	if existing == nil || errors.Is(err, ErrSubscriptionNotFound) {
+		return s.createSubscription(ctx, input)
+	}
+
+	replaced := renewedSubscriptionTerm(existing, input.Notes, now, expiresAt)
+	replaced.AssignedAt = now
+	if input.AssignedBy > 0 {
+		replaced.AssignedBy = &input.AssignedBy
+	} else {
+		replaced.AssignedBy = nil
+	}
+	if err := s.userSubRepo.Update(ctx, replaced); err != nil {
+		return nil, fmt.Errorf("replace subscription term: %w", err)
+	}
+	return s.userSubRepo.GetByID(ctx, replaced.ID)
 }
 
 func (s *SubscriptionService) maybeInvalidateAssignmentCaches(userID, groupID int64, deferred bool) {

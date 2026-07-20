@@ -440,6 +440,10 @@ export default {
     relativeDaysAgo: '{n}d ago'
   },
 
+  leaderboard: {
+    description: 'View daily spending rankings and your personal position'
+  },
+
   // Channel Status (user-facing read-only view)
   channelStatus: {
     title: 'Channel Status',
@@ -486,7 +490,7 @@ export default {
   // Available Channels (user-facing)
   availableChannels: {
     title: 'Available Channels',
-    description: 'Channels you can access, along with their supported models and pricing',
+    description: 'Browse accessible channels, models, and pricing',
     searchPlaceholder: 'Search channels or models...',
     empty: 'No available channels',
     noModels: 'No models configured',
@@ -523,7 +527,7 @@ export default {
 
   affiliate: {
     title: 'Affiliate Rebates',
-    description: 'Invite new users and convert your rebate quota into account balance',
+    description: 'Manage invitations and rebate balance',
     yourCode: 'Your Affiliate Code',
     inviteLink: 'Invite Link',
     copyCode: 'Copy Code',
@@ -568,6 +572,64 @@ export default {
     }
   },
 
+  wallet: {
+    title: 'My Wallet',
+    description: 'Manage top-ups, subscriptions, and balance activity',
+    catalogTitle: 'Choose an offer',
+    catalogHint: 'Subscription plans and balance top-ups are listed below for direct purchase, top-up, or redemption.',
+    rechargeSectionTitle: 'Balance top-up offers',
+    rechargeSectionHint: 'Choose a payment method and credited balance. Funds are added to your general balance after payment.',
+    subscriptionSectionTitle: 'Subscription plans',
+    subscriptionSectionHint: 'Choose a plan that fits your usage. Active subscriptions stay visible in the summary.',
+    subscribeAction: 'Subscribe',
+    subscriptionPaymentRecharge: 'Recharge payment',
+    subscriptionPaymentBalance: 'Balance payment',
+    subscriptionMemberDiscount: 'Member discount',
+    subscriptionNoDiscount: 'No discount',
+    subscriptionWeeklyDiscount: 'Weekly {level} · {discount}% off',
+    subscriptionPermanentDiscount: 'Lifetime {level} · {discount}% off',
+    subscriptionBeforeDiscount: 'Before discount',
+    subscriptionAfterDiscount: 'After discount',
+    subscriptionSettlementAmount: 'Settlement amount',
+    subscriptionBalanceNoDiscount: 'No member discount for balance payment',
+    subscriptionBalanceSettlement: 'Balance after payment',
+    subscriptionBalanceRequired: 'Balance required',
+    subscriptionBalanceAvailable: 'Available balance',
+    subscriptionBalanceInsufficient: 'Insufficient balance. Recharge first or use recharge payment.',
+    subscriptionBalanceInsufficientShort: 'Insufficient balance',
+    subscriptionBalanceSuccess: 'Subscription activated',
+    subscriptionBalanceConfirmTitle: 'Confirm balance purchase',
+    subscriptionBalanceConfirmMessage: 'Review the plan and payment details. Your balance will be charged and the subscription activated after confirmation.',
+    subscriptionBalanceConfirmAction: 'Confirm purchase',
+    subscriptionConfirmPlan: 'Subscription plan',
+    refreshBalance: 'Refresh balance and subscriptions',
+    balanceDescription: 'Successful top-ups are credited to your account and usage is deducted from the balance.',
+    rechargePackages: 'Balance Top-up Packages',
+    rechargePackagesHint: 'Choose a fixed credited balance or enter a custom amount',
+    generalBalance: 'General Balance',
+    payAsYouGo: 'Pay as you go',
+    conversionRate: 'Conversion rate',
+    customRecharge: 'Custom Top-up',
+    customRechargeHint: 'Enter the balance you need',
+    customCreditAmount: 'Custom credited balance',
+    customCreditPlaceholder: 'Enter the USD balance to receive',
+    estimatedPayment: 'Estimated payment',
+    activeSubscriptions: 'Active subscriptions',
+    singleSubscriptionNotice: 'Only one active subscription is allowed per account. Purchasing or redeeming a new subscription replaces the current one.',
+    subscriptionOverrideTitle: 'Replace current plan?',
+    subscriptionOverrideMessage: 'Your current plan “{name}” has {days} days remaining. The new plan will replace it immediately and unused benefits will not carry over.',
+    subscriptionOverrideNoExpiryMessage: 'Your current plan “{name}” is still active. The new plan will replace it immediately and unused benefits will not carry over.',
+    subscriptionOverrideConfirm: 'Replace and subscribe',
+    availablePlans: 'Available plans',
+    balanceHistory: 'Balance Activity',
+    balanceHistoryHint: 'Review redeem, check-in, rebate, and admin adjustments',
+    recordsCount: '{count} records',
+    noBalanceHistory: 'No balance activity yet',
+    noBalanceHistoryHint: 'Balance changes will appear here',
+    redeemTitle: 'Redeem a Code',
+    redeemHint: 'Redeem balance, concurrency, or subscription access'
+  },
+
   // Redeem
   redeem: {
     title: 'Redeem Code',
@@ -599,6 +661,7 @@ export default {
     balanceDeductedAdmin: 'Balance Deducted (Admin)',
     balanceAddedDailyCheckin: 'Daily Check-in',
     balanceAddedUsageRebate: 'Usage Rebate',
+    balanceDeductedSubscription: 'Subscription Plan (Balance Payment)',
     concurrencyAddedRedeem: 'Concurrency Added (Redeem)',
     concurrencyAddedAdmin: 'Concurrency Added (Admin)',
     concurrencyReducedAdmin: 'Concurrency Reduced (Admin)',
@@ -790,7 +853,7 @@ export default {
   loyalty: {
     eyebrow: 'Recharge Benefits',
     title: 'Membership Program',
-    description: 'Accumulate recharge points, level up weekly membership benefits, and unlock lifetime discounts from total recharge.',
+    description: 'Earn points and unlock better recharge discounts.',
     currentPoints: 'Current Points',
     weeklyPoints: 'Weekly Points',
     permanentPoints: 'Lifetime Points',
@@ -868,7 +931,7 @@ export default {
 
   modelSquare: {
     title: 'Model Square',
-    description: 'Browse available models, platforms, group multipliers, and dynamically calculated prices.',
+    description: 'Browse available models, rates, and pricing.',
     eyebrow: 'Model Atlas',
     searchPlaceholder: 'Search models, platforms, channels, or groups...',
     empty: 'No matching models',

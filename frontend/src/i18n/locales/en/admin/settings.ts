@@ -1,7 +1,7 @@
 export default {
     settings: {
       title: 'System Settings',
-      description: 'Manage registration, email verification, default values, and SMTP settings',
+      description: 'Manage system features, authentication, and notifications',
       tabs: {
         general: 'General',
         agreement: 'Agreement',

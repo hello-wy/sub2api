@@ -17,6 +17,9 @@ const subscriptionStore = useSubscriptionStore()
 const announcementStore = useAnnouncementStore()
 const adminComplianceStore = useAdminComplianceStore()
 const adminSettingsStore = useAdminSettingsStore()
+const pageTransitionDuration = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  ? 0
+  : { enter: 480, leave: 190 }
 
 function updateDocumentTitle() {
   const customMenuItems = [
@@ -153,7 +156,11 @@ onMounted(async () => {
 
 <template>
   <NavigationProgress />
-  <RouterView />
+  <RouterView v-slot="{ Component, route: currentRoute }">
+    <Transition name="page-fade" :duration="pageTransitionDuration">
+      <component :is="Component" :key="currentRoute.path" />
+    </Transition>
+  </RouterView>
   <Toast />
   <AnnouncementPopup />
   <AdminComplianceDialog />

@@ -445,6 +445,10 @@ export default {
     relativeDaysAgo: '{n} 天前'
   },
 
+  leaderboard: {
+    description: '查看每日消费排行与个人排名'
+  },
+
   // Channel Status (user-facing read-only view)
   channelStatus: {
     title: '渠道状态',
@@ -491,7 +495,7 @@ export default {
   // Available Channels (user-facing)
   availableChannels: {
     title: '可用渠道',
-    description: '查看您可访问的渠道与其支持的模型、定价',
+    description: '查看可用渠道、模型与价格',
     searchPlaceholder: '搜索渠道或模型...',
     empty: '暂无可用渠道',
     noModels: '未配置模型',
@@ -528,7 +532,7 @@ export default {
 
   affiliate: {
     title: '邀请返利',
-    description: '邀请新用户注册，并将返利额度转入账户余额',
+    description: '管理邀请关系与返利余额',
     yourCode: '我的邀请码',
     inviteLink: '邀请链接',
     copyCode: '复制邀请码',
@@ -573,6 +577,64 @@ export default {
     }
   },
 
+  wallet: {
+    title: '我的钱包',
+    description: '管理充值、订阅与余额明细',
+    catalogTitle: '选择套餐',
+    catalogHint: '订阅套餐和余额充值直接展示在下方，按需开通、充值或兑换。',
+    rechargeSectionTitle: '余额充值套餐',
+    rechargeSectionHint: '选择支付方式和到账余额，充值成功后直接计入通用余额。',
+    subscriptionSectionTitle: '订阅套餐',
+    subscriptionSectionHint: '选择适合的订阅方案，当前订阅状态会同步显示在右侧。',
+    subscribeAction: '订阅',
+    subscriptionPaymentRecharge: '充值支付',
+    subscriptionPaymentBalance: '余额支付',
+    subscriptionMemberDiscount: '会员折扣',
+    subscriptionNoDiscount: '无折扣',
+    subscriptionWeeklyDiscount: '周积分 {level} · 减 {discount}%',
+    subscriptionPermanentDiscount: '永久积分 {level} · 减 {discount}%',
+    subscriptionBeforeDiscount: '折前价',
+    subscriptionAfterDiscount: '折后价',
+    subscriptionSettlementAmount: '结算费用',
+    subscriptionBalanceNoDiscount: '余额支付不享会员折扣',
+    subscriptionBalanceSettlement: '结算余额',
+    subscriptionBalanceRequired: '需扣余额',
+    subscriptionBalanceAvailable: '当前余额',
+    subscriptionBalanceInsufficient: '余额不足，请先充值或选择充值支付',
+    subscriptionBalanceInsufficientShort: '余额不足',
+    subscriptionBalanceSuccess: '订阅成功',
+    subscriptionBalanceConfirmTitle: '确认使用余额订阅',
+    subscriptionBalanceConfirmMessage: '请核对套餐与扣款信息。确认后将立即扣除账户余额并开通订阅。',
+    subscriptionBalanceConfirmAction: '确认购买',
+    subscriptionConfirmPlan: '订阅套餐',
+    refreshBalance: '刷新余额与订阅',
+    balanceDescription: '充值成功后会直接计入账户余额，后续调用按实际消耗扣费。',
+    rechargePackages: '余额充值套餐',
+    rechargePackagesHint: '选择固定到账余额，或使用自定义充值',
+    generalBalance: '通用余额',
+    payAsYouGo: '按量',
+    conversionRate: '换算倍率',
+    customRecharge: '自定义充值',
+    customRechargeHint: '按需填写到账余额',
+    customCreditAmount: '自定义到账余额',
+    customCreditPlaceholder: '输入希望到账的美元余额',
+    estimatedPayment: '预计支付',
+    activeSubscriptions: '当前有效订阅',
+    singleSubscriptionNotice: '每个账号只允许存在一个有效订阅，购买或兑换新订阅会覆盖当前订阅。',
+    subscriptionOverrideTitle: '确认覆盖当前套餐',
+    subscriptionOverrideMessage: '当前套餐“{name}”仍剩余 {days} 天。订阅新套餐会立即覆盖现有套餐，未使用的权益不会保留。',
+    subscriptionOverrideNoExpiryMessage: '当前套餐“{name}”仍在生效。订阅新套餐会立即覆盖现有套餐，未使用的权益不会保留。',
+    subscriptionOverrideConfirm: '确认覆盖并订阅',
+    availablePlans: '可选订阅套餐',
+    balanceHistory: '余额变动明细',
+    balanceHistoryHint: '查看兑换、签到、返利和管理员调整记录',
+    recordsCount: '{count} 条记录',
+    noBalanceHistory: '暂无余额变动',
+    noBalanceHistoryHint: '产生余额变动后将在这里显示',
+    redeemTitle: '兑换码兑换',
+    redeemHint: '兑换余额、并发额度或订阅权限'
+  },
+
   // Redeem
   redeem: {
     title: '兑换码',
@@ -604,6 +666,7 @@ export default {
     balanceDeductedAdmin: '余额扣除（管理员）',
     balanceAddedDailyCheckin: '每日签到',
     balanceAddedUsageRebate: '用量返利',
+    balanceDeductedSubscription: '订阅套餐（余额支付）',
     concurrencyAddedRedeem: '并发增加（兑换）',
     concurrencyAddedAdmin: '并发增加（管理员）',
     concurrencyReducedAdmin: '并发减少（管理员）',
@@ -795,7 +858,7 @@ export default {
   loyalty: {
     eyebrow: '累计充值权益',
     title: '会员计划',
-    description: '充值累计积分，周计划动态升级，永久计划累计解锁，享受更高充值折扣和专属优惠。',
+    description: '累计积分，解锁更高充值折扣。',
     currentPoints: '当前积分',
     weeklyPoints: '周积分',
     permanentPoints: '永久积分',
@@ -873,7 +936,7 @@ export default {
 
   modelSquare: {
     title: '模型广场',
-    description: '浏览当前可用模型、平台、分组倍率和动态计算后的价格。',
+    description: '浏览可用模型、倍率与价格',
     eyebrow: 'Model Atlas',
     searchPlaceholder: '搜索模型、平台、渠道或分组...',
     empty: '暂无匹配模型',

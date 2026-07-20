@@ -8,6 +8,30 @@ export interface RemainingDurationParts {
   minutes: number
 }
 
+type SubscriptionUsageFields = Pick<
+  UserSubscription,
+  'daily_usage_usd' | 'weekly_usage_usd' | 'monthly_usage_usd' | 'group'
+>
+
+export function getHighestSubscriptionUsagePercentage(
+  subscription: SubscriptionUsageFields | null | undefined
+): number {
+  if (!subscription) return 0
+
+  const usagePairs: Array<[number, number | null | undefined]> = [
+    [subscription.daily_usage_usd, subscription.group?.daily_limit_usd],
+    [subscription.weekly_usage_usd, subscription.group?.weekly_limit_usd],
+    [subscription.monthly_usage_usd, subscription.group?.monthly_limit_usd],
+  ]
+  const percentages = usagePairs.flatMap(([used, limit]) => {
+    if (!limit || limit <= 0) return []
+    const safeUsed = Number.isFinite(used) ? Math.max(0, used) : 0
+    return [Math.min(100, (safeUsed / limit) * 100)]
+  })
+
+  return percentages.length ? Math.round(Math.max(...percentages)) : 0
+}
+
 export function isOneTimeDailyQuota(
   subscription: Pick<UserSubscription, 'starts_at' | 'expires_at'>
 ): boolean {

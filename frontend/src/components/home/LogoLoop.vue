@@ -6,17 +6,6 @@
     role="region"
     :aria-label="ariaLabel"
   >
-    <template v-if="fadeOut">
-      <div
-        aria-hidden="true"
-        class="pointer-events-none absolute inset-y-0 left-0 z-10 w-[clamp(24px,8%,120px)] bg-[linear-gradient(to_right,var(--logoloop-fadeColor,var(--logoloop-fadeColorAuto))_0%,rgba(0,0,0,0)_100%)]"
-      />
-      <div
-        aria-hidden="true"
-        class="pointer-events-none absolute inset-y-0 right-0 z-10 w-[clamp(24px,8%,120px)] bg-[linear-gradient(to_left,var(--logoloop-fadeColor,var(--logoloop-fadeColorAuto))_0%,rgba(0,0,0,0)_100%)]"
-      />
-    </template>
-
     <div
       ref="trackRef"
       class="relative z-0 flex w-max select-none will-change-transform motion-reduce:transform-none"
@@ -131,6 +120,7 @@ const targetVelocity = computed(() => {
 
 const rootClasses = computed(() => [
   'relative overflow-x-hidden',
+  props.fadeOut && 'logo-loop-fade',
   '[--logoloop-gap:32px]',
   '[--logoloop-logoHeight:28px]',
   '[--logoloop-fadeColorAuto:#f4f8ff]',
@@ -252,3 +242,10 @@ const LogoItemContent = defineComponent({
   }
 })
 </script>
+
+<style scoped>
+.logo-loop-fade {
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 10%, #000 90%, transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0%, #000 10%, #000 90%, transparent 100%);
+}
+</style>

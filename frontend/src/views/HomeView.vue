@@ -19,15 +19,12 @@
     :style="{ fontFamily: `'Inter', sans-serif` }"
   >
     <nav class="fixed left-0 right-0 top-0 z-[100] flex h-[76px] items-center justify-between px-4 sm:px-6 lg:px-8">
-      <router-link to="/home" class="flex items-center gap-3" aria-label="Solid API home">
-        <span class="flex h-10 w-10 items-center justify-center overflow-hidden rounded-2xl border border-[#1677ff]/15 bg-white/75 shadow-[0_18px_42px_rgba(0,80,180,0.14)] backdrop-blur-xl dark:border-white/15 dark:bg-white/10 dark:shadow-[0_18px_42px_rgba(0,119,255,0.18)]">
-          <img :src="siteLogo || '/logo.png'" alt="Solid API" class="h-8 w-8 object-contain" />
-        </span>
-        <span class="text-[21px] font-semibold tracking-[-0.04em] text-[#06111f] dark:text-white">Solid API</span>
+      <router-link to="/home" class="flex h-14 items-center transition-opacity hover:opacity-80" aria-label="SolidAPI 首页">
+        <img :src="brandLockup" alt="SolidAPI" class="h-full w-auto object-contain" />
       </router-link>
 
       <div
-        class="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 rounded-full border border-[#1677ff]/12 bg-white/74 px-2 py-2 shadow-[0_18px_60px_rgba(20,68,140,0.12)] backdrop-blur-2xl dark:border-white/12 dark:bg-[#071525]/70 dark:shadow-[0_18px_60px_rgba(0,0,0,0.22)] md:flex"
+        class="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 rounded-full border border-[#d8e2ee] bg-white px-2 py-2 dark:border-[#263548] dark:bg-[#0d1724] md:flex"
       >
         <a class="rounded-full bg-[#06111f] px-4 py-1.5 text-sm font-semibold text-white dark:bg-white dark:text-[#06111f]" href="#home-hero">
           首页
@@ -56,7 +53,7 @@
 
       <div class="flex items-center gap-2">
         <button
-          class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#1677ff]/16 bg-white/74 text-[#06111f] shadow-[0_16px_38px_rgba(20,68,140,0.10)] backdrop-blur-xl transition-all hover:-translate-y-0.5 hover:bg-white active:scale-95 dark:border-white/14 dark:bg-white/10 dark:text-white dark:shadow-[0_16px_38px_rgba(0,0,0,0.22)] dark:hover:bg-white/16"
+          class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#d8e2ee] bg-white text-[#06111f] transition-colors hover:border-[#b9c9da] hover:bg-[#f4f8ff] active:scale-95 dark:border-[#263548] dark:bg-[#0d1724] dark:text-white dark:hover:border-[#3b526b] dark:hover:bg-[#121f2f]"
           type="button"
           :aria-label="isDark ? '切换到浅色模式' : '切换到深色模式'"
           :title="isDark ? '切换到浅色模式' : '切换到深色模式'"
@@ -74,7 +71,7 @@
         </router-link>
 
         <button
-          class="flex h-11 w-11 items-center justify-center rounded-full border border-[#1677ff]/16 bg-white/72 text-[#06111f] backdrop-blur-xl transition-colors hover:bg-white md:hidden dark:border-white/14 dark:bg-white/10 dark:text-white dark:hover:bg-white/16"
+          class="flex h-11 w-11 items-center justify-center rounded-full border border-[#d8e2ee] bg-white text-[#06111f] transition-colors hover:border-[#b9c9da] hover:bg-[#f4f8ff] md:hidden dark:border-[#263548] dark:bg-[#0d1724] dark:text-white dark:hover:border-[#3b526b] dark:hover:bg-[#121f2f]"
           type="button"
           aria-label="打开菜单"
         >
@@ -214,10 +211,6 @@ const SPOTLIGHT_R = 260
 const authStore = useAuthStore()
 const appStore = useAppStore()
 
-const siteLogo = computed(() => sanitizeUrl(appStore.cachedPublicSettings?.site_logo || appStore.siteLogo || '', {
-  allowRelative: true,
-  allowDataUrl: true
-}))
 const docUrl = computed(() => sanitizeUrl(appStore.cachedPublicSettings?.doc_url || appStore.docUrl || ''))
 const homeContent = computed(() => appStore.cachedPublicSettings?.home_content || '')
 
@@ -225,7 +218,7 @@ const navItems = computed<Array<{ label: string, href: string, icon: IconName, i
   { label: 'API 接入', href: '/available-channels', icon: 'link', internal: true },
   { label: '模型价格', href: '/models', icon: 'creditCard', internal: true },
   { label: '运行状态', href: '/monitor', icon: 'chart', internal: true },
-  { label: '文档', href: docUrl.value || '#docs', icon: 'book', external: Boolean(docUrl.value) }
+  { label: '文档', href: docUrl.value || '/docs', icon: 'book', internal: !docUrl.value, external: Boolean(docUrl.value) }
 ])
 
 const providerLogos: LogoItem[] = [
@@ -246,6 +239,9 @@ const isHomeContentUrl = computed(() => {
 })
 
 const isDark = ref(document.documentElement.classList.contains('dark'))
+const brandLockup = computed(() =>
+  isDark.value ? '/brand/solidapi-lockup-dark.png' : '/brand/solidapi-lockup-light.png'
+)
 const cursorPos = ref({ x: -999, y: -999 })
 const mouse = { x: -999, y: -999 }
 const smooth = { x: -999, y: -999 }

@@ -2,31 +2,38 @@
   <aside
     class="sidebar"
     :class="[
-      sidebarCollapsed ? 'w-[72px]' : 'w-64',
-      { '-translate-x-full lg:translate-x-0': !mobileOpen }
+      sidebarCollapsed ? 'w-[72px]' : 'w-56',
+      { '-translate-x-[calc(100%+1.5rem)] lg:translate-x-0': !mobileOpen }
     ]"
   >
+    <LiquidGlass class="sidebar-liquid-shell relative flex h-full flex-col">
     <!-- Logo/Brand -->
     <div class="sidebar-header" :class="{ 'sidebar-header-collapsed': sidebarCollapsed }">
-      <!-- Custom Logo or Default Logo -->
       <router-link
         :to="homePath"
-        class="sidebar-logo flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl shadow-glow transition-opacity hover:opacity-80"
+        class="sidebar-logo flex items-center transition-opacity hover:opacity-80"
+        :aria-label="sidebarCollapsed ? 'SolidAPI' : 'SolidAPI 首页'"
         @click="handleMenuItemClick(homePath)"
       >
-        <img v-if="settingsLoaded" :src="siteLogo || '/logo.png'" alt="Logo" class="h-full w-full object-contain" />
+        <img
+          v-if="sidebarCollapsed"
+          src="/brand/solidapi-mark.png"
+          alt="SolidAPI"
+          class="sidebar-logo-mark"
+        />
+        <template v-else>
+          <img
+            src="/brand/solidapi-lockup-light.png"
+            alt="SolidAPI"
+            class="sidebar-logo-lockup sidebar-logo-lockup-light"
+          />
+          <img
+            src="/brand/solidapi-lockup-dark.png"
+            alt="SolidAPI"
+            class="sidebar-logo-lockup sidebar-logo-lockup-dark"
+          />
+        </template>
       </router-link>
-      <div class="sidebar-brand" :class="{ 'sidebar-brand-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'">
-        <router-link
-          :to="homePath"
-          class="sidebar-brand-title text-lg font-bold text-gray-900 transition-colors hover:text-primary-600 dark:text-white dark:hover:text-primary-400"
-          @click="handleMenuItemClick(homePath)"
-        >
-          {{ siteName }}
-        </router-link>
-        <!-- Version Badge -->
-        <VersionBadge :version="siteVersion" />
-      </div>
     </div>
 
     <!-- Navigation -->
@@ -163,21 +170,7 @@
     </nav>
 
     <!-- Bottom Section -->
-    <div class="mt-auto border-t border-gray-100 p-3 dark:border-dark-800">
-      <!-- Theme Toggle -->
-      <button
-        @click="toggleTheme"
-        class="sidebar-link mb-2 w-full"
-        :class="{ 'sidebar-link-collapsed': sidebarCollapsed }"
-        :title="sidebarCollapsed ? (isDark ? t('nav.lightMode') : t('nav.darkMode')) : undefined"
-      >
-        <SunIcon v-if="isDark" class="h-5 w-5 flex-shrink-0 text-amber-500" />
-        <MoonIcon v-else class="h-5 w-5 flex-shrink-0" />
-        <span class="sidebar-label" :class="{ 'sidebar-label-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'">{{
-          isDark ? t('nav.lightMode') : t('nav.darkMode')
-        }}</span>
-      </button>
-
+    <div class="sidebar-footer mt-auto border-t p-3">
       <!-- Collapse Button -->
       <button
         @click="toggleSidebar"
@@ -190,6 +183,7 @@
         <span class="sidebar-label" :class="{ 'sidebar-label-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'">{{ t('nav.collapse') }}</span>
       </button>
     </div>
+    </LiquidGlass>
   </aside>
 
   <!-- Mobile Overlay -->
@@ -207,12 +201,11 @@ import { computed, h, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'v
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAdminSettingsStore, useAppStore, useAuthStore, useOnboardingStore } from '@/stores'
-import VersionBadge from '@/components/common/VersionBadge.vue'
+import LiquidGlass from '@/components/common/LiquidGlass.vue'
 import { sanitizeSvg } from '@/utils/sanitize'
-import { sanitizeUrl } from '@/utils/url'
 import { FeatureFlags, makeSidebarFlag } from '@/utils/featureFlags'
-import { checkinAPI } from '@/api'
 import { useBatchImageAccess } from '@/composables/useBatchImageAccess'
+import { useCheckinReminder } from '@/composables/useCheckinReminder'
 
 interface NavItem {
   path: string
@@ -259,24 +252,17 @@ const authStore = useAuthStore()
 const onboardingStore = useOnboardingStore()
 const adminSettingsStore = useAdminSettingsStore()
 const { canUseBatchImage, refreshBatchImageAccess } = useBatchImageAccess()
+const { checkinReminderVisible, refreshCheckinReminder } = useCheckinReminder()
 
 const sidebarCollapsed = computed(() => appStore.sidebarCollapsed)
 const mobileOpen = computed(() => appStore.mobileOpen)
 const isAdmin = computed(() => authStore.isAdmin)
 const sidebarNavRef = ref<HTMLElement | null>(null)
-const isDark = ref(document.documentElement.classList.contains('dark'))
-const checkinReminderVisible = ref(false)
 
 const homePath = computed(() => (isAdmin.value ? '/admin/dashboard' : '/dashboard'))
 
 // Track which parent nav groups are expanded
 const expandedGroups = ref<Set<string>>(new Set())
-
-// Site settings from appStore (cached, no flicker)
-const siteName = computed(() => appStore.siteName)
-const siteLogo = computed(() => sanitizeUrl(appStore.siteLogo || '', { allowRelative: true, allowDataUrl: true }))
-const siteVersion = computed(() => appStore.siteVersion)
-const settingsLoaded = computed(() => appStore.publicSettingsLoaded)
 
 // SVG Icon Components
 const DashboardIcon = {
@@ -434,31 +420,6 @@ const CreditCardIcon = {
     )
 }
 
-const RechargeSubscriptionIcon = {
-  render: () =>
-    h(
-      'svg',
-      { fill: 'currentColor', viewBox: '0 0 1024 1024' },
-      [
-        h('path', {
-          d: 'M512 992C247.3 992 32 776.7 32 512S247.3 32 512 32s480 215.3 480 480c0 84.4-22.2 167.4-64.2 240-8.9 15.3-28.4 20.6-43.7 11.7-15.3-8.8-20.5-28.4-11.7-43.7 36.4-62.9 55.6-134.8 55.6-208 0-229.4-186.6-416-416-416S96 282.6 96 512s186.6 416 416 416c17.7 0 32 14.3 32 32s-14.3 32-32 32z'
-        }),
-        h('path', {
-          d: 'M640 512H384c-17.7 0-32-14.3-32-32s14.3-32 32-32h256c17.7 0 32 14.3 32 32s-14.3 32-32 32zM640 640H384c-17.7 0-32-14.3-32-32s14.3-32 32-32h256c17.7 0 32 14.3 32 32s-14.3 32-32 32z'
-        }),
-        h('path', {
-          d: 'M512 480c-8.2 0-16.4-3.1-22.6-9.4l-128-128c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l128 128c12.5 12.5 12.5 32.8 0 45.3-6.3 6.3-14.5 9.4-22.7 9.4z'
-        }),
-        h('path', {
-          d: 'M512 480c-8.2 0-16.4-3.1-22.6-9.4-12.5-12.5-12.5-32.8 0-45.3l128-128c12.5-12.5 32.8-12.5 45.3 0s12.5 32.8 0 45.3l-128 128c-6.3 6.3-14.5 9.4-22.7 9.4z'
-        }),
-        h('path', {
-          d: 'M512 736c-17.7 0-32-14.3-32-32V448c0-17.7 14.3-32 32-32s32 14.3 32 32v256c0 17.7-14.3 32-32 32zM896 992H512c-17.7 0-32-14.3-32-32s14.3-32 32-32h306.8l-73.4-73.4c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l128 128c9.2 9.2 11.9 22.9 6.9 34.9S908.9 992 896 992z'
-        })
-      ]
-    )
-}
-
 const GlobeIcon = {
   render: () =>
     h(
@@ -534,36 +495,6 @@ const CogIcon = {
           'stroke-linecap': 'round',
           'stroke-linejoin': 'round',
           d: 'M15 12a3 3 0 11-6 0 3 3 0 016 0z'
-        })
-      ]
-    )
-}
-
-const SunIcon = {
-  render: () =>
-    h(
-      'svg',
-      { fill: 'none', viewBox: '0 0 24 24', stroke: 'currentColor', 'stroke-width': '1.5' },
-      [
-        h('path', {
-          'stroke-linecap': 'round',
-          'stroke-linejoin': 'round',
-          d: 'M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z'
-        })
-      ]
-    )
-}
-
-const MoonIcon = {
-  render: () =>
-    h(
-      'svg',
-      { fill: 'none', viewBox: '0 0 24 24', stroke: 'currentColor', 'stroke-width': '1.5' },
-      [
-        h('path', {
-          'stroke-linecap': 'round',
-          'stroke-linejoin': 'round',
-          d: 'M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z'
         })
       ]
     )
@@ -744,24 +675,22 @@ const flagBatchImageAccess = () => canUseBatchImage.value
 // buildSelfNavItems 构造用户自己的导航项（用户端主菜单和管理员的"我的账户"子菜单共享这组声明）。
 // withDashboard=true 时包含仪表盘（用户端），false 时不含（管理员的个人区已经有独立仪表盘入口）。
 //
-// 条目顺序：密钥 → 用量 → 模型广场 → 渠道状态 → 订阅/支付 → 兑换/资料。
+// 条目顺序：钱包 → 密钥 → 用量 → 模型广场 → 渠道状态 → 会员/订单 → 资料。
 function buildSelfNavItems(withDashboard: boolean): NavItem[] {
   const items: NavItem[] = []
   if (withDashboard) {
     items.push({ path: '/dashboard', label: t('nav.dashboard'), icon: DashboardIcon })
   }
   items.push(
+    { path: '/wallet', label: t('nav.wallet'), icon: CreditCardIcon, hideInSimpleMode: true },
     { path: '/keys', label: t('nav.apiKeys'), icon: KeyIcon },
     { path: '/batch-image', label: t('nav.batchImage'), icon: BatchImageIcon, hideInSimpleMode: true, featureFlag: flagBatchImageAccess },
     { path: '/usage', label: t('nav.usage'), icon: ChartIcon, hideInSimpleMode: true },
     { path: '/leaderboard', label: t('nav.leaderboard'), icon: TrophyIcon },
     { path: '/models', label: t('nav.modelSquare'), icon: ChannelIcon, hideInSimpleMode: true, featureFlag: flagAvailableChannels },
     { path: '/monitor', label: t('nav.channelStatus'), icon: SignalIcon, featureFlag: flagChannelMonitor },
-    { path: '/subscriptions', label: t('nav.mySubscriptions'), icon: CreditCardIcon, hideInSimpleMode: true },
-    { path: '/purchase', label: t('nav.buySubscription'), icon: RechargeSubscriptionIcon, hideInSimpleMode: true, featureFlag: flagPayment },
     { path: '/membership', label: t('nav.loyalty'), icon: GiftIcon, hideInSimpleMode: true, featureFlag: flagPayment },
     { path: '/orders', label: t('nav.myOrders'), icon: OrderListIcon, hideInSimpleMode: true, featureFlag: flagPayment },
-    { path: '/redeem', label: t('nav.redeem'), icon: GiftIcon, hideInSimpleMode: true },
     { path: '/checkin', label: t('nav.dailyCheckin'), icon: CalendarIcon },
     { path: '/affiliate', label: t('nav.affiliate'), icon: UsersIcon, hideInSimpleMode: true, featureFlag: flagAffiliate },
     { path: '/profile', label: t('nav.profile'), icon: UserIcon },
@@ -894,12 +823,6 @@ function toggleSidebar() {
   appStore.toggleSidebar()
 }
 
-function toggleTheme() {
-  isDark.value = !isDark.value
-  document.documentElement.classList.toggle('dark', isDark.value)
-  localStorage.setItem('theme', isDark.value ? 'dark' : 'light')
-}
-
 function closeMobile() {
   appStore.setMobileOpen(false)
 }
@@ -941,19 +864,6 @@ function shouldShowCheckinDot(path: string): boolean {
   return path === '/checkin' && checkinReminderVisible.value
 }
 
-async function refreshCheckinReminder(): Promise<void> {
-  if (!authStore.isAuthenticated || appStore.backendModeEnabled) {
-    checkinReminderVisible.value = false
-    return
-  }
-  try {
-    const status = await checkinAPI.getCheckinStatus()
-    checkinReminderVisible.value = !status.already_checked_in
-  } catch {
-    checkinReminderVisible.value = false
-  }
-}
-
 function toggleGroup(item: NavItem) {
   if (expandedGroups.value.has(item.path)) {
     expandedGroups.value.delete(item.path)
@@ -982,16 +892,6 @@ function handleGroupClick(item: NavItem) {
   if (!expandedGroups.value.has(item.path)) {
     expandedGroups.value.add(item.path)
   }
-}
-
-// Initialize theme
-const savedTheme = localStorage.getItem('theme')
-if (
-  savedTheme === 'dark' ||
-  (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)
-) {
-  isDark.value = true
-  document.documentElement.classList.add('dark')
 }
 
 // Fetch admin settings (for feature-gated nav items like Ops).
@@ -1036,9 +936,108 @@ watch(
 </script>
 
 <style scoped>
+:global(.sidebar) {
+  top: 0.75rem;
+  bottom: 0.75rem;
+  left: 0.75rem;
+}
+
+:global(.sidebar-liquid-shell) {
+  overflow: hidden;
+  border: 1px solid rgba(148, 184, 222, 0.28);
+  border-radius: 1rem;
+  background-color: var(--app-chrome-surface);
+  background-image: none;
+  -webkit-backdrop-filter: blur(12px) saturate(1.08);
+  backdrop-filter: blur(12px) saturate(1.08);
+  box-shadow:
+    inset 0 1px 0 var(--app-chrome-highlight),
+    0 18px 46px rgba(47, 94, 143, 0.16),
+    0 3px 12px rgba(47, 94, 143, 0.08);
+}
+
+:global(.sidebar-liquid-shell.liquid-glass::before) {
+  background: none;
+}
+
+:global(.sidebar-liquid-shell.liquid-glass::after) {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+:global(.sidebar-liquid-shell) .sidebar-footer {
+  border-color: var(--app-chrome-border);
+}
+
+:global(.dark .sidebar-liquid-shell) {
+  border-color: rgba(163, 207, 255, 0.14);
+  background-color: var(--app-chrome-surface);
+  background-image: none;
+  box-shadow:
+    inset 0 1px 0 var(--app-chrome-highlight),
+    0 22px 52px rgba(0, 0, 0, 0.34),
+    0 4px 14px rgba(0, 0, 0, 0.2);
+}
+
+:global(.dark .sidebar-liquid-shell.liquid-glass::before) {
+  background: none;
+}
+
+:global(.dark .sidebar-liquid-shell.liquid-glass::after) {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+:global(.dark .sidebar-liquid-shell) .sidebar-footer {
+  border-color: var(--app-chrome-border);
+}
+
+:global(.sidebar-liquid-shell button:not(.sidebar-link-active)) {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+:global(.sidebar-liquid-shell button:not(.sidebar-link-active)::before) {
+  content: none;
+}
+
 .sidebar-logo {
-  flex: 0 0 2.25rem;
-  min-width: 2.25rem;
+  flex: 0 0 8.25rem;
+  width: 8.25rem;
+  min-width: 8.25rem;
+  height: 2.75rem;
+  overflow: visible;
+  transition:
+    width 0.2s ease,
+    min-width 0.2s ease,
+    flex-basis 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.sidebar-logo-lockup {
+  display: block;
+  width: 8.25rem;
+  height: auto;
+  object-fit: contain;
+}
+
+.sidebar-logo-lockup-dark {
+  display: none;
+}
+
+:global(.dark .sidebar-logo-lockup-light) {
+  display: none;
+}
+
+:global(.dark .sidebar-logo-lockup-dark) {
+  display: block;
+}
+
+.sidebar-logo-mark {
+  display: block;
+  width: 2.25rem;
+  height: 2.25rem;
+  object-fit: contain;
 }
 
 .sidebar-header-collapsed {
@@ -1047,30 +1046,18 @@ watch(
   padding-right: 1.125rem;
 }
 
-.sidebar-brand {
-  min-width: 0;
-  flex: 1 1 auto;
-  white-space: nowrap;
-  transition:
-    max-width 0.22s ease,
-    opacity 0.14s ease,
-    transform 0.14s ease;
-  max-width: 12rem;
+.sidebar-header:not(.sidebar-header-collapsed) {
+  height: 4rem;
+  justify-content: flex-start;
+  padding-right: 1.25rem;
+  padding-left: 1.25rem;
 }
 
-.sidebar-brand-collapsed {
-  max-width: 0;
-  overflow: hidden;
-  opacity: 0;
-  transform: translateX(-4px);
-  pointer-events: none;
-}
-
-.sidebar-brand-title {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.sidebar-header-collapsed .sidebar-logo {
+  flex-basis: 2.25rem;
+  width: 2.25rem;
+  min-width: 2.25rem;
+  height: 2.5rem;
 }
 
 .sidebar-link-collapsed {

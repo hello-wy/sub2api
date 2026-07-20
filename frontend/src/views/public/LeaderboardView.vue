@@ -1,6 +1,7 @@
 <template>
   <AppLayout>
-    <div class="leaderboard-page">
+    <ScrollablePageLayout>
+      <div class="leaderboard-page">
       <!-- Animated background particles -->
       <div class="bg-particles">
         <div v-for="n in 20" :key="n" class="particle" :style="particleStyle(n)" />
@@ -174,6 +175,7 @@
         <p>每 60 秒自动刷新</p>
       </footer>
     </div>
+    </ScrollablePageLayout>
   </AppLayout>
 </template>
 
@@ -182,6 +184,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { getUserSpendingRanking } from '@/api/admin/dashboard'
 import type { UserSpendingRankingItem } from '@/types'
 import AppLayout from '@/components/layout/AppLayout.vue'
+import ScrollablePageLayout from '@/components/layout/ScrollablePageLayout.vue'
 import { useAuthStore } from '@/stores'
 import { maskLeaderboardEmail } from '@/utils/leaderboardEmail'
 
@@ -1062,5 +1065,303 @@ onUnmounted(() => {
 
 .bottom-me-item {
   animation: list-enter 0.5s ease backwards;
+}
+
+/* ==================== Light theme ==================== */
+.leaderboard-page {
+  background: linear-gradient(145deg, #ffffff 0%, #f4f8ff 52%, #f8fafc 100%);
+  color: #0f172a;
+  border-color: #dbe5f1;
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.1);
+}
+
+.particle {
+  background: rgba(22, 119, 255, 0.14);
+}
+
+.header-glow {
+  background: radial-gradient(circle, rgba(22, 119, 255, 0.11) 0%, transparent 70%);
+}
+
+.title-text {
+  background: linear-gradient(135deg, #0f172a, #1677ff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.lb-subtitle,
+.loading-text,
+.error-text,
+.empty-text {
+  color: #64748b;
+}
+
+.range-switcher {
+  background: rgba(255, 255, 255, 0.88);
+  border-color: #dbe5f1;
+  box-shadow: 0 5px 16px rgba(15, 23, 42, 0.06);
+  backdrop-filter: blur(12px);
+}
+
+.range-option {
+  color: #64748b;
+}
+
+.range-option:hover {
+  color: #1677ff;
+  background: #eff6ff;
+}
+
+.range-option:focus-visible,
+.retry-btn:focus-visible {
+  outline: 2px solid #1677ff;
+  outline-offset: 2px;
+}
+
+.range-option.active,
+.retry-btn {
+  color: #ffffff;
+  background: #1677ff;
+  box-shadow: 0 5px 16px rgba(22, 119, 255, 0.22);
+}
+
+.retry-btn:hover {
+  box-shadow: 0 7px 20px rgba(22, 119, 255, 0.26);
+}
+
+.rank-1 {
+  background: linear-gradient(180deg, rgba(255, 215, 0, 0.16) 0%, rgba(255, 215, 0, 0.045) 100%);
+  border-color: rgba(217, 164, 0, 0.28);
+}
+
+.rank-2 {
+  background: linear-gradient(180deg, rgba(148, 163, 184, 0.15) 0%, rgba(148, 163, 184, 0.035) 100%);
+  border-color: rgba(100, 116, 139, 0.22);
+}
+
+.rank-3 {
+  background: linear-gradient(180deg, rgba(205, 127, 50, 0.14) 0%, rgba(205, 127, 50, 0.035) 100%);
+  border-color: rgba(180, 105, 35, 0.24);
+}
+
+.avatar-img,
+.list-avatar {
+  background: #ffffff;
+}
+
+.user-email,
+.list-email {
+  color: #475569;
+}
+
+.list-section {
+  gap: 0.5rem;
+}
+
+.list-item {
+  background: rgba(255, 255, 255, 0.84);
+  border-color: #dbe5f1;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.045);
+  backdrop-filter: blur(12px);
+}
+
+.list-item:hover {
+  background: #ffffff;
+  border-color: #b6d4fe;
+  box-shadow: 0 7px 18px rgba(22, 119, 255, 0.1);
+}
+
+.list-rank {
+  color: #94a3b8;
+}
+
+.list-avatar {
+  border-color: #dbe5f1;
+}
+
+.lb-footer p {
+  color: #94a3b8;
+}
+
+.podium-card.is-me {
+  background: linear-gradient(180deg, rgba(22, 119, 255, 0.13) 0%, rgba(22, 119, 255, 0.035) 100%) !important;
+  border-color: rgba(22, 119, 255, 0.34) !important;
+  box-shadow: 0 8px 24px rgba(22, 119, 255, 0.14) !important;
+}
+
+.podium-card.is-me .token-value,
+.list-item.is-me .list-token-value {
+  color: #1677ff !important;
+  text-shadow: none !important;
+}
+
+.list-item.is-me {
+  background: #eff6ff !important;
+  border-color: #91caff !important;
+  box-shadow: 0 6px 18px rgba(22, 119, 255, 0.1) !important;
+}
+
+.list-item.is-me:hover {
+  background: #e6f4ff !important;
+  border-color: #69b1ff !important;
+}
+
+</style>
+
+<style>
+/* Preserve the existing high-contrast presentation in dark mode. */
+.dark .leaderboard-page {
+  background: linear-gradient(135deg, #0a0a1a 0%, #1a1035 30%, #0d1b2a 60%, #0a0a1a 100%);
+  color: #e0e0e0;
+  border-color: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+}
+
+.dark .leaderboard-page .particle {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.dark .leaderboard-page .header-glow {
+  background: radial-gradient(circle, rgba(255, 215, 0, 0.08) 0%, transparent 70%);
+}
+
+.dark .leaderboard-page .title-text {
+  background: linear-gradient(135deg, #ffd700, #ffaa00, #ffd700);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.dark .leaderboard-page .lb-subtitle,
+.dark .leaderboard-page .loading-text {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.dark .leaderboard-page .error-text,
+.dark .leaderboard-page .empty-text {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.dark .leaderboard-page .range-switcher {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: none;
+}
+
+.dark .leaderboard-page .range-option {
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.dark .leaderboard-page .range-option:hover {
+  color: rgba(255, 255, 255, 0.88);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.dark .leaderboard-page .range-option.active,
+.dark .leaderboard-page .retry-btn {
+  color: #1a1a2e;
+  background: linear-gradient(135deg, #ffd700, #ffaa00);
+  box-shadow: 0 4px 16px rgba(255, 215, 0, 0.22);
+}
+
+.dark .leaderboard-page .rank-1 {
+  background: linear-gradient(180deg, rgba(255, 215, 0, 0.08) 0%, rgba(255, 215, 0, 0.02) 100%);
+  border-color: rgba(255, 215, 0, 0.15);
+}
+
+.dark .leaderboard-page .rank-2 {
+  background: linear-gradient(180deg, rgba(192, 192, 192, 0.08) 0%, rgba(192, 192, 192, 0.02) 100%);
+  border-color: rgba(192, 192, 192, 0.12);
+}
+
+.dark .leaderboard-page .rank-3 {
+  background: linear-gradient(180deg, rgba(205, 127, 50, 0.08) 0%, rgba(205, 127, 50, 0.02) 100%);
+  border-color: rgba(205, 127, 50, 0.12);
+}
+
+.dark .leaderboard-page .avatar-img,
+.dark .leaderboard-page .list-avatar {
+  background: #1a1035;
+}
+
+.dark .leaderboard-page .user-email {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.dark .leaderboard-page .list-email {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.dark .leaderboard-page .list-section {
+  gap: 0.4rem;
+}
+
+.dark .leaderboard-page .list-item {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.06);
+  box-shadow: none;
+}
+
+.dark .leaderboard-page .list-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: none;
+}
+
+.dark .leaderboard-page .list-rank {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.dark .leaderboard-page .list-avatar {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark .leaderboard-page .lb-footer p {
+  color: rgba(255, 255, 255, 0.2);
+}
+
+.dark .leaderboard-page .podium-card.is-me {
+  background: linear-gradient(180deg, rgba(0, 122, 255, 0.15) 0%, rgba(0, 122, 255, 0.04) 100%) !important;
+  border-color: rgba(0, 122, 255, 0.35) !important;
+  box-shadow: 0 0 20px rgba(0, 122, 255, 0.25) !important;
+}
+
+.dark .leaderboard-page .podium-card.is-me .token-value,
+.dark .leaderboard-page .list-item.is-me .list-token-value {
+  color: #38bdf8 !important;
+  text-shadow: 0 0 20px rgba(0, 122, 255, 0.4) !important;
+}
+
+.dark .leaderboard-page .list-item.is-me {
+  background: rgba(0, 122, 255, 0.08) !important;
+  border-color: rgba(0, 122, 255, 0.3) !important;
+  box-shadow: 0 0 15px rgba(0, 122, 255, 0.15) !important;
+}
+
+.dark .leaderboard-page .list-item.is-me:hover {
+  background: rgba(0, 122, 255, 0.12) !important;
+  border-color: rgba(0, 122, 255, 0.45) !important;
+}
+
+</style>
+
+<style scoped>
+@media (prefers-reduced-motion: reduce) {
+  .particle,
+  .title-icon,
+  .crown,
+  .bar-shine,
+  .podium-card,
+  .list-item,
+  .loader-ring {
+    animation: none !important;
+  }
+
+  .podium-card:hover,
+  .list-item:hover,
+  .retry-btn:hover {
+    transform: none;
+  }
 }
 </style>

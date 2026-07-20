@@ -143,3 +143,5 @@ docs/*
 frontend/coverage/
 aicodex
 output/
+
+.agents

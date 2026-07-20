@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest'
 
 const componentPath = resolve(dirname(fileURLToPath(import.meta.url)), '../AppSidebar.vue')
 const componentSource = readFileSync(componentPath, 'utf8')
+const headerSource = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '../AppHeader.vue'), 'utf8')
 const stylePath = resolve(dirname(fileURLToPath(import.meta.url)), '../../../style.css')
 const styleSource = readFileSync(stylePath, 'utf8')
 
@@ -43,14 +44,52 @@ describe('AppSidebar scroll position persistence', () => {
 })
 
 describe('AppSidebar header styles', () => {
-  it('does not clip the version badge dropdown', () => {
+  it('moves the admin-only version control into the top toolbar', () => {
+    expect(componentSource).not.toContain('VersionBadge')
+    expect(headerSource).toMatch(/<VersionBadge[\s\S]*?v-if="authStore\.isAdmin"[\s\S]*?toolbar/)
+    expect(headerSource.indexOf('<VersionBadge')).toBeLessThan(headerSource.indexOf('<AnnouncementBell'))
+  })
+
+  it('does not clip the sidebar logo', () => {
     const sidebarHeaderBlockMatch = styleSource.match(/\.sidebar-header\s*\{[\s\S]*?\n {2}\}/)
-    const sidebarBrandBlockMatch = componentSource.match(/\.sidebar-brand\s*\{[\s\S]*?\n\}/)
 
     expect(sidebarHeaderBlockMatch).not.toBeNull()
-    expect(sidebarBrandBlockMatch).not.toBeNull()
     expect(sidebarHeaderBlockMatch?.[0]).not.toContain('@apply overflow-hidden;')
-    expect(sidebarBrandBlockMatch?.[0]).not.toContain('overflow: hidden;')
+    expect(sidebarHeaderBlockMatch?.[0]).not.toContain('@apply border-b')
+  })
+
+  it('animates route titles and subtitles with the page transition timing', () => {
+    expect(headerSource).toContain('class="app-header-page-copy header-page-copy"')
+    expect(styleSource).toContain('.page-fade-enter-active .app-header-page-copy')
+    expect(styleSource).toContain('.page-fade-leave-active .app-header-page-copy')
+    expect(styleSource).toContain('page-content-fade-in 290ms cubic-bezier(0.16, 1, 0.3, 1) 190ms both')
+    expect(styleSource).toContain('page-content-fade-out 190ms cubic-bezier(0.4, 0, 1, 1) both')
+    expect(styleSource).toMatch(/prefers-reduced-motion:[\s\S]*?\.page-fade-enter-active \.app-header-page-copy/)
+  })
+
+  it('keeps the right toolbar fixed while route titles change width', () => {
+    expect(headerSource).toContain('class="flex min-w-0 flex-1 items-center gap-4 overflow-hidden"')
+    expect(headerSource).toContain('class="app-header-toolbar flex shrink-0 items-center gap-2"')
+  })
+})
+
+describe('AppSidebar liquid glass states', () => {
+  it('keeps nested sidebar buttons flat until their navigation item is active', () => {
+    expect(componentSource).toContain(
+      ':global(.sidebar-liquid-shell button:not(.sidebar-link-active))'
+    )
+    expect(componentSource).toContain(
+      ':global(.sidebar-liquid-shell button:not(.sidebar-link-active)::before)'
+    )
+    expect(styleSource).toMatch(/\.sidebar-link-active\s*\{[\s\S]*?backdrop-filter: blur\(12px\)/)
+  })
+
+  it('does not draw a vertical divider on the sidebar shell', () => {
+    expect(componentSource).toContain(
+      'class="sidebar-liquid-shell relative flex h-full flex-col"'
+    )
+    expect(componentSource).toContain('border-color: transparent;')
+    expect(componentSource).toContain('box-shadow: none;')
   })
 })
 
@@ -66,6 +105,15 @@ describe('AppSidebar user navigation', () => {
     expect(componentSource).toMatch(
       /\{ path: '\/membership', label: t\('nav\.loyalty'\), icon: GiftIcon, hideInSimpleMode: true, featureFlag: flagPayment \}/
     )
+  })
+
+  it('places the wallet first in personal navigation and uses the card icon', () => {
+    const sharedItems = componentSource.slice(
+      componentSource.indexOf('function buildSelfNavItems'),
+      componentSource.indexOf('// finalizeNav'),
+    )
+    expect(sharedItems.indexOf("path: '/wallet'")).toBeLessThan(sharedItems.indexOf("path: '/keys'"))
+    expect(sharedItems).toContain("icon: CreditCardIcon")
   })
 
   it('places membership in the shared My Account navigation used by admins', () => {

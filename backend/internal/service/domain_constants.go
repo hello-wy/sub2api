@@ -97,6 +97,7 @@ const (
 	AdjustmentTypeAdminConcurrency = domain.AdjustmentTypeAdminConcurrency // 管理员调整并发数
 	AdjustmentTypeDailyCheckin     = domain.AdjustmentTypeDailyCheckin     // 每日签到奖励
 	AdjustmentTypeUsageRebate      = domain.AdjustmentTypeUsageRebate      // 用量返利奖励
+	AdjustmentTypeSubscriptionPay  = domain.AdjustmentTypeSubscriptionPay  // 套餐余额支付扣款
 )
 
 // Group subscription type constants

@@ -176,6 +176,15 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/docs',
+    name: 'Docs',
+    component: () => import('@/views/public/DocsView.vue'),
+    meta: {
+      requiresAuth: false,
+      title: '使用文档'
+    }
+  },
+  {
     path: '/leaderboard',
     name: 'Leaderboard',
     component: () => import('@/views/public/LeaderboardView.vue'),
@@ -183,7 +192,8 @@ const routes: RouteRecordRaw[] = [
       requiresAuth: true,
       requiresAdmin: false,
       title: 'Leaderboard',
-      titleKey: 'nav.leaderboard'
+      titleKey: 'nav.leaderboard',
+      descriptionKey: 'leaderboard.description'
     }
   },
 
@@ -242,16 +252,20 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
-    path: '/redeem',
-    name: 'Redeem',
-    component: () => import('@/views/user/RedeemView.vue'),
+    path: '/wallet',
+    name: 'Wallet',
+    component: () => import('@/views/user/PaymentView.vue'),
     meta: {
       requiresAuth: true,
       requiresAdmin: false,
-      title: 'Redeem Code',
-      titleKey: 'redeem.title',
-      descriptionKey: 'redeem.description'
+      title: 'My Wallet',
+      titleKey: 'wallet.title',
+      descriptionKey: 'wallet.description'
     }
+  },
+  {
+    path: '/redeem',
+    redirect: { path: '/wallet', query: { tab: 'redeem' } }
   },
   {
     path: '/checkin',
@@ -332,28 +346,11 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/subscriptions',
-    name: 'Subscriptions',
-    component: () => import('@/views/user/SubscriptionsView.vue'),
-    meta: {
-      requiresAuth: true,
-      requiresAdmin: false,
-      title: 'My Subscriptions',
-      titleKey: 'userSubscriptions.title',
-      descriptionKey: 'userSubscriptions.description'
-    }
+    redirect: { path: '/wallet', query: { tab: 'subscription' } }
   },
   {
     path: '/purchase',
-    name: 'PurchaseSubscription',
-    component: () => import('@/views/user/PaymentView.vue'),
-    meta: {
-      requiresAuth: true,
-      requiresAdmin: false,
-      title: 'Purchase Subscription',
-      titleKey: 'nav.buySubscription',
-      descriptionKey: 'purchase.description',
-      requiresPayment: true
-    }
+    redirect: (to) => ({ path: '/wallet', query: to.query })
   },
   {
     path: '/orders',
@@ -364,6 +361,7 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: false,
       title: 'My Orders',
       titleKey: 'nav.myOrders',
+      descriptionKey: 'payment.orders.description',
       requiresPayment: true
     }
   },
@@ -376,6 +374,7 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: false,
       title: 'Payment',
       titleKey: 'payment.qr.scanToPay',
+      descriptionKey: 'payment.qr.description',
       requiresPayment: true
     }
   },
@@ -412,6 +411,7 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: false,
       title: 'Airwallex Payment',
       titleKey: 'payment.airwallexPay',
+      descriptionKey: 'payment.airwallexDescription',
       requiresPayment: false
     }
   },
@@ -539,7 +539,8 @@ const routes: RouteRecordRaw[] = [
       requiresAuth: true,
       requiresAdmin: false,
       title: 'Channel Status',
-      titleKey: 'nav.channelStatus'
+      titleKey: 'nav.channelStatus',
+      descriptionKey: 'channelStatus.description'
     }
   },
   {
@@ -728,6 +729,7 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: true,
       title: 'Payment Dashboard',
       titleKey: 'nav.paymentDashboard',
+      descriptionKey: 'payment.admin.dashboardDescription',
       requiresPayment: true
     }
   },
@@ -740,6 +742,7 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: true,
       title: 'Order Management',
       titleKey: 'nav.orderManagement',
+      descriptionKey: 'payment.admin.ordersDescription',
       requiresPayment: true
     }
   },
@@ -752,6 +755,7 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: true,
       title: 'Subscription Plans',
       titleKey: 'nav.paymentPlans',
+      descriptionKey: 'payment.admin.plansDescription',
       requiresPayment: true
     }
   },
@@ -893,6 +897,11 @@ router.beforeEach(async (to, _from, next) => {
     return
   }
 
+  if (to.name === 'Dashboard' && authStore.isAdmin) {
+    next('/admin/dashboard')
+    return
+  }
+
   // Check admin requirement
   if (requiresAdmin && !authStore.isAdmin) {
     // User is authenticated but not admin, redirect to user dashboard
@@ -952,6 +961,7 @@ router.beforeEach(async (to, _from, next) => {
       '/admin/groups',
       '/admin/subscriptions',
       '/admin/redeem',
+      '/wallet',
       '/subscriptions',
       '/redeem'
     ]

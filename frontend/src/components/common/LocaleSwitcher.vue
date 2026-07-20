@@ -3,12 +3,17 @@
     <button
       @click="toggleDropdown"
       :disabled="switching"
-      class="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-dark-700"
+      :class="toolbar
+        ? 'header-tool-button header-tool-icon-button'
+        : 'flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-dark-700'"
       :title="currentLocale?.name"
+      :aria-label="currentLocale?.name"
     >
-      <span class="text-base">{{ currentLocale?.flag }}</span>
-      <span class="hidden sm:inline">{{ currentLocale?.code.toUpperCase() }}</span>
+      <Icon v-if="toolbar" name="globe" size="md" />
+      <span v-else class="text-base">{{ currentLocale?.flag }}</span>
+      <span v-if="!toolbar" class="hidden sm:inline">{{ currentLocale?.code.toUpperCase() }}</span>
       <Icon
+        v-if="!toolbar"
         name="chevronDown"
         size="xs"
         class="text-gray-400 transition-transform duration-200"
@@ -46,6 +51,10 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'
 import { setLocale, availableLocales } from '@/i18n'
+
+withDefaults(defineProps<{ toolbar?: boolean }>(), {
+  toolbar: false,
+})
 
 const { locale } = useI18n()
 

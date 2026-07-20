@@ -1,9 +1,24 @@
 <template>
   <AppLayout>
-    <div class="space-y-6">
+    <ScrollablePageLayout>
+      <div class="space-y-6">
       <!-- Header with Day Switcher -->
       <div class="flex items-center justify-end">
         <div class="flex items-center gap-2">
+          <div v-if="(stats?.available_currencies?.length || 0) > 1" class="flex rounded-lg border border-gray-200 dark:border-dark-600">
+            <button
+              v-for="currency in stats?.available_currencies"
+              :key="currency"
+              type="button"
+              class="px-3 py-1.5 text-xs font-medium transition-colors first:rounded-l-lg last:rounded-r-lg"
+              :class="selectedCurrency === currency
+                ? 'bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900'
+                : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-dark-700'"
+              @click="selectCurrency(currency)"
+            >
+              {{ currency }}
+            </button>
+          </div>
           <div class="flex rounded-lg border border-gray-200 dark:border-dark-600">
             <button
               v-for="d in DAYS_OPTIONS"
@@ -30,7 +45,7 @@
       </div>
       <template v-else-if="stats">
         <OrderStatsCards :stats="stats" />
-        <DailyRevenueChart :data="stats.daily_series || []" :loading="loading" />
+        <DailyRevenueChart :data="stats.daily_series || []" :currency="stats.currency" :loading="loading" />
         <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div class="card p-4">
             <h3 class="mb-4 text-sm font-semibold text-gray-900 dark:text-white">{{ t('payment.admin.paymentDistribution') }}</h3>
@@ -42,7 +57,7 @@
                   <span class="text-sm text-gray-700 dark:text-gray-300">{{ t('payment.methods.' + method.type, method.type) }}</span>
                 </div>
                 <div class="text-right">
-                  <span class="text-sm font-medium text-gray-900 dark:text-white">&yen;{{ method.amount.toFixed(2) }}</span>
+                  <span class="text-sm font-medium text-gray-900 dark:text-white">{{ formatMoney(method.amount) }}</span>
                   <span class="ml-2 text-xs text-gray-500 dark:text-gray-400">({{ method.count }})</span>
                 </div>
               </div>
@@ -57,13 +72,14 @@
                   <span :class="['flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold', rankClass(idx)]">{{ idx + 1 }}</span>
                   <span class="text-sm text-gray-700 dark:text-gray-300">{{ user.email }}</span>
                 </div>
-                <span class="text-sm font-medium text-gray-900 dark:text-white">&yen;{{ user.amount.toFixed(2) }}</span>
+                <span class="text-sm font-medium text-gray-900 dark:text-white">{{ formatMoney(user.amount) }}</span>
               </div>
             </div>
           </div>
         </div>
       </template>
     </div>
+    </ScrollablePageLayout>
   </AppLayout>
 </template>
 
@@ -75,18 +91,31 @@ import { adminPaymentAPI } from '@/api/admin/payment'
 import { extractI18nErrorMessage } from '@/utils/apiError'
 import type { DashboardStats } from '@/types/payment'
 import AppLayout from '@/components/layout/AppLayout.vue'
+import ScrollablePageLayout from '@/components/layout/ScrollablePageLayout.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import Icon from '@/components/icons/Icon.vue'
 import OrderStatsCards from '@/components/admin/payment/OrderStatsCards.vue'
 import DailyRevenueChart from '@/components/admin/payment/DailyRevenueChart.vue'
+import { formatPaymentAmount } from '@/components/payment/currency'
 
 const { t } = useI18n()
 const appStore = useAppStore()
 
 const DAYS_OPTIONS = [7, 30, 90] as const
 const days = ref<number>(30)
+const selectedCurrency = ref('')
 const loading = ref(false)
 const stats = ref<DashboardStats | null>(null)
+
+function formatMoney(amount: number): string {
+  return formatPaymentAmount(amount, stats.value?.currency || 'CNY')
+}
+
+function selectCurrency(currency: string) {
+  if (currency === selectedCurrency.value) return
+  selectedCurrency.value = currency
+  void loadDashboard()
+}
 
 function methodColor(type: string): string {
   const c: Record<string, string> = {
@@ -107,8 +136,9 @@ function rankClass(idx: number): string {
 async function loadDashboard() {
   loading.value = true
   try {
-    const res = await adminPaymentAPI.getDashboard(days.value)
+    const res = await adminPaymentAPI.getDashboard(days.value, selectedCurrency.value || undefined)
     stats.value = res.data
+    selectedCurrency.value = res.data.currency
   } catch (err: unknown) {
     appStore.showError(extractI18nErrorMessage(err, t, 'payment.errors', t('common.error')))
   } finally {

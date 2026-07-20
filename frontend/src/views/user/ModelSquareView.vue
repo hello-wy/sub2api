@@ -1,6 +1,7 @@
 <template>
   <AppLayout>
-    <div class="min-h-full overflow-hidden rounded-2xl bg-white text-gray-900 shadow-card dark:bg-dark-900 dark:text-gray-100">
+    <ScrollablePageLayout>
+      <div class="min-h-full rounded-2xl bg-white text-gray-900 shadow-card dark:bg-dark-900 dark:text-gray-100">
       <div class="grid min-h-full lg:grid-cols-[258px_minmax(0,1fr)]">
         <aside
           data-test="filter-sidebar"
@@ -10,7 +11,7 @@
             <div class="flex items-center justify-between">
               <button
                 type="button"
-                class="flex min-w-0 flex-1 items-center gap-2 text-left text-lg font-semibold lg:pointer-events-none"
+                class="filter-toggle"
                 :aria-expanded="filtersOpen"
                 aria-controls="model-square-filters"
                 @click="filtersOpen = !filtersOpen"
@@ -27,9 +28,10 @@
               <button
                 type="button"
                 data-test="reset-filters"
-                class="ml-3 shrink-0 text-xs font-medium text-gray-400 transition hover:text-primary-600 dark:hover:text-primary-400"
+                class="filter-reset"
                 @click="resetFilters"
               >
+                <Icon name="refresh" size="xs" />
                 {{ t('modelSquare.filters.reset') }}
               </button>
             </div>
@@ -136,7 +138,7 @@
             <div data-test="sort-control" class="w-36">
               <Select v-model="sortMode" :options="sortOptions" />
             </div>
-            <div class="inline-flex rounded-lg border border-gray-200 bg-white p-0.5 dark:border-dark-600 dark:bg-dark-800" role="group" :aria-label="t('modelSquare.view.label')">
+            <div class="view-switcher" role="group" :aria-label="t('modelSquare.view.label')">
               <button
                 type="button"
                 data-test="grid-view"
@@ -191,6 +193,7 @@
         </main>
       </div>
     </div>
+    </ScrollablePageLayout>
   </AppLayout>
 </template>
 
@@ -198,6 +201,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
+import ScrollablePageLayout from '@/components/layout/ScrollablePageLayout.vue'
 import Icon from '@/components/icons/Icon.vue'
 import Pagination from '@/components/common/Pagination.vue'
 import Select from '@/components/common/Select.vue'
@@ -365,19 +369,35 @@ onMounted(loadModels)
 <style scoped>
 .filter-label { font-size: 0.75rem; font-weight: 600; color: rgb(107 114 128); }
 .filter-control { width: 100%; border-radius: 0.5rem; border: 1px solid rgb(229 231 235); background: white; padding: 0.55rem 0.7rem 0.55rem 2.25rem; font-size: 0.75rem; outline: none; }
-.filter-control:focus { border-color: rgb(var(--color-primary-500)); box-shadow: 0 0 0 2px rgb(var(--color-primary-500) / 0.1); }
-.filter-option { min-width: 0; border-radius: 0.5rem; border: 1px solid rgb(229 231 235); padding: 0.4rem 0.65rem; font-size: 0.75rem; line-height: 1rem; color: rgb(75 85 99); transition: background-color 150ms, border-color 150ms, color 150ms; }
-.filter-option:hover { background: rgb(249 250 251); }
-.filter-option:focus-visible, .view-button:focus-visible { outline: 2px solid rgb(var(--color-primary-500)); outline-offset: 2px; }
-.filter-option-active { border-color: rgb(var(--color-primary-500)); background: rgb(var(--color-primary-50)); color: rgb(var(--color-primary-700)); font-weight: 600; }
-.view-button { display: grid; height: 2rem; width: 2rem; place-items: center; border-radius: 0.375rem; color: rgb(107 114 128); transition: color 150ms, background-color 150ms; }
-.view-button:hover { color: rgb(31 41 55); }
-.view-button-active { background: rgb(var(--color-primary-50)); color: rgb(var(--color-primary-600)); box-shadow: inset 0 0 0 1px rgb(var(--color-primary-500)); }
-:global(.dark) .filter-label { color: rgb(156 163 175); }
-:global(.dark) .filter-control { border-color: rgb(55 65 81); background: rgb(31 41 55); color: rgb(229 231 235); }
-:global(.dark) .filter-option { border-color: rgb(55 65 81); color: rgb(209 213 219); }
-:global(.dark) .filter-option:hover { background: rgb(55 65 81); }
-:global(.dark) .filter-option-active { border-color: rgb(var(--color-primary-500)); background: rgb(var(--color-primary-500) / 0.12); color: rgb(var(--color-primary-300)); }
-:global(.dark) .view-button:hover { color: rgb(229 231 235); }
-:global(.dark) .view-button-active { background: rgb(var(--color-primary-500) / 0.12); color: rgb(var(--color-primary-300)); }
+.filter-control:focus { border-color: #1677ff; box-shadow: 0 0 0 2px rgb(22 119 255 / 0.1); }
+.filter-toggle { display: flex; min-width: 0; flex: 1 1 0%; align-items: center; gap: 0.5rem; border-radius: 0.5rem; color: rgb(17 24 39); font-size: 1.125rem; font-weight: 600; text-align: left; }
+.filter-reset { display: inline-flex; flex-shrink: 0; align-items: center; gap: 0.35rem; margin-left: 0.75rem; border: 1px solid #bae0ff; border-radius: 0.5rem; background: rgb(230 244 255 / 0.72); padding: 0.35rem 0.55rem; color: #003eb3; font-size: 0.75rem; font-weight: 600; transition: background-color 150ms, border-color 150ms, color 150ms, box-shadow 150ms; }
+.filter-reset:hover { border-color: #69b1ff; background: #bae0ff; color: #002c8c; box-shadow: 0 4px 12px rgb(22 119 255 / 0.12); }
+.filter-option { min-width: 0; border-radius: 0.5rem; border: 1px solid #bae0ff; background: rgb(255 255 255 / 0.82); padding: 0.4rem 0.65rem; color: rgb(71 85 105); font-size: 0.75rem; line-height: 1rem; box-shadow: 0 1px 2px rgb(15 23 42 / 0.04); transition: background-color 150ms, border-color 150ms, color 150ms, box-shadow 150ms, transform 150ms; }
+.filter-option:hover { border-color: #69b1ff; background: #e6f4ff; color: #003eb3; box-shadow: 0 4px 12px rgb(22 119 255 / 0.1); }
+.filter-option:active { transform: scale(0.98); }
+.filter-reset:focus-visible, .filter-option:focus-visible, .view-button:focus-visible, .filter-toggle:focus-visible { outline: 2px solid #1677ff; outline-offset: 2px; }
+.filter-option-active { border-color: #0958d9; background: #0958d9; color: white; font-weight: 600; box-shadow: 0 5px 14px rgb(22 119 255 / 0.22); }
+.filter-option-active:hover { border-color: #003eb3; background: #003eb3; color: white; }
+.view-switcher { display: inline-flex; border: 1px solid #bae0ff; border-radius: 0.5rem; background: rgb(230 244 255 / 0.52); padding: 0.125rem; box-shadow: inset 0 1px 2px rgb(15 23 42 / 0.04); }
+.view-button { display: grid; height: 2rem; width: 2rem; place-items: center; border-radius: 0.375rem; color: rgb(100 116 139); transition: color 150ms, background-color 150ms, box-shadow 150ms; }
+.view-button:hover { background: rgb(186 224 255 / 0.72); color: #003eb3; }
+.view-button-active { background: #0958d9; color: white; box-shadow: 0 2px 7px rgb(22 119 255 / 0.24); }
+.view-button-active:hover { background: #003eb3; color: white; }
+:global(.dark .filter-label) { color: rgb(156 163 175); }
+:global(.dark .filter-control) { border-color: rgb(55 65 81); background: rgb(31 41 55); color: rgb(229 231 235); }
+:global(.dark .filter-toggle) { color: rgb(243 244 246); }
+:global(.dark .filter-reset) { border-color: rgb(22 119 255 / 0.28); background: rgb(22 119 255 / 0.1); color: #69b1ff; }
+:global(.dark .filter-reset:hover) { border-color: rgb(64 150 255 / 0.55); background: rgb(22 119 255 / 0.18); color: #91caff; }
+:global(.dark .filter-option) { border-color: rgb(22 119 255 / 0.22); background: rgb(31 41 55 / 0.72); color: rgb(209 213 219); box-shadow: none; }
+:global(.dark .filter-option:hover) { border-color: rgb(64 150 255 / 0.48); background: rgb(22 119 255 / 0.12); color: #91caff; }
+:global(.dark .filter-option-active) { border-color: #1677ff; background: #0958d9; color: white; box-shadow: 0 5px 16px rgb(0 0 0 / 0.2); }
+:global(.dark .filter-option-active:hover) { border-color: #4096ff; background: #1677ff; color: white; }
+:global(.dark .view-switcher) { border-color: rgb(22 119 255 / 0.24); background: rgb(22 119 255 / 0.08); }
+:global(.dark .view-button:hover) { background: rgb(22 119 255 / 0.14); color: #91caff; }
+:global(.dark .view-button-active) { background: #0958d9; color: white; }
+
+@media (min-width: 1024px) {
+  .filter-toggle { pointer-events: none; border-radius: 0; }
+}
 </style>

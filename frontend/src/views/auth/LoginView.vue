@@ -1,17 +1,19 @@
 <template>
-  <AuthLayout>
-    <div class="space-y-6">
+  <div class="auth-route-view">
+    <!-- Keep auth content on one route root so App.vue can animate the dashboard handoff. -->
+    <AuthLayout variant="minimal">
+    <div class="login-form space-y-6">
       <!-- Title -->
-      <div class="text-center">
+      <div class="login-heading">
         <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
-          {{ t('auth.welcomeBack') }}
+          {{ t('auth.signIn') }}
         </h2>
         <p class="mt-2 text-sm text-gray-500 dark:text-dark-400">
           {{ t('auth.signInToAccount') }}
         </p>
       </div>
       <!-- Login Form -->
-      <form @submit.prevent="handleLogin" class="space-y-5">
+      <form @submit.prevent="handleLogin" class="login-fields space-y-5">
         <!-- Email Input -->
         <div>
           <label for="email" class="input-label">
@@ -93,7 +95,7 @@
         <button
           type="submit"
           :disabled="authActionDisabled || (turnstileEnabled && !turnstileToken)"
-          class="btn btn-primary w-full"
+          class="btn btn-primary login-submit w-full"
         >
           <svg
             v-if="isLoading"
@@ -143,7 +145,7 @@
           <EmailOAuthButtons
             :disabled="authActionDisabled"
             :github-enabled="githubOAuthEnabled"
-            :google-enabled="googleOAuthEnabled"
+            :google-enabled="false"
             :show-divider="false"
           />
 
@@ -184,17 +186,18 @@
         </router-link>
       </p>
     </template>
-  </AuthLayout>
+    </AuthLayout>
 
-  <!-- 2FA Modal -->
-  <TotpLoginModal
-    v-if="show2FAModal"
-    ref="totpModalRef"
-    :temp-token="totpTempToken"
-    :user-email-masked="totpUserEmailMasked"
-    @verify="handle2FAVerify"
-    @cancel="handle2FACancel"
-  />
+    <!-- 2FA Modal -->
+    <TotpLoginModal
+      v-if="show2FAModal"
+      ref="totpModalRef"
+      :temp-token="totpTempToken"
+      :user-email-masked="totpUserEmailMasked"
+      @verify="handle2FAVerify"
+      @cancel="handle2FACancel"
+    />
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -216,6 +219,7 @@ import { getPublicSettings, isTotp2FARequired, isWeChatWebOAuthEnabled } from '@
 import type { LoginAgreementDocument, TotpLoginResponse } from '@/types'
 import { extractI18nErrorMessage } from '@/utils/apiError'
 import { clearAllAffiliateReferralCodes } from '@/utils/oauthAffiliate'
+import { resolvePostLoginRedirect } from '@/router/postLoginRedirect'
 
 const { t } = useI18n()
 const LOGIN_AGREEMENT_STORAGE_KEY = 'sub2api_login_agreement_consent'
@@ -243,7 +247,6 @@ const backendModeEnabled = ref<boolean>(false)
 const oidcOAuthEnabled = ref<boolean>(false)
 const oidcOAuthProviderName = ref<string>('OIDC')
 const githubOAuthEnabled = ref<boolean>(false)
-const googleOAuthEnabled = ref<boolean>(false)
 const passwordResetEnabled = ref<boolean>(false)
 const loginAgreementEnabled = ref<boolean>(false)
 const loginAgreementMode = ref<'modal' | 'checkbox' | string>('modal')
@@ -293,8 +296,7 @@ const showOAuthLogin = computed(
       dingtalkOAuthEnabled.value ||
       wechatOAuthEnabled.value ||
       oidcOAuthEnabled.value ||
-      githubOAuthEnabled.value ||
-      googleOAuthEnabled.value)
+      githubOAuthEnabled.value)
 )
 
 watch(validationToastMessage, (value, previousValue) => {
@@ -325,7 +327,6 @@ onMounted(async () => {
     oidcOAuthEnabled.value = settings.oidc_oauth_enabled
     oidcOAuthProviderName.value = settings.oidc_oauth_provider_name || 'OIDC'
     githubOAuthEnabled.value = settings.github_oauth_enabled
-    googleOAuthEnabled.value = settings.google_oauth_enabled
     backendModeEnabled.value = settings.backend_mode_enabled
     passwordResetEnabled.value = settings.password_reset_enabled
     applyLoginAgreementSettings(settings)
@@ -498,8 +499,8 @@ async function handleLogin(): Promise<void> {
     appStore.showSuccess(t('auth.loginSuccess'))
 
     // Redirect to dashboard or intended route
-    const redirectTo = (router.currentRoute.value.query.redirect as string) || '/dashboard'
-    await router.push(redirectTo)
+    const redirectTo = resolvePostLoginRedirect(router.currentRoute.value.query.redirect, authStore.isAdmin)
+    await router.replace(redirectTo)
   } catch (error: unknown) {
     // Reset Turnstile on error
     if (turnstileRef.value) {
@@ -532,8 +533,8 @@ async function handle2FAVerify(code: string): Promise<void> {
     appStore.showSuccess(t('auth.loginSuccess'))
 
     // Redirect to dashboard or intended route
-    const redirectTo = (router.currentRoute.value.query.redirect as string) || '/dashboard'
-    await router.push(redirectTo)
+    const redirectTo = resolvePostLoginRedirect(router.currentRoute.value.query.redirect, authStore.isAdmin)
+    await router.replace(redirectTo)
   } catch (error: unknown) {
     const err = error as { message?: string; response?: { data?: { message?: string } } }
     const message = err.response?.data?.message || err.message || t('profile.totp.loginFailed')
@@ -553,6 +554,70 @@ function handle2FACancel(): void {
 </script>
 
 <style scoped>
+.login-heading {
+  text-align: center;
+}
+
+.login-form .input-label {
+  margin-bottom: 7px;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.login-form .input {
+  min-height: 46px;
+  border-color: rgba(148, 163, 184, 0.34);
+  border-radius: 14px;
+  background: rgba(248, 251, 255, 0.7);
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.login-form .input:hover:not(:disabled) {
+  border-color: rgba(96, 165, 250, 0.72);
+  background: rgba(255, 255, 255, 0.84);
+}
+
+.login-form .input:focus {
+  border-color: #1677ff;
+  box-shadow: 0 0 0 3px rgba(22, 119, 255, 0.12);
+}
+
+.login-submit {
+  min-height: 46px;
+  border-radius: 999px;
+  background: #126ee8;
+  box-shadow: 0 8px 18px rgba(18, 110, 232, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  font-weight: 650;
+}
+
+.login-submit:hover:not(:disabled) {
+  background: #0f65d6;
+  box-shadow: 0 7px 16px rgba(18, 110, 232, 0.18);
+  transform: none;
+}
+
+.dark .login-form .input-label {
+  color: #cbd5e1;
+}
+
+.dark .login-form .input {
+  border-color: rgba(119, 154, 194, 0.38);
+  background: rgba(7, 17, 30, 0.58);
+  color: #f8fafc;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.24);
+}
+
+.dark .login-form .input:hover:not(:disabled) {
+  border-color: rgba(96, 165, 250, 0.72);
+  background: rgba(13, 31, 51, 0.76);
+}
+
+.dark .login-form .input:focus {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.13);
+}
+
 .fade-enter-active,
 .fade-leave-active {
   transition: all 0.3s ease;

@@ -1,6 +1,7 @@
 <template>
   <AppLayout>
-    <div class="mx-auto max-w-lg space-y-6 py-8">
+    <ScrollablePageLayout>
+      <div class="mx-auto max-w-lg space-y-6 py-8">
       <div v-if="loading" class="flex items-center justify-center py-20">
         <div class="h-8 w-8 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent"></div>
       </div>
@@ -11,7 +12,7 @@
         </div>
         <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{{ t('payment.airwallexLoadFailed') }}</h3>
         <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">{{ errorMessage }}</p>
-        <button class="btn btn-primary mt-6" @click="router.push('/purchase')">{{ t('payment.result.backToRecharge') }}</button>
+        <button class="btn btn-primary mt-6" @click="router.push({ path: '/wallet', query: { tab: 'recharge' } })">{{ t('payment.result.backToRecharge') }}</button>
       </div>
 
       <div v-else class="card p-6">
@@ -21,6 +22,7 @@
         </div>
       </div>
     </div>
+    </ScrollablePageLayout>
   </AppLayout>
 </template>
 
@@ -29,6 +31,7 @@ import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import AppLayout from '@/components/layout/AppLayout.vue'
+import ScrollablePageLayout from '@/components/layout/ScrollablePageLayout.vue'
 import Icon from '@/components/icons/Icon.vue'
 import {
   PAYMENT_RECOVERY_STORAGE_KEY,

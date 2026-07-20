@@ -389,8 +389,56 @@
               @probe="handleProbeUpstreamBilling(row)"
             />
           </template>
-          <template #cell-priority="{ value }">
-            <span class="text-sm text-gray-700 dark:text-gray-300">{{ value }}</span>
+          <template #cell-priority="{ row }">
+            <div
+              v-if="editingPriorityAccountId === row.id"
+              class="flex min-w-[9rem] items-center gap-1.5"
+              @click.stop
+            >
+              <input
+                ref="priorityInput"
+                v-model.number="priorityDraft"
+                type="number"
+                min="1"
+                step="1"
+                class="input h-8 w-16 rounded-lg px-2 py-1 text-center text-sm tabular-nums"
+                :aria-label="t('admin.accounts.priority')"
+                :disabled="savingPriorityAccountId === row.id"
+                @keydown.enter.prevent="savePriority(row)"
+                @keydown.esc.prevent="cancelPriorityEdit"
+              />
+              <button
+                type="button"
+                class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-primary-600 text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-60"
+                :disabled="savingPriorityAccountId === row.id"
+                :title="t('common.save')"
+                data-testid="priority-save"
+                @click="savePriority(row)"
+              >
+                <Icon v-if="savingPriorityAccountId === row.id" name="refresh" size="xs" class="animate-spin" />
+                <Icon v-else name="check" size="xs" />
+              </button>
+              <button
+                type="button"
+                class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 transition hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-60 dark:border-dark-600 dark:bg-dark-800 dark:text-gray-400 dark:hover:border-dark-500 dark:hover:bg-dark-700 dark:hover:text-gray-200"
+                :disabled="savingPriorityAccountId === row.id"
+                :title="t('common.cancel')"
+                @click="cancelPriorityEdit"
+              >
+                <Icon name="x" size="xs" />
+              </button>
+            </div>
+            <button
+              v-else
+              type="button"
+              class="group inline-flex h-8 min-w-[4rem] items-center justify-center gap-1.5 rounded-lg px-2 text-sm tabular-nums text-gray-700 transition hover:bg-primary-50 hover:text-primary-700 dark:text-gray-300 dark:hover:bg-primary-950/40 dark:hover:text-primary-300"
+              :title="t('admin.accounts.priorityHint')"
+              :data-testid="`priority-edit-${row.id}`"
+              @click.stop="startPriorityEdit(row)"
+            >
+              <span>{{ row.priority }}</span>
+              <Icon name="edit" size="xs" class="text-gray-400 transition group-hover:text-primary-500" />
+            </button>
           </template>
           <template #header-scheduler_score="{ column }">
             <div class="flex items-center">
@@ -497,7 +545,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onUnmounted, toRaw, watch } from 'vue'
+import { ref, reactive, computed, nextTick, onMounted, onUnmounted, toRaw, watch } from 'vue'
 import { useIntervalFn } from '@vueuse/core'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
@@ -617,6 +665,10 @@ const showSchedulePanel = ref(false)
 const scheduleAcc = ref<Account | null>(null)
 const scheduleModelOptions = ref<SelectOption[]>([])
 const togglingSchedulable = ref<number | null>(null)
+const editingPriorityAccountId = ref<number | null>(null)
+const savingPriorityAccountId = ref<number | null>(null)
+const priorityDraft = ref<number | null>(null)
+const priorityInput = ref<HTMLInputElement | null>(null)
 const menu = reactive<{show:boolean, acc:Account|null, pos:{top:number, left:number}|null}>({ show: false, acc: null, pos: null })
 const exportingData = ref(false)
 const upstreamBillingProbeSettings = reactive<UpstreamBillingProbeSettings>({
@@ -1420,6 +1472,52 @@ const cols = computed(() =>
 )
 
 const handleEdit = (a: Account) => { edAcc.value = a; showEdit.value = true }
+
+const startPriorityEdit = (account: Account) => {
+  if (savingPriorityAccountId.value !== null) return
+  editingPriorityAccountId.value = account.id
+  priorityDraft.value = account.priority
+  void nextTick(() => {
+    priorityInput.value?.focus()
+    priorityInput.value?.select()
+  })
+}
+
+const cancelPriorityEdit = () => {
+  if (savingPriorityAccountId.value !== null) return
+  editingPriorityAccountId.value = null
+  priorityDraft.value = null
+}
+
+const savePriority = async (account: Account) => {
+  if (savingPriorityAccountId.value !== null) return
+  const priority = Number(priorityDraft.value)
+  if (!Number.isInteger(priority) || priority < 1) {
+    appStore.showError(t('admin.accounts.priorityHint'))
+    return
+  }
+  if (priority === account.priority) {
+    cancelPriorityEdit()
+    return
+  }
+
+  savingPriorityAccountId.value = account.id
+  try {
+    const updated = await adminAPI.accounts.update(account.id, { priority })
+    const index = accounts.value.findIndex(item => item.id === account.id)
+    if (index >= 0) {
+      accounts.value[index] = { ...accounts.value[index], ...updated, priority }
+    }
+    editingPriorityAccountId.value = null
+    priorityDraft.value = null
+    appStore.showSuccess(t('admin.accounts.accountUpdated'))
+  } catch (error) {
+    appStore.showError(extractApiErrorMessage(error, t('common.error')))
+  } finally {
+    savingPriorityAccountId.value = null
+  }
+}
+
 const openMenu = (a: Account, e: MouseEvent) => {
   menu.acc = a
 

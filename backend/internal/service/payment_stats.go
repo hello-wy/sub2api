@@ -7,18 +7,31 @@ import (
 	"math"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	dbent "github.com/Wei-Shaw/sub2api/ent"
 	"github.com/Wei-Shaw/sub2api/ent/paymentauditlog"
 	"github.com/Wei-Shaw/sub2api/ent/paymentorder"
+	"github.com/Wei-Shaw/sub2api/internal/payment"
+	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 )
 
 // --- Dashboard & Analytics ---
 
-func (s *PaymentService) GetDashboardStats(ctx context.Context, days int) (*DashboardStats, error) {
+const internalBalancePaymentType = "balance"
+
+func (s *PaymentService) GetDashboardStats(ctx context.Context, days int, requestedCurrency string) (*DashboardStats, error) {
 	if days <= 0 {
 		days = 30
+	}
+	requestedCurrency = strings.TrimSpace(requestedCurrency)
+	if requestedCurrency != "" {
+		var err error
+		requestedCurrency, err = payment.NormalizePaymentCurrency(requestedCurrency)
+		if err != nil {
+			return nil, infraerrors.BadRequest("INVALID_CURRENCY", err.Error())
+		}
 	}
 	now := time.Now()
 	since := now.AddDate(0, 0, -days)
@@ -30,27 +43,88 @@ func (s *PaymentService) GetDashboardStats(ctx context.Context, days int) (*Dash
 		Where(
 			paymentorder.StatusIn(paidStatuses...),
 			paymentorder.PaidAtGTE(since),
+			paymentorder.PaymentTypeNEQ(internalBalancePaymentType),
 		).
 		All(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	st := &DashboardStats{}
-	computeBasicStats(st, orders, todayStart)
+	currencies := paymentOrderCurrencies(orders)
+	selectedCurrency := selectDashboardCurrency(requestedCurrency, currencies)
+	currencies = includeDashboardCurrency(currencies, selectedCurrency)
+	selectedOrders := filterPaymentOrdersByCurrency(orders, selectedCurrency)
+	st := &DashboardStats{Currency: selectedCurrency, Currencies: currencies}
+	computeBasicStats(st, selectedOrders, todayStart)
 
-	st.PendingOrders, err = s.entClient.PaymentOrder.Query().
-		Where(paymentorder.StatusEQ(OrderStatusPending)).
-		Count(ctx)
+	pendingOrders, err := s.entClient.PaymentOrder.Query().
+		Where(
+			paymentorder.StatusEQ(OrderStatusPending),
+			paymentorder.PaymentTypeNEQ(internalBalancePaymentType),
+		).
+		All(ctx)
 	if err != nil {
 		return nil, err
 	}
+	st.PendingOrders = len(filterPaymentOrdersByCurrency(pendingOrders, selectedCurrency))
 
-	st.DailySeries = buildDailySeries(orders, since, days)
-	st.PaymentMethods = buildMethodDistribution(orders)
-	st.TopUsers = buildTopUsers(orders)
+	st.DailySeries = buildDailySeries(selectedOrders, since, days)
+	st.PaymentMethods = buildMethodDistribution(selectedOrders)
+	st.TopUsers = buildTopUsers(selectedOrders)
 
 	return st, nil
+}
+
+func paymentOrderCurrencies(orders []*dbent.PaymentOrder) []string {
+	seen := make(map[string]struct{})
+	for _, order := range orders {
+		if order == nil {
+			continue
+		}
+		seen[PaymentOrderCurrency(order)] = struct{}{}
+	}
+	currencies := make([]string, 0, len(seen))
+	for currency := range seen {
+		currencies = append(currencies, currency)
+	}
+	sort.Strings(currencies)
+	return currencies
+}
+
+func selectDashboardCurrency(requested string, available []string) string {
+	if requested != "" {
+		return requested
+	}
+	for _, currency := range available {
+		if currency == payment.DefaultPaymentCurrency {
+			return currency
+		}
+	}
+	if len(available) > 0 {
+		return available[0]
+	}
+	return payment.DefaultPaymentCurrency
+}
+
+func includeDashboardCurrency(currencies []string, selected string) []string {
+	for _, currency := range currencies {
+		if currency == selected {
+			return currencies
+		}
+	}
+	currencies = append(currencies, selected)
+	sort.Strings(currencies)
+	return currencies
+}
+
+func filterPaymentOrdersByCurrency(orders []*dbent.PaymentOrder, currency string) []*dbent.PaymentOrder {
+	filtered := make([]*dbent.PaymentOrder, 0, len(orders))
+	for _, order := range orders {
+		if order != nil && PaymentOrderCurrency(order) == currency {
+			filtered = append(filtered, order)
+		}
+	}
+	return filtered
 }
 
 func computeBasicStats(st *DashboardStats, orders []*dbent.PaymentOrder, todayStart time.Time) {

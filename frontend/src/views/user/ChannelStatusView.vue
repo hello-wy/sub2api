@@ -1,23 +1,27 @@
 <template>
   <AppLayout>
-    <MonitorHero
-      :overall-status="overallStatus"
-      :interval-seconds="DEFAULT_INTERVAL_SECONDS"
-      :window="currentWindow"
-      :loading="loading"
-      :auto-refresh="autoRefresh"
-      @update:window="handleWindowChange"
-      @refresh="manualReload"
-    />
+    <ScrollablePageLayout>
+      <div class="space-y-6">
+        <MonitorHero
+          :overall-status="overallStatus"
+          :interval-seconds="DEFAULT_INTERVAL_SECONDS"
+          :window="currentWindow"
+          :loading="loading"
+          :auto-refresh="autoRefresh"
+          @update:window="handleWindowChange"
+          @refresh="manualReload"
+        />
 
-    <MonitorCardGrid
-      :items="items"
-      :window="currentWindow"
-      :countdown-seconds="countdown"
-      :loading="loading"
-      :detail-cache="detailCache"
-      @card-click="openDetail"
-    />
+        <MonitorCardGrid
+          :items="items"
+          :window="currentWindow"
+          :countdown-seconds="countdown"
+          :loading="loading"
+          :detail-cache="detailCache"
+          @card-click="openDetail"
+        />
+      </div>
+    </ScrollablePageLayout>
 
     <MonitorDetailDialog
       :show="showDetail"
@@ -40,6 +44,7 @@ import {
   type UserMonitorDetail,
 } from '@/api/channelMonitor'
 import AppLayout from '@/components/layout/AppLayout.vue'
+import ScrollablePageLayout from '@/components/layout/ScrollablePageLayout.vue'
 import MonitorHero, {
   type MonitorWindow,
   type OverallStatus,

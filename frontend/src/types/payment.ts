@@ -2,6 +2,8 @@
  * Payment System Type Definitions
  */
 
+import type { UserSubscription } from '@/types'
+
 // ==================== Enums / Union Types ====================
 
 export type OrderStatus =
@@ -243,12 +245,22 @@ export interface CreateOrderResult {
   loyalty?: PaymentLoyaltyInfo
 }
 
+export interface BalanceSubscriptionPurchaseResult {
+  order_id: number
+  amount: number
+  new_balance: number
+  subscription: UserSubscription
+}
+
 export interface DashboardStats {
   today_amount: number
   total_amount: number
   today_count: number
   total_count: number
   avg_amount: number
+  pending_orders: number
+  currency: string
+  available_currencies: string[]
   daily_series: { date: string; amount: number; count: number }[]
   payment_methods: { type: string; amount: number; count: number }[]
   top_users: { user_id: number; email: string; amount: number }[]

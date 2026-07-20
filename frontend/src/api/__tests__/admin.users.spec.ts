@@ -11,8 +11,9 @@ vi.mock('@/api/client', () => ({
 }))
 
 import {
-  batchUpdateLimits,
-  bindUserAuthIdentity,
+	batchUpdateLimits,
+	bindUserAuthIdentity,
+	updateBalance,
   type AdminBindAuthIdentityRequest,
   type AdminBoundAuthIdentity,
   type BatchUpdateUserLimitsRequest,
@@ -132,7 +133,7 @@ describe('admin users api auth identity binding', () => {
     expect(responseContractExact).toBe(true)
   })
 
-  it('posts batch limit updates once with only the supplied limit fields', async () => {
+	it('posts batch limit updates once with only the supplied limit fields', async () => {
     const request: BatchUpdateUserLimitsRequest = {
       user_ids: [4, 7],
       all: false,
@@ -146,5 +147,17 @@ describe('admin users api auth identity binding', () => {
     expect(result).toEqual({ affected: 2 })
     expect(batchRequestContractExact).toBe(true)
     expect(batchResponseContractExact).toBe(true)
-  })
+	})
+
+	it('sends a stable idempotency key for an admin balance adjustment', async () => {
+		post.mockResolvedValue({ data: { id: 9, balance: 15 } })
+
+		await updateBalance(9, 5, 'add', 'manual recharge', 'fixed-operation-id')
+
+		expect(post).toHaveBeenCalledWith(
+		  '/admin/users/9/balance',
+		  { balance: 5, operation: 'add', notes: 'manual recharge' },
+		  { headers: { 'Idempotency-Key': 'admin-balance-9-fixed-operation-id' } },
+		)
+	})
 })

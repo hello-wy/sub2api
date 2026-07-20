@@ -54,8 +54,10 @@ export async function redeem(code: string): Promise<{
  * Get user's redemption history
  * @returns List of redeemed codes
  */
-export async function getHistory(): Promise<RedeemHistoryItem[]> {
-  const { data } = await apiClient.get<RedeemHistoryItem[]>('/redeem/history')
+export async function getHistory(limit = 25): Promise<RedeemHistoryItem[]> {
+  const { data } = await apiClient.get<RedeemHistoryItem[]>('/redeem/history', {
+    params: { limit },
+  })
   return data
 }
 

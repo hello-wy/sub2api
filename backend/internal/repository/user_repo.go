@@ -34,6 +34,7 @@ type userRepository struct {
 }
 
 var _ service.RedeemUserAdjustmentRepository = (*userRepository)(nil)
+var _ service.AdminBalanceAdjustmentRepository = (*userRepository)(nil)
 
 func NewUserRepository(client *dbent.Client, sqlDB *sql.DB) service.UserRepository {
 	return newUserRepositoryWithSQL(client, sqlDB)
@@ -770,6 +771,79 @@ func (r *userRepository) UpdateBalance(ctx context.Context, id int64, amount flo
 		return service.ErrUserNotFound
 	}
 	return nil
+}
+
+func (r *userRepository) ApplyAdminBalanceAdjustment(ctx context.Context, id int64, amount float64, operation string) (float64, float64, error) {
+	if tx := dbent.TxFromContext(ctx); tx != nil {
+		return applyAdminBalanceAdjustment(ctx, tx.Client(), id, amount, operation)
+	}
+
+	tx, err := r.client.Tx(ctx)
+	if err != nil {
+		return 0, 0, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	txCtx := dbent.NewTxContext(ctx, tx)
+	oldBalance, newBalance, err := applyAdminBalanceAdjustment(txCtx, tx.Client(), id, amount, operation)
+	if err != nil {
+		return 0, 0, err
+	}
+	if err := tx.Commit(); err != nil {
+		return 0, 0, err
+	}
+	return oldBalance, newBalance, nil
+}
+
+func applyAdminBalanceAdjustment(ctx context.Context, client *dbent.Client, id int64, amount float64, operation string) (float64, float64, error) {
+	rows, err := client.QueryContext(ctx, `
+SELECT balance::double precision
+FROM users
+WHERE id = $1 AND deleted_at IS NULL
+FOR UPDATE`, id)
+	if err != nil {
+		return 0, 0, err
+	}
+	var oldBalance float64
+	found := rows.Next()
+	if found {
+		err = rows.Scan(&oldBalance)
+	}
+	if closeErr := rows.Close(); err == nil {
+		err = closeErr
+	}
+	if err != nil {
+		return 0, 0, err
+	}
+	if !found {
+		return 0, 0, service.ErrUserNotFound
+	}
+
+	newBalance := oldBalance
+	switch operation {
+	case "set":
+		newBalance = amount
+	case "add":
+		newBalance += amount
+	case "subtract":
+		newBalance -= amount
+	default:
+		return 0, 0, fmt.Errorf("invalid balance operation: %s", operation)
+	}
+	if newBalance < 0 {
+		return 0, 0, fmt.Errorf("balance cannot be negative, current balance: %.2f, requested operation would result in: %.2f", oldBalance, newBalance)
+	}
+
+	updated, err := client.User.Update().
+		Where(dbuser.IDEQ(id)).
+		SetBalance(newBalance).
+		Save(ctx)
+	if err != nil {
+		return 0, 0, err
+	}
+	if updated == 0 {
+		return 0, 0, service.ErrUserNotFound
+	}
+	return oldBalance, newBalance, nil
 }
 
 func (r *userRepository) HasUserQQ(ctx context.Context, userID int64) (bool, error) {

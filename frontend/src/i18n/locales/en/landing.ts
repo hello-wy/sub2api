@@ -1,7 +1,7 @@
 export default {
   batchImageGuide: {
     title: 'Batch Image Generation',
-    description: 'Submit multiple prompts in one job and download the generated images when complete'
+    description: 'Submit prompts in batches and download results'
   },
   // Home Page
   home: {

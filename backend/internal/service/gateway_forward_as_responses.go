@@ -44,6 +44,13 @@ func (s *GatewayService) ForwardAsResponses(
 	}
 	originalModel := responsesReq.Model
 	clientStream := responsesReq.Stream
+	mappedPricingModel := originalModel
+	if account != nil {
+		mappedPricingModel = account.GetMappedModel(originalModel)
+	}
+	if err := s.validatePricingBeforeForward(ctx, c, originalModel, mappedPricingModel); err != nil {
+		return nil, err
+	}
 
 	// 2. Convert Responses → Anthropic
 	anthropicReq, err := apicompat.ResponsesToAnthropicRequest(&responsesReq)

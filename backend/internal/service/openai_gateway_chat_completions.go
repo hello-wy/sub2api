@@ -58,6 +58,11 @@ func (s *OpenAIGatewayService) ForwardAsChatCompletions(
 	promptCacheKey string,
 	defaultMappedModel string,
 ) (*OpenAIForwardResult, error) {
+	requestedModel := strings.TrimSpace(gjson.GetBytes(body, "model").String())
+	billingPreflightModel := resolveOpenAIForwardModel(account, requestedModel, defaultMappedModel)
+	if err := s.validatePricingBeforeForward(ctx, c, requestedModel, billingPreflightModel); err != nil {
+		return nil, err
+	}
 	restrictionResult := s.detectCodexClientRestriction(c, account, body)
 	logCodexCLIOnlyDetection(ctx, c, account, getAPIKeyIDFromContext(c), restrictionResult, body)
 	if restrictionResult.Enabled && !restrictionResult.Matched {

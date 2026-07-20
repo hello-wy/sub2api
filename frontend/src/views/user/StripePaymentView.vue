@@ -1,6 +1,7 @@
 <template>
   <component :is="isPopup ? 'div' : AppLayout" :class="isPopup ? 'min-h-screen bg-gray-50 dark:bg-dark-900' : ''">
-    <div class="mx-auto max-w-lg space-y-6 py-8" :class="isPopup ? 'px-4' : ''">
+    <component :is="isPopup ? 'div' : ScrollablePageLayout">
+      <div class="mx-auto max-w-lg space-y-6 py-8" :class="isPopup ? 'px-4' : ''">
       <div v-if="loading" class="flex items-center justify-center py-20">
         <div class="h-8 w-8 animate-spin rounded-full border-4 border-primary-500 border-t-transparent"></div>
       </div>
@@ -10,7 +11,7 @@
         </div>
         <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{{ t('payment.stripeLoadFailed') }}</h3>
         <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">{{ initError }}</p>
-        <button class="btn btn-primary mt-6" @click="router.push('/purchase')">{{ t('payment.result.backToRecharge') }}</button>
+        <button class="btn btn-primary mt-6" @click="router.push({ path: '/wallet', query: { tab: 'recharge' } })">{{ t('payment.result.backToRecharge') }}</button>
       </div>
       <template v-else>
         <!-- 金额头部 -->
@@ -79,17 +80,18 @@
             </button>
           </div>
           <div class="text-center">
-            <button class="btn btn-secondary" @click="router.push('/purchase')">{{ t('payment.result.backToRecharge') }}</button>
+            <button class="btn btn-secondary" @click="router.push({ path: '/wallet', query: { tab: 'recharge' } })">{{ t('payment.result.backToRecharge') }}</button>
           </div>
         </template>
 
         <!-- 错误状态 -->
         <div v-if="stripeError && !showPaymentElement" class="card p-4">
           <p class="text-sm text-red-600 dark:text-red-400">{{ stripeError }}</p>
-          <button class="btn btn-secondary mt-3 w-full" @click="router.push('/purchase')">{{ t('payment.result.backToRecharge') }}</button>
+          <button class="btn btn-secondary mt-3 w-full" @click="router.push({ path: '/wallet', query: { tab: 'recharge' } })">{{ t('payment.result.backToRecharge') }}</button>
         </div>
       </template>
     </div>
+    </component>
   </component>
 </template>
 
@@ -106,6 +108,7 @@ import { PAYMENT_RECOVERY_STORAGE_KEY, readPaymentRecoverySnapshot } from '@/com
 import type { PaymentOrder } from '@/types/payment'
 import type { Stripe, StripeElements } from '@stripe/stripe-js'
 import AppLayout from '@/components/layout/AppLayout.vue'
+import ScrollablePageLayout from '@/components/layout/ScrollablePageLayout.vue'
 import Icon from '@/components/icons/Icon.vue'
 
 const i18n = useI18n()

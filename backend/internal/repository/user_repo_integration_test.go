@@ -408,6 +408,31 @@ func (s *UserRepoSuite) TestUpdateBalance_Negative() {
 	s.Require().InDelta(7.0, got.Balance, 1e-6)
 }
 
+func (s *UserRepoSuite) TestApplyAdminBalanceAdjustment_ConcurrentAddsAreSerialized() {
+	user := s.mustCreateUser(&service.User{Email: "admin-bal-concurrent@test.com", Balance: 10})
+
+	const workers = 10
+	var wg sync.WaitGroup
+	errs := make(chan error, workers)
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, _, err := s.repo.ApplyAdminBalanceAdjustment(context.Background(), user.ID, 1, "add")
+			errs <- err
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		s.Require().NoError(err)
+	}
+
+	got, err := s.repo.GetByID(s.ctx, user.ID)
+	s.Require().NoError(err)
+	s.Require().InDelta(20, got.Balance, 1e-6)
+}
+
 func (s *UserRepoSuite) TestApplyRedeemBalanceAdjustment_ConcurrentNeverNegative() {
 	user := s.mustCreateUser(&service.User{Email: "redeem-bal-concurrent@test.com", Balance: 10})
 

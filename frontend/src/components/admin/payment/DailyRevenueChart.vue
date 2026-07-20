@@ -40,6 +40,7 @@ const { t } = useI18n()
 
 const props = defineProps<{
   data: { date: string; amount: number; count: number }[]
+  currency: string
   loading?: boolean
 }>()
 
@@ -73,7 +74,7 @@ const chartData = computed(() => {
   }
 })
 
-const chartOptions = {
+const chartOptions = computed(() => ({
   responsive: true,
   maintainAspectRatio: false,
   interaction: { mode: 'index' as const, intersect: false },
@@ -82,7 +83,7 @@ const chartOptions = {
       type: 'linear' as const,
       display: true,
       position: 'left' as const,
-      title: { display: true, text: t('payment.admin.revenue') },
+      title: { display: true, text: `${t('payment.admin.revenue')} (${props.currency})` },
     },
     y1: {
       type: 'linear' as const,
@@ -95,5 +96,5 @@ const chartOptions = {
   plugins: {
     legend: { position: 'top' as const },
   }
-}
+}))
 </script>

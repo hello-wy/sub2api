@@ -4,6 +4,7 @@ import PaymentView from '../PaymentView.vue'
 import { PAYMENT_RECOVERY_STORAGE_KEY } from '@/components/payment/paymentFlow'
 import { formatPaymentAmount } from '@/components/payment/currency'
 import type { CheckoutInfoResponse, MethodLimit, SubscriptionPlan } from '@/types/payment'
+import type { UserSubscription } from '@/types'
 
 const routeState = vi.hoisted(() => ({
   path: '/purchase',
@@ -20,7 +21,21 @@ const showError = vi.hoisted(() => vi.fn())
 const showInfo = vi.hoisted(() => vi.fn())
 const showWarning = vi.hoisted(() => vi.fn())
 const getCheckoutInfo = vi.hoisted(() => vi.fn())
+const purchaseSubscriptionWithBalance = vi.hoisted(() => vi.fn())
+const refreshWalletHistory = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
 const bridgeInvoke = vi.hoisted(() => vi.fn())
+const activeSubscriptionsState = vi.hoisted(() => ({ items: [] as UserSubscription[] }))
+const authUserState = vi.hoisted(() => ({ user: { username: 'demo-user', balance: 0 } }))
+
+const WalletBalanceHistoryStub = {
+  name: 'WalletBalanceHistory',
+  template: '<section />',
+  methods: {
+    refresh() {
+      return refreshWalletHistory()
+    },
+  },
+}
 
 vi.mock('vue-router', async () => {
   const actual = await vi.importActual<typeof import('vue-router')>('vue-router')
@@ -47,9 +62,8 @@ vi.mock('vue-i18n', async () => {
 
 vi.mock('@/stores/auth', () => ({
   useAuthStore: () => ({
-    user: {
-      username: 'demo-user',
-      balance: 0,
+    get user() {
+      return authUserState.user
     },
     refreshUser,
   }),
@@ -63,7 +77,9 @@ vi.mock('@/stores/payment', () => ({
 
 vi.mock('@/stores/subscriptions', () => ({
   useSubscriptionStore: () => ({
-    activeSubscriptions: [],
+    get activeSubscriptions() {
+      return activeSubscriptionsState.items
+    },
     fetchActiveSubscriptions,
   }),
 }))
@@ -79,12 +95,19 @@ vi.mock('@/stores', () => ({
 vi.mock('@/api/payment', () => ({
   paymentAPI: {
     getCheckoutInfo,
+    purchaseSubscriptionWithBalance,
   },
 }))
 
 vi.mock('@/utils/device', () => ({
   isMobileDevice: () => true,
 }))
+
+beforeEach(() => {
+  activeSubscriptionsState.items = []
+  authUserState.user = { username: 'demo-user', balance: 0 }
+  purchaseSubscriptionWithBalance.mockReset()
+})
 
 function checkoutInfoFixture(overrides: Partial<CheckoutInfoResponse> = {}) {
   const wxpayMethod: MethodLimit = {
@@ -199,7 +222,10 @@ function oauthOrderFixture() {
   }
 }
 
-async function mountSubscriptionConfirm(options: Parameters<typeof checkoutInfoWithPlansFixture>[0] = {}) {
+async function mountSubscriptionConfirm(
+  options: Parameters<typeof checkoutInfoWithPlansFixture>[0] = {},
+  mountOptions: { clearStorage?: boolean } = {},
+) {
   vi.useRealTimers()
   routeState.path = '/purchase'
   routeState.query = {
@@ -212,12 +238,13 @@ async function mountSubscriptionConfirm(options: Parameters<typeof checkoutInfoW
   createOrder.mockReset()
   refreshUser.mockReset()
   fetchActiveSubscriptions.mockReset().mockResolvedValue(undefined)
+  refreshWalletHistory.mockReset().mockResolvedValue(undefined)
   showError.mockReset()
   showInfo.mockReset()
   showWarning.mockReset()
   getCheckoutInfo.mockReset().mockResolvedValue(checkoutInfoWithPlansFixture(options))
   bridgeInvoke.mockReset()
-  window.localStorage.clear()
+  if (mountOptions.clearStorage !== false) window.localStorage.clear()
   ;(window as Window & { WeixinJSBridge?: { invoke: typeof bridgeInvoke } }).WeixinJSBridge = undefined
 
   const wrapper = shallowMount(PaymentView, {
@@ -226,6 +253,7 @@ async function mountSubscriptionConfirm(options: Parameters<typeof checkoutInfoW
         AppLayout: {
           template: '<div><slot /></div>',
         },
+        WalletBalanceHistory: WalletBalanceHistoryStub,
         Teleport: true,
         Transition: false,
       },
@@ -249,6 +277,7 @@ async function mountRecharge(options: {
   createOrder.mockReset()
   refreshUser.mockReset()
   fetchActiveSubscriptions.mockReset().mockResolvedValue(undefined)
+  refreshWalletHistory.mockReset().mockResolvedValue(undefined)
   showError.mockReset()
   showInfo.mockReset()
   showWarning.mockReset()
@@ -275,6 +304,7 @@ async function mountRecharge(options: {
         AppLayout: {
           template: '<div><slot /></div>',
         },
+        WalletBalanceHistory: WalletBalanceHistoryStub,
         Teleport: true,
         Transition: false,
       },
@@ -286,6 +316,16 @@ async function mountRecharge(options: {
 }
 
 describe('PaymentView balance loyalty discount', () => {
+  it('renders recharge, subscription, history, and redeem in one page', async () => {
+    const wrapper = await mountRecharge()
+
+    expect(wrapper.findComponent({ name: 'RechargePackageSelector' }).exists()).toBe(true)
+    expect(wrapper.findComponent({ name: 'WalletBalanceHistory' }).exists()).toBe(true)
+    expect(wrapper.findComponent({ name: 'WalletRedeemPanel' }).exists()).toBe(true)
+    expect(wrapper.text()).toContain('wallet.subscriptionSectionTitle')
+    expect(wrapper.text()).not.toContain('wallet.tabs.')
+  })
+
   it('discounts the actual payment while submitting the original recharge amount', async () => {
     createOrder.mockResolvedValue({
       order_id: 321,
@@ -316,11 +356,12 @@ describe('PaymentView balance loyalty discount', () => {
       },
     })
 
-    wrapper.findComponent({ name: 'AmountInput' }).vm.$emit('update:modelValue', 100)
+    wrapper.findComponent({ name: 'RechargePackageSelector' }).vm.$emit('update:modelValue', 100)
     await flushPromises()
 
     const text = wrapper.text()
     expect(text).toContain('payment.loyaltyDiscount')
+    expect(text).toContain('payment.actualPay')
     expect(text).toContain(formatPaymentAmount(100, 'CNY'))
     expect(text).toContain(formatPaymentAmount(92, 'CNY'))
     expect(text).toContain(formatPaymentAmount(1.84, 'CNY'))
@@ -337,9 +378,288 @@ describe('PaymentView balance loyalty discount', () => {
       order_type: 'balance',
     }))
   })
+
+  it('shows active subscription usage in the wallet summary', async () => {
+    activeSubscriptionsState.items = [{
+      id: 9,
+      user_id: 1,
+      group_id: 3,
+      status: 'active',
+      starts_at: '2026-07-01T00:00:00Z',
+      expires_at: '2099-08-01T00:00:00Z',
+      daily_usage_usd: 2.5,
+      weekly_usage_usd: 8,
+      monthly_usage_usd: 0,
+      daily_window_start: '2026-07-18T00:00:00Z',
+      weekly_window_start: '2026-07-14T00:00:00Z',
+      monthly_window_start: null,
+      created_at: '2026-07-01T00:00:00Z',
+      updated_at: '2026-07-18T00:00:00Z',
+      group: {
+        id: 3,
+        name: 'OpenAI Pro',
+        platform: 'openai',
+        rate_multiplier: 1,
+        daily_limit_usd: 10,
+        weekly_limit_usd: 40,
+        monthly_limit_usd: null,
+      },
+    } as UserSubscription]
+
+    const wrapper = await mountRecharge()
+    const text = wrapper.text()
+
+    expect(text).toContain('OpenAI Pro')
+    expect(text).toContain('userSubscriptions.daily')
+    expect(text).toContain('$2.50 / $10.00')
+    expect(text).toContain('userSubscriptions.weekly')
+    expect(text).toContain('$8.00 / $40.00')
+    const subscriptionNotice = wrapper.findComponent({ name: 'HelpTooltip' })
+    expect(subscriptionNotice.props('content')).toBe('wallet.singleSubscriptionNotice')
+    expect(text).not.toContain('wallet.singleSubscriptionNotice')
+    expect(text).not.toContain('wallet.balanceDescription')
+    expect(wrapper.find('[style="width: 25%;"]').exists()).toBe(true)
+  })
 })
 
-describe('PaymentView subscription confirmation amounts', () => {
+describe('PaymentView inline subscription checkout', () => {
+  it('confirms a balance subscription before purchase and refreshes the wallet summary', async () => {
+    authUserState.user = { username: 'demo-user', balance: 200 }
+    purchaseSubscriptionWithBalance.mockResolvedValue({
+      data: { order_id: 99, amount: 128, new_balance: 72, subscription: {} },
+    })
+    const wrapper = await mountSubscriptionConfirm()
+    const card = wrapper.findComponent({ name: 'SubscriptionPlanCard' })
+    card.vm.$emit('subscribe', card.props('plan'), 'balance')
+    await flushPromises()
+
+    expect(purchaseSubscriptionWithBalance).not.toHaveBeenCalled()
+    const dialog = wrapper.findComponent({ name: 'ConfirmDialog' })
+    expect(dialog.props('show')).toBe(true)
+    expect(dialog.props('title')).toBe('wallet.subscriptionBalanceConfirmTitle')
+    expect(dialog.props('message')).toBe('wallet.subscriptionBalanceConfirmMessage')
+    expect(dialog.props('confirmText')).toBe('wallet.subscriptionBalanceConfirmAction')
+
+    dialog.vm.$emit('confirm')
+    await flushPromises()
+
+    expect(purchaseSubscriptionWithBalance).toHaveBeenCalledWith(
+      7,
+      expect.stringMatching(/^balance-subscription-7-/),
+    )
+    expect(refreshUser).toHaveBeenCalled()
+    expect(fetchActiveSubscriptions).toHaveBeenCalledWith(true)
+    expect(refreshWalletHistory).toHaveBeenCalledTimes(1)
+    expect(showInfo).toHaveBeenCalledWith('wallet.subscriptionBalanceSuccess')
+  })
+
+  it('combines the balance purchase confirmation with the active subscription warning', async () => {
+    authUserState.user = { username: 'demo-user', balance: 600 }
+    activeSubscriptionsState.items = [{
+      id: 9,
+      user_id: 1,
+      group_id: 3,
+      status: 'active',
+      starts_at: '2026-07-01T00:00:00Z',
+      expires_at: '2099-08-01T00:00:00Z',
+      daily_usage_usd: 2.5,
+      weekly_usage_usd: 8,
+      monthly_usage_usd: 0,
+      daily_window_start: '2026-07-18T00:00:00Z',
+      weekly_window_start: '2026-07-14T00:00:00Z',
+      monthly_window_start: null,
+      created_at: '2026-07-01T00:00:00Z',
+      updated_at: '2026-07-18T00:00:00Z',
+      group: {
+        id: 3,
+        name: 'OpenAI Pro',
+        platform: 'openai',
+        rate_multiplier: 1,
+        daily_limit_usd: 10,
+        weekly_limit_usd: 40,
+        monthly_limit_usd: null,
+      },
+    } as UserSubscription]
+    purchaseSubscriptionWithBalance.mockResolvedValue({
+      data: { order_id: 99, amount: 200, new_balance: 400, subscription: {} },
+    })
+
+    const wrapper = await mountSubscriptionConfirm({
+      checkout: { balance_recharge_multiplier: 10 },
+      plan: { price: 20 },
+    })
+    const card = wrapper.findComponent({ name: 'SubscriptionPlanCard' })
+    card.vm.$emit('subscribe', card.props('plan'), 'balance')
+    await flushPromises()
+
+    expect(purchaseSubscriptionWithBalance).not.toHaveBeenCalled()
+    const dialog = wrapper.findComponent({ name: 'ConfirmDialog' })
+    expect(dialog.props('show')).toBe(true)
+    expect(dialog.props('title')).toBe('wallet.subscriptionBalanceConfirmTitle')
+    expect(dialog.props('message')).toBe('wallet.subscriptionBalanceConfirmMessage')
+    expect(dialog.props('warningMessage')).toBe('wallet.subscriptionOverrideMessage')
+
+    dialog.vm.$emit('confirm')
+    await flushPromises()
+
+    expect(purchaseSubscriptionWithBalance).toHaveBeenCalledWith(
+      7,
+      expect.stringMatching(/^balance-subscription-7-/),
+    )
+    expect(refreshUser).toHaveBeenCalled()
+  })
+
+  it('reuses the balance subscription idempotency key after a lost response and page reload', async () => {
+    authUserState.user = { username: 'demo-user', balance: 200 }
+    purchaseSubscriptionWithBalance
+      .mockRejectedValueOnce(new Error('network response lost'))
+      .mockResolvedValueOnce({
+        data: { order_id: 99, amount: 128, new_balance: 72, subscription: {} },
+      })
+
+    const firstWrapper = await mountSubscriptionConfirm()
+    const firstCard = firstWrapper.findComponent({ name: 'SubscriptionPlanCard' })
+    firstCard.vm.$emit('subscribe', firstCard.props('plan'), 'balance')
+    await flushPromises()
+    firstWrapper.findComponent({ name: 'ConfirmDialog' }).vm.$emit('confirm')
+    await flushPromises()
+
+    const firstKey = purchaseSubscriptionWithBalance.mock.calls[0]?.[1]
+    expect(firstKey).toMatch(/^balance-subscription-7-/)
+    firstWrapper.unmount()
+
+    const secondWrapper = await mountSubscriptionConfirm({}, { clearStorage: false })
+    const secondCard = secondWrapper.findComponent({ name: 'SubscriptionPlanCard' })
+    secondCard.vm.$emit('subscribe', secondCard.props('plan'), 'balance')
+    await flushPromises()
+    secondWrapper.findComponent({ name: 'ConfirmDialog' }).vm.$emit('confirm')
+    await flushPromises()
+
+    expect(purchaseSubscriptionWithBalance).toHaveBeenNthCalledWith(2, 7, firstKey)
+    expect(showInfo).toHaveBeenCalledWith('wallet.subscriptionBalanceSuccess')
+    expect(window.localStorage.length).toBe(0)
+  })
+
+  it('does not report a completed purchase as failed when summary refresh fails', async () => {
+    authUserState.user = { username: 'demo-user', balance: 200 }
+    purchaseSubscriptionWithBalance.mockResolvedValue({
+      data: { order_id: 99, amount: 128, new_balance: 72, subscription: {} },
+    })
+    const wrapper = await mountSubscriptionConfirm()
+    refreshUser.mockRejectedValueOnce(new Error('refresh failed'))
+    const card = wrapper.findComponent({ name: 'SubscriptionPlanCard' })
+    card.vm.$emit('subscribe', card.props('plan'), 'balance')
+    await flushPromises()
+    wrapper.findComponent({ name: 'ConfirmDialog' }).vm.$emit('confirm')
+    await flushPromises()
+
+    expect(showInfo).toHaveBeenCalledWith('wallet.subscriptionBalanceSuccess')
+    expect(showError).not.toHaveBeenCalled()
+  })
+
+  it('does not purchase a balance subscription when confirmation is cancelled', async () => {
+    authUserState.user = { username: 'demo-user', balance: 200 }
+    const wrapper = await mountSubscriptionConfirm()
+    const card = wrapper.findComponent({ name: 'SubscriptionPlanCard' })
+
+    card.vm.$emit('subscribe', card.props('plan'), 'balance')
+    await flushPromises()
+
+    const dialog = wrapper.findComponent({ name: 'ConfirmDialog' })
+    dialog.vm.$emit('cancel')
+    await flushPromises()
+
+    expect(dialog.props('show')).toBe(false)
+    expect(purchaseSubscriptionWithBalance).not.toHaveBeenCalled()
+  })
+
+  it('disables balance subscription when the account balance is insufficient', async () => {
+    authUserState.user = { username: 'demo-user', balance: 12 }
+    const wrapper = await mountSubscriptionConfirm()
+    const card = wrapper.findComponent({ name: 'SubscriptionPlanCard' })
+    card.vm.$emit('subscribe', card.props('plan'), 'balance')
+    await flushPromises()
+
+    expect(card.props('availableBalance')).toBe(12)
+    expect(purchaseSubscriptionWithBalance).not.toHaveBeenCalled()
+  })
+
+  it('uses the recharge multiplier for balance settlement without loyalty discount', async () => {
+    authUserState.user = { username: 'demo-user', balance: 600 }
+    const twentyWrapper = await mountSubscriptionConfirm({
+      checkout: { balance_recharge_multiplier: 10 },
+      plan: { price: 20, original_price: 200 },
+    })
+    const twentyCard = twentyWrapper.findComponent({ name: 'SubscriptionPlanCard' })
+
+    expect(twentyCard.props('balancePrice')).toBe(200)
+
+    const fiftyWrapper = await mountSubscriptionConfirm({
+      checkout: { balance_recharge_multiplier: 10 },
+      plan: { price: 50, original_price: 0 },
+    })
+    const fiftyCard = fiftyWrapper.findComponent({ name: 'SubscriptionPlanCard' })
+
+    expect(fiftyCard.props('balancePrice')).toBe(500)
+    expect(fiftyCard.props('rechargeAmountLabel')).toBe(formatPaymentAmount(50, 'CNY'))
+
+    const fallbackWrapper = await mountSubscriptionConfirm({
+      checkout: { balance_recharge_multiplier: 0 },
+      plan: { price: 20 },
+    })
+    expect(fallbackWrapper.findComponent({ name: 'SubscriptionPlanCard' }).props('balancePrice')).toBe(200)
+  })
+
+  it('syncs the effective weekly loyalty discount into subscription recharge prices', async () => {
+    const wrapper = await mountSubscriptionConfirm({
+      checkout: {
+        loyalty: {
+          enabled: true,
+          definitions_configured: true,
+          weekly_points: 900,
+          permanent_points: 1200,
+          weekly_discount: 8,
+          permanent_discount: 4,
+          discount_percent: 8,
+          discount_scope: 'weekly',
+          discount_level: 'L4',
+        },
+      },
+      plan: { price: 50 },
+    })
+    const card = wrapper.findComponent({ name: 'SubscriptionPlanCard' })
+
+    expect(card.props('rechargeBeforeDiscountLabel')).toBe(formatPaymentAmount(50, 'CNY'))
+    expect(card.props('rechargeAfterDiscountLabel')).toBe(formatPaymentAmount(46, 'CNY'))
+    expect(card.props('rechargeAmountLabel')).toBe(formatPaymentAmount(46, 'CNY'))
+    expect(card.props('loyaltyDiscountLabel')).toBe('wallet.subscriptionWeeklyDiscount')
+  })
+
+  it('syncs the effective permanent loyalty discount into subscription recharge prices', async () => {
+    const wrapper = await mountSubscriptionConfirm({
+      checkout: {
+        loyalty: {
+          enabled: true,
+          definitions_configured: true,
+          weekly_points: 0,
+          permanent_points: 1200,
+          weekly_discount: 0,
+          permanent_discount: 4,
+          discount_percent: 4,
+          discount_scope: 'permanent',
+          discount_level: 'L2',
+        },
+      },
+      plan: { price: 50 },
+    })
+    const card = wrapper.findComponent({ name: 'SubscriptionPlanCard' })
+
+    expect(card.props('rechargeBeforeDiscountLabel')).toBe(formatPaymentAmount(50, 'CNY'))
+    expect(card.props('rechargeAfterDiscountLabel')).toBe(formatPaymentAmount(48, 'CNY'))
+    expect(card.props('rechargeAmountLabel')).toBe(formatPaymentAmount(48, 'CNY'))
+    expect(card.props('loyaltyDiscountLabel')).toBe('wallet.subscriptionPermanentDiscount')
+  })
+
   it('shows converted CNY pay amount using the subscription rate, not the balance multiplier', async () => {
     const wrapper = await mountSubscriptionConfirm({
       checkout: {
@@ -355,19 +675,17 @@ describe('PaymentView subscription confirmation amounts', () => {
       },
     })
 
-    const text = wrapper.text()
     const convertedPrice = formatPaymentAmount(71.43, 'CNY')
-    const convertedOriginalPrice = formatPaymentAmount(92.88, 'CNY')
+    const card = wrapper.findComponent({ name: 'SubscriptionPlanCard' })
 
-    expect(text).toContain(convertedPrice)
-    expect(text).toContain(convertedOriginalPrice)
-    expect(text).not.toContain(formatPaymentAmount(9.99, 'CNY'))
+    expect(card.props('subscriptionUsdToCnyRate')).toBe(7.15)
+    expect(card.props('rechargeAmountLabel')).toBe(convertedPrice)
     // 换算必须使用订阅汇率（×7.15），而不是余额倍率（÷0.14 = 71.36）
-    expect(text).not.toContain(formatPaymentAmount(71.36, 'CNY'))
-    expect(wrapper.findAll('button').some(button => button.text().includes(convertedPrice))).toBe(true)
+    expect(card.props('rechargeAmountLabel')).not.toBe(formatPaymentAmount(71.36, 'CNY'))
+    expect(wrapper.text()).not.toContain('wallet.subscriptionPaymentTitle')
   })
 
-  it('keeps plan price when the subscription rate is not configured or payment currency is not CNY', async () => {
+  it('keeps the catalog price in yuan while preserving the provider currency at checkout', async () => {
     // opt-in 回归锁：即使余额倍率已配置，未配置订阅汇率时 CNY 订阅仍按 price 直付
     const cnyWrapper = await mountSubscriptionConfirm({
       checkout: {
@@ -382,9 +700,10 @@ describe('PaymentView subscription confirmation amounts', () => {
       },
     })
 
-    expect(cnyWrapper.text()).toContain(formatPaymentAmount(7.99, 'CNY'))
-    expect(cnyWrapper.text()).not.toContain(formatPaymentAmount(57.07, 'CNY'))
-    expect(cnyWrapper.text()).not.toContain(formatPaymentAmount(57.13, 'CNY'))
+    const cnyCard = cnyWrapper.findComponent({ name: 'SubscriptionPlanCard' })
+    expect(cnyCard.props('rechargeAmountLabel')).toBe(formatPaymentAmount(7.99, 'CNY'))
+    expect(cnyCard.props('rechargeAmountLabel')).not.toBe(formatPaymentAmount(57.07, 'CNY'))
+    expect(cnyCard.props('rechargeAmountLabel')).not.toBe(formatPaymentAmount(57.13, 'CNY'))
 
     const usdWrapper = await mountSubscriptionConfirm({
       checkout: {
@@ -399,8 +718,9 @@ describe('PaymentView subscription confirmation amounts', () => {
       },
     })
 
-    expect(usdWrapper.text()).toContain(formatPaymentAmount(7.99, 'USD'))
-    expect(usdWrapper.text()).toContain(formatPaymentAmount(9.99, 'USD'))
+    const usdCard = usdWrapper.findComponent({ name: 'SubscriptionPlanCard' })
+    expect(usdCard.props('subscriptionUsdToCnyRate')).toBe(7.15)
+    expect(usdCard.props('rechargeAmountLabel')).toBe(formatPaymentAmount(7.99, 'USD'))
   })
 
   it('adds fee rate after CNY rate conversion to match backend pay_amount', async () => {
@@ -417,15 +737,10 @@ describe('PaymentView subscription confirmation amounts', () => {
       },
     })
 
-    const text = wrapper.text()
-    const convertedPrice = formatPaymentAmount(71.43, 'CNY')
-    const fee = formatPaymentAmount(1.79, 'CNY')
     const total = formatPaymentAmount(73.22, 'CNY')
+    const card = wrapper.findComponent({ name: 'SubscriptionPlanCard' })
 
-    expect(text).toContain(convertedPrice)
-    expect(text).toContain(fee)
-    expect(text).toContain(total)
-    expect(wrapper.findAll('button').some(button => button.text().includes(total))).toBe(true)
+    expect(card.props('rechargeAmountLabel')).toBe(total)
   })
 })
 

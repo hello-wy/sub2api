@@ -14,20 +14,49 @@ const i18n = createI18n({
       payment: {
         days: "days",
         models: "Models",
+        actualPay: "Actual pay",
+        notAvailable: "Unavailable",
         planCard: {
           quota: "Quota",
           rate: "Rate",
           unlimited: "Unlimited",
         },
-        subscribeNow: "Subscribe now",
       },
+      wallet: {
+        subscribeAction: "Subscribe",
+        subscriptionPaymentRecharge: "Recharge payment",
+        subscriptionPaymentBalance: "Balance payment",
+        subscriptionBalanceAvailable: "Available balance",
+        subscriptionBalanceInsufficient: "Insufficient balance",
+        subscriptionBalanceInsufficientShort: "Insufficient balance",
+        subscriptionMemberDiscount: "Member discount",
+        subscriptionNoDiscount: "No discount",
+        subscriptionWeeklyDiscount: "Weekly discount",
+        subscriptionPermanentDiscount: "Lifetime discount",
+        subscriptionBeforeDiscount: "Before discount",
+        subscriptionAfterDiscount: "After discount",
+        subscriptionSettlementAmount: "Settlement amount",
+        subscriptionBalanceNoDiscount: "No discount",
+        subscriptionBalanceSettlement: "Balance after payment",
+      },
+      common: { processing: "Processing" },
     },
   },
 });
 
-const mountPlanCard = (groupPlatform: string) =>
+const mountPlanCard = (
+  groupPlatform: string,
+  subscriptionUsdToCnyRate = 0,
+  overrides: Record<string, unknown> = {},
+) =>
   mount(SubscriptionPlanCard, {
     props: {
+      subscriptionUsdToCnyRate,
+      availableBalance: 25,
+      rechargeBeforeDiscountLabel: "¥71.50",
+      rechargeAfterDiscountLabel: "¥71.50",
+      rechargeAmountLabel: "¥71.50",
+      loyaltyDiscountLabel: "No discount",
       plan: {
         id: 1,
         group_id: 10,
@@ -42,6 +71,7 @@ const mountPlanCard = (groupPlatform: string) =>
         supported_model_scopes: ["claude", "gemini_text", "gemini_image"],
         is_active: true,
       },
+      ...overrides,
     },
     global: { plugins: [i18n, createPinia()] },
   });
@@ -61,5 +91,64 @@ describe("SubscriptionPlanCard", () => {
     expect(text).toContain("Claude");
     expect(text).toContain("Gemini");
     expect(text).toContain("Imagen");
+  });
+
+  it("shows the converted yuan price and always uses the subscribe action", () => {
+    const wrapper = mountPlanCard("openai", 7.15);
+
+    expect(wrapper.text()).toContain("¥71.50");
+    expect(wrapper.text()).not.toContain("$10");
+    expect(wrapper.findAll("button").at(-1)?.text()).toBe("wallet.subscribeAction");
+  });
+
+  it("selects the payment source and subscribes directly inside the card", async () => {
+    const wrapper = mountPlanCard("openai", 7.15);
+    const balanceButton = wrapper.findAll("button").find(button =>
+      button.text().includes("wallet.subscriptionPaymentBalance"),
+    );
+
+    await balanceButton?.trigger("click");
+    expect(wrapper.text()).toContain("$15.00");
+
+    await wrapper.findAll("button").at(-1)?.trigger("click");
+    expect(wrapper.emitted("subscribe")?.[0]?.[1]).toBe("balance");
+  });
+
+  it("disables balance subscription when the available balance is insufficient", async () => {
+    const wrapper = mountPlanCard("openai", 7.15, { availableBalance: 5 });
+    const balanceButton = wrapper.findAll("button").find(button =>
+      button.text().includes("wallet.subscriptionPaymentBalance"),
+    );
+
+    await balanceButton?.trigger("click");
+    expect(wrapper.text()).toContain("wallet.subscriptionBalanceInsufficientShort");
+    expect(wrapper.findAll("button").at(-1)?.attributes("disabled")).toBeDefined();
+  });
+
+  it("shows the plan discount for recharge and settles balance payment without it", async () => {
+    const basePlan = mountPlanCard("openai").props("plan");
+    const wrapper = mountPlanCard("openai", 1, {
+      availableBalance: 25,
+      balancePrice: 20,
+      rechargeBeforeDiscountLabel: "¥10.00",
+      rechargeAfterDiscountLabel: "¥9.20",
+      rechargeAmountLabel: "¥9.20",
+      loyaltyDiscountLabel: "Weekly L4 · 8% off",
+      plan: { ...basePlan, price: 10, original_price: 20 },
+    });
+
+    expect(wrapper.text()).toContain("Weekly L4 · 8% off");
+    expect(wrapper.text()).toContain("¥10.00");
+    expect(wrapper.text()).toContain("¥9.20");
+
+    const balanceButton = wrapper.findAll("button").find(button =>
+      button.text().includes("wallet.subscriptionPaymentBalance"),
+    );
+    await balanceButton?.trigger("click");
+
+    expect(wrapper.text()).toContain("wallet.subscriptionBalanceNoDiscount");
+    expect(wrapper.text()).toContain("$25.00");
+    expect(wrapper.text()).toContain("$20.00");
+    expect(wrapper.text()).toContain("$5.00");
   });
 });

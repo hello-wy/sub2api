@@ -43,6 +43,13 @@ func (s *GatewayService) ForwardAsChatCompletions(
 	originalModel := ccReq.Model
 	clientStream := ccReq.Stream
 	includeUsage := ccReq.StreamOptions != nil && ccReq.StreamOptions.IncludeUsage
+	mappedPricingModel := originalModel
+	if account != nil {
+		mappedPricingModel = account.GetMappedModel(originalModel)
+	}
+	if err := s.validatePricingBeforeForward(ctx, c, originalModel, mappedPricingModel); err != nil {
+		return nil, err
+	}
 
 	// 2. Convert CC → Responses → Anthropic (chained conversion)
 	responsesReq, err := apicompat.ChatCompletionsToResponses(&ccReq)
