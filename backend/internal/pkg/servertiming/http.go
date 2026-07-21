@@ -53,9 +53,10 @@ func Do(client *http.Client, req *http.Request) (*http.Response, error) {
 		client = http.DefaultClient
 	}
 	if req == nil || !Active(req.Context()) {
-		return client.Do(req)
+		return client.Do(req) //nolint:gosec // req and client are caller-provided for outbound dependency instrumentation; SSRF checks are performed at call sites.
 	}
 	startedAt := time.Now()
+	//nolint:gosec // req and client are caller-provided for outbound dependency instrumentation; SSRF checks are performed at call sites.
 	response, err := client.Do(req)
 	RecordDependency(req.Context(), dependencyModule(req), startedAt, time.Now())
 	return response, err

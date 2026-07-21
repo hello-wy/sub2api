@@ -1141,6 +1141,7 @@ func (k oidcJWK) publicKey() (any, error) {
 		if err != nil {
 			return nil, fmt.Errorf("decode ec y: %w", err)
 		}
+		//nolint:staticcheck // ecdsa key loading uses legacy elliptic API required by current JWKS payload format.
 		if !curve.IsOnCurve(x, y) {
 			return nil, errors.New("ec point is not on curve")
 		}

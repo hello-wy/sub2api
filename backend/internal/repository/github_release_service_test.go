@@ -33,7 +33,7 @@ func (t *testTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	if req.URL.RawQuery != "" {
 		testURL += "?" + req.URL.RawQuery
 	}
-	newReq, err := http.NewRequestWithContext(req.Context(), req.Method, testURL, req.Body)
+	newReq, err := http.NewRequestWithContext(req.Context(), req.Method, testURL, req.Body) //nolint:gosec // test transport rewrites requests to a local httptest server only.
 	if err != nil {
 		return nil, err
 	}
