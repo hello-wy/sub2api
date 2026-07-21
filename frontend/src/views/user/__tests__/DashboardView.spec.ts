@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 
 import DashboardView from '../DashboardView.vue'
@@ -80,6 +80,31 @@ describe('user DashboardView', () => {
         { attribute_id: 2, value: '920', updated_at: new Date().toISOString() },
       ],
     })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('uses a time-aware greeting', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2026, 6, 15, 14, 0, 0))
+
+    const wrapper = mount(DashboardView, {
+      global: {
+        stubs: {
+          AppLayout: { template: '<div><slot /></div>' },
+          DashboardRangeSelect: { props: ['modelValue', 'options'], template: '<select />' },
+          TokenUsageTrend: true,
+          LoadingSpinner: true,
+          Icon: true,
+          'router-link': { template: '<a><slot /></a>' },
+        },
+      },
+    })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('下午好，Kuhne')
   })
 
   it("places balance first and shows points plus today's input and output tokens", async () => {

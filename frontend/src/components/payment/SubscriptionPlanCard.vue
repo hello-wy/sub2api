@@ -18,13 +18,14 @@
         </p>
         <div class="mt-3 flex items-end justify-between gap-3">
           <div class="flex items-baseline gap-1">
-            <span class="text-sm font-semibold text-primary-600 dark:text-primary-400">¥</span>
-            <span class="text-2xl font-extrabold tracking-tight text-gray-950 dark:text-white">{{ displayPrice }}</span>
+            <span class="text-sm font-semibold text-primary-600 dark:text-primary-400">{{ planCurrencySymbol }}</span>
+            <span class="text-2xl font-extrabold tracking-tight text-gray-950 dark:text-white">{{ plan.price }}</span>
+            <span v-if="plan.currency" class="text-xs font-medium text-gray-400 dark:text-dark-500">{{ plan.currency }}</span>
           </div>
           <div class="shrink-0 text-right">
             <span class="text-[11px] text-gray-400 dark:text-dark-500">/ {{ validitySuffix }}</span>
             <div v-if="plan.original_price" class="mt-0.5 flex items-center justify-end gap-1.5">
-              <span class="text-xs text-gray-400 line-through dark:text-dark-500">¥{{ displayOriginalPrice }}</span>
+              <span class="text-xs text-gray-400 line-through dark:text-dark-500">{{ planCurrencySymbol }}{{ plan.original_price }}<template v-if="plan.currency"> {{ plan.currency }}</template></span>
               <span class="rounded bg-primary-50 px-1.5 py-0.5 text-[10px] font-semibold text-primary-700 dark:bg-primary-500/10 dark:text-primary-300">{{ discountText }}</span>
             </div>
           </div>
@@ -169,6 +170,7 @@ import type { SubscriptionPlan } from '@/types/payment'
 import { useAppStore } from '@/stores/app'
 import Icon from '@/components/icons/Icon.vue'
 import { hasPeakRate as groupHasPeakRate, formatPeakRateWindow, serverTimezoneLabel } from '@/utils/peak-rate'
+import { currencySymbol } from '@/components/payment/currency'
 import { platformLabel } from '@/utils/platformColors'
 
 const props = withDefaults(defineProps<{
@@ -203,19 +205,6 @@ const paymentSource = ref<'recharge' | 'balance'>(props.rechargeAvailable ? 'rec
 
 const platform = computed(() => props.plan.group_platform || '')
 const pLabel = computed(() => platformLabel(platform.value))
-
-function cnyPrice(value: number): string {
-  const rate = Number.isFinite(props.subscriptionUsdToCnyRate) && props.subscriptionUsdToCnyRate > 0
-    ? props.subscriptionUsdToCnyRate
-    : 1
-  return new Intl.NumberFormat('zh-CN', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value * rate)
-}
-
-const displayPrice = computed(() => cnyPrice(props.plan.price))
-const displayOriginalPrice = computed(() => cnyPrice(props.plan.original_price ?? 0))
 const effectiveBalancePrice = computed(() => props.balancePrice > 0 ? props.balancePrice : props.plan.price)
 const hasEnoughBalance = computed(() => effectiveBalancePrice.value > 0 && props.availableBalance + 1e-9 >= effectiveBalancePrice.value)
 const balanceAfterPayment = computed(() => Math.max(0, props.availableBalance - effectiveBalancePrice.value))
@@ -238,6 +227,7 @@ const rateDisplay = computed(() => {
 })
 
 const appStore = useAppStore()
+const planCurrencySymbol = computed(() => currencySymbol(props.plan.currency || 'USD'))
 
 const hasPeakRate = computed(() => groupHasPeakRate(props.plan))
 

@@ -6,7 +6,7 @@
         <button
           @click="toggleMobileSidebar"
           class="btn-ghost btn-icon lg:hidden"
-          aria-label="Toggle Menu"
+          :aria-label="t('common.toggleMenu')"
         >
           <Icon name="menu" size="md" />
         </button>
@@ -101,7 +101,7 @@
           <button
             @click="toggleDropdown"
             class="header-user-button"
-            aria-label="User Menu"
+            :aria-label="t('common.userMenu')"
             :title="`${t('common.availableBalance')} ${formatHeaderMoney(availableBalance)}`"
           >
             <div class="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-primary-600 text-sm font-semibold text-white">

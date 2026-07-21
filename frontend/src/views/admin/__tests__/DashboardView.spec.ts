@@ -134,7 +134,7 @@ describe('admin DashboardView', () => {
     expect(wrapper.text()).toContain('晚上好，Kuhne')
     expect(wrapper.findAll('.hero-card')).toHaveLength(3)
     expect(wrapper.findAll('.metric-sparkline')).toHaveLength(0)
-    expect(wrapper.findAll('.hero-card')[0].text()).toContain('今日 Token')
+    expect(wrapper.findAll('.hero-card')[0].text()).toContain('全站累计 Token')
     expect(wrapper.findAll('.hero-card')[1].text()).toContain('今日 API 调用')
     expect(wrapper.find('[data-testid="token-usage-trend"]').exists()).toBe(true)
     expect(wrapper.text()).toContain('该时间范围暂无模型使用数据')
@@ -153,7 +153,7 @@ describe('admin DashboardView', () => {
     const ranking: UserSpendingRankingItem[] = [{ user_id: 42, email: 'team@example.com', actual_cost: 12.34, requests: 20, tokens: 1000, rank: 1 }]
 
     getSnapshotV2.mockResolvedValueOnce({
-      stats: createDashboardStats({ today_requests: 128420, total_requests: 900000, today_input_tokens: 2300000, today_output_tokens: 540000, today_tokens: 2840000, today_actual_cost: 124.82, today_account_cost: 86.4, today_cost: 156.75 }),
+      stats: createDashboardStats({ total_requests: 900000, total_input_tokens: 9200000, total_output_tokens: 1540000, total_tokens: 10740000, total_actual_cost: 624.82, total_cost: 756.75, today_requests: 128420, today_input_tokens: 2300000, today_output_tokens: 540000, today_tokens: 2840000, today_actual_cost: 124.82, today_account_cost: 86.4, today_cost: 156.75 }),
       trend,
       models
     })
@@ -164,11 +164,11 @@ describe('admin DashboardView', () => {
 
     expect(wrapper.find('[data-testid="token-usage-trend"]').exists()).toBe(true)
     expect(wrapper.text()).toContain('128,420')
-    expect(wrapper.findAll('.hero-card')[0].text()).toContain('输入2.30M')
-    expect(wrapper.findAll('.hero-card')[0].text()).toContain('输出540.0K')
-    expect(wrapper.findAll('.hero-card')[0].text()).toContain('实际 $124.82')
-    expect(wrapper.findAll('.hero-card')[0].text()).toContain('成本 $86.40')
-    expect(wrapper.findAll('.hero-card')[0].text()).toContain('标准 $156.75')
+    expect(wrapper.findAll('.hero-card')[0].text()).toContain('输入9.20M')
+    expect(wrapper.findAll('.hero-card')[0].text()).toContain('输出1.54M')
+    expect(wrapper.findAll('.hero-card')[0].text()).toContain('总计 10.74M')
+    expect(wrapper.findAll('.hero-card')[0].text()).toContain('实际 $624.82')
+    expect(wrapper.findAll('.hero-card')[0].text()).toContain('成本 $756.75')
     expect(wrapper.text()).toContain('gpt-5')
     expect(wrapper.text()).toContain('team@example.com')
 
