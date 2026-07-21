@@ -70,6 +70,7 @@ const mountPlanCard = (
         validity_unit: "day",
         supported_model_scopes: ["claude", "gemini_text", "gemini_image"],
         is_active: true,
+        ...overrides,
       },
       ...overrides,
     },
@@ -93,16 +94,22 @@ describe("SubscriptionPlanCard", () => {
     expect(text).toContain("Imagen");
   });
 
-  it("shows the converted yuan price and always uses the subscribe action", () => {
-    const wrapper = mountPlanCard("openai", 7.15);
+  it("uses the configured currency symbol while preserving USD for legacy plans", () => {
+    const cnyPlan = mountPlanCard("openai", 0, { currency: "CNY", original_price: 20 }).text();
 
-    expect(wrapper.text()).toContain("¥71.50");
-    expect(wrapper.text()).not.toContain("$10");
+    expect(cnyPlan).toContain("¥10CNY");
+    expect(cnyPlan).toContain("¥20CNY");
+    expect(mountPlanCard("openai", 0, { currency: "USD" }).text()).toContain("$10USD");
+    expect(mountPlanCard("openai").text()).toContain("$10");
+  });
+
+  it("always uses the subscribe action", () => {
+    const wrapper = mountPlanCard("openai");
     expect(wrapper.findAll("button").at(-1)?.text()).toBe("wallet.subscribeAction");
   });
 
   it("selects the payment source and subscribes directly inside the card", async () => {
-    const wrapper = mountPlanCard("openai", 7.15);
+    const wrapper = mountPlanCard("openai");
     const balanceButton = wrapper.findAll("button").find(button =>
       button.text().includes("wallet.subscriptionPaymentBalance"),
     );
@@ -115,7 +122,7 @@ describe("SubscriptionPlanCard", () => {
   });
 
   it("disables balance subscription when the available balance is insufficient", async () => {
-    const wrapper = mountPlanCard("openai", 7.15, { availableBalance: 5 });
+    const wrapper = mountPlanCard("openai", 0, { availableBalance: 5 });
     const balanceButton = wrapper.findAll("button").find(button =>
       button.text().includes("wallet.subscriptionPaymentBalance"),
     );

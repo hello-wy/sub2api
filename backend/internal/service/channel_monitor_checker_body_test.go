@@ -485,6 +485,27 @@ func TestExtractOutputTokens(t *testing.T) {
 	}
 }
 
+func TestExtractAnthropicMonitorText(t *testing.T) {
+	tests := []struct {
+		name string
+		body string
+		want string
+	}{
+		{name: "text block after thinking", body: `{"content":[{"type":"thinking","thinking":""},{"type":"text","text":"2"}]}`, want: "2"},
+		{name: "single text block", body: `{"content":[{"type":"text","text":"2"}]}`, want: "2"},
+		{name: "thinking only", body: `{"content":[{"type":"thinking","thinking":""}]}`, want: ""},
+		{name: "multiple text blocks", body: `{"content":[{"type":"text","text":"answer"},{"type":"tool_use","name":"x"},{"type":"text","text":"2"}]}`, want: "answer\n2"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := extractAnthropicMonitorText([]byte(tt.body)); got != tt.want {
+				t.Fatalf("extractAnthropicMonitorText() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestCalculateThroughputTPS(t *testing.T) {
 	tokens := 25
 	got := calculateThroughputTPS(&tokens, 2*time.Second)
@@ -497,5 +518,14 @@ func TestCalculateThroughputTPS(t *testing.T) {
 	zero := 0
 	if got := calculateThroughputTPS(&zero, time.Second); got != nil {
 		t.Fatalf("zero tokens must produce nil, got %v", *got)
+	}
+}
+
+func TestValidateChallengeAnthropicTextAfterThinking(t *testing.T) {
+	body := []byte(`{"content":[{"type":"thinking","thinking":""},{"type":"text","text":"答案是 2"}]}`)
+	respText := extractAnthropicMonitorText(body)
+
+	if !validateChallenge(respText, "2") {
+		t.Fatalf("validateChallenge(%q, %q) = false, want true", respText, "2")
 	}
 }

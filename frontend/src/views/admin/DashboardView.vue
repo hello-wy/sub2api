@@ -27,15 +27,15 @@
             @pointermove="updatePrimaryCardSpotlight"
             @pointerleave="hidePrimaryCardSpotlight"
           >
-            <span>今日 Token</span>
-            <div class="token-pair" aria-label="今日 Token 输入输出">
-              <p><span>输入</span><strong>{{ formatTokens(stats.today_input_tokens) }}</strong></p>
-              <p><span>输出</span><strong>{{ formatTokens(stats.today_output_tokens) }}</strong></p>
+            <span>全站累计 Token</span>
+            <div class="token-pair" aria-label="全站累计 Token 输入输出">
+              <p><span>输入</span><strong>{{ formatTokens(stats.total_input_tokens) }}</strong></p>
+              <p><span>输出</span><strong>{{ formatTokens(stats.total_output_tokens) }}</strong></p>
             </div>
             <small class="cost-breakdown">
-              <span class="cost-breakdown__actual">实际 ${{ formatCost(stats.today_actual_cost) }}</span>
-              <span class="cost-breakdown__account">成本 ${{ formatCost(stats.today_account_cost) }}</span>
-              <span class="cost-breakdown__standard">标准 ${{ formatCost(stats.today_cost) }}</span>
+              <span class="cost-breakdown__actual">总计 {{ formatTokens(stats.total_tokens) }}</span>
+              <span class="cost-breakdown__account">实际 ${{ formatCost(stats.total_actual_cost) }}</span>
+              <span class="cost-breakdown__standard">成本 ${{ formatCost(stats.total_cost) }}</span>
             </small>
           </article>
 
