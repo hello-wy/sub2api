@@ -191,13 +191,14 @@ jobs:
 
   update-dockerhub-description:
     needs: [release]
-    if: ${{ needs.release.result == 'success' && env.SIMPLE_RELEASE != 'true' && env.DOCKERHUB_USERNAME != '' }}
+    if: ${{ needs.release.result == 'success' && github.event.inputs.simple_release != 'true' && vars.SIMPLE_RELEASE != 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
         with:
           ref: ${{ github.event.inputs.tag || github.ref }}
       - name: Update DockerHub description
+        if: ${{ env.DOCKERHUB_USERNAME != '' }}
         uses: peter-evans/dockerhub-description@v5
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -208,7 +209,7 @@ jobs:
 
   notify-release:
     needs: [release]
-    if: ${{ needs.release.result == 'success' && env.SIMPLE_RELEASE != 'true' }}
+    if: ${{ needs.release.result == 'success' && github.event.inputs.simple_release != 'true' && vars.SIMPLE_RELEASE != 'true' }}
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
