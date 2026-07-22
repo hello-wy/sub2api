@@ -1,11 +1,11 @@
 <template>
   <header class="app-header-surface sticky top-0 z-30">
-    <div class="flex h-16 items-center justify-between gap-4 px-4 md:px-6">
+    <div class="app-header-inner flex h-16 items-center justify-between gap-4 px-4 md:px-6">
       <!-- Left: Mobile Menu Toggle + Page Title -->
-      <div class="flex min-w-0 flex-1 items-center gap-4 overflow-hidden">
+      <div class="app-header-leading flex min-w-0 flex-1 items-center gap-4 overflow-hidden">
         <button
           @click="toggleMobileSidebar"
-          class="btn-ghost btn-icon lg:hidden"
+          class="app-header-menu-button btn-ghost btn-icon lg:hidden"
           :aria-label="t('common.toggleMenu')"
         >
           <Icon name="menu" size="md" />
