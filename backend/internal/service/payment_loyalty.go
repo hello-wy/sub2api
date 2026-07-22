@@ -403,7 +403,10 @@ func parsePositiveLoyaltyPoints(raw string) float64 {
 }
 
 func (s *PaymentService) applyLoyaltyPointsForOrder(ctx context.Context, o *dbent.PaymentOrder) error {
-	if s == nil || s.entClient == nil || o == nil || o.OrderType != payment.OrderTypeBalance {
+	if s == nil || s.entClient == nil || o == nil {
+		return nil
+	}
+	if o.OrderType != payment.OrderTypeBalance && o.OrderType != payment.OrderTypeSubscription {
 		return nil
 	}
 	pointsDelta := paymentLoyaltyPointsDeltaFromOrder(o)

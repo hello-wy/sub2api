@@ -511,6 +511,9 @@ func (s *PaymentService) doSub(ctx context.Context, o *dbent.PaymentOrder, lease
 	if err := s.ensurePaymentSubscriptionAssigned(ctx, o, gid, days); err != nil {
 		return err
 	}
+	if err := s.applyLoyaltyPointsForOrder(ctx, o); err != nil {
+		return err
+	}
 	if err := s.applyAffiliateRebateForOrder(ctx, o); err != nil {
 		return err
 	}

@@ -273,6 +273,17 @@ func TestCalculateCreateOrderGatewayAmountsConvertsBeforeSubscriptionDiscount(t 
 	}
 }
 
+func TestPaymentLoyaltyPointsDeltaForSubscriptionUsesOriginalGatewayAmount(t *testing.T) {
+	t.Parallel()
+
+	if got := paymentLoyaltyPointsDeltaForCreateOrder(payment.OrderTypeBalance, 50, 46); got != 50 {
+		t.Fatalf("balance points delta = %v, want 50", got)
+	}
+	if got := paymentLoyaltyPointsDeltaForCreateOrder(payment.OrderTypeSubscription, 10, 71.5); got != 71.5 {
+		t.Fatalf("subscription points delta = %v, want 71.5", got)
+	}
+}
+
 func TestCalculateCreditedBalanceStillUsesRechargeMultiplier(t *testing.T) {
 	t.Parallel()
 
