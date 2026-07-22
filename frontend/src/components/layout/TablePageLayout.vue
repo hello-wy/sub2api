@@ -129,6 +129,21 @@ onUnmounted(() => {
   @apply w-full;
 }
 
+.table-page-layout.mobile-mode {
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-page-layout.mobile-mode .layout-section-scrollable {
+  flex: none;
+}
+
+.table-page-layout.mobile-mode .table-scroll-container {
+  height: auto;
+  overflow: visible;
+}
+
 .table-page-layout.mobile-mode .table-scroll-container :deep(table) {
   display: table;
   min-width: 100%;
