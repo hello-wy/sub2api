@@ -108,6 +108,7 @@ func provideCleanup(
 	scheduledTestRunner *service.ScheduledTestRunnerService,
 	backupSvc *service.BackupService,
 	welfareSvc *service.WelfareService,
+	paymentSvc *service.PaymentService,
 	paymentOrderExpiry *service.PaymentOrderExpiryService,
 	channelMonitorRunner *service.ChannelMonitorRunner,
 	quotaFlusher *service.UserPlatformQuotaUsageFlusher,
@@ -311,6 +312,12 @@ func provideCleanup(
 			{"WelfareService", func() error {
 				if welfareSvc != nil {
 					welfareSvc.Stop()
+				}
+				return nil
+			}},
+			{"PaymentService", func() error {
+				if paymentSvc != nil {
+					paymentSvc.StopLoyaltyWeeklyResetScheduler()
 				}
 				return nil
 			}},

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"entgo.io/ent/dialect"
 	dbent "github.com/Wei-Shaw/sub2api/ent"
 	"github.com/Wei-Shaw/sub2api/ent/paymentauditlog"
 	"github.com/Wei-Shaw/sub2api/ent/userattributedefinition"
@@ -355,13 +356,13 @@ func (s *PaymentService) ensureLoyaltyAttributeDefinition(ctx context.Context, s
 
 func (s *PaymentService) insertLoyaltyAttributeDefinition(ctx context.Context, spec paymentLoyaltyAttributeSpec) error {
 	client := paymentServiceClientFromContext(ctx, s.entClient)
-	if client.Driver() != nil && client.Driver().Dialect() == "sqlite" {
+	if client.Driver() != nil && client.Driver().Dialect() == dialect.SQLite {
 		_, err := client.ExecContext(ctx, `
 INSERT INTO user_attribute_definitions
 	(key, name, description, type, options, required, validation, placeholder, display_order, enabled, created_at, updated_at)
-VALUES (?, ?, ?, 'number', '[]', FALSE, '{"min":0}', '0', ?, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+VALUES (?, ?, ?, 'number', '[]', FALSE, ?, '0', ?, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 ON CONFLICT DO NOTHING`,
-			spec.Key, spec.Name, spec.Description, spec.DisplayOrder)
+			spec.Key, spec.Name, spec.Description, `{"min":0}`, spec.DisplayOrder)
 		return err
 	}
 	_, err := client.ExecContext(ctx, `
@@ -462,7 +463,7 @@ func (s *PaymentService) applyLoyaltyPointsForOrder(ctx context.Context, o *dben
 func (s *PaymentService) incrementLoyaltyPoints(ctx context.Context, userID, attributeID int64, delta float64, resetBefore *time.Time) error {
 	client := paymentServiceClientFromContext(ctx, s.entClient)
 	value := formatLoyaltyPointNumber(delta)
-	if client.Driver() != nil && client.Driver().Dialect() == "sqlite" {
+	if client.Driver() != nil && client.Driver().Dialect() == dialect.SQLite {
 		return s.incrementLoyaltyPointsSQLite(ctx, client, userID, attributeID, delta, value, resetBefore)
 	}
 	return s.incrementLoyaltyPointsPostgres(ctx, client, userID, attributeID, delta, value, resetBefore)
@@ -614,16 +615,16 @@ func (s *PaymentService) tryClaimLoyaltyPointsAudit(ctx context.Context, client 
 
 func buildLoyaltyPointsAuditClaimQuery(client *dbent.Client, orderID, detail string) (string, []any) {
 	nowExpr := paymentAuditCurrentTimestampExpr(client)
-	if paymentAuditDialect(client) == "sqlite" {
+	if paymentAuditDialect(client) == dialect.Postgres {
 		return fmt.Sprintf(`
 INSERT INTO payment_audit_logs (order_id, action, detail, operator, created_at)
-VALUES (?, '%s', ?, 'system', %s)
+VALUES ($1::text, '%s', $2::text, 'system', %s)
 ON CONFLICT (order_id, action) DO NOTHING
 RETURNING id`, paymentLoyaltyAuditAction, nowExpr), []any{orderID, detail}
 	}
 	return fmt.Sprintf(`
 INSERT INTO payment_audit_logs (order_id, action, detail, operator, created_at)
-VALUES ($1::text, '%s', $2::text, 'system', %s)
+VALUES (?, '%s', ?, 'system', %s)
 ON CONFLICT (order_id, action) DO NOTHING
 RETURNING id`, paymentLoyaltyAuditAction, nowExpr), []any{orderID, detail}
 }
