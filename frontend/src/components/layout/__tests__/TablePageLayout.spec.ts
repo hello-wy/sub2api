@@ -22,9 +22,10 @@ describe('TablePageLayout responsive table scrolling', () => {
     expect(componentSource).toContain('@apply min-h-0 min-w-0 flex-1 overflow-x-auto overflow-y-auto;')
   })
 
-  it('keeps the bounded table container in mobile mode', () => {
-    expect(componentSource).not.toContain('h-auto overflow-visible')
-    expect(componentSource).not.toContain('flex-none min-h-fit')
+  it('uses the page layout as the mobile vertical scroll owner', () => {
+    expect(componentSource).toMatch(/\.table-page-layout\.mobile-mode\s*\{[\s\S]*?overflow-y:\s*auto;/)
+    expect(componentSource).toMatch(/\.table-page-layout\.mobile-mode \.layout-section-scrollable\s*\{[\s\S]*?flex:\s*none;/)
+    expect(componentSource).toMatch(/\.table-page-layout\.mobile-mode \.table-scroll-container\s*\{[\s\S]*?height:\s*auto;[\s\S]*?overflow:\s*visible;/)
   })
 
   it('does not disable the table horizontal scroll container in mobile mode', () => {
