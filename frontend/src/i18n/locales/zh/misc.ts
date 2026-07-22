@@ -320,7 +320,6 @@ export default {
     paymentMethod: '支付方式',
     fee: '手续费',
     loyaltyDiscount: '会员折扣（{discount}%）',
-    discountedPaymentAmount: '折后金额',
     actualPay: '实付金额',
     createOrder: '确认支付',
     methods: {

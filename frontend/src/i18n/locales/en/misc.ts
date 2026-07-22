@@ -296,7 +296,6 @@ export default {
     paymentMethod: 'Payment Method',
     fee: 'Fee',
     loyaltyDiscount: 'Member Discount ({discount}%)',
-    discountedPaymentAmount: 'Discounted Amount',
     actualPay: 'Actual Payment',
     createOrder: 'Confirm Payment',
     methods: {

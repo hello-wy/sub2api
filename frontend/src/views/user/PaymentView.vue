@@ -65,10 +65,6 @@
                         <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('payment.loyaltyDiscount', { discount: loyaltyDiscountPercent }) }}</dt>
                         <dd class="mt-1 font-semibold text-emerald-600 dark:text-emerald-400">-{{ formatSelectedPaymentAmount(loyaltyDiscountAmount) }}</dd>
                       </div>
-                      <div v-if="hasLoyaltyDiscount">
-                        <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('payment.discountedPaymentAmount') }}</dt>
-                        <dd class="mt-1 font-semibold text-gray-900 dark:text-white">{{ formatSelectedPaymentAmount(paymentBaseAmount) }}</dd>
-                      </div>
                       <div v-if="feeRate > 0">
                         <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('payment.fee') }} ({{ feeRate }}%)</dt>
                         <dd class="mt-1 font-semibold text-gray-900 dark:text-white">{{ formatSelectedPaymentAmount(feeAmount) }}</dd>
