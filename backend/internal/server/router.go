@@ -45,7 +45,7 @@ func SetupRouter(
 		ctx, cancel := context.WithTimeout(context.Background(), frameSrcRefreshTimeout)
 		defer cancel()
 		origins, err := settingService.GetFrameSrcOrigins(ctx)
-		if err != nil {
+		if err != nil { //nolint:staticcheck // The embed build can return nil; staticcheck only sees the non-embed stub.
 			// 获取失败时保留已有缓存，避免 frame-src 被意外清空
 			return
 		}
