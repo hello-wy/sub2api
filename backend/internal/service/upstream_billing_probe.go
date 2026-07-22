@@ -816,6 +816,27 @@ func equalBillingMultiplier(left, right float64) bool {
 	return math.Abs(left-right) <= 1e-9*scale
 }
 
+// UpstreamBillingRateMultiplierNeedsSync returns the upstream effective rate
+// when it differs from the account's current billing rate.
+func UpstreamBillingRateMultiplierNeedsSync(account *Account, snapshot *UpstreamBillingProbeSnapshot) (float64, bool) {
+	if account == nil || snapshot == nil || snapshot.Status != UpstreamBillingProbeStatusOK {
+		return 0, false
+	}
+	rate, ok := upstreamBillingDeclaredRate(snapshot.Data)
+	if !ok || equalBillingMultiplier(account.BillingRateMultiplier(), rate) {
+		return 0, false
+	}
+	return rate, true
+}
+
+func upstreamBillingDeclaredRate(data map[string]any) (float64, bool) {
+	rate, ok := resolveAccountExtraNumber(data, "effective_rate_multiplier")
+	if !ok || rate < 0 || math.IsNaN(rate) || math.IsInf(rate, 0) {
+		return 0, false
+	}
+	return rate, true
+}
+
 func decodeUpstreamBillingProbeSnapshot(extra map[string]any) *UpstreamBillingProbeSnapshot {
 	if extra == nil {
 		return nil

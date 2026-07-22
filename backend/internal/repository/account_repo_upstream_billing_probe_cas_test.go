@@ -120,6 +120,45 @@ func TestUpdateUpstreamBillingProbeSnapshotCommitsSnapshotAndOutboxAtomically(t 
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
+func TestUpdateUpstreamBillingProbeSnapshotSyncsChangedDeclaredRateMultiplier(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = db.Close() })
+	client := dbent.NewClient(dbent.Driver(entsql.OpenDB(dialect.Postgres, db)))
+	t.Cleanup(func() { _ = client.Close() })
+
+	mock.ExpectBegin()
+	mock.ExpectExec(`(?s)`+regexp.QuoteMeta("UPDATE accounts")+`.*`+regexp.QuoteMeta("rate_multiplier = $2")+`.*`+regexp.QuoteMeta("WHERE id = $3")+`.*`+regexp.QuoteMeta("AND credentials = $6::jsonb")+`.*`+regexp.QuoteMeta("COALESCE(extra -> 'upstream_billing_probe', 'null'::jsonb) = $8::jsonb")).
+		WithArgs(sqlmock.AnyArg(), 0.06, int64(17), service.PlatformOpenAI, service.AccountTypeAPIKey, `{"api_key":"sk-test"}`, nil, sqlmock.AnyArg(), "null").
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO scheduler_outbox")).
+		WithArgs(service.SchedulerOutboxEventAccountChanged, int64(17), nil, nil, sqlmock.AnyArg()).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectCommit()
+
+	repo := newAccountRepositoryWithSQL(client, db, nil)
+	account := &service.Account{
+		ID:          17,
+		Platform:    service.PlatformOpenAI,
+		Type:        service.AccountTypeAPIKey,
+		Credentials: map[string]any{"api_key": "sk-test"},
+		Extra: map[string]any{
+			service.UpstreamBillingProbeExtraKey: map[string]any{
+				"status": service.UpstreamBillingProbeStatusOK,
+				"data":   map[string]any{"effective_rate_multiplier": 0.05},
+			},
+		},
+	}
+
+	err = repo.UpdateUpstreamBillingProbeSnapshot(context.Background(), account, &service.UpstreamBillingProbeSnapshot{
+		Status: service.UpstreamBillingProbeStatusOK,
+		Data:   map[string]any{"effective_rate_multiplier": 0.06},
+	})
+
+	require.NoError(t, err)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
 func TestUpdateUpstreamBillingProbeSnapshotRejectsChangedProxyIdentity(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)

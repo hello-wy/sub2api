@@ -120,6 +120,9 @@ func (r *upstreamBillingProbeAccountRepo) UpdateUpstreamBillingProbeSnapshot(_ c
 	if account.Extra == nil {
 		account.Extra = make(map[string]any)
 	}
+	if rate, changed := UpstreamBillingRateMultiplierNeedsSync(account, snapshot); changed {
+		account.RateMultiplier = &rate
+	}
 	account.Extra[UpstreamBillingProbeExtraKey] = snapshot
 	return nil
 }
@@ -452,6 +455,42 @@ func TestUpstreamBillingRateAtHandlesDST(t *testing.T) {
 	rate, ok = upstreamBillingRateAt(data, afterJump)
 	require.True(t, ok)
 	require.Equal(t, 2.0, rate)
+}
+
+func TestUpstreamBillingRateMultiplierNeedsSync(t *testing.T) {
+	accountRate := 0.05
+	account := &Account{RateMultiplier: &accountRate}
+	rate, changed := UpstreamBillingRateMultiplierNeedsSync(account, &UpstreamBillingProbeSnapshot{
+		Status: UpstreamBillingProbeStatusOK,
+		Data:   map[string]any{"effective_rate_multiplier": 0.06},
+	})
+	require.True(t, changed)
+	require.Equal(t, 0.06, rate)
+
+	_, changed = UpstreamBillingRateMultiplierNeedsSync(account, &UpstreamBillingProbeSnapshot{
+		Status: UpstreamBillingProbeStatusOK,
+		Data:   map[string]any{"effective_rate_multiplier": 0.05},
+	})
+	require.False(t, changed)
+
+	_, changed = UpstreamBillingRateMultiplierNeedsSync(account, &UpstreamBillingProbeSnapshot{
+		Status: UpstreamBillingProbeStatusFailed,
+		Data:   map[string]any{"effective_rate_multiplier": 0.06},
+	})
+	require.False(t, changed)
+
+	rate, changed = UpstreamBillingRateMultiplierNeedsSync(&Account{}, &UpstreamBillingProbeSnapshot{
+		Status: UpstreamBillingProbeStatusOK,
+		Data:   map[string]any{"effective_rate_multiplier": 0.06},
+	})
+	require.True(t, changed)
+	require.Equal(t, 0.06, rate)
+
+	_, changed = UpstreamBillingRateMultiplierNeedsSync(nil, &UpstreamBillingProbeSnapshot{
+		Status: UpstreamBillingProbeStatusOK,
+		Data:   map[string]any{"effective_rate_multiplier": 0.06},
+	})
+	require.False(t, changed)
 }
 
 func TestUpstreamBillingProbeFailurePreservesLastSuccessAndRetryAfter(t *testing.T) {
