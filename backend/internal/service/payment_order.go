@@ -121,10 +121,7 @@ func (s *PaymentService) CreateOrder(ctx context.Context, req CreateOrderRequest
 	if oauthResp != nil {
 		return oauthResp, nil
 	}
-	loyaltyPointsDelta := limitAmount
-	if req.OrderType == payment.OrderTypeSubscription {
-		loyaltyPointsDelta = 0
-	}
+	loyaltyPointsDelta := paymentLoyaltyPointsDeltaForCreateOrder(req.OrderType, limitAmount, gatewayOriginalAmount)
 	loyaltySnapshot := buildPaymentLoyaltySnapshot(loyaltyInfo, gatewayOriginalAmount, gatewayBaseAmount, loyaltyPointsDelta, selectedCurrency)
 	order, err := s.createOrderInTx(ctx, req, user, plan, cfg, orderAmount, gatewayBaseAmount, feeRate, payAmount, sel, loyaltySnapshot)
 	if err != nil {
@@ -691,6 +688,13 @@ func loyaltyDiscountPercent(info *PaymentLoyaltyInfo) float64 {
 		return 0
 	}
 	return info.DiscountPercent
+}
+
+func paymentLoyaltyPointsDeltaForCreateOrder(orderType string, limitAmount, gatewayOriginalAmount float64) float64 {
+	if orderType == payment.OrderTypeSubscription {
+		return gatewayOriginalAmount
+	}
+	return limitAmount
 }
 
 // calculateSubscriptionGatewayBaseAmount 计算订阅订单的网关扣款基数。

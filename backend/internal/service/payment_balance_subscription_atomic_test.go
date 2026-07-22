@@ -7,6 +7,7 @@ import (
 	"time"
 
 	dbent "github.com/Wei-Shaw/sub2api/ent"
+	"github.com/Wei-Shaw/sub2api/ent/paymentauditlog"
 	"github.com/Wei-Shaw/sub2api/ent/usersubscription"
 	"github.com/stretchr/testify/require"
 )
@@ -255,4 +256,27 @@ func TestPurchaseSubscriptionWithBalanceRecoversSameIdempotentOrder(t *testing.T
 	auditCount, err := client.PaymentAuditLog.Query().Count(context.Background())
 	require.NoError(t, err)
 	require.Equal(t, 2, auditCount)
+}
+
+func TestPurchaseSubscriptionWithBalanceDoesNotGrantLoyaltyPoints(t *testing.T) {
+	ctx := context.Background()
+	service, client, userID, planID := newBalancePurchaseService(t, false)
+	defs, configured, err := service.ensureLoyaltyAttributeDefinitions(ctx)
+	require.NoError(t, err)
+	require.True(t, configured)
+	createPaymentLoyaltyTestValue(t, client, userID, defs[LoyaltyWeeklyPointsAttributeKey].ID, "40", time.Now())
+	createPaymentLoyaltyTestValue(t, client, userID, defs[LoyaltyPermanentPointsAttributeKey].ID, "400", time.Now())
+
+	_, err = service.PurchaseSubscriptionWithBalance(ctx, BalanceSubscriptionPurchaseRequest{
+		UserID: userID, PlanID: planID, IdempotencyKey: "balance-no-loyalty", SrcHost: "test",
+	})
+	require.NoError(t, err)
+	require.Equal(t, "40", readPaymentLoyaltyTestValue(t, client, userID, defs[LoyaltyWeeklyPointsAttributeKey].ID))
+	require.Equal(t, "400", readPaymentLoyaltyTestValue(t, client, userID, defs[LoyaltyPermanentPointsAttributeKey].ID))
+
+	pointsAuditCount, err := client.PaymentAuditLog.Query().
+		Where(paymentauditlog.ActionEQ(paymentLoyaltyAuditAction)).
+		Count(ctx)
+	require.NoError(t, err)
+	require.Zero(t, pointsAuditCount)
 }

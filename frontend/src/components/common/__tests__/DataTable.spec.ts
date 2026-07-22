@@ -83,6 +83,23 @@ describe('DataTable', () => {
     expect(nameHeader.findAll('svg')[1].classes()).toContain('text-primary-600')
   })
 
+  it('wraps long values in mobile cards instead of clipping them', async () => {
+    stubMobileMatchMedia()
+    const wrapper = mount(DataTable, {
+      props: {
+        columns: [{ key: 'identifier', label: 'Identifier' }],
+        data: [{ id: 1, identifier: 'a-very-long-unbroken-identifier-that-must-not-overflow-the-card' }]
+      }
+    })
+
+    await wrapper.vm.$nextTick()
+
+    const value = wrapper.find('.break-words')
+    expect(wrapper.find('table').exists()).toBe(false)
+    expect(value.exists()).toBe(true)
+    expect(value.classes()).toContain('min-w-0')
+  })
+
   it('renders every row with no virtual padding spacer for small datasets (virtualization off)', async () => {
     const data = Array.from({ length: 8 }, (_, i) => ({ id: i + 1, name: `Row ${i + 1}` }))
     const wrapper = mount(DataTable, {

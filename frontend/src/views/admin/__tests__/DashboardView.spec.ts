@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 
-import type { DashboardStats, ModelStat, TrendDataPoint, UserSpendingRankingItem } from '@/types'
+import type { DashboardStats, ModelStat, TrendDataPoint, UserSpendingRankingItem, UserUsageTrendPoint } from '@/types'
 import DashboardView from '../DashboardView.vue'
 
 const { getSnapshotV2, getUserSpendingRanking, push } = vi.hoisted(() => ({
@@ -82,6 +82,7 @@ const mountDashboard = () => mount(DashboardView, {
       AppLayout: { template: '<div><slot /></div>' },
       DashboardRangeSelect: { props: ['modelValue', 'options'], emits: ['update:modelValue', 'change'], template: '<select :value="modelValue" @change="$emit(\'update:modelValue\', $event.target.value); $emit(\'change\', $event.target.value)"><option v-for="option in options" :key="option.value" :value="option.value">{{ option.label }}</option></select>' },
       TokenUsageTrend: { template: '<div data-testid="token-usage-trend" />' },
+      UserUsageTrend: { props: ['trendData', 'loading'], template: '<div data-testid="user-usage-trend">{{ trendData.length }}</div>' },
       LoadingSpinner: true,
       Icon: true,
       'router-link': { props: ['to'], template: '<a><slot /></a>' }
@@ -131,12 +132,19 @@ describe('admin DashboardView', () => {
       end_date: formatLocalDate(now),
       granularity: 'hour'
     }))
+    expect(getSnapshotV2).toHaveBeenCalledWith(expect.objectContaining({
+      include_users_trend: true,
+      users_trend_limit: 12
+    }))
     expect(wrapper.text()).toContain('晚上好，Kuhne')
     expect(wrapper.findAll('.hero-card')).toHaveLength(3)
     expect(wrapper.findAll('.metric-sparkline')).toHaveLength(0)
-    expect(wrapper.findAll('.hero-card')[0].text()).toContain('全站累计 Token')
+    expect(wrapper.findAll('.hero-card')[0].text()).toContain('今日 Token 消耗')
     expect(wrapper.findAll('.hero-card')[1].text()).toContain('今日 API 调用')
+    expect(wrapper.findAll('.hero-card')[2].text()).toContain('今日消耗')
     expect(wrapper.find('[data-testid="token-usage-trend"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="user-usage-trend"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('用户使用趋势（Top 12）')
     expect(wrapper.text()).toContain('该时间范围暂无模型使用数据')
     expect(wrapper.text()).toContain('该时间范围暂无用户使用数据')
   })
@@ -151,11 +159,15 @@ describe('admin DashboardView', () => {
       { model: 'claude-3-7-sonnet', requests: 8, input_tokens: 300, output_tokens: 200, cache_creation_tokens: 0, cache_read_tokens: 0, total_tokens: 500, cost: 1, actual_cost: 1 }
     ]
     const ranking: UserSpendingRankingItem[] = [{ user_id: 42, email: 'team@example.com', actual_cost: 12.34, requests: 20, tokens: 1000, rank: 1 }]
+    const usersTrend: UserUsageTrendPoint[] = [
+      { date: '2026-07-14', user_id: 42, email: 'team@example.com', username: 'Team', requests: 20, tokens: 1000, cost: 3, actual_cost: 3 }
+    ]
 
     getSnapshotV2.mockResolvedValueOnce({
       stats: createDashboardStats({ total_requests: 900000, total_input_tokens: 9200000, total_output_tokens: 1540000, total_tokens: 10740000, total_actual_cost: 624.82, total_cost: 756.75, today_requests: 128420, today_input_tokens: 2300000, today_output_tokens: 540000, today_tokens: 2840000, today_actual_cost: 124.82, today_account_cost: 86.4, today_cost: 156.75 }),
       trend,
-      models
+      models,
+      users_trend: usersTrend
     })
     getUserSpendingRanking.mockResolvedValueOnce({ ranking, total_actual_cost: 12.34, total_requests: 20, total_tokens: 1000, start_date: '', end_date: '' })
 
@@ -163,12 +175,12 @@ describe('admin DashboardView', () => {
     await flushPromises()
 
     expect(wrapper.find('[data-testid="token-usage-trend"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="user-usage-trend"]').text()).toBe('1')
     expect(wrapper.text()).toContain('128,420')
-    expect(wrapper.findAll('.hero-card')[0].text()).toContain('输入9.20M')
-    expect(wrapper.findAll('.hero-card')[0].text()).toContain('输出1.54M')
-    expect(wrapper.findAll('.hero-card')[0].text()).toContain('总计 10.74M')
-    expect(wrapper.findAll('.hero-card')[0].text()).toContain('实际 $624.82')
-    expect(wrapper.findAll('.hero-card')[0].text()).toContain('成本 $756.75')
+    expect(wrapper.findAll('.hero-card')[0].text()).toContain('2.84M')
+    expect(wrapper.findAll('.hero-card')[0].text()).toContain('实际 $124.82')
+    expect(wrapper.findAll('.hero-card')[0].text()).toContain('成本 $86.40')
+    expect(wrapper.findAll('.hero-card')[0].text()).toContain('标准 $156.75')
     expect(wrapper.text()).toContain('gpt-5')
     expect(wrapper.text()).toContain('team@example.com')
 

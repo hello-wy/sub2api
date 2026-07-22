@@ -905,6 +905,46 @@ func TestExecuteSubscriptionFulfillmentAppliesAffiliateRebate(t *testing.T) {
 	require.Contains(t, applied.Detail, `"rebateAmount":1.4985`)
 }
 
+func TestExecuteSubscriptionFulfillmentAppliesLoyaltyPoints(t *testing.T) {
+	ctx := context.Background()
+	client := newPaymentConfigServiceTestClient(t)
+	ensurePaymentAuditOrderActionUniqueIndex(t, ctx, client)
+	order := createPaymentFulfillmentSubscriptionOrder(t, ctx, client, OrderStatusPaid, time.Now())
+	order, err := client.PaymentOrder.UpdateOneID(order.ID).
+		SetProviderSnapshot(map[string]any{
+			paymentLoyaltyProviderSnapshot: map[string]any{
+				"points_delta": 80,
+			},
+		}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	subRepo := newSubscriptionUserSubRepoStub()
+	subscriptionSvc := NewSubscriptionService(&subscriptionGroupRepoStub{
+		group: &Group{ID: 7, Status: payment.EntityStatusActive, SubscriptionType: SubscriptionTypeSubscription},
+	}, subRepo, nil, nil, nil)
+	svc := &PaymentService{
+		entClient:       client,
+		groupRepo:       &subscriptionGroupRepoStub{group: &Group{ID: 7, Status: payment.EntityStatusActive, SubscriptionType: SubscriptionTypeSubscription}},
+		subscriptionSvc: subscriptionSvc,
+	}
+
+	require.NoError(t, svc.ExecuteSubscriptionFulfillment(ctx, order.ID))
+
+	defs, configured, err := svc.ensureLoyaltyAttributeDefinitions(ctx)
+	require.NoError(t, err)
+	require.True(t, configured)
+	require.Equal(t, "80", readPaymentLoyaltyTestValue(t, client, order.UserID, defs[LoyaltyWeeklyPointsAttributeKey].ID))
+	require.Equal(t, "80", readPaymentLoyaltyTestValue(t, client, order.UserID, defs[LoyaltyPermanentPointsAttributeKey].ID))
+
+	applied, err := client.PaymentAuditLog.Query().
+		Where(paymentauditlog.OrderIDEQ(strconv.FormatInt(order.ID, 10)), paymentauditlog.ActionEQ(paymentLoyaltyAuditAction)).
+		Only(ctx)
+	require.NoError(t, err)
+	require.Contains(t, applied.Detail, `"pointsDelta":80`)
+	require.Equal(t, 1, subRepo.createCalls)
+}
+
 func TestExecuteSubscriptionFulfillmentDoesNotDuplicateWorkAfterLegacySuccessAudit(t *testing.T) {
 	ctx := context.Background()
 	client := newPaymentConfigServiceTestClient(t)

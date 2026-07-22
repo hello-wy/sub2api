@@ -16,6 +16,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/paymentproviderinstance"
 	"github.com/Wei-Shaw/sub2api/internal/payment"
 	"github.com/Wei-Shaw/sub2api/internal/payment/provider"
+	"github.com/robfig/cron/v3"
 )
 
 // --- Order Status Constants ---
@@ -181,6 +182,9 @@ type TopUserStat struct {
 type PaymentService struct {
 	providerMu               sync.Mutex
 	providersLoaded          bool
+	loyaltyMu                sync.Mutex
+	loyaltyCron              *cron.Cron
+	loyaltyStopped           bool
 	entClient                *dbent.Client
 	registry                 *payment.Registry
 	loadBalancer             payment.LoadBalancer

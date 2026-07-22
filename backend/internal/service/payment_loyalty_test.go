@@ -1,9 +1,14 @@
 package service
 
 import (
+	"context"
 	"testing"
+	"time"
 
 	dbent "github.com/Wei-Shaw/sub2api/ent"
+	"github.com/Wei-Shaw/sub2api/ent/userattributevalue"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/timezone"
+	"github.com/stretchr/testify/require"
 )
 
 func TestResolvePaymentLoyaltyRuleBoundaries(t *testing.T) {
@@ -69,4 +74,72 @@ func TestPaymentLoyaltySnapshotCarriesPointsDelta(t *testing.T) {
 	if got := snapshot["discount_amount"]; got != 8.0 {
 		t.Fatalf("discount amount = %v, want 8", got)
 	}
+}
+
+func TestResetExpiredWeeklyLoyaltyPointsClearsOnlyPreviousWeek(t *testing.T) {
+	ctx := context.Background()
+	client := newPaymentConfigServiceTestClient(t)
+	svc := &PaymentService{entClient: client}
+	defs, configured, err := svc.ensureLoyaltyAttributeDefinitions(ctx)
+	require.NoError(t, err)
+	require.True(t, configured)
+
+	now := time.Date(2026, 7, 22, 12, 0, 0, 0, timezone.Location())
+	weekStart := timezone.StartOfWeek(now)
+	oldUpdatedAt := weekStart.Add(-time.Hour)
+	currentUpdatedAt := weekStart.Add(time.Hour)
+
+	oldWeeklyUser := createPaymentLoyaltyTestUser(t, client, "old-weekly@example.com")
+	currentWeeklyUser := createPaymentLoyaltyTestUser(t, client, "current-weekly@example.com")
+	permanentUser := createPaymentLoyaltyTestUser(t, client, "permanent@example.com")
+
+	createPaymentLoyaltyTestValue(t, client, oldWeeklyUser.ID, defs[LoyaltyWeeklyPointsAttributeKey].ID, "120", oldUpdatedAt)
+	createPaymentLoyaltyTestValue(t, client, currentWeeklyUser.ID, defs[LoyaltyWeeklyPointsAttributeKey].ID, "80", currentUpdatedAt)
+	createPaymentLoyaltyTestValue(t, client, permanentUser.ID, defs[LoyaltyPermanentPointsAttributeKey].ID, "500", oldUpdatedAt)
+
+	updated, err := svc.resetExpiredWeeklyLoyaltyPoints(ctx, now)
+	require.NoError(t, err)
+	require.Equal(t, int64(1), updated)
+
+	require.Equal(t, "0", readPaymentLoyaltyTestValue(t, client, oldWeeklyUser.ID, defs[LoyaltyWeeklyPointsAttributeKey].ID))
+	require.Equal(t, "80", readPaymentLoyaltyTestValue(t, client, currentWeeklyUser.ID, defs[LoyaltyWeeklyPointsAttributeKey].ID))
+	require.Equal(t, "500", readPaymentLoyaltyTestValue(t, client, permanentUser.ID, defs[LoyaltyPermanentPointsAttributeKey].ID))
+}
+
+func createPaymentLoyaltyTestUser(t *testing.T, client *dbent.Client, email string) *dbent.User {
+	t.Helper()
+
+	user, err := client.User.Create().
+		SetEmail(email).
+		SetPasswordHash("hash").
+		SetUsername(email).
+		Save(context.Background())
+	require.NoError(t, err)
+	return user
+}
+
+func createPaymentLoyaltyTestValue(t *testing.T, client *dbent.Client, userID, attributeID int64, value string, updatedAt time.Time) {
+	t.Helper()
+
+	_, err := client.UserAttributeValue.Create().
+		SetUserID(userID).
+		SetAttributeID(attributeID).
+		SetValue(value).
+		SetCreatedAt(updatedAt).
+		SetUpdatedAt(updatedAt).
+		Save(context.Background())
+	require.NoError(t, err)
+}
+
+func readPaymentLoyaltyTestValue(t *testing.T, client *dbent.Client, userID, attributeID int64) string {
+	t.Helper()
+
+	value, err := client.UserAttributeValue.Query().
+		Where(
+			userattributevalue.UserIDEQ(userID),
+			userattributevalue.AttributeIDEQ(attributeID),
+		).
+		Only(context.Background())
+	require.NoError(t, err)
+	return value.Value
 }
