@@ -20,7 +20,7 @@
       </div>
 
       <!-- Table -->
-      <OrderTable :orders="orders" :loading="ordersLoading" show-user>
+      <OrderTable :orders="orders" :loading="ordersLoading" :subscription-plan-names="subscriptionPlanNames" show-user>
         <template #actions="{ row }">
           <div class="flex items-center gap-1">
             <button @click="showOrderDetail(row)" class="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-dark-600">
@@ -149,6 +149,7 @@ const appStore = useAppStore()
 
 const ordersLoading = ref(false)
 const orders = ref<PaymentOrder[]>([])
+const subscriptionPlanNames = ref<Record<number, string>>({})
 const orderSearch = ref('')
 const orderFilters = reactive({ status: '', payment_type: '', order_type: '' })
 const orderPagination = reactive({ page: 1, page_size: 20, total: 0 })
@@ -183,6 +184,11 @@ async function loadOrders() {
   } catch (err: unknown) {
     appStore.showError(extractI18nErrorMessage(err, t, 'payment.errors', t('common.error')))
   } finally { ordersLoading.value = false }
+}
+
+async function loadSubscriptionPlanNames() {
+  const res = await adminPaymentAPI.getPlans()
+  subscriptionPlanNames.value = Object.fromEntries(res.data.map(plan => [plan.id, plan.name]))
 }
 
 function handleOrderPageChange(page: number) { orderPagination.page = page; loadOrders() }
@@ -289,5 +295,8 @@ async function handleQueryRefund(order: PaymentOrder) {
 
 function formatDateTime(dateStr: string): string { return formatOrderDateTime(dateStr) }
 
-onMounted(() => loadOrders())
+onMounted(() => {
+  void loadOrders()
+  void loadSubscriptionPlanNames()
+})
 </script>

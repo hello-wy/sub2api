@@ -18,7 +18,10 @@
         <span v-if="row.fee_rate > 0" class="ml-1 text-xs text-gray-400" :title="t('payment.orders.fee') + ': ' + row.fee_rate + '%'">
           ({{ t('payment.orders.fee') }} {{ row.fee_rate }}%)
         </span>
-        <div v-if="row.amount !== row.pay_amount" class="text-xs text-gray-500">
+        <div v-if="subscriptionPlanName(row)" class="text-xs text-gray-500">
+          {{ subscriptionPlanName(row) }}
+        </div>
+        <div v-else-if="row.amount !== row.pay_amount" class="text-xs text-gray-500">
           {{ t('payment.orders.creditedAmount') }}: {{ creditedAmountSymbol }}{{ row.amount.toFixed(2) }}
         </div>
       </div>
@@ -53,6 +56,7 @@ const props = defineProps<{
   orders: PaymentOrder[]
   loading: boolean
   showUser?: boolean
+  subscriptionPlanNames?: Record<number, string>
 }>()
 
 function formatDate(dateStr: string) { return new Date(dateStr).toLocaleString() }
@@ -60,7 +64,13 @@ function formatDate(dateStr: string) { return new Date(dateStr).toLocaleString()
 const creditedAmountSymbol = currencySymbol('USD')
 
 function paymentAmountSymbol(order: PaymentOrder): string {
+  if (order.payment_type === 'balance') return creditedAmountSymbol
   return currencySymbol(order.currency)
+}
+
+function subscriptionPlanName(order: PaymentOrder): string | undefined {
+  if (order.order_type !== 'subscription' || !order.plan_id) return undefined
+  return props.subscriptionPlanNames?.[order.plan_id]
 }
 
 const columns = computed((): Column[] => {

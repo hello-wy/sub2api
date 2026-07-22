@@ -123,6 +123,26 @@ describe('admin order currency display', () => {
     expect(text).toContain('$100.00')
   })
 
+  it('shows balance-paid subscriptions in USD with the purchased plan below', () => {
+    const wrapper = mount(OrderTable, {
+      props: {
+        orders: [orderFactory({ payment_type: 'balance', currency: 'CNY', plan_id: 7 })],
+        loading: false,
+        subscriptionPlanNames: { 7: '专业版套餐' },
+      },
+      global: {
+        stubs: {
+          DataTable: DataTableStub,
+          OrderStatusBadge: true,
+        },
+      },
+    })
+
+    expect(wrapper.text()).toContain('$108.00')
+    expect(wrapper.text()).toContain('专业版套餐')
+    expect(wrapper.text()).not.toContain('¥108.00')
+  })
+
   it('renders payment currency consistently in the admin order table', () => {
     const wrapper = mount(AdminOrderTable, {
       props: {
