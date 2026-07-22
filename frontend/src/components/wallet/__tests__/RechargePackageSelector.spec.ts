@@ -22,7 +22,8 @@ describe('RechargePackageSelector', () => {
     const fixedPackage = wrapper.findAll('button').find((button) => button.text().includes('$10'))
     expect(fixedPackage).toBeTruthy()
     expect(fixedPackage?.text()).toContain('¥1.00')
-    expect(fixedPackage?.text()).toContain('1:10')
+    expect(wrapper.text()).not.toContain('wallet.conversionRate')
+    expect(wrapper.text()).not.toContain('1:10')
 
     await fixedPackage?.trigger('click')
     expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([1])

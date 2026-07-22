@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-4">
-    <div class="flex flex-wrap items-end justify-between gap-2">
+    <div>
       <div>
         <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
           {{ t('wallet.rechargePackages') }}
@@ -9,9 +9,6 @@
           {{ t('wallet.rechargePackagesHint') }}
         </p>
       </div>
-      <span class="rounded-md bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700 dark:bg-primary-900/30 dark:text-primary-300">
-        {{ t('wallet.conversionRate') }} 1:{{ formatRatio(multiplier) }}
-      </span>
     </div>
 
     <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -35,15 +32,11 @@
         <dl class="mt-4 grid grid-cols-2 gap-x-3 gap-y-2 border-t border-gray-100 pt-3 text-xs dark:border-dark-600">
           <div>
             <dt class="text-gray-400 dark:text-gray-500">{{ t('payment.paymentAmount') }}</dt>
-            <dd class="mt-0.5 font-semibold text-gray-800 dark:text-gray-100">{{ formatAmount(item.payment) }}</dd>
+            <dd class="mt-0.5 text-sm font-semibold text-gray-800 dark:text-gray-100">{{ formatAmount(item.payment) }}</dd>
           </div>
           <div>
             <dt class="text-gray-400 dark:text-gray-500">{{ t('payment.creditedBalance') }}</dt>
-            <dd class="mt-0.5 font-semibold text-emerald-600 dark:text-emerald-400">${{ item.credit.toFixed(2) }}</dd>
-          </div>
-          <div class="col-span-2">
-            <dt class="text-gray-400 dark:text-gray-500">{{ t('wallet.conversionRate') }}</dt>
-            <dd class="mt-0.5 font-semibold text-primary-600 dark:text-primary-400">1:{{ formatRatio(multiplier) }}</dd>
+            <dd class="mt-0.5 text-sm font-semibold text-emerald-600 dark:text-emerald-400">${{ item.credit.toFixed(2) }}</dd>
           </div>
         </dl>
         <span v-if="isSelected(item.payment)" class="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-primary-600 text-white">
@@ -80,15 +73,11 @@
         <dl class="mt-4 grid grid-cols-2 gap-x-3 gap-y-2 border-t border-gray-100 pt-3 text-xs dark:border-dark-600">
           <div>
             <dt class="text-gray-400 dark:text-gray-500">{{ t('payment.paymentAmount') }}</dt>
-            <dd class="mt-0.5 font-semibold text-gray-800 dark:text-gray-100">{{ customPaymentLabel }}</dd>
+            <dd class="mt-0.5 text-sm font-semibold text-gray-800 dark:text-gray-100">{{ customPaymentLabel }}</dd>
           </div>
           <div>
             <dt class="text-gray-400 dark:text-gray-500">{{ t('payment.creditedBalance') }}</dt>
-            <dd class="mt-0.5 font-semibold text-emerald-600 dark:text-emerald-400">{{ customCreditLabel }}</dd>
-          </div>
-          <div class="col-span-2">
-            <dt class="text-gray-400 dark:text-gray-500">{{ t('wallet.conversionRate') }}</dt>
-            <dd class="mt-0.5 font-semibold text-primary-600 dark:text-primary-400">1:{{ formatRatio(multiplier) }}</dd>
+            <dd class="mt-0.5 text-sm font-semibold text-emerald-600 dark:text-emerald-400">{{ customCreditLabel }}</dd>
           </div>
         </dl>
         <span v-if="customActive" class="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-primary-600 text-white">
@@ -148,10 +137,6 @@ const customCreditLabel = computed(() => {
 
 function formatCredit(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(2)
-}
-
-function formatRatio(value: number): string {
-  return Number.isInteger(value) ? String(value) : String(Number(value.toFixed(2)))
 }
 
 function isSelected(payment: number): boolean {

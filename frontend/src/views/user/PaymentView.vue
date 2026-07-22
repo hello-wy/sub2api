@@ -73,13 +73,9 @@
                         <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('payment.fee') }} ({{ feeRate }}%)</dt>
                         <dd class="mt-1 font-semibold text-gray-900 dark:text-white">{{ formatSelectedPaymentAmount(feeAmount) }}</dd>
                       </div>
-                      <div>
+                      <div :class="{ 'sm:col-start-1': hasLoyaltyDiscount && feeRate === 0 }">
                         <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('payment.creditedBalance') }}</dt>
                         <dd class="mt-1 font-semibold text-primary-600 dark:text-primary-400">${{ creditedAmount.toFixed(2) }}</dd>
-                      </div>
-                      <div>
-                        <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('wallet.conversionRate') }}</dt>
-                        <dd class="mt-1 font-semibold text-gray-900 dark:text-white">1:{{ formatRechargeRatio(balanceRechargeMultiplier) }}</dd>
                       </div>
                       <div>
                         <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('payment.actualPay') }}</dt>
@@ -146,7 +142,6 @@
                     <Icon name="refresh" size="md" :class="{ 'animate-spin': refreshingSummary }" />
                   </button>
                 </div>
-                <p class="mt-5 truncate text-xs text-gray-400 dark:text-gray-500">{{ t('payment.rechargeAccount') }}: {{ user?.username || '--' }}</p>
               </section>
 
               <div id="wallet-redeem" class="scroll-mt-6">
@@ -664,10 +659,6 @@ function subscriptionPaymentAmountForCurrency(value: number, currency: string): 
 
 function formatSelectedPaymentAmount(value: number): string {
   return formatPaymentAmount(value, selectedCurrency.value, localeCode.value)
-}
-
-function formatRechargeRatio(value: number): string {
-  return Number.isInteger(value) ? String(value) : String(Number(value.toFixed(2)))
 }
 
 const feeRate = computed(() => checkout.value?.recharge_fee_rate ?? 0)
