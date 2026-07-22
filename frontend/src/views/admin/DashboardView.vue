@@ -27,15 +27,12 @@
             @pointermove="updatePrimaryCardSpotlight"
             @pointerleave="hidePrimaryCardSpotlight"
           >
-            <span>全站累计 Token</span>
-            <div class="token-pair" aria-label="全站累计 Token 输入输出">
-              <p><span>输入</span><strong>{{ formatTokens(stats.total_input_tokens) }}</strong></p>
-              <p><span>输出</span><strong>{{ formatTokens(stats.total_output_tokens) }}</strong></p>
-            </div>
-            <small class="cost-breakdown">
-              <span class="cost-breakdown__actual">总计 {{ formatTokens(stats.total_tokens) }}</span>
-              <span class="cost-breakdown__account">实际 ${{ formatCost(stats.total_actual_cost) }}</span>
-              <span class="cost-breakdown__standard">成本 ${{ formatCost(stats.total_cost) }}</span>
+            <span>今日 Token 消耗</span>
+            <strong>{{ formatTokens(stats.today_tokens) }}</strong>
+            <small class="cost-breakdown" aria-label="今日费用（美元）">
+              <span class="cost-breakdown__actual">实际 ${{ formatCost(stats.today_actual_cost) }}</span>
+              <span class="cost-breakdown__account">成本 ${{ formatCost(stats.today_account_cost) }}</span>
+              <span class="cost-breakdown__standard">标准 ${{ formatCost(stats.today_cost) }}</span>
             </small>
           </article>
 
@@ -115,6 +112,16 @@
             <div v-else class="compact-empty">该时间范围暂无用户使用数据</div>
           </article>
         </section>
+
+        <section class="dashboard-card user-trend-card" aria-labelledby="user-trend-title">
+          <div class="card-heading">
+            <div>
+              <h2 id="user-trend-title">用户使用趋势（Top 12）</h2>
+              <p>选定时间范围内 Top 12 用户的每日 Token 用量</p>
+            </div>
+          </div>
+          <UserUsageTrend :trend-data="userTrend" :loading="chartsLoading" />
+        </section>
       </template>
 
       <div v-else class="dashboard-state dashboard-state--error">
@@ -135,8 +142,9 @@ import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import Icon from '@/components/icons/Icon.vue'
 import DashboardRangeSelect, { type DashboardTimeRange } from '@/components/dashboard/DashboardRangeSelect.vue'
 import TokenUsageTrend from '@/components/charts/TokenUsageTrend.vue'
+import UserUsageTrend from '@/components/charts/UserUsageTrend.vue'
 import { useAuthStore } from '@/stores/auth'
-import type { DashboardStats, ModelStat, TrendDataPoint, UserSpendingRankingItem } from '@/types'
+import type { DashboardStats, ModelStat, TrendDataPoint, UserSpendingRankingItem, UserUsageTrendPoint } from '@/types'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -146,6 +154,7 @@ const chartsLoading = ref(false)
 const rankingLoading = ref(false)
 const trendData = ref<TrendDataPoint[]>([])
 const modelStats = ref<ModelStat[]>([])
+const userTrend = ref<UserUsageTrendPoint[]>([])
 const rankingItems = ref<UserSpendingRankingItem[]>([])
 
 const formatLocalDate = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
@@ -197,14 +206,16 @@ const loadSnapshot = async () => {
   chartsLoading.value = true
   if (!stats.value) loading.value = true
   try {
-    const response = await adminAPI.dashboard.getSnapshotV2({ start_date: startDate.value, end_date: endDate.value, granularity: granularity.value, include_stats: true, include_trend: true, include_model_stats: true, include_group_stats: false, include_users_trend: false })
+    const response = await adminAPI.dashboard.getSnapshotV2({ start_date: startDate.value, end_date: endDate.value, granularity: granularity.value, include_stats: true, include_trend: true, include_model_stats: true, include_group_stats: false, include_users_trend: true, users_trend_limit: 12 })
     stats.value = response.stats || null
     trendData.value = response.trend || []
     modelStats.value = response.models || []
+    userTrend.value = response.users_trend || []
   } catch (error) {
     stats.value = null
     trendData.value = []
     modelStats.value = []
+    userTrend.value = []
     console.error('Failed to load admin dashboard snapshot:', error)
   } finally {
     loading.value = false
@@ -255,10 +266,6 @@ onMounted(() => { updateDateRange(); loadDashboard() })
 .hero-card > span { display:block; color:#61708a; font-size:13px; font-weight:650; }
 .hero-card strong { display:block; margin:8px 0 9px; color:var(--dashboard-ink); font-size:31px; font-weight:760; letter-spacing:-.045em; line-height:1; }
 .hero-card small { color:var(--dashboard-muted); font-size:12px; }
-.token-pair { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px; margin:12px 0 10px; }
-.token-pair p { min-width:0; margin:0; }
-.token-pair p > span { display:block; margin-bottom:5px; color:rgba(255,255,255,.76); font-size:10px; font-weight:650; }
-.token-pair strong { overflow:hidden; margin:0; font-size:25px; text-overflow:ellipsis; white-space:nowrap; }
 .cost-breakdown { display:flex; flex-wrap:wrap; gap:4px 12px; font-variant-numeric:tabular-nums; }
 .cost-breakdown__actual { color:#bbf7d0; }
 .cost-breakdown__account { color:#fed7aa; }
@@ -278,6 +285,7 @@ onMounted(() => { updateDateRange(); loadDashboard() })
 .strip-item small { color:#8a9ab4; font-size:10px; }
 .dashboard-grid { display:grid; grid-template-columns:1.18fr .92fr .92fr; gap:16px; }
 .dashboard-card { min-width:0; min-height:254px; border:1px solid var(--dashboard-line); border-radius:16px; background:var(--dashboard-surface); padding:20px; box-shadow:0 8px 22px rgba(28,56,104,.04); }
+.user-trend-card { min-height:0; margin-top:16px; }
 .card-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
 .card-heading h2 { margin:0; color:#253556; font-size:15px; font-weight:760; letter-spacing:-.025em; }
 .card-heading p { margin:5px 0 0; color:var(--dashboard-muted); font-size:11px; }
@@ -311,7 +319,6 @@ onMounted(() => { updateDateRange(); loadDashboard() })
 .dark .hero-card strong,.dark .strip-item strong,.dark .card-heading h2,.dark .recent-row strong { color:#eef4ff; }
 .dark .hero-card--primary { border-color:rgba(124,185,255,.72); background:linear-gradient(118deg,#255fc8 0%,#2c82d2 52%,#277c94 100%); box-shadow:0 16px 38px rgba(17,76,164,.32),inset 0 1px rgba(255,255,255,.26); }
 .dark .hero-card--primary > span { color:#f5f9ff; }
-.dark .hero-card--primary .token-pair p > span { color:#dbeafe; }
 .dark .hero-card--primary strong { color:#fff; text-shadow:0 2px 12px rgba(3,19,48,.3); }
 .dark .hero-card--primary .cost-breakdown__actual { color:#a7f3d0; }
 .dark .hero-card--primary .cost-breakdown__account { color:#fed7aa; }
