@@ -41,6 +41,8 @@ export interface PaymentConfig {
   help_image_url: string
   help_text: string
   stripe_publishable_key: string
+  /** When true, official Alipay mobile orders use precreate plus an Alipay app deep link */
+  alipay_mobile_precreate_deep_link?: boolean
 }
 
 export interface MethodLimit {
@@ -100,6 +102,8 @@ export interface CheckoutInfoResponse {
   stripe_publishable_key: string
   /** When true, Alipay payments on mobile always show the QR code instead of redirecting */
   alipay_force_qrcode?: boolean
+  /** When true, official Alipay mobile orders use precreate plus an Alipay app deep link */
+  alipay_mobile_precreate_deep_link?: boolean
   loyalty?: PaymentLoyaltyInfo
 }
 
@@ -242,6 +246,8 @@ export interface CreateOrderResult {
   oauth?: WechatOAuthInfo
   jsapi?: WechatJSAPIPayload
   jsapi_payload?: WechatJSAPIPayload
+  /** When true, official Alipay mobile orders use precreate plus an Alipay app deep link */
+  alipay_mobile_precreate_deep_link?: boolean
   loyalty?: PaymentLoyaltyInfo
 }
 
