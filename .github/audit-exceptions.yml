@@ -35,3 +35,10 @@ exceptions:
     mitigation: "Proxy configuration not user-controlled; upgrade when axios releases fix"
     expires_on: "2026-07-10"
     owner: "security@your-domain"
+  - package: postcss
+    advisory: "GHSA-6g55-p6wh-862q"
+    severity: high
+    reason: "CSS build-time usage only; source maps generated only for trusted builds and internal assets"
+    mitigation: "Restrict source map output for user-generated content; schedule dependency upgrade in next sprint"
+    expires_on: "2026-10-24"
+    owner: "security@your-domain"
