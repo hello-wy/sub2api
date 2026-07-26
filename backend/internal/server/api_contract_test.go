@@ -317,16 +317,17 @@ func TestAPIContracts(t *testing.T) {
 				// 普通用户可见的分组列表不应包含内部字段（如 model_routing/account_count）。
 				deps.groupRepo.SetActive([]service.Group{
 					{
-						ID:                  10,
-						Name:                "Group One",
-						Description:         "desc",
-						Platform:            service.PlatformAnthropic,
-						RateMultiplier:      1.5,
-						PeakRateMultiplier:  1.0,
-						IsExclusive:         false,
-						Status:              service.StatusActive,
-						SubscriptionType:    service.SubscriptionTypeStandard,
-						ModelRoutingEnabled: true,
+						ID:                         10,
+						Name:                       "Group One",
+						Description:                "desc",
+						Platform:                   service.PlatformAnthropic,
+						RateMultiplier:             1.5,
+						PeakRateMultiplier:         1.0,
+						IsExclusive:                false,
+						Status:                     service.StatusActive,
+						SubscriptionType:           service.SubscriptionTypeStandard,
+						SubscriptionQuotaResetMode: service.SubscriptionQuotaResetModeRolling,
+						ModelRoutingEnabled:        true,
 						ModelRouting: map[string][]int64{
 							"claude-3-*": []int64{101, 102},
 						},
@@ -357,6 +358,8 @@ func TestAPIContracts(t *testing.T) {
 						"is_exclusive": false,
 						"status": "active",
 						"subscription_type": "standard",
+						"subscription_quota_reset_mode": "rolling",
+						"subscription_total_limit_usd": null,
 						"daily_limit_usd": null,
 						"weekly_limit_usd": null,
 						"monthly_limit_usd": null,
@@ -434,6 +437,7 @@ func TestAPIContracts(t *testing.T) {
 						"daily_usage_usd": 1.23,
 						"weekly_usage_usd": 2.34,
 						"monthly_usage_usd": 3.45,
+						"total_usage_usd": 0,
 						"created_at": "2025-01-02T03:04:05Z",
 						"updated_at": "2025-01-02T03:04:05Z"
 					}
