@@ -101,8 +101,25 @@
               }}</span>
             </div>
 
-            <!-- Daily Usage -->
-            <div v-if="subscription.group?.daily_limit_usd" class="space-y-2">
+			<!-- Daily Usage -->
+			<div v-if="usesSubscriptionLifetimeQuota(subscription) && subscription.group?.subscription_total_limit_usd != null" class="space-y-2">
+			  <div class="flex items-center justify-between">
+				<span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('userSubscriptions.total') }}</span>
+				<span class="text-sm text-gray-500 dark:text-dark-400">
+				  ${{ (subscription.total_usage_usd || 0).toFixed(2) }} / ${{ subscription.group.subscription_total_limit_usd.toFixed(2) }}
+				</span>
+			  </div>
+			  <div class="relative h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-dark-600">
+				<div
+				  class="absolute inset-y-0 left-0 rounded-full transition-all duration-300"
+				  :class="getProgressBarClass(subscription.total_usage_usd, subscription.group.subscription_total_limit_usd)"
+				  :style="{ width: getProgressWidth(subscription.total_usage_usd, subscription.group.subscription_total_limit_usd) }"
+				></div>
+			  </div>
+			  <p class="text-xs text-gray-500 dark:text-dark-400">{{ formatTotalUsageWindow(subscription) }}</p>
+			</div>
+
+			<div v-if="!usesSubscriptionLifetimeQuota(subscription) && subscription.group?.daily_limit_usd != null" class="space-y-2">
               <div class="flex items-center justify-between">
                 <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
                   {{ t('userSubscriptions.daily') }}
@@ -139,7 +156,7 @@
             </div>
 
             <!-- Weekly Usage -->
-            <div v-if="subscription.group?.weekly_limit_usd" class="space-y-2">
+			<div v-if="!usesSubscriptionLifetimeQuota(subscription) && subscription.group?.weekly_limit_usd != null" class="space-y-2">
               <div class="flex items-center justify-between">
                 <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
                   {{ t('userSubscriptions.weekly') }}
@@ -171,16 +188,12 @@
                 v-if="subscription.weekly_window_start"
                 class="text-xs text-gray-500 dark:text-dark-400"
               >
-                {{
-                  t('userSubscriptions.resetIn', {
-                    time: formatResetTime(subscription.weekly_window_start, 168)
-                  })
-                }}
+                {{ formatUsageWindow(subscription, subscription.weekly_window_start, 168) }}
               </p>
             </div>
 
             <!-- Monthly Usage -->
-            <div v-if="subscription.group?.monthly_limit_usd" class="space-y-2">
+			<div v-if="!usesSubscriptionLifetimeQuota(subscription) && subscription.group?.monthly_limit_usd != null" class="space-y-2">
               <div class="flex items-center justify-between">
                 <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
                   {{ t('userSubscriptions.monthly') }}
@@ -212,20 +225,17 @@
                 v-if="subscription.monthly_window_start"
                 class="text-xs text-gray-500 dark:text-dark-400"
               >
-                {{
-                  t('userSubscriptions.resetIn', {
-                    time: formatResetTime(subscription.monthly_window_start, 720)
-                  })
-                }}
+                {{ formatUsageWindow(subscription, subscription.monthly_window_start, 720) }}
               </p>
             </div>
 
             <!-- No limits configured - Unlimited badge -->
             <div
               v-if="
-                !subscription.group?.daily_limit_usd &&
-                !subscription.group?.weekly_limit_usd &&
-                !subscription.group?.monthly_limit_usd
+			  subscription.group?.daily_limit_usd == null &&
+			  subscription.group?.weekly_limit_usd == null &&
+			  subscription.group?.monthly_limit_usd == null &&
+			  subscription.group?.subscription_total_limit_usd == null
               "
               class="flex items-center justify-center rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 py-6 dark:from-emerald-900/20 dark:to-teal-900/20"
             >
@@ -262,7 +272,7 @@ import Icon from '@/components/icons/Icon.vue'
 import { formatDateTimeToMinute } from '@/utils/format'
 import { hasPeakRate, formatPeakRateWindow, serverTimezoneLabel } from '@/utils/peak-rate'
 import { platformBorderClass, platformBadgeClass, platformButtonClass, platformLabel } from '@/utils/platformColors'
-import { getRemainingDurationParts, isOneTimeDailyQuota, type RemainingDurationParts } from '@/utils/subscriptionQuota'
+import { getRemainingDurationParts, isOneTimeDailyQuota, usesSubscriptionLifetimeQuota, type RemainingDurationParts } from '@/utils/subscriptionQuota'
 
 function platformAccentDotClass(p: string): string {
   switch (p) {
@@ -302,13 +312,15 @@ async function loadSubscriptions() {
 }
 
 function getProgressWidth(used: number | undefined, limit: number | null | undefined): string {
-  if (!limit || limit === 0) return '0%'
+	if (limit === 0) return '100%'
+	if (limit == null || limit < 0) return '0%'
   const percentage = Math.min(((used || 0) / limit) * 100, 100)
   return `${percentage}%`
 }
 
 function getProgressBarClass(used: number | undefined, limit: number | null | undefined): string {
-  if (!limit || limit === 0) return 'bg-gray-400'
+	if (limit === 0) return 'bg-red-500'
+	if (limit == null || limit < 0) return 'bg-gray-400'
   const percentage = ((used || 0) / limit) * 100
   if (percentage >= 90) return 'bg-red-500'
   if (percentage >= 70) return 'bg-orange-500'
@@ -362,7 +374,7 @@ function formatDurationParts(parts: RemainingDurationParts): string {
 }
 
 function formatDailyUsageWindow(subscription: UserSubscription): string {
-  if (isOneTimeDailyQuota(subscription) && subscription.expires_at) {
+  if ((isOneTimeDailyQuota(subscription) || usesSubscriptionLifetimeQuota(subscription)) && subscription.expires_at) {
     const parts = getRemainingDurationParts(subscription.expires_at)
     if (!parts) return t('userSubscriptions.windowNotActive')
     return t('userSubscriptions.quotaEndsIn', { time: formatDurationParts(parts) })
@@ -371,6 +383,29 @@ function formatDailyUsageWindow(subscription: UserSubscription): string {
   return t('userSubscriptions.resetIn', {
     time: formatResetTime(subscription.daily_window_start, 24)
   })
+}
+
+function formatTotalUsageWindow(subscription: UserSubscription): string {
+  if (!subscription.expires_at) return t('userSubscriptions.windowNotActive')
+  const parts = getRemainingDurationParts(subscription.expires_at)
+  return parts
+    ? t('userSubscriptions.quotaEndsIn', { time: formatDurationParts(parts) })
+    : t('userSubscriptions.windowNotActive')
+}
+
+function formatUsageWindow(
+  subscription: UserSubscription,
+  windowStart: string | null,
+  windowHours: number
+): string {
+  if (usesSubscriptionLifetimeQuota(subscription) && subscription.expires_at) {
+    const parts = getRemainingDurationParts(subscription.expires_at)
+    return parts
+      ? t('userSubscriptions.quotaEndsIn', { time: formatDurationParts(parts) })
+      : t('userSubscriptions.windowNotActive')
+  }
+
+  return t('userSubscriptions.resetIn', { time: formatResetTime(windowStart, windowHours) })
 }
 
 function formatResetTime(windowStart: string | null, windowHours: number): string {

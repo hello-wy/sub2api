@@ -145,6 +145,8 @@ export interface SubscriptionPlan {
   peak_start?: string
   peak_end?: string
   peak_rate_multiplier?: number
+  subscription_quota_reset_mode?: 'rolling' | 'until_subscription_expires'
+  subscription_total_limit_usd?: number | null
   daily_limit_usd?: number | null
   weekly_limit_usd?: number | null
   monthly_limit_usd?: number | null

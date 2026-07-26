@@ -231,6 +231,34 @@ func (_c *GroupCreate) SetNillableSubscriptionType(v *string) *GroupCreate {
 	return _c
 }
 
+// SetSubscriptionQuotaResetMode sets the "subscription_quota_reset_mode" field.
+func (_c *GroupCreate) SetSubscriptionQuotaResetMode(v string) *GroupCreate {
+	_c.mutation.SetSubscriptionQuotaResetMode(v)
+	return _c
+}
+
+// SetNillableSubscriptionQuotaResetMode sets the "subscription_quota_reset_mode" field if the given value is not nil.
+func (_c *GroupCreate) SetNillableSubscriptionQuotaResetMode(v *string) *GroupCreate {
+	if v != nil {
+		_c.SetSubscriptionQuotaResetMode(*v)
+	}
+	return _c
+}
+
+// SetSubscriptionTotalLimitUsd sets the "subscription_total_limit_usd" field.
+func (_c *GroupCreate) SetSubscriptionTotalLimitUsd(v float64) *GroupCreate {
+	_c.mutation.SetSubscriptionTotalLimitUsd(v)
+	return _c
+}
+
+// SetNillableSubscriptionTotalLimitUsd sets the "subscription_total_limit_usd" field if the given value is not nil.
+func (_c *GroupCreate) SetNillableSubscriptionTotalLimitUsd(v *float64) *GroupCreate {
+	if v != nil {
+		_c.SetSubscriptionTotalLimitUsd(*v)
+	}
+	return _c
+}
+
 // SetDailyLimitUsd sets the "daily_limit_usd" field.
 func (_c *GroupCreate) SetDailyLimitUsd(v float64) *GroupCreate {
 	_c.mutation.SetDailyLimitUsd(v)
@@ -888,6 +916,10 @@ func (_c *GroupCreate) defaults() error {
 		v := group.DefaultSubscriptionType
 		_c.mutation.SetSubscriptionType(v)
 	}
+	if _, ok := _c.mutation.SubscriptionQuotaResetMode(); !ok {
+		v := group.DefaultSubscriptionQuotaResetMode
+		_c.mutation.SetSubscriptionQuotaResetMode(v)
+	}
 	if _, ok := _c.mutation.DefaultValidityDays(); !ok {
 		v := group.DefaultDefaultValidityDays
 		_c.mutation.SetDefaultValidityDays(v)
@@ -1056,6 +1088,14 @@ func (_c *GroupCreate) check() error {
 			return &ValidationError{Name: "subscription_type", err: fmt.Errorf(`ent: validator failed for field "Group.subscription_type": %w`, err)}
 		}
 	}
+	if _, ok := _c.mutation.SubscriptionQuotaResetMode(); !ok {
+		return &ValidationError{Name: "subscription_quota_reset_mode", err: errors.New(`ent: missing required field "Group.subscription_quota_reset_mode"`)}
+	}
+	if v, ok := _c.mutation.SubscriptionQuotaResetMode(); ok {
+		if err := group.SubscriptionQuotaResetModeValidator(v); err != nil {
+			return &ValidationError{Name: "subscription_quota_reset_mode", err: fmt.Errorf(`ent: validator failed for field "Group.subscription_quota_reset_mode": %w`, err)}
+		}
+	}
 	if _, ok := _c.mutation.DefaultValidityDays(); !ok {
 		return &ValidationError{Name: "default_validity_days", err: errors.New(`ent: missing required field "Group.default_validity_days"`)}
 	}
@@ -1221,6 +1261,14 @@ func (_c *GroupCreate) createSpec() (*Group, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.SubscriptionType(); ok {
 		_spec.SetField(group.FieldSubscriptionType, field.TypeString, value)
 		_node.SubscriptionType = value
+	}
+	if value, ok := _c.mutation.SubscriptionQuotaResetMode(); ok {
+		_spec.SetField(group.FieldSubscriptionQuotaResetMode, field.TypeString, value)
+		_node.SubscriptionQuotaResetMode = value
+	}
+	if value, ok := _c.mutation.SubscriptionTotalLimitUsd(); ok {
+		_spec.SetField(group.FieldSubscriptionTotalLimitUsd, field.TypeFloat64, value)
+		_node.SubscriptionTotalLimitUsd = &value
 	}
 	if value, ok := _c.mutation.DailyLimitUsd(); ok {
 		_spec.SetField(group.FieldDailyLimitUsd, field.TypeFloat64, value)
@@ -1699,6 +1747,42 @@ func (u *GroupUpsert) SetSubscriptionType(v string) *GroupUpsert {
 // UpdateSubscriptionType sets the "subscription_type" field to the value that was provided on create.
 func (u *GroupUpsert) UpdateSubscriptionType() *GroupUpsert {
 	u.SetExcluded(group.FieldSubscriptionType)
+	return u
+}
+
+// SetSubscriptionQuotaResetMode sets the "subscription_quota_reset_mode" field.
+func (u *GroupUpsert) SetSubscriptionQuotaResetMode(v string) *GroupUpsert {
+	u.Set(group.FieldSubscriptionQuotaResetMode, v)
+	return u
+}
+
+// UpdateSubscriptionQuotaResetMode sets the "subscription_quota_reset_mode" field to the value that was provided on create.
+func (u *GroupUpsert) UpdateSubscriptionQuotaResetMode() *GroupUpsert {
+	u.SetExcluded(group.FieldSubscriptionQuotaResetMode)
+	return u
+}
+
+// SetSubscriptionTotalLimitUsd sets the "subscription_total_limit_usd" field.
+func (u *GroupUpsert) SetSubscriptionTotalLimitUsd(v float64) *GroupUpsert {
+	u.Set(group.FieldSubscriptionTotalLimitUsd, v)
+	return u
+}
+
+// UpdateSubscriptionTotalLimitUsd sets the "subscription_total_limit_usd" field to the value that was provided on create.
+func (u *GroupUpsert) UpdateSubscriptionTotalLimitUsd() *GroupUpsert {
+	u.SetExcluded(group.FieldSubscriptionTotalLimitUsd)
+	return u
+}
+
+// AddSubscriptionTotalLimitUsd adds v to the "subscription_total_limit_usd" field.
+func (u *GroupUpsert) AddSubscriptionTotalLimitUsd(v float64) *GroupUpsert {
+	u.Add(group.FieldSubscriptionTotalLimitUsd, v)
+	return u
+}
+
+// ClearSubscriptionTotalLimitUsd clears the value of the "subscription_total_limit_usd" field.
+func (u *GroupUpsert) ClearSubscriptionTotalLimitUsd() *GroupUpsert {
+	u.SetNull(group.FieldSubscriptionTotalLimitUsd)
 	return u
 }
 
@@ -2581,6 +2665,48 @@ func (u *GroupUpsertOne) SetSubscriptionType(v string) *GroupUpsertOne {
 func (u *GroupUpsertOne) UpdateSubscriptionType() *GroupUpsertOne {
 	return u.Update(func(s *GroupUpsert) {
 		s.UpdateSubscriptionType()
+	})
+}
+
+// SetSubscriptionQuotaResetMode sets the "subscription_quota_reset_mode" field.
+func (u *GroupUpsertOne) SetSubscriptionQuotaResetMode(v string) *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetSubscriptionQuotaResetMode(v)
+	})
+}
+
+// UpdateSubscriptionQuotaResetMode sets the "subscription_quota_reset_mode" field to the value that was provided on create.
+func (u *GroupUpsertOne) UpdateSubscriptionQuotaResetMode() *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateSubscriptionQuotaResetMode()
+	})
+}
+
+// SetSubscriptionTotalLimitUsd sets the "subscription_total_limit_usd" field.
+func (u *GroupUpsertOne) SetSubscriptionTotalLimitUsd(v float64) *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetSubscriptionTotalLimitUsd(v)
+	})
+}
+
+// AddSubscriptionTotalLimitUsd adds v to the "subscription_total_limit_usd" field.
+func (u *GroupUpsertOne) AddSubscriptionTotalLimitUsd(v float64) *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.AddSubscriptionTotalLimitUsd(v)
+	})
+}
+
+// UpdateSubscriptionTotalLimitUsd sets the "subscription_total_limit_usd" field to the value that was provided on create.
+func (u *GroupUpsertOne) UpdateSubscriptionTotalLimitUsd() *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateSubscriptionTotalLimitUsd()
+	})
+}
+
+// ClearSubscriptionTotalLimitUsd clears the value of the "subscription_total_limit_usd" field.
+func (u *GroupUpsertOne) ClearSubscriptionTotalLimitUsd() *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.ClearSubscriptionTotalLimitUsd()
 	})
 }
 
@@ -3733,6 +3859,48 @@ func (u *GroupUpsertBulk) SetSubscriptionType(v string) *GroupUpsertBulk {
 func (u *GroupUpsertBulk) UpdateSubscriptionType() *GroupUpsertBulk {
 	return u.Update(func(s *GroupUpsert) {
 		s.UpdateSubscriptionType()
+	})
+}
+
+// SetSubscriptionQuotaResetMode sets the "subscription_quota_reset_mode" field.
+func (u *GroupUpsertBulk) SetSubscriptionQuotaResetMode(v string) *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetSubscriptionQuotaResetMode(v)
+	})
+}
+
+// UpdateSubscriptionQuotaResetMode sets the "subscription_quota_reset_mode" field to the value that was provided on create.
+func (u *GroupUpsertBulk) UpdateSubscriptionQuotaResetMode() *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateSubscriptionQuotaResetMode()
+	})
+}
+
+// SetSubscriptionTotalLimitUsd sets the "subscription_total_limit_usd" field.
+func (u *GroupUpsertBulk) SetSubscriptionTotalLimitUsd(v float64) *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetSubscriptionTotalLimitUsd(v)
+	})
+}
+
+// AddSubscriptionTotalLimitUsd adds v to the "subscription_total_limit_usd" field.
+func (u *GroupUpsertBulk) AddSubscriptionTotalLimitUsd(v float64) *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.AddSubscriptionTotalLimitUsd(v)
+	})
+}
+
+// UpdateSubscriptionTotalLimitUsd sets the "subscription_total_limit_usd" field to the value that was provided on create.
+func (u *GroupUpsertBulk) UpdateSubscriptionTotalLimitUsd() *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateSubscriptionTotalLimitUsd()
+	})
+}
+
+// ClearSubscriptionTotalLimitUsd clears the value of the "subscription_total_limit_usd" field.
+func (u *GroupUpsertBulk) ClearSubscriptionTotalLimitUsd() *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.ClearSubscriptionTotalLimitUsd()
 	})
 }
 

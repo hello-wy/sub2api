@@ -1601,9 +1601,11 @@ func (h *GatewayHandler) usageUnrestricted(c *gin.Context, ctx context.Context, 
 				"daily_usage_usd":     subscription.DailyUsageUSD,
 				"weekly_usage_usd":    subscription.WeeklyUsageUSD,
 				"monthly_usage_usd":   subscription.MonthlyUsageUSD,
+				"total_usage_usd":     subscription.TotalUsageUSD,
 				"daily_limit_usd":     apiKey.Group.DailyLimitUSD,
 				"weekly_limit_usd":    apiKey.Group.WeeklyLimitUSD,
 				"monthly_limit_usd":   apiKey.Group.MonthlyLimitUSD,
+				"total_limit_usd":     apiKey.Group.SubscriptionTotalLimitUSD,
 				"weekly_window_start": subscription.WeeklyWindowStart,
 				"expires_at":          subscription.ExpiresAt,
 			}
@@ -1654,6 +1656,16 @@ func (h *GatewayHandler) usageUnrestricted(c *gin.Context, ctx context.Context, 
 // 1. 如果日/周/月任一限额达到100%，返回0
 // 2. 否则返回所有已配置周期中剩余额度的最小值
 func (h *GatewayHandler) calculateSubscriptionRemaining(group *service.Group, sub *service.UserSubscription) float64 {
+	if group.UsesSubscriptionLifetimeQuota() {
+		if !group.HasSubscriptionTotalLimit() {
+			return -1
+		}
+		remaining := *group.SubscriptionTotalLimitUSD - sub.TotalUsageUSD
+		if remaining <= 0 {
+			return 0
+		}
+		return remaining
+	}
 	var remainingValues []float64
 
 	// 检查日限额

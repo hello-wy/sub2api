@@ -105,6 +105,20 @@ func (_c *UserSubscriptionCreate) SetNillableStatus(v *string) *UserSubscription
 	return _c
 }
 
+// SetTermVersion sets the "term_version" field.
+func (_c *UserSubscriptionCreate) SetTermVersion(v int64) *UserSubscriptionCreate {
+	_c.mutation.SetTermVersion(v)
+	return _c
+}
+
+// SetNillableTermVersion sets the "term_version" field if the given value is not nil.
+func (_c *UserSubscriptionCreate) SetNillableTermVersion(v *int64) *UserSubscriptionCreate {
+	if v != nil {
+		_c.SetTermVersion(*v)
+	}
+	return _c
+}
+
 // SetDailyWindowStart sets the "daily_window_start" field.
 func (_c *UserSubscriptionCreate) SetDailyWindowStart(v time.Time) *UserSubscriptionCreate {
 	_c.mutation.SetDailyWindowStart(v)
@@ -185,6 +199,20 @@ func (_c *UserSubscriptionCreate) SetMonthlyUsageUsd(v float64) *UserSubscriptio
 func (_c *UserSubscriptionCreate) SetNillableMonthlyUsageUsd(v *float64) *UserSubscriptionCreate {
 	if v != nil {
 		_c.SetMonthlyUsageUsd(*v)
+	}
+	return _c
+}
+
+// SetTotalUsageUsd sets the "total_usage_usd" field.
+func (_c *UserSubscriptionCreate) SetTotalUsageUsd(v float64) *UserSubscriptionCreate {
+	_c.mutation.SetTotalUsageUsd(v)
+	return _c
+}
+
+// SetNillableTotalUsageUsd sets the "total_usage_usd" field if the given value is not nil.
+func (_c *UserSubscriptionCreate) SetNillableTotalUsageUsd(v *float64) *UserSubscriptionCreate {
+	if v != nil {
+		_c.SetTotalUsageUsd(*v)
 	}
 	return _c
 }
@@ -330,6 +358,10 @@ func (_c *UserSubscriptionCreate) defaults() error {
 		v := usersubscription.DefaultStatus
 		_c.mutation.SetStatus(v)
 	}
+	if _, ok := _c.mutation.TermVersion(); !ok {
+		v := usersubscription.DefaultTermVersion
+		_c.mutation.SetTermVersion(v)
+	}
 	if _, ok := _c.mutation.DailyUsageUsd(); !ok {
 		v := usersubscription.DefaultDailyUsageUsd
 		_c.mutation.SetDailyUsageUsd(v)
@@ -341,6 +373,10 @@ func (_c *UserSubscriptionCreate) defaults() error {
 	if _, ok := _c.mutation.MonthlyUsageUsd(); !ok {
 		v := usersubscription.DefaultMonthlyUsageUsd
 		_c.mutation.SetMonthlyUsageUsd(v)
+	}
+	if _, ok := _c.mutation.TotalUsageUsd(); !ok {
+		v := usersubscription.DefaultTotalUsageUsd
+		_c.mutation.SetTotalUsageUsd(v)
 	}
 	if _, ok := _c.mutation.AssignedAt(); !ok {
 		if usersubscription.DefaultAssignedAt == nil {
@@ -380,6 +416,9 @@ func (_c *UserSubscriptionCreate) check() error {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "UserSubscription.status": %w`, err)}
 		}
 	}
+	if _, ok := _c.mutation.TermVersion(); !ok {
+		return &ValidationError{Name: "term_version", err: errors.New(`ent: missing required field "UserSubscription.term_version"`)}
+	}
 	if _, ok := _c.mutation.DailyUsageUsd(); !ok {
 		return &ValidationError{Name: "daily_usage_usd", err: errors.New(`ent: missing required field "UserSubscription.daily_usage_usd"`)}
 	}
@@ -388,6 +427,9 @@ func (_c *UserSubscriptionCreate) check() error {
 	}
 	if _, ok := _c.mutation.MonthlyUsageUsd(); !ok {
 		return &ValidationError{Name: "monthly_usage_usd", err: errors.New(`ent: missing required field "UserSubscription.monthly_usage_usd"`)}
+	}
+	if _, ok := _c.mutation.TotalUsageUsd(); !ok {
+		return &ValidationError{Name: "total_usage_usd", err: errors.New(`ent: missing required field "UserSubscription.total_usage_usd"`)}
 	}
 	if _, ok := _c.mutation.AssignedAt(); !ok {
 		return &ValidationError{Name: "assigned_at", err: errors.New(`ent: missing required field "UserSubscription.assigned_at"`)}
@@ -449,6 +491,10 @@ func (_c *UserSubscriptionCreate) createSpec() (*UserSubscription, *sqlgraph.Cre
 		_spec.SetField(usersubscription.FieldStatus, field.TypeString, value)
 		_node.Status = value
 	}
+	if value, ok := _c.mutation.TermVersion(); ok {
+		_spec.SetField(usersubscription.FieldTermVersion, field.TypeInt64, value)
+		_node.TermVersion = value
+	}
 	if value, ok := _c.mutation.DailyWindowStart(); ok {
 		_spec.SetField(usersubscription.FieldDailyWindowStart, field.TypeTime, value)
 		_node.DailyWindowStart = &value
@@ -472,6 +518,10 @@ func (_c *UserSubscriptionCreate) createSpec() (*UserSubscription, *sqlgraph.Cre
 	if value, ok := _c.mutation.MonthlyUsageUsd(); ok {
 		_spec.SetField(usersubscription.FieldMonthlyUsageUsd, field.TypeFloat64, value)
 		_node.MonthlyUsageUsd = value
+	}
+	if value, ok := _c.mutation.TotalUsageUsd(); ok {
+		_spec.SetField(usersubscription.FieldTotalUsageUsd, field.TypeFloat64, value)
+		_node.TotalUsageUsd = value
 	}
 	if value, ok := _c.mutation.AssignedAt(); ok {
 		_spec.SetField(usersubscription.FieldAssignedAt, field.TypeTime, value)
@@ -690,6 +740,24 @@ func (u *UserSubscriptionUpsert) UpdateStatus() *UserSubscriptionUpsert {
 	return u
 }
 
+// SetTermVersion sets the "term_version" field.
+func (u *UserSubscriptionUpsert) SetTermVersion(v int64) *UserSubscriptionUpsert {
+	u.Set(usersubscription.FieldTermVersion, v)
+	return u
+}
+
+// UpdateTermVersion sets the "term_version" field to the value that was provided on create.
+func (u *UserSubscriptionUpsert) UpdateTermVersion() *UserSubscriptionUpsert {
+	u.SetExcluded(usersubscription.FieldTermVersion)
+	return u
+}
+
+// AddTermVersion adds v to the "term_version" field.
+func (u *UserSubscriptionUpsert) AddTermVersion(v int64) *UserSubscriptionUpsert {
+	u.Add(usersubscription.FieldTermVersion, v)
+	return u
+}
+
 // SetDailyWindowStart sets the "daily_window_start" field.
 func (u *UserSubscriptionUpsert) SetDailyWindowStart(v time.Time) *UserSubscriptionUpsert {
 	u.Set(usersubscription.FieldDailyWindowStart, v)
@@ -795,6 +863,24 @@ func (u *UserSubscriptionUpsert) UpdateMonthlyUsageUsd() *UserSubscriptionUpsert
 // AddMonthlyUsageUsd adds v to the "monthly_usage_usd" field.
 func (u *UserSubscriptionUpsert) AddMonthlyUsageUsd(v float64) *UserSubscriptionUpsert {
 	u.Add(usersubscription.FieldMonthlyUsageUsd, v)
+	return u
+}
+
+// SetTotalUsageUsd sets the "total_usage_usd" field.
+func (u *UserSubscriptionUpsert) SetTotalUsageUsd(v float64) *UserSubscriptionUpsert {
+	u.Set(usersubscription.FieldTotalUsageUsd, v)
+	return u
+}
+
+// UpdateTotalUsageUsd sets the "total_usage_usd" field to the value that was provided on create.
+func (u *UserSubscriptionUpsert) UpdateTotalUsageUsd() *UserSubscriptionUpsert {
+	u.SetExcluded(usersubscription.FieldTotalUsageUsd)
+	return u
+}
+
+// AddTotalUsageUsd adds v to the "total_usage_usd" field.
+func (u *UserSubscriptionUpsert) AddTotalUsageUsd(v float64) *UserSubscriptionUpsert {
+	u.Add(usersubscription.FieldTotalUsageUsd, v)
 	return u
 }
 
@@ -996,6 +1082,27 @@ func (u *UserSubscriptionUpsertOne) UpdateStatus() *UserSubscriptionUpsertOne {
 	})
 }
 
+// SetTermVersion sets the "term_version" field.
+func (u *UserSubscriptionUpsertOne) SetTermVersion(v int64) *UserSubscriptionUpsertOne {
+	return u.Update(func(s *UserSubscriptionUpsert) {
+		s.SetTermVersion(v)
+	})
+}
+
+// AddTermVersion adds v to the "term_version" field.
+func (u *UserSubscriptionUpsertOne) AddTermVersion(v int64) *UserSubscriptionUpsertOne {
+	return u.Update(func(s *UserSubscriptionUpsert) {
+		s.AddTermVersion(v)
+	})
+}
+
+// UpdateTermVersion sets the "term_version" field to the value that was provided on create.
+func (u *UserSubscriptionUpsertOne) UpdateTermVersion() *UserSubscriptionUpsertOne {
+	return u.Update(func(s *UserSubscriptionUpsert) {
+		s.UpdateTermVersion()
+	})
+}
+
 // SetDailyWindowStart sets the "daily_window_start" field.
 func (u *UserSubscriptionUpsertOne) SetDailyWindowStart(v time.Time) *UserSubscriptionUpsertOne {
 	return u.Update(func(s *UserSubscriptionUpsert) {
@@ -1119,6 +1226,27 @@ func (u *UserSubscriptionUpsertOne) AddMonthlyUsageUsd(v float64) *UserSubscript
 func (u *UserSubscriptionUpsertOne) UpdateMonthlyUsageUsd() *UserSubscriptionUpsertOne {
 	return u.Update(func(s *UserSubscriptionUpsert) {
 		s.UpdateMonthlyUsageUsd()
+	})
+}
+
+// SetTotalUsageUsd sets the "total_usage_usd" field.
+func (u *UserSubscriptionUpsertOne) SetTotalUsageUsd(v float64) *UserSubscriptionUpsertOne {
+	return u.Update(func(s *UserSubscriptionUpsert) {
+		s.SetTotalUsageUsd(v)
+	})
+}
+
+// AddTotalUsageUsd adds v to the "total_usage_usd" field.
+func (u *UserSubscriptionUpsertOne) AddTotalUsageUsd(v float64) *UserSubscriptionUpsertOne {
+	return u.Update(func(s *UserSubscriptionUpsert) {
+		s.AddTotalUsageUsd(v)
+	})
+}
+
+// UpdateTotalUsageUsd sets the "total_usage_usd" field to the value that was provided on create.
+func (u *UserSubscriptionUpsertOne) UpdateTotalUsageUsd() *UserSubscriptionUpsertOne {
+	return u.Update(func(s *UserSubscriptionUpsert) {
+		s.UpdateTotalUsageUsd()
 	})
 }
 
@@ -1494,6 +1622,27 @@ func (u *UserSubscriptionUpsertBulk) UpdateStatus() *UserSubscriptionUpsertBulk 
 	})
 }
 
+// SetTermVersion sets the "term_version" field.
+func (u *UserSubscriptionUpsertBulk) SetTermVersion(v int64) *UserSubscriptionUpsertBulk {
+	return u.Update(func(s *UserSubscriptionUpsert) {
+		s.SetTermVersion(v)
+	})
+}
+
+// AddTermVersion adds v to the "term_version" field.
+func (u *UserSubscriptionUpsertBulk) AddTermVersion(v int64) *UserSubscriptionUpsertBulk {
+	return u.Update(func(s *UserSubscriptionUpsert) {
+		s.AddTermVersion(v)
+	})
+}
+
+// UpdateTermVersion sets the "term_version" field to the value that was provided on create.
+func (u *UserSubscriptionUpsertBulk) UpdateTermVersion() *UserSubscriptionUpsertBulk {
+	return u.Update(func(s *UserSubscriptionUpsert) {
+		s.UpdateTermVersion()
+	})
+}
+
 // SetDailyWindowStart sets the "daily_window_start" field.
 func (u *UserSubscriptionUpsertBulk) SetDailyWindowStart(v time.Time) *UserSubscriptionUpsertBulk {
 	return u.Update(func(s *UserSubscriptionUpsert) {
@@ -1617,6 +1766,27 @@ func (u *UserSubscriptionUpsertBulk) AddMonthlyUsageUsd(v float64) *UserSubscrip
 func (u *UserSubscriptionUpsertBulk) UpdateMonthlyUsageUsd() *UserSubscriptionUpsertBulk {
 	return u.Update(func(s *UserSubscriptionUpsert) {
 		s.UpdateMonthlyUsageUsd()
+	})
+}
+
+// SetTotalUsageUsd sets the "total_usage_usd" field.
+func (u *UserSubscriptionUpsertBulk) SetTotalUsageUsd(v float64) *UserSubscriptionUpsertBulk {
+	return u.Update(func(s *UserSubscriptionUpsert) {
+		s.SetTotalUsageUsd(v)
+	})
+}
+
+// AddTotalUsageUsd adds v to the "total_usage_usd" field.
+func (u *UserSubscriptionUpsertBulk) AddTotalUsageUsd(v float64) *UserSubscriptionUpsertBulk {
+	return u.Update(func(s *UserSubscriptionUpsert) {
+		s.AddTotalUsageUsd(v)
+	})
+}
+
+// UpdateTotalUsageUsd sets the "total_usage_usd" field to the value that was provided on create.
+func (u *UserSubscriptionUpsertBulk) UpdateTotalUsageUsd() *UserSubscriptionUpsertBulk {
+	return u.Update(func(s *UserSubscriptionUpsert) {
+		s.UpdateTotalUsageUsd()
 	})
 }
 

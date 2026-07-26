@@ -95,6 +95,11 @@ func Status(v string) predicate.UserSubscription {
 	return predicate.UserSubscription(sql.FieldEQ(FieldStatus, v))
 }
 
+// TermVersion applies equality check predicate on the "term_version" field. It's identical to TermVersionEQ.
+func TermVersion(v int64) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldEQ(FieldTermVersion, v))
+}
+
 // DailyWindowStart applies equality check predicate on the "daily_window_start" field. It's identical to DailyWindowStartEQ.
 func DailyWindowStart(v time.Time) predicate.UserSubscription {
 	return predicate.UserSubscription(sql.FieldEQ(FieldDailyWindowStart, v))
@@ -123,6 +128,11 @@ func WeeklyUsageUsd(v float64) predicate.UserSubscription {
 // MonthlyUsageUsd applies equality check predicate on the "monthly_usage_usd" field. It's identical to MonthlyUsageUsdEQ.
 func MonthlyUsageUsd(v float64) predicate.UserSubscription {
 	return predicate.UserSubscription(sql.FieldEQ(FieldMonthlyUsageUsd, v))
+}
+
+// TotalUsageUsd applies equality check predicate on the "total_usage_usd" field. It's identical to TotalUsageUsdEQ.
+func TotalUsageUsd(v float64) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldEQ(FieldTotalUsageUsd, v))
 }
 
 // AssignedBy applies equality check predicate on the "assigned_by" field. It's identical to AssignedByEQ.
@@ -455,6 +465,46 @@ func StatusContainsFold(v string) predicate.UserSubscription {
 	return predicate.UserSubscription(sql.FieldContainsFold(FieldStatus, v))
 }
 
+// TermVersionEQ applies the EQ predicate on the "term_version" field.
+func TermVersionEQ(v int64) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldEQ(FieldTermVersion, v))
+}
+
+// TermVersionNEQ applies the NEQ predicate on the "term_version" field.
+func TermVersionNEQ(v int64) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldNEQ(FieldTermVersion, v))
+}
+
+// TermVersionIn applies the In predicate on the "term_version" field.
+func TermVersionIn(vs ...int64) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldIn(FieldTermVersion, vs...))
+}
+
+// TermVersionNotIn applies the NotIn predicate on the "term_version" field.
+func TermVersionNotIn(vs ...int64) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldNotIn(FieldTermVersion, vs...))
+}
+
+// TermVersionGT applies the GT predicate on the "term_version" field.
+func TermVersionGT(v int64) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldGT(FieldTermVersion, v))
+}
+
+// TermVersionGTE applies the GTE predicate on the "term_version" field.
+func TermVersionGTE(v int64) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldGTE(FieldTermVersion, v))
+}
+
+// TermVersionLT applies the LT predicate on the "term_version" field.
+func TermVersionLT(v int64) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldLT(FieldTermVersion, v))
+}
+
+// TermVersionLTE applies the LTE predicate on the "term_version" field.
+func TermVersionLTE(v int64) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldLTE(FieldTermVersion, v))
+}
+
 // DailyWindowStartEQ applies the EQ predicate on the "daily_window_start" field.
 func DailyWindowStartEQ(v time.Time) predicate.UserSubscription {
 	return predicate.UserSubscription(sql.FieldEQ(FieldDailyWindowStart, v))
@@ -723,6 +773,46 @@ func MonthlyUsageUsdLT(v float64) predicate.UserSubscription {
 // MonthlyUsageUsdLTE applies the LTE predicate on the "monthly_usage_usd" field.
 func MonthlyUsageUsdLTE(v float64) predicate.UserSubscription {
 	return predicate.UserSubscription(sql.FieldLTE(FieldMonthlyUsageUsd, v))
+}
+
+// TotalUsageUsdEQ applies the EQ predicate on the "total_usage_usd" field.
+func TotalUsageUsdEQ(v float64) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldEQ(FieldTotalUsageUsd, v))
+}
+
+// TotalUsageUsdNEQ applies the NEQ predicate on the "total_usage_usd" field.
+func TotalUsageUsdNEQ(v float64) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldNEQ(FieldTotalUsageUsd, v))
+}
+
+// TotalUsageUsdIn applies the In predicate on the "total_usage_usd" field.
+func TotalUsageUsdIn(vs ...float64) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldIn(FieldTotalUsageUsd, vs...))
+}
+
+// TotalUsageUsdNotIn applies the NotIn predicate on the "total_usage_usd" field.
+func TotalUsageUsdNotIn(vs ...float64) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldNotIn(FieldTotalUsageUsd, vs...))
+}
+
+// TotalUsageUsdGT applies the GT predicate on the "total_usage_usd" field.
+func TotalUsageUsdGT(v float64) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldGT(FieldTotalUsageUsd, v))
+}
+
+// TotalUsageUsdGTE applies the GTE predicate on the "total_usage_usd" field.
+func TotalUsageUsdGTE(v float64) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldGTE(FieldTotalUsageUsd, v))
+}
+
+// TotalUsageUsdLT applies the LT predicate on the "total_usage_usd" field.
+func TotalUsageUsdLT(v float64) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldLT(FieldTotalUsageUsd, v))
+}
+
+// TotalUsageUsdLTE applies the LTE predicate on the "total_usage_usd" field.
+func TotalUsageUsdLTE(v float64) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldLTE(FieldTotalUsageUsd, v))
 }
 
 // AssignedByEQ applies the EQ predicate on the "assigned_by" field.

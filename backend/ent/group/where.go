@@ -130,6 +130,16 @@ func SubscriptionType(v string) predicate.Group {
 	return predicate.Group(sql.FieldEQ(FieldSubscriptionType, v))
 }
 
+// SubscriptionQuotaResetMode applies equality check predicate on the "subscription_quota_reset_mode" field. It's identical to SubscriptionQuotaResetModeEQ.
+func SubscriptionQuotaResetMode(v string) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldSubscriptionQuotaResetMode, v))
+}
+
+// SubscriptionTotalLimitUsd applies equality check predicate on the "subscription_total_limit_usd" field. It's identical to SubscriptionTotalLimitUsdEQ.
+func SubscriptionTotalLimitUsd(v float64) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldSubscriptionTotalLimitUsd, v))
+}
+
 // DailyLimitUsd applies equality check predicate on the "daily_limit_usd" field. It's identical to DailyLimitUsdEQ.
 func DailyLimitUsd(v float64) predicate.Group {
 	return predicate.Group(sql.FieldEQ(FieldDailyLimitUsd, v))
@@ -1053,6 +1063,121 @@ func SubscriptionTypeEqualFold(v string) predicate.Group {
 // SubscriptionTypeContainsFold applies the ContainsFold predicate on the "subscription_type" field.
 func SubscriptionTypeContainsFold(v string) predicate.Group {
 	return predicate.Group(sql.FieldContainsFold(FieldSubscriptionType, v))
+}
+
+// SubscriptionQuotaResetModeEQ applies the EQ predicate on the "subscription_quota_reset_mode" field.
+func SubscriptionQuotaResetModeEQ(v string) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldSubscriptionQuotaResetMode, v))
+}
+
+// SubscriptionQuotaResetModeNEQ applies the NEQ predicate on the "subscription_quota_reset_mode" field.
+func SubscriptionQuotaResetModeNEQ(v string) predicate.Group {
+	return predicate.Group(sql.FieldNEQ(FieldSubscriptionQuotaResetMode, v))
+}
+
+// SubscriptionQuotaResetModeIn applies the In predicate on the "subscription_quota_reset_mode" field.
+func SubscriptionQuotaResetModeIn(vs ...string) predicate.Group {
+	return predicate.Group(sql.FieldIn(FieldSubscriptionQuotaResetMode, vs...))
+}
+
+// SubscriptionQuotaResetModeNotIn applies the NotIn predicate on the "subscription_quota_reset_mode" field.
+func SubscriptionQuotaResetModeNotIn(vs ...string) predicate.Group {
+	return predicate.Group(sql.FieldNotIn(FieldSubscriptionQuotaResetMode, vs...))
+}
+
+// SubscriptionQuotaResetModeGT applies the GT predicate on the "subscription_quota_reset_mode" field.
+func SubscriptionQuotaResetModeGT(v string) predicate.Group {
+	return predicate.Group(sql.FieldGT(FieldSubscriptionQuotaResetMode, v))
+}
+
+// SubscriptionQuotaResetModeGTE applies the GTE predicate on the "subscription_quota_reset_mode" field.
+func SubscriptionQuotaResetModeGTE(v string) predicate.Group {
+	return predicate.Group(sql.FieldGTE(FieldSubscriptionQuotaResetMode, v))
+}
+
+// SubscriptionQuotaResetModeLT applies the LT predicate on the "subscription_quota_reset_mode" field.
+func SubscriptionQuotaResetModeLT(v string) predicate.Group {
+	return predicate.Group(sql.FieldLT(FieldSubscriptionQuotaResetMode, v))
+}
+
+// SubscriptionQuotaResetModeLTE applies the LTE predicate on the "subscription_quota_reset_mode" field.
+func SubscriptionQuotaResetModeLTE(v string) predicate.Group {
+	return predicate.Group(sql.FieldLTE(FieldSubscriptionQuotaResetMode, v))
+}
+
+// SubscriptionQuotaResetModeContains applies the Contains predicate on the "subscription_quota_reset_mode" field.
+func SubscriptionQuotaResetModeContains(v string) predicate.Group {
+	return predicate.Group(sql.FieldContains(FieldSubscriptionQuotaResetMode, v))
+}
+
+// SubscriptionQuotaResetModeHasPrefix applies the HasPrefix predicate on the "subscription_quota_reset_mode" field.
+func SubscriptionQuotaResetModeHasPrefix(v string) predicate.Group {
+	return predicate.Group(sql.FieldHasPrefix(FieldSubscriptionQuotaResetMode, v))
+}
+
+// SubscriptionQuotaResetModeHasSuffix applies the HasSuffix predicate on the "subscription_quota_reset_mode" field.
+func SubscriptionQuotaResetModeHasSuffix(v string) predicate.Group {
+	return predicate.Group(sql.FieldHasSuffix(FieldSubscriptionQuotaResetMode, v))
+}
+
+// SubscriptionQuotaResetModeEqualFold applies the EqualFold predicate on the "subscription_quota_reset_mode" field.
+func SubscriptionQuotaResetModeEqualFold(v string) predicate.Group {
+	return predicate.Group(sql.FieldEqualFold(FieldSubscriptionQuotaResetMode, v))
+}
+
+// SubscriptionQuotaResetModeContainsFold applies the ContainsFold predicate on the "subscription_quota_reset_mode" field.
+func SubscriptionQuotaResetModeContainsFold(v string) predicate.Group {
+	return predicate.Group(sql.FieldContainsFold(FieldSubscriptionQuotaResetMode, v))
+}
+
+// SubscriptionTotalLimitUsdEQ applies the EQ predicate on the "subscription_total_limit_usd" field.
+func SubscriptionTotalLimitUsdEQ(v float64) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldSubscriptionTotalLimitUsd, v))
+}
+
+// SubscriptionTotalLimitUsdNEQ applies the NEQ predicate on the "subscription_total_limit_usd" field.
+func SubscriptionTotalLimitUsdNEQ(v float64) predicate.Group {
+	return predicate.Group(sql.FieldNEQ(FieldSubscriptionTotalLimitUsd, v))
+}
+
+// SubscriptionTotalLimitUsdIn applies the In predicate on the "subscription_total_limit_usd" field.
+func SubscriptionTotalLimitUsdIn(vs ...float64) predicate.Group {
+	return predicate.Group(sql.FieldIn(FieldSubscriptionTotalLimitUsd, vs...))
+}
+
+// SubscriptionTotalLimitUsdNotIn applies the NotIn predicate on the "subscription_total_limit_usd" field.
+func SubscriptionTotalLimitUsdNotIn(vs ...float64) predicate.Group {
+	return predicate.Group(sql.FieldNotIn(FieldSubscriptionTotalLimitUsd, vs...))
+}
+
+// SubscriptionTotalLimitUsdGT applies the GT predicate on the "subscription_total_limit_usd" field.
+func SubscriptionTotalLimitUsdGT(v float64) predicate.Group {
+	return predicate.Group(sql.FieldGT(FieldSubscriptionTotalLimitUsd, v))
+}
+
+// SubscriptionTotalLimitUsdGTE applies the GTE predicate on the "subscription_total_limit_usd" field.
+func SubscriptionTotalLimitUsdGTE(v float64) predicate.Group {
+	return predicate.Group(sql.FieldGTE(FieldSubscriptionTotalLimitUsd, v))
+}
+
+// SubscriptionTotalLimitUsdLT applies the LT predicate on the "subscription_total_limit_usd" field.
+func SubscriptionTotalLimitUsdLT(v float64) predicate.Group {
+	return predicate.Group(sql.FieldLT(FieldSubscriptionTotalLimitUsd, v))
+}
+
+// SubscriptionTotalLimitUsdLTE applies the LTE predicate on the "subscription_total_limit_usd" field.
+func SubscriptionTotalLimitUsdLTE(v float64) predicate.Group {
+	return predicate.Group(sql.FieldLTE(FieldSubscriptionTotalLimitUsd, v))
+}
+
+// SubscriptionTotalLimitUsdIsNil applies the IsNil predicate on the "subscription_total_limit_usd" field.
+func SubscriptionTotalLimitUsdIsNil() predicate.Group {
+	return predicate.Group(sql.FieldIsNull(FieldSubscriptionTotalLimitUsd))
+}
+
+// SubscriptionTotalLimitUsdNotNil applies the NotNil predicate on the "subscription_total_limit_usd" field.
+func SubscriptionTotalLimitUsdNotNil() predicate.Group {
+	return predicate.Group(sql.FieldNotNull(FieldSubscriptionTotalLimitUsd))
 }
 
 // DailyLimitUsdEQ applies the EQ predicate on the "daily_limit_usd" field.

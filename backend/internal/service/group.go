@@ -33,11 +33,13 @@ type Group struct {
 	// an already committed one-click copy. It must never be mapped to API DTOs.
 	DuplicateOperationID string
 
-	SubscriptionType    string
-	DailyLimitUSD       *float64
-	WeeklyLimitUSD      *float64
-	MonthlyLimitUSD     *float64
-	DefaultValidityDays int
+	SubscriptionType           string
+	SubscriptionQuotaResetMode string
+	SubscriptionTotalLimitUSD  *float64
+	DailyLimitUSD              *float64
+	WeeklyLimitUSD             *float64
+	MonthlyLimitUSD            *float64
+	DefaultValidityDays        int
 
 	// 图片生成计费配置（antigravity 和 gemini 平台使用）
 	AllowImageGeneration         bool
@@ -107,6 +109,11 @@ type Group struct {
 	RateLimitedAccountCount int64
 }
 
+const (
+	SubscriptionQuotaResetModeRolling                  = "rolling"
+	SubscriptionQuotaResetModeUntilSubscriptionExpires = "until_subscription_expires"
+)
+
 func (g *Group) IsActive() bool {
 	return g.Status == StatusActive
 }
@@ -115,16 +122,56 @@ func (g *Group) IsSubscriptionType() bool {
 	return g.SubscriptionType == SubscriptionTypeSubscription
 }
 
+func (g *Group) UsesSubscriptionLifetimeQuota() bool {
+	return g != nil && g.IsSubscriptionType() &&
+		g.SubscriptionQuotaResetMode == SubscriptionQuotaResetModeUntilSubscriptionExpires
+}
+
+func (g *Group) HasSubscriptionTotalLimit() bool {
+	return g != nil && g.SubscriptionTotalLimitUSD != nil && *g.SubscriptionTotalLimitUSD >= 0
+}
+
+// NormalizeSubscriptionQuotaLimits keeps the two subscription quota models
+// mutually exclusive. A lifetime quota has one total limit; a rolling quota
+// has the existing daily, weekly, and monthly limits.
+func (g *Group) NormalizeSubscriptionQuotaLimits() {
+	if g == nil {
+		return
+	}
+	if g.UsesSubscriptionLifetimeQuota() {
+		g.DailyLimitUSD = nil
+		g.WeeklyLimitUSD = nil
+		g.MonthlyLimitUSD = nil
+		return
+	}
+	g.SubscriptionTotalLimitUSD = nil
+}
+
+func NormalizeSubscriptionQuotaResetMode(subscriptionType, mode string) (string, error) {
+	if subscriptionType != SubscriptionTypeSubscription {
+		return SubscriptionQuotaResetModeRolling, nil
+	}
+	if mode == "" {
+		return SubscriptionQuotaResetModeRolling, nil
+	}
+	switch mode {
+	case SubscriptionQuotaResetModeRolling, SubscriptionQuotaResetModeUntilSubscriptionExpires:
+		return mode, nil
+	default:
+		return "", fmt.Errorf("invalid subscription quota reset mode: %s", mode)
+	}
+}
+
 func (g *Group) HasDailyLimit() bool {
-	return g.DailyLimitUSD != nil && *g.DailyLimitUSD > 0
+	return g != nil && g.DailyLimitUSD != nil && *g.DailyLimitUSD >= 0
 }
 
 func (g *Group) HasWeeklyLimit() bool {
-	return g.WeeklyLimitUSD != nil && *g.WeeklyLimitUSD > 0
+	return g != nil && g.WeeklyLimitUSD != nil && *g.WeeklyLimitUSD >= 0
 }
 
 func (g *Group) HasMonthlyLimit() bool {
-	return g.MonthlyLimitUSD != nil && *g.MonthlyLimitUSD > 0
+	return g != nil && g.MonthlyLimitUSD != nil && *g.MonthlyLimitUSD >= 0
 }
 
 // GetImagePrice 根据 image_size 返回对应的图片生成价格

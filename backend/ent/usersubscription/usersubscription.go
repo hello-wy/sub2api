@@ -31,6 +31,8 @@ const (
 	FieldExpiresAt = "expires_at"
 	// FieldStatus holds the string denoting the status field in the database.
 	FieldStatus = "status"
+	// FieldTermVersion holds the string denoting the term_version field in the database.
+	FieldTermVersion = "term_version"
 	// FieldDailyWindowStart holds the string denoting the daily_window_start field in the database.
 	FieldDailyWindowStart = "daily_window_start"
 	// FieldWeeklyWindowStart holds the string denoting the weekly_window_start field in the database.
@@ -43,6 +45,8 @@ const (
 	FieldWeeklyUsageUsd = "weekly_usage_usd"
 	// FieldMonthlyUsageUsd holds the string denoting the monthly_usage_usd field in the database.
 	FieldMonthlyUsageUsd = "monthly_usage_usd"
+	// FieldTotalUsageUsd holds the string denoting the total_usage_usd field in the database.
+	FieldTotalUsageUsd = "total_usage_usd"
 	// FieldAssignedBy holds the string denoting the assigned_by field in the database.
 	FieldAssignedBy = "assigned_by"
 	// FieldAssignedAt holds the string denoting the assigned_at field in the database.
@@ -100,12 +104,14 @@ var Columns = []string{
 	FieldStartsAt,
 	FieldExpiresAt,
 	FieldStatus,
+	FieldTermVersion,
 	FieldDailyWindowStart,
 	FieldWeeklyWindowStart,
 	FieldMonthlyWindowStart,
 	FieldDailyUsageUsd,
 	FieldWeeklyUsageUsd,
 	FieldMonthlyUsageUsd,
+	FieldTotalUsageUsd,
 	FieldAssignedBy,
 	FieldAssignedAt,
 	FieldNotes,
@@ -139,12 +145,16 @@ var (
 	DefaultStatus string
 	// StatusValidator is a validator for the "status" field. It is called by the builders before save.
 	StatusValidator func(string) error
+	// DefaultTermVersion holds the default value on creation for the "term_version" field.
+	DefaultTermVersion int64
 	// DefaultDailyUsageUsd holds the default value on creation for the "daily_usage_usd" field.
 	DefaultDailyUsageUsd float64
 	// DefaultWeeklyUsageUsd holds the default value on creation for the "weekly_usage_usd" field.
 	DefaultWeeklyUsageUsd float64
 	// DefaultMonthlyUsageUsd holds the default value on creation for the "monthly_usage_usd" field.
 	DefaultMonthlyUsageUsd float64
+	// DefaultTotalUsageUsd holds the default value on creation for the "total_usage_usd" field.
+	DefaultTotalUsageUsd float64
 	// DefaultAssignedAt holds the default value on creation for the "assigned_at" field.
 	DefaultAssignedAt func() time.Time
 )
@@ -197,6 +207,11 @@ func ByStatus(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldStatus, opts...).ToFunc()
 }
 
+// ByTermVersion orders the results by the term_version field.
+func ByTermVersion(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldTermVersion, opts...).ToFunc()
+}
+
 // ByDailyWindowStart orders the results by the daily_window_start field.
 func ByDailyWindowStart(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldDailyWindowStart, opts...).ToFunc()
@@ -225,6 +240,11 @@ func ByWeeklyUsageUsd(opts ...sql.OrderTermOption) OrderOption {
 // ByMonthlyUsageUsd orders the results by the monthly_usage_usd field.
 func ByMonthlyUsageUsd(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldMonthlyUsageUsd, opts...).ToFunc()
+}
+
+// ByTotalUsageUsd orders the results by the total_usage_usd field.
+func ByTotalUsageUsd(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldTotalUsageUsd, opts...).ToFunc()
 }
 
 // ByAssignedBy orders the results by the assigned_by field.

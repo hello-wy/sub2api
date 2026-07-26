@@ -45,6 +45,9 @@ func (UserSubscription) Fields() []ent.Field {
 		field.String("status").
 			MaxLen(20).
 			Default(domain.SubscriptionStatusActive),
+		field.Int64("term_version").
+			Default(1).
+			Comment("订阅周期版本；每次重新订阅开启新周期时递增"),
 
 		field.Time("daily_window_start").
 			Optional().
@@ -66,6 +69,9 @@ func (UserSubscription) Fields() []ent.Field {
 			SchemaType(map[string]string{dialect.Postgres: "decimal(20,10)"}).
 			Default(0),
 		field.Float("monthly_usage_usd").
+			SchemaType(map[string]string{dialect.Postgres: "decimal(20,10)"}).
+			Default(0),
+		field.Float("total_usage_usd").
 			SchemaType(map[string]string{dialect.Postgres: "decimal(20,10)"}).
 			Default(0),
 

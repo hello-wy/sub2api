@@ -421,6 +421,44 @@ describe('PaymentView balance loyalty discount', () => {
     expect(text).not.toContain('wallet.balanceDescription')
     expect(wrapper.find('[style="width: 25%;"]').exists()).toBe(true)
   })
+
+  it('shows the total quota instead of unlimited for lifetime-quota subscriptions', async () => {
+    activeSubscriptionsState.items = [{
+      id: 10,
+      user_id: 1,
+      group_id: 4,
+      status: 'active',
+      starts_at: '2026-07-01T00:00:00Z',
+      expires_at: '2099-08-01T00:00:00Z',
+      daily_usage_usd: 0,
+      weekly_usage_usd: 0,
+      monthly_usage_usd: 0,
+      total_usage_usd: 25,
+      daily_window_start: null,
+      weekly_window_start: null,
+      monthly_window_start: null,
+      created_at: '2026-07-01T00:00:00Z',
+      updated_at: '2026-07-18T00:00:00Z',
+      group: {
+        id: 4,
+        name: 'Single quota',
+        platform: 'openai',
+        rate_multiplier: 1,
+        subscription_quota_reset_mode: 'until_subscription_expires',
+        subscription_total_limit_usd: 200,
+        daily_limit_usd: null,
+        weekly_limit_usd: null,
+        monthly_limit_usd: null,
+      },
+    } as UserSubscription]
+
+    const wrapper = await mountRecharge()
+    const text = wrapper.text()
+
+    expect(text).toContain('userSubscriptions.total')
+    expect(text).toContain('$25.00 / $200.00')
+    expect(text).not.toContain('userSubscriptions.unlimited')
+  })
 })
 
 describe('PaymentView inline subscription checkout', () => {

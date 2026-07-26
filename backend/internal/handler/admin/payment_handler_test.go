@@ -51,6 +51,7 @@ func TestSanitizeAdminPaymentOrderForResponseAddsCurrency(t *testing.T) {
 
 func TestAdminSubscriptionPlansForResponseIncludesCompositeGroupInfo(t *testing.T) {
 	weekly := 25.0
+	total := 100.0
 	now := time.Now()
 	plans := []*dbent.SubscriptionPlan{
 		{
@@ -72,11 +73,13 @@ func TestAdminSubscriptionPlansForResponseIncludesCompositeGroupInfo(t *testing.
 	}
 	groupInfo := map[int64]service.PlanGroupInfo{
 		7: {
-			Platform:       service.PlatformComposite,
-			Name:           "Bucket 2 composite",
-			RateMultiplier: 1.5,
-			WeeklyLimitUSD: &weekly,
-			ModelScopes:    []string{"openai", "claude", "gemini", "grok"},
+			Platform:                   service.PlatformComposite,
+			Name:                       "Bucket 2 composite",
+			RateMultiplier:             1.5,
+			SubscriptionQuotaResetMode: service.SubscriptionQuotaResetModeUntilSubscriptionExpires,
+			SubscriptionTotalLimitUSD:  &total,
+			WeeklyLimitUSD:             &weekly,
+			ModelScopes:                []string{"openai", "claude", "gemini", "grok"},
 		},
 	}
 
@@ -93,6 +96,9 @@ func TestAdminSubscriptionPlansForResponseIncludesCompositeGroupInfo(t *testing.
 	}
 	if got[0].WeeklyLimitUSD == nil || *got[0].WeeklyLimitUSD != weekly {
 		t.Fatalf("expected weekly limit to be included, got %#v", got[0].WeeklyLimitUSD)
+	}
+	if got[0].SubscriptionQuotaResetMode != service.SubscriptionQuotaResetModeUntilSubscriptionExpires || got[0].SubscriptionTotalLimitUSD == nil || *got[0].SubscriptionTotalLimitUSD != total {
+		t.Fatalf("expected lifetime quota details to be included, got mode=%q total=%#v", got[0].SubscriptionQuotaResetMode, got[0].SubscriptionTotalLimitUSD)
 	}
 	if strings.Join(got[0].ModelScopes, ",") != "openai,claude,gemini,grok" {
 		t.Fatalf("expected model scopes to be preserved, got %#v", got[0].ModelScopes)

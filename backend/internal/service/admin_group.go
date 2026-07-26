@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"strings"
 	"time"
@@ -317,8 +318,21 @@ func (s *adminServiceImpl) CreateGroup(ctx context.Context, input *CreateGroupIn
 	if subscriptionType == "" {
 		subscriptionType = SubscriptionTypeStandard
 	}
+	subscriptionQuotaResetMode, err := NormalizeSubscriptionQuotaResetMode(subscriptionType, input.SubscriptionQuotaResetMode)
+	if err != nil {
+		return nil, err
+	}
+	if err := validateFiniteLimits(
+		input.SubscriptionTotalLimitUSD,
+		input.DailyLimitUSD,
+		input.WeeklyLimitUSD,
+		input.MonthlyLimitUSD,
+	); err != nil {
+		return nil, err
+	}
 
 	// 限额字段：nil/负数 表示"无限制"，0 表示"不允许用量"，正数表示具体限额
+	totalLimit := normalizeLimit(input.SubscriptionTotalLimitUSD)
 	dailyLimit := normalizeLimit(input.DailyLimitUSD)
 	weeklyLimit := normalizeLimit(input.WeeklyLimitUSD)
 	monthlyLimit := normalizeLimit(input.MonthlyLimitUSD)
@@ -441,6 +455,8 @@ func (s *adminServiceImpl) CreateGroup(ctx context.Context, input *CreateGroupIn
 		IsExclusive:                     input.IsExclusive,
 		Status:                          StatusActive,
 		SubscriptionType:                subscriptionType,
+		SubscriptionQuotaResetMode:      subscriptionQuotaResetMode,
+		SubscriptionTotalLimitUSD:       totalLimit,
 		DailyLimitUSD:                   dailyLimit,
 		WeeklyLimitUSD:                  weeklyLimit,
 		MonthlyLimitUSD:                 monthlyLimit,
@@ -479,6 +495,7 @@ func (s *adminServiceImpl) CreateGroup(ctx context.Context, input *CreateGroupIn
 		MaxReasoningEffort:              maxReasoningEffort,
 		ReasoningEffortMappings:         reasoningEffortMappings,
 	}
+	group.NormalizeSubscriptionQuotaLimits()
 	sanitizeGroupMessagesDispatchFields(group)
 	sanitizeGroupReasoningEffortPolicy(group)
 	if err := s.groupRepo.Create(ctx, group); err != nil {
@@ -523,6 +540,15 @@ func normalizeLimit(limit *float64) *float64 {
 		return nil
 	}
 	return limit
+}
+
+func validateFiniteLimits(limits ...*float64) error {
+	for _, limit := range limits {
+		if limit != nil && (math.IsNaN(*limit) || math.IsInf(*limit, 0)) {
+			return errors.New("limit value must be finite")
+		}
+	}
+	return nil
 }
 
 // normalizePrice 将负数转换为 nil（表示使用默认价格），0 保留（表示免费）
@@ -629,16 +655,43 @@ func (s *adminServiceImpl) UpdateGroup(ctx context.Context, id int64, input *Upd
 	if input.Status != "" {
 		group.Status = input.Status
 	}
+	if err := validateFiniteLimits(
+		input.SubscriptionTotalLimitUSD,
+		input.DailyLimitUSD,
+		input.WeeklyLimitUSD,
+		input.MonthlyLimitUSD,
+	); err != nil {
+		return nil, err
+	}
 
 	// 订阅相关字段
 	if input.SubscriptionType != "" {
 		group.SubscriptionType = input.SubscriptionType
 	}
-	// 限额字段：nil/负数 表示"无限制"，0 表示"不允许用量"，正数表示具体限额
-	// 前端始终发送这三个字段，无需 nil 守卫
-	group.DailyLimitUSD = normalizeLimit(input.DailyLimitUSD)
-	group.WeeklyLimitUSD = normalizeLimit(input.WeeklyLimitUSD)
-	group.MonthlyLimitUSD = normalizeLimit(input.MonthlyLimitUSD)
+	if input.SubscriptionQuotaResetMode != "" {
+		quotaResetMode, err := NormalizeSubscriptionQuotaResetMode(group.SubscriptionType, input.SubscriptionQuotaResetMode)
+		if err != nil {
+			return nil, err
+		}
+		group.SubscriptionQuotaResetMode = quotaResetMode
+	} else if !group.IsSubscriptionType() {
+		group.SubscriptionQuotaResetMode = SubscriptionQuotaResetModeRolling
+	}
+	// 限额字段使用三态更新：未提供则保留，显式 null/负数表示无限制，
+	// 0 表示不允许用量，正数表示具体限额。指针非 nil 兼容服务层直接调用。
+	if input.SubscriptionTotalLimitUSDSet || input.SubscriptionTotalLimitUSD != nil {
+		group.SubscriptionTotalLimitUSD = normalizeLimit(input.SubscriptionTotalLimitUSD)
+	}
+	if input.DailyLimitUSDSet || input.DailyLimitUSD != nil {
+		group.DailyLimitUSD = normalizeLimit(input.DailyLimitUSD)
+	}
+	if input.WeeklyLimitUSDSet || input.WeeklyLimitUSD != nil {
+		group.WeeklyLimitUSD = normalizeLimit(input.WeeklyLimitUSD)
+	}
+	if input.MonthlyLimitUSDSet || input.MonthlyLimitUSD != nil {
+		group.MonthlyLimitUSD = normalizeLimit(input.MonthlyLimitUSD)
+	}
+	group.NormalizeSubscriptionQuotaLimits()
 	// 图片生成计费配置：负数表示清除（使用默认价格）
 	if input.AllowImageGeneration != nil {
 		group.AllowImageGeneration = *input.AllowImageGeneration

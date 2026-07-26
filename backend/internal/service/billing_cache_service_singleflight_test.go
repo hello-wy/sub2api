@@ -43,7 +43,7 @@ func (s *billingCacheMissStub) SetSubscriptionCache(ctx context.Context, userID,
 	return nil
 }
 
-func (s *billingCacheMissStub) UpdateSubscriptionUsage(ctx context.Context, userID, groupID int64, cost float64) error {
+func (s *billingCacheMissStub) UpdateSubscriptionUsage(ctx context.Context, userID, groupID, termVersion int64, cost float64) error {
 	return nil
 }
 

@@ -211,10 +211,28 @@
             <span v-else class="text-sm text-gray-400 dark:text-dark-500">-</span>
           </template>
 
-          <template #cell-usage="{ row }">
-            <div class="min-w-[280px] space-y-2">
-              <!-- Daily Usage -->
-              <div v-if="row.group?.daily_limit_usd" class="usage-row">
+		  <template #cell-usage="{ row }">
+			<div class="min-w-[280px] space-y-2">
+			  <div v-if="usesSubscriptionLifetimeQuota(row) && row.group?.subscription_total_limit_usd != null" class="usage-row">
+				<div class="flex items-center gap-2">
+				  <span class="usage-label">{{ t('admin.subscriptions.total') }}</span>
+				  <div class="h-1.5 flex-1 rounded-full bg-gray-200 dark:bg-dark-600">
+					<div
+					  class="h-1.5 rounded-full transition-all"
+					  :class="getProgressClass(row.total_usage_usd, row.group.subscription_total_limit_usd)"
+					  :style="{ width: getProgressWidth(row.total_usage_usd, row.group.subscription_total_limit_usd) }"
+					></div>
+				  </div>
+				  <span class="usage-amount">
+					${{ row.total_usage_usd?.toFixed(2) || '0.00' }}
+					<span class="text-gray-400">/</span>
+					${{ row.group.subscription_total_limit_usd.toFixed(2) }}
+				  </span>
+				</div>
+				<div class="reset-info"><span>{{ formatQuotaEnd(row) }}</span></div>
+			  </div>
+			  <!-- Daily Usage -->
+			  <div v-if="!usesSubscriptionLifetimeQuota(row) && row.group?.daily_limit_usd != null" class="usage-row">
                 <div class="flex items-center gap-2">
                   <span class="usage-label">{{ t('admin.subscriptions.daily') }}</span>
                   <div class="h-1.5 flex-1 rounded-full bg-gray-200 dark:bg-dark-600">
@@ -251,7 +269,7 @@
               </div>
 
               <!-- Weekly Usage -->
-              <div v-if="row.group?.weekly_limit_usd" class="usage-row">
+			  <div v-if="!usesSubscriptionLifetimeQuota(row) && row.group?.weekly_limit_usd != null" class="usage-row">
                 <div class="flex items-center gap-2">
                   <span class="usage-label">{{ t('admin.subscriptions.weekly') }}</span>
                   <div class="h-1.5 flex-1 rounded-full bg-gray-200 dark:bg-dark-600">
@@ -283,12 +301,12 @@
                       d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                     />
                   </svg>
-                  <span>{{ formatResetTime(row.weekly_window_start, 'weekly') }}</span>
+                  <span>{{ formatUsageWindow(row, row.weekly_window_start, 'weekly') }}</span>
                 </div>
               </div>
 
               <!-- Monthly Usage -->
-              <div v-if="row.group?.monthly_limit_usd" class="usage-row">
+			  <div v-if="!usesSubscriptionLifetimeQuota(row) && row.group?.monthly_limit_usd != null" class="usage-row">
                 <div class="flex items-center gap-2">
                   <span class="usage-label">{{ t('admin.subscriptions.monthly') }}</span>
                   <div class="h-1.5 flex-1 rounded-full bg-gray-200 dark:bg-dark-600">
@@ -320,16 +338,17 @@
                       d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                     />
                   </svg>
-                  <span>{{ formatResetTime(row.monthly_window_start, 'monthly') }}</span>
+                  <span>{{ formatUsageWindow(row, row.monthly_window_start, 'monthly') }}</span>
                 </div>
               </div>
 
               <!-- No Limits - Unlimited badge -->
               <div
                 v-if="
-                  !row.group?.daily_limit_usd &&
-                  !row.group?.weekly_limit_usd &&
-                  !row.group?.monthly_limit_usd
+				  row.group?.daily_limit_usd == null &&
+				  row.group?.weekly_limit_usd == null &&
+				  row.group?.monthly_limit_usd == null &&
+				  row.group?.subscription_total_limit_usd == null
                 "
                 class="flex items-center gap-2 rounded-lg bg-gradient-to-r from-emerald-50 to-teal-50 px-3 py-2 dark:from-emerald-900/20 dark:to-teal-900/20"
               >
@@ -353,8 +372,8 @@
               >
                 {{ formatDateTimeToMinute(value) }}
               </span>
-              <div v-if="getDaysRemaining(value) !== null" class="text-xs text-gray-500">
-                {{ getDaysRemaining(value) }} {{ t('admin.subscriptions.daysRemaining') }}
+              <div v-if="formatExpirationRemaining(value)" class="text-xs text-gray-500">
+                {{ formatExpirationRemaining(value) }}
               </div>
             </div>
             <span v-else class="text-sm text-gray-500">{{
@@ -388,7 +407,7 @@
                 <span class="text-xs">{{ t('admin.subscriptions.adjust') }}</span>
               </button>
               <button
-                v-if="row.status === 'active'"
+				v-if="row.status === 'active' && !usesSubscriptionLifetimeQuota(row)"
                 @click="handleResetQuota(row)"
                 :disabled="resettingQuota && resettingSubscription?.id === row.id"
                 class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-orange-50 hover:text-orange-600 dark:hover:bg-orange-900/20 dark:hover:text-orange-400 disabled:cursor-not-allowed disabled:opacity-50"
@@ -604,9 +623,12 @@
             </span>
           </p>
           <p v-if="extendingSubscription.expires_at" class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            {{ t('admin.subscriptions.remainingDays') }}:
+            {{ t('admin.subscriptions.remainingTime') }}:
             <span class="font-medium text-gray-900 dark:text-white">
-              {{ getDaysRemaining(extendingSubscription.expires_at) ?? 0 }}
+              {{
+                formatExpirationRemaining(extendingSubscription.expires_at) ??
+                  t('admin.subscriptions.status.expired')
+              }}
             </span>
           </p>
         </div>
@@ -777,7 +799,7 @@ import Select from '@/components/common/Select.vue'
 import GroupBadge from '@/components/common/GroupBadge.vue'
 import GroupOptionItem from '@/components/common/GroupOptionItem.vue'
 import Icon from '@/components/icons/Icon.vue'
-import { getRemainingDurationParts, isOneTimeDailyQuota, type RemainingDurationParts } from '@/utils/subscriptionQuota'
+import { getRemainingDurationParts, isOneTimeDailyQuota, usesSubscriptionLifetimeQuota, type RemainingDurationParts } from '@/utils/subscriptionQuota'
 
 const { t } = useI18n()
 const appStore = useAppStore()
@@ -1326,28 +1348,44 @@ const confirmResetQuota = async () => {
 }
 
 // Helper functions
-const getDaysRemaining = (expiresAt: string): number | null => {
-  const now = new Date()
-  const expires = new Date(expiresAt)
-  const diff = expires.getTime() - now.getTime()
-  if (diff < 0) return null
-  return Math.ceil(diff / (1000 * 60 * 60 * 24))
+const formatExpirationRemaining = (expiresAt: string): string | null => {
+  const parts = getRemainingDurationParts(expiresAt)
+  if (!parts) return null
+
+  if (parts.days > 0) {
+    return t('admin.subscriptions.remainingDaysHours', {
+      days: parts.days,
+      hours: parts.hours,
+    })
+  }
+
+  if (parts.hours > 0) {
+    return t('admin.subscriptions.remainingHoursMinutes', {
+      hours: parts.hours,
+      minutes: parts.minutes,
+    })
+  }
+
+  return t('admin.subscriptions.remainingMinutes', { minutes: parts.minutes })
 }
 
 const isExpiringSoon = (expiresAt: string): boolean => {
-  const days = getDaysRemaining(expiresAt)
-  return days !== null && days <= 7
+  const expiresAtMs = new Date(expiresAt).getTime()
+  const remainingMs = expiresAtMs - Date.now()
+  return Number.isFinite(expiresAtMs) && remainingMs > 0 && remainingMs <= 7 * 24 * 60 * 60 * 1000
 }
 
 const getProgressWidth = (used: number | null | undefined, limit: number | null): string => {
-  if (!limit || limit === 0) return '0%'
+	if (limit === 0) return '100%'
+	if (limit == null || limit < 0) return '0%'
   const usedValue = used ?? 0
   const percentage = Math.min((usedValue / limit) * 100, 100)
   return `${percentage}%`
 }
 
 const getProgressClass = (used: number | null | undefined, limit: number | null): string => {
-  if (!limit || limit === 0) return 'bg-gray-400'
+	if (limit === 0) return 'bg-red-500'
+	if (limit == null || limit < 0) return 'bg-gray-400'
   const usedValue = used ?? 0
   const percentage = (usedValue / limit) * 100
   if (percentage >= 90) return 'bg-red-500'
@@ -1379,13 +1417,32 @@ const formatQuotaEndDuration = (parts: RemainingDurationParts): string => {
   return t('admin.subscriptions.quotaEndsInMinutes', { minutes: parts.minutes })
 }
 
+const formatQuotaEnd = (subscription: UserSubscription): string => {
+  if (!subscription.expires_at) return t('admin.subscriptions.windowNotActive')
+  const parts = getRemainingDurationParts(subscription.expires_at)
+  return parts ? formatQuotaEndDuration(parts) : t('admin.subscriptions.windowNotActive')
+}
+
 const formatDailyUsageWindow = (subscription: UserSubscription): string => {
-  if (isOneTimeDailyQuota(subscription) && subscription.expires_at) {
+  if ((isOneTimeDailyQuota(subscription) || usesSubscriptionLifetimeQuota(subscription)) && subscription.expires_at) {
     const parts = getRemainingDurationParts(subscription.expires_at)
     return parts ? formatQuotaEndDuration(parts) : t('admin.subscriptions.windowNotActive')
   }
 
   return formatResetTime(subscription.daily_window_start, 'daily')
+}
+
+const formatUsageWindow = (
+  subscription: UserSubscription,
+  windowStart: string | null,
+  period: 'daily' | 'weekly' | 'monthly'
+): string => {
+  if (usesSubscriptionLifetimeQuota(subscription) && subscription.expires_at) {
+    const parts = getRemainingDurationParts(subscription.expires_at)
+    return parts ? formatQuotaEndDuration(parts) : t('admin.subscriptions.windowNotActive')
+  }
+
+  return formatResetTime(windowStart, period)
 }
 
 // Format reset time based on window start and period type

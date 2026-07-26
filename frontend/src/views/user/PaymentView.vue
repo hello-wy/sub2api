@@ -283,6 +283,7 @@ import {
   writePaymentRecoverySnapshot,
 } from '@/components/payment/paymentFlow'
 import { platformAccentBarClass } from '@/utils/platformColors'
+import { usesSubscriptionLifetimeQuota } from '@/utils/subscriptionQuota'
 import SubscriptionPlanCard from '@/components/payment/SubscriptionPlanCard.vue'
 import PaymentStatusPanel from '@/components/payment/PaymentStatusPanel.vue'
 import Icon from '@/components/icons/Icon.vue'
@@ -309,7 +310,7 @@ function getDaysRemaining(expiresAt: string): number {
 }
 
 interface SubscriptionUsageRow {
-  period: 'daily' | 'weekly' | 'monthly'
+  period: 'daily' | 'weekly' | 'monthly' | 'total'
   label: string
   used: number
   limit: number
@@ -317,6 +318,22 @@ interface SubscriptionUsageRow {
 }
 
 function subscriptionUsageRows(subscription: UserSubscription): SubscriptionUsageRow[] {
+  if (usesSubscriptionLifetimeQuota(subscription)) {
+    const limit = subscription.group?.subscription_total_limit_usd
+    if (limit == null || limit < 0) return []
+
+    const used = Number.isFinite(subscription.total_usage_usd)
+      ? Math.max(0, subscription.total_usage_usd)
+      : 0
+    return [{
+      period: 'total',
+      label: t('userSubscriptions.total'),
+      used,
+      limit,
+      percentage: limit > 0 ? Math.min(100, (used / limit) * 100) : 100,
+    }]
+  }
+
   const periods = [
     { period: 'daily' as const, used: subscription.daily_usage_usd, limit: subscription.group?.daily_limit_usd },
     { period: 'weekly' as const, used: subscription.weekly_usage_usd, limit: subscription.group?.weekly_limit_usd },

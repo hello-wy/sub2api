@@ -46,6 +46,10 @@ const (
 	FieldPlatform = "platform"
 	// FieldSubscriptionType holds the string denoting the subscription_type field in the database.
 	FieldSubscriptionType = "subscription_type"
+	// FieldSubscriptionQuotaResetMode holds the string denoting the subscription_quota_reset_mode field in the database.
+	FieldSubscriptionQuotaResetMode = "subscription_quota_reset_mode"
+	// FieldSubscriptionTotalLimitUsd holds the string denoting the subscription_total_limit_usd field in the database.
+	FieldSubscriptionTotalLimitUsd = "subscription_total_limit_usd"
 	// FieldDailyLimitUsd holds the string denoting the daily_limit_usd field in the database.
 	FieldDailyLimitUsd = "daily_limit_usd"
 	// FieldWeeklyLimitUsd holds the string denoting the weekly_limit_usd field in the database.
@@ -208,6 +212,8 @@ var Columns = []string{
 	FieldDuplicateOperationID,
 	FieldPlatform,
 	FieldSubscriptionType,
+	FieldSubscriptionQuotaResetMode,
+	FieldSubscriptionTotalLimitUsd,
 	FieldDailyLimitUsd,
 	FieldWeeklyLimitUsd,
 	FieldMonthlyLimitUsd,
@@ -311,6 +317,10 @@ var (
 	DefaultSubscriptionType string
 	// SubscriptionTypeValidator is a validator for the "subscription_type" field. It is called by the builders before save.
 	SubscriptionTypeValidator func(string) error
+	// DefaultSubscriptionQuotaResetMode holds the default value on creation for the "subscription_quota_reset_mode" field.
+	DefaultSubscriptionQuotaResetMode string
+	// SubscriptionQuotaResetModeValidator is a validator for the "subscription_quota_reset_mode" field. It is called by the builders before save.
+	SubscriptionQuotaResetModeValidator func(string) error
 	// DefaultDefaultValidityDays holds the default value on creation for the "default_validity_days" field.
 	DefaultDefaultValidityDays int
 	// DefaultAllowImageGeneration holds the default value on creation for the "allow_image_generation" field.
@@ -444,6 +454,16 @@ func ByPlatform(opts ...sql.OrderTermOption) OrderOption {
 // BySubscriptionType orders the results by the subscription_type field.
 func BySubscriptionType(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldSubscriptionType, opts...).ToFunc()
+}
+
+// BySubscriptionQuotaResetMode orders the results by the subscription_quota_reset_mode field.
+func BySubscriptionQuotaResetMode(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSubscriptionQuotaResetMode, opts...).ToFunc()
+}
+
+// BySubscriptionTotalLimitUsd orders the results by the subscription_total_limit_usd field.
+func BySubscriptionTotalLimitUsd(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSubscriptionTotalLimitUsd, opts...).ToFunc()
 }
 
 // ByDailyLimitUsd orders the results by the daily_limit_usd field.

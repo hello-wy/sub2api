@@ -238,7 +238,7 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 			if subscription != nil {
 				needsMaintenance, validateErr := subscriptionService.ValidateAndCheckLimits(subscription, apiKey.Group)
 				if needsMaintenance {
-					refreshed, maintenanceErr := subscriptionService.EnsureWindowMaintenance(c.Request.Context(), subscription)
+					refreshed, maintenanceErr := subscriptionService.EnsureWindowMaintenance(c.Request.Context(), subscription, apiKey.Group)
 					if maintenanceErr != nil {
 						AbortWithError(c, 500, "SUBSCRIPTION_MAINTENANCE_FAILED", "Failed to maintain subscription usage windows")
 						return
@@ -251,7 +251,8 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 					status := 403
 					if errors.Is(validateErr, service.ErrDailyLimitExceeded) ||
 						errors.Is(validateErr, service.ErrWeeklyLimitExceeded) ||
-						errors.Is(validateErr, service.ErrMonthlyLimitExceeded) {
+						errors.Is(validateErr, service.ErrMonthlyLimitExceeded) ||
+						errors.Is(validateErr, service.ErrSubscriptionTotalLimitExceeded) {
 						code = "USAGE_LIMIT_EXCEEDED"
 						status = 429
 					}

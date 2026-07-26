@@ -41,6 +41,10 @@ const messages: Record<string, string> = {
   'admin.groups.columns.usage': 'Usage',
   'admin.groups.columns.status': 'Status',
   'admin.groups.columns.actions': 'Actions',
+  'admin.groups.subscription.subscription': 'Subscription',
+  'admin.groups.subscription.standard': 'Standard',
+  'admin.groups.subscription.total': 'Total quota',
+  'admin.groups.subscription.noLimit': 'Unlimited',
 }
 
 vi.mock('@/api/admin', () => ({
@@ -148,6 +152,9 @@ const DataTableStub = {
     <div>
       <div data-test="columns">{{ columns.map((col) => col.key).join(',') }}</div>
       <div data-test="rows">{{ data.map((row) => row.name).join(',') }}</div>
+      <div v-for="row in data" :key="row.id" data-test="billing-type">
+        <slot name="cell-billing_type" :row="row" />
+      </div>
     </div>
   `,
 }
@@ -269,6 +276,48 @@ describe('admin GroupsView column settings', () => {
     ])
     expect(localStorage.getItem('group-hidden-columns')).toBe(JSON.stringify(['id']))
     expect(localStorage.getItem('group-column-settings-version')).toBe('2')
+  })
+
+  it('shows the subscription total quota instead of unlimited for lifetime quota groups', async () => {
+    listGroups.mockResolvedValueOnce({
+      items: [createGroup({
+        subscription_type: 'subscription',
+        subscription_quota_reset_mode: 'until_subscription_expires',
+        subscription_total_limit_usd: 200,
+      })],
+      total: 1,
+      page: 1,
+      page_size: 20,
+      pages: 1,
+    })
+
+    const wrapper = await mountView()
+    const billingType = wrapper.get('[data-test="billing-type"]').text()
+
+    expect(billingType).toContain('Total quota')
+    expect(billingType).toContain('$200.0')
+    expect(billingType).not.toContain('Unlimited')
+  })
+
+  it('shows a rolling zero quota as exhausted instead of unlimited', async () => {
+    listGroups.mockResolvedValueOnce({
+      items: [createGroup({
+        subscription_type: 'subscription',
+        subscription_quota_reset_mode: 'rolling',
+        daily_limit_usd: 0,
+      })],
+      total: 1,
+      page: 1,
+      page_size: 20,
+      pages: 1,
+    })
+
+    const wrapper = await mountView()
+    const billingType = wrapper.get('[data-test="billing-type"]')
+
+    expect(billingType.text()).toContain('$0.00')
+    expect(billingType.text()).not.toContain('Unlimited')
+    expect(billingType.find('.text-red-600').exists()).toBe(true)
   })
 
   it('applies saved hidden columns on mount and ignores unknown keys', async () => {

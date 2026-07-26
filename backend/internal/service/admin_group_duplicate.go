@@ -92,6 +92,8 @@ func cloneGroupForDuplicate(source *Group, operationID string) *Group {
 		Status:                          duplicateGroupInactiveStatus,
 		DuplicateOperationID:            operationID,
 		SubscriptionType:                source.SubscriptionType,
+		SubscriptionQuotaResetMode:      source.SubscriptionQuotaResetMode,
+		SubscriptionTotalLimitUSD:       cloneGroupValuePointer(source.SubscriptionTotalLimitUSD),
 		DailyLimitUSD:                   cloneGroupValuePointer(source.DailyLimitUSD),
 		WeeklyLimitUSD:                  cloneGroupValuePointer(source.WeeklyLimitUSD),
 		MonthlyLimitUSD:                 cloneGroupValuePointer(source.MonthlyLimitUSD),

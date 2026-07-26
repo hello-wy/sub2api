@@ -35,6 +35,8 @@ type UserSubscription struct {
 	ExpiresAt time.Time `json:"expires_at,omitempty"`
 	// Status holds the value of the "status" field.
 	Status string `json:"status,omitempty"`
+	// 订阅周期版本；每次重新订阅开启新周期时递增
+	TermVersion int64 `json:"term_version,omitempty"`
 	// DailyWindowStart holds the value of the "daily_window_start" field.
 	DailyWindowStart *time.Time `json:"daily_window_start,omitempty"`
 	// WeeklyWindowStart holds the value of the "weekly_window_start" field.
@@ -47,6 +49,8 @@ type UserSubscription struct {
 	WeeklyUsageUsd float64 `json:"weekly_usage_usd,omitempty"`
 	// MonthlyUsageUsd holds the value of the "monthly_usage_usd" field.
 	MonthlyUsageUsd float64 `json:"monthly_usage_usd,omitempty"`
+	// TotalUsageUsd holds the value of the "total_usage_usd" field.
+	TotalUsageUsd float64 `json:"total_usage_usd,omitempty"`
 	// AssignedBy holds the value of the "assigned_by" field.
 	AssignedBy *int64 `json:"assigned_by,omitempty"`
 	// AssignedAt holds the value of the "assigned_at" field.
@@ -121,9 +125,9 @@ func (*UserSubscription) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case usersubscription.FieldDailyUsageUsd, usersubscription.FieldWeeklyUsageUsd, usersubscription.FieldMonthlyUsageUsd:
+		case usersubscription.FieldDailyUsageUsd, usersubscription.FieldWeeklyUsageUsd, usersubscription.FieldMonthlyUsageUsd, usersubscription.FieldTotalUsageUsd:
 			values[i] = new(sql.NullFloat64)
-		case usersubscription.FieldID, usersubscription.FieldUserID, usersubscription.FieldGroupID, usersubscription.FieldAssignedBy:
+		case usersubscription.FieldID, usersubscription.FieldUserID, usersubscription.FieldGroupID, usersubscription.FieldTermVersion, usersubscription.FieldAssignedBy:
 			values[i] = new(sql.NullInt64)
 		case usersubscription.FieldStatus, usersubscription.FieldNotes:
 			values[i] = new(sql.NullString)
@@ -199,6 +203,12 @@ func (_m *UserSubscription) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.Status = value.String
 			}
+		case usersubscription.FieldTermVersion:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field term_version", values[i])
+			} else if value.Valid {
+				_m.TermVersion = value.Int64
+			}
 		case usersubscription.FieldDailyWindowStart:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field daily_window_start", values[i])
@@ -237,6 +247,12 @@ func (_m *UserSubscription) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field monthly_usage_usd", values[i])
 			} else if value.Valid {
 				_m.MonthlyUsageUsd = value.Float64
+			}
+		case usersubscription.FieldTotalUsageUsd:
+			if value, ok := values[i].(*sql.NullFloat64); !ok {
+				return fmt.Errorf("unexpected type %T for field total_usage_usd", values[i])
+			} else if value.Valid {
+				_m.TotalUsageUsd = value.Float64
 			}
 		case usersubscription.FieldAssignedBy:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -340,6 +356,9 @@ func (_m *UserSubscription) String() string {
 	builder.WriteString("status=")
 	builder.WriteString(_m.Status)
 	builder.WriteString(", ")
+	builder.WriteString("term_version=")
+	builder.WriteString(fmt.Sprintf("%v", _m.TermVersion))
+	builder.WriteString(", ")
 	if v := _m.DailyWindowStart; v != nil {
 		builder.WriteString("daily_window_start=")
 		builder.WriteString(v.Format(time.ANSIC))
@@ -363,6 +382,9 @@ func (_m *UserSubscription) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("monthly_usage_usd=")
 	builder.WriteString(fmt.Sprintf("%v", _m.MonthlyUsageUsd))
+	builder.WriteString(", ")
+	builder.WriteString("total_usage_usd=")
+	builder.WriteString(fmt.Sprintf("%v", _m.TotalUsageUsd))
 	builder.WriteString(", ")
 	if v := _m.AssignedBy; v != nil {
 		builder.WriteString("assigned_by=")

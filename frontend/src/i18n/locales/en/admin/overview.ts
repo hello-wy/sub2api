@@ -961,6 +961,13 @@ export default {
         dailyLimit: 'Daily Limit (USD)',
         weeklyLimit: 'Weekly Limit (USD)',
         monthlyLimit: 'Monthly Limit (USD)',
+        quotaResetMode: 'Quota Cycle',
+        quotaResetRolling: 'Reset on daily/weekly/monthly cycles',
+        quotaResetUntilExpiry: 'End quota when subscription expires',
+        quotaResetHint: 'When quota ends with the subscription, used quota is not reset before expiry.',
+        totalLimit: 'Subscription Total Limit (USD)',
+        totalLimitHint: 'Usage accumulates from activation until the subscription expires.',
+        total: 'Total quota',
         defaultValidityDays: 'Default Validity (Days)',
         validityHint: 'Number of days the subscription is valid when assigned to a user',
         noLimit: 'No limit'

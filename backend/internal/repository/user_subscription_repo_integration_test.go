@@ -5,14 +5,45 @@ package repository
 import (
 	"context"
 	"fmt"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	dbent "github.com/Wei-Shaw/sub2api/ent"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/pagination"
 	"github.com/Wei-Shaw/sub2api/internal/service"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
+
+type concurrentRenewalSubscriptionRepo struct {
+	service.UserSubscriptionRepository
+
+	ready   atomic.Int32
+	release chan struct{}
+	once    sync.Once
+}
+
+func (r *concurrentRenewalSubscriptionRepo) GetByUserIDAndGroupID(ctx context.Context, userID, groupID int64) (*service.UserSubscription, error) {
+	subscription, err := r.UserSubscriptionRepository.GetByUserIDAndGroupID(ctx, userID, groupID)
+	if err != nil {
+		return nil, err
+	}
+	if r.ready.Add(1) == 2 {
+		r.once.Do(func() { close(r.release) })
+	}
+	select {
+	case <-r.release:
+		return subscription, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+}
+
+func (r *concurrentRenewalSubscriptionRepo) GetByIDForUpdate(ctx context.Context, id int64) (*service.UserSubscription, error) {
+	return r.UserSubscriptionRepository.(*userSubscriptionRepository).GetByIDForUpdate(ctx, id)
+}
 
 type UserSubscriptionRepoSuite struct {
 	suite.Suite
@@ -30,6 +61,55 @@ func (s *UserSubscriptionRepoSuite) SetupTest() {
 
 func TestUserSubscriptionRepoSuite(t *testing.T) {
 	suite.Run(t, new(UserSubscriptionRepoSuite))
+}
+
+func TestSubscriptionRenewal_ConcurrentTermsIncrementMonotonically(t *testing.T) {
+	ctx := context.Background()
+	client := testEntClient(t)
+	user := mustCreateUser(t, client, &service.User{
+		Email:        fmt.Sprintf("concurrent-renewal-%d@example.com", time.Now().UnixNano()),
+		PasswordHash: "hash",
+	})
+	group := mustCreateGroup(t, client, &service.Group{
+		Name:             fmt.Sprintf("concurrent-renewal-%d", time.Now().UnixNano()),
+		SubscriptionType: service.SubscriptionTypeSubscription,
+	})
+	subscription := mustCreateSubscription(t, client, &service.UserSubscription{
+		UserID:      user.ID,
+		GroupID:     group.ID,
+		TermVersion: 1,
+	})
+	baseRepo := NewUserSubscriptionRepository(client)
+	repo := &concurrentRenewalSubscriptionRepo{
+		UserSubscriptionRepository: baseRepo,
+		release:                    make(chan struct{}),
+	}
+	svc := service.NewSubscriptionService(
+		NewGroupRepository(client, integrationDB),
+		repo,
+		nil,
+		client,
+		nil,
+	)
+
+	errors := make(chan error, 2)
+	for range 2 {
+		go func() {
+			_, _, err := svc.AssignOrExtendSubscription(ctx, &service.AssignSubscriptionInput{
+				UserID:       user.ID,
+				GroupID:      group.ID,
+				ValidityDays: 30,
+			})
+			errors <- err
+		}()
+	}
+	for range 2 {
+		require.NoError(t, <-errors)
+	}
+
+	current, err := baseRepo.GetByID(ctx, subscription.ID)
+	require.NoError(t, err)
+	require.Equal(t, int64(3), current.TermVersion)
 }
 
 func (s *UserSubscriptionRepoSuite) mustCreateUser(email string, role string) *service.User {

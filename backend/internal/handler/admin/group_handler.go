@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"math"
 	"strconv"
 	"strings"
 
@@ -41,6 +42,9 @@ func (f *optionalLimitField) UnmarshalJSON(data []byte) error {
 
 	var number float64
 	if err := json.Unmarshal(trimmed, &number); err == nil {
+		if math.IsNaN(number) || math.IsInf(number, 0) {
+			return fmt.Errorf("limit value must be finite")
+		}
 		f.value = &number
 		return nil
 	}
@@ -56,6 +60,9 @@ func (f *optionalLimitField) UnmarshalJSON(data []byte) error {
 		if err != nil {
 			return fmt.Errorf("invalid numeric limit value %q: %w", text, err)
 		}
+		if math.IsNaN(number) || math.IsInf(number, 0) {
+			return fmt.Errorf("limit value must be finite")
+		}
 		f.value = &number
 		return nil
 	}
@@ -64,14 +71,14 @@ func (f *optionalLimitField) UnmarshalJSON(data []byte) error {
 }
 
 func (f optionalLimitField) ToServiceInput() *float64 {
-	if !f.set {
-		return nil
-	}
-	if f.value != nil {
-		return f.value
-	}
-	zero := 0.0
-	return &zero
+	// JSON null (including an empty input normalized by the frontend) means an
+	// unlimited quota. Keep the nil through to normalizeLimit instead of
+	// turning it into zero, which means no quota is available.
+	return f.value
+}
+
+func (f optionalLimitField) IsSet() bool {
+	return f.set
 }
 
 // NewGroupHandler creates a new admin group handler
@@ -85,15 +92,17 @@ func NewGroupHandler(adminService service.AdminService, dashboardService *servic
 
 // CreateGroupRequest represents create group request
 type CreateGroupRequest struct {
-	Name             string             `json:"name" binding:"required"`
-	Description      string             `json:"description"`
-	Platform         string             `json:"platform" binding:"omitempty,oneof=anthropic openai gemini antigravity grok composite"`
-	RateMultiplier   float64            `json:"rate_multiplier"`
-	IsExclusive      bool               `json:"is_exclusive"`
-	SubscriptionType string             `json:"subscription_type" binding:"omitempty,oneof=standard subscription"`
-	DailyLimitUSD    optionalLimitField `json:"daily_limit_usd"`
-	WeeklyLimitUSD   optionalLimitField `json:"weekly_limit_usd"`
-	MonthlyLimitUSD  optionalLimitField `json:"monthly_limit_usd"`
+	Name                       string             `json:"name" binding:"required"`
+	Description                string             `json:"description"`
+	Platform                   string             `json:"platform" binding:"omitempty,oneof=anthropic openai gemini antigravity grok composite"`
+	RateMultiplier             float64            `json:"rate_multiplier"`
+	IsExclusive                bool               `json:"is_exclusive"`
+	SubscriptionType           string             `json:"subscription_type" binding:"omitempty,oneof=standard subscription"`
+	SubscriptionQuotaResetMode string             `json:"subscription_quota_reset_mode" binding:"omitempty,oneof=rolling until_subscription_expires"`
+	SubscriptionTotalLimitUSD  optionalLimitField `json:"subscription_total_limit_usd"`
+	DailyLimitUSD              optionalLimitField `json:"daily_limit_usd"`
+	WeeklyLimitUSD             optionalLimitField `json:"weekly_limit_usd"`
+	MonthlyLimitUSD            optionalLimitField `json:"monthly_limit_usd"`
 	// 图片生成计费配置（antigravity 和 gemini 平台使用，负数表示清除配置）
 	AllowImageGeneration            bool     `json:"allow_image_generation"`
 	AllowBatchImageGeneration       bool     `json:"allow_batch_image_generation"`
@@ -142,16 +151,18 @@ type CreateGroupRequest struct {
 
 // UpdateGroupRequest represents update group request
 type UpdateGroupRequest struct {
-	Name             string             `json:"name"`
-	Description      *string            `json:"description"`
-	Platform         string             `json:"platform" binding:"omitempty,oneof=anthropic openai gemini antigravity grok composite"`
-	RateMultiplier   *float64           `json:"rate_multiplier"`
-	IsExclusive      *bool              `json:"is_exclusive"`
-	Status           string             `json:"status" binding:"omitempty,oneof=active inactive"`
-	SubscriptionType string             `json:"subscription_type" binding:"omitempty,oneof=standard subscription"`
-	DailyLimitUSD    optionalLimitField `json:"daily_limit_usd"`
-	WeeklyLimitUSD   optionalLimitField `json:"weekly_limit_usd"`
-	MonthlyLimitUSD  optionalLimitField `json:"monthly_limit_usd"`
+	Name                       string             `json:"name"`
+	Description                *string            `json:"description"`
+	Platform                   string             `json:"platform" binding:"omitempty,oneof=anthropic openai gemini antigravity grok composite"`
+	RateMultiplier             *float64           `json:"rate_multiplier"`
+	IsExclusive                *bool              `json:"is_exclusive"`
+	Status                     string             `json:"status" binding:"omitempty,oneof=active inactive"`
+	SubscriptionType           string             `json:"subscription_type" binding:"omitempty,oneof=standard subscription"`
+	SubscriptionQuotaResetMode string             `json:"subscription_quota_reset_mode" binding:"omitempty,oneof=rolling until_subscription_expires"`
+	SubscriptionTotalLimitUSD  optionalLimitField `json:"subscription_total_limit_usd"`
+	DailyLimitUSD              optionalLimitField `json:"daily_limit_usd"`
+	WeeklyLimitUSD             optionalLimitField `json:"weekly_limit_usd"`
+	MonthlyLimitUSD            optionalLimitField `json:"monthly_limit_usd"`
 	// 图片生成计费配置（antigravity 和 gemini 平台使用，负数表示清除配置）
 	AllowImageGeneration            *bool    `json:"allow_image_generation"`
 	AllowBatchImageGeneration       *bool    `json:"allow_batch_image_generation"`
@@ -469,6 +480,8 @@ func (h *GroupHandler) Create(c *gin.Context) {
 		RateMultiplier:                  req.RateMultiplier,
 		IsExclusive:                     req.IsExclusive,
 		SubscriptionType:                req.SubscriptionType,
+		SubscriptionQuotaResetMode:      req.SubscriptionQuotaResetMode,
+		SubscriptionTotalLimitUSD:       req.SubscriptionTotalLimitUSD.ToServiceInput(),
 		DailyLimitUSD:                   req.DailyLimitUSD.ToServiceInput(),
 		WeeklyLimitUSD:                  req.WeeklyLimitUSD.ToServiceInput(),
 		MonthlyLimitUSD:                 req.MonthlyLimitUSD.ToServiceInput(),
@@ -587,9 +600,15 @@ func (h *GroupHandler) Update(c *gin.Context) {
 		IsExclusive:                     req.IsExclusive,
 		Status:                          req.Status,
 		SubscriptionType:                req.SubscriptionType,
+		SubscriptionQuotaResetMode:      req.SubscriptionQuotaResetMode,
+		SubscriptionTotalLimitUSD:       req.SubscriptionTotalLimitUSD.ToServiceInput(),
+		SubscriptionTotalLimitUSDSet:    req.SubscriptionTotalLimitUSD.IsSet(),
 		DailyLimitUSD:                   req.DailyLimitUSD.ToServiceInput(),
+		DailyLimitUSDSet:                req.DailyLimitUSD.IsSet(),
 		WeeklyLimitUSD:                  req.WeeklyLimitUSD.ToServiceInput(),
+		WeeklyLimitUSDSet:               req.WeeklyLimitUSD.IsSet(),
 		MonthlyLimitUSD:                 req.MonthlyLimitUSD.ToServiceInput(),
+		MonthlyLimitUSDSet:              req.MonthlyLimitUSD.IsSet(),
 		AllowImageGeneration:            req.AllowImageGeneration,
 		AllowBatchImageGeneration:       req.AllowBatchImageGeneration,
 		ImageRateIndependent:            req.ImageRateIndependent,

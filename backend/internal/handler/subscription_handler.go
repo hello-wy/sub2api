@@ -21,6 +21,8 @@ type SubscriptionSummaryItem struct {
 	WeeklyLimitUSD  float64 `json:"weekly_limit_usd,omitempty"`
 	MonthlyUsedUSD  float64 `json:"monthly_used_usd,omitempty"`
 	MonthlyLimitUSD float64 `json:"monthly_limit_usd,omitempty"`
+	TotalUsedUSD    float64 `json:"total_used_usd,omitempty"`
+	TotalLimitUSD   float64 `json:"total_limit_usd,omitempty"`
 	ExpiresAt       *string `json:"expires_at,omitempty"`
 }
 
@@ -146,6 +148,7 @@ func (h *SubscriptionHandler) GetSummary(c *gin.Context) {
 			DailyUsedUSD:   sub.DailyUsageUSD,
 			WeeklyUsedUSD:  sub.WeeklyUsageUSD,
 			MonthlyUsedUSD: sub.MonthlyUsageUSD,
+			TotalUsedUSD:   sub.TotalUsageUSD,
 		}
 
 		// Add group info if preloaded
@@ -159,6 +162,9 @@ func (h *SubscriptionHandler) GetSummary(c *gin.Context) {
 			}
 			if sub.Group.MonthlyLimitUSD != nil {
 				item.MonthlyLimitUSD = *sub.Group.MonthlyLimitUSD
+			}
+			if sub.Group.SubscriptionTotalLimitUSD != nil {
+				item.TotalLimitUSD = *sub.Group.SubscriptionTotalLimitUSD
 			}
 		}
 
