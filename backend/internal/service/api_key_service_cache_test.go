@@ -317,7 +317,7 @@ func TestAPIKeyService_SnapshotRoundTrip_PreservesReasoningEffortPolicy(t *testi
 	require.Equal(t, apiKey.Group.ReasoningEffortMappings, roundTrip.Group.ReasoningEffortMappings)
 }
 
-func TestAPIKeyService_GetByKey_IgnoresV17AuthCacheSnapshotWithoutLifetimeQuotaFields(t *testing.T) {
+func TestAPIKeyService_GetByKey_IgnoresV16AuthCacheSnapshotWithoutLifetimeQuotaFields(t *testing.T) {
 	cache := &authCacheStub{}
 	var repoCalls int32
 	repo := &authRepoStub{
@@ -364,7 +364,7 @@ func TestAPIKeyService_GetByKey_IgnoresV17AuthCacheSnapshotWithoutLifetimeQuotaF
 	cache.getAuthCache = func(ctx context.Context, key string) (*APIKeyAuthCacheEntry, error) {
 		return &APIKeyAuthCacheEntry{
 			Snapshot: &APIKeyAuthSnapshot{
-				Version:  17,
+				Version:  16,
 				APIKeyID: 1,
 				UserID:   2,
 				GroupID:  &groupID,
