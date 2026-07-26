@@ -178,13 +178,27 @@
               >
                 <div
                   v-if="
-                    row.daily_limit_usd ||
-                    row.weekly_limit_usd ||
-                    row.monthly_limit_usd
+                    row.subscription_quota_reset_mode === 'until_subscription_expires' &&
+                    row.subscription_total_limit_usd != null
                   "
                   class="flex flex-wrap items-center gap-x-1 gap-y-0.5"
                 >
-                  <span v-if="row.daily_limit_usd" class="whitespace-nowrap">
+                  <span class="whitespace-nowrap">
+                    <span class="font-medium text-gray-600 dark:text-gray-300">{{
+                      t("admin.groups.subscription.total")
+                    }}</span>
+                    <span class="ml-1">{{ formatUsd(row.subscription_total_limit_usd) }}</span>
+                  </span>
+                </div>
+                <div
+                  v-else-if="
+                    row.daily_limit_usd != null ||
+                    row.weekly_limit_usd != null ||
+                    row.monthly_limit_usd != null
+                  "
+                  class="flex flex-wrap items-center gap-x-1 gap-y-0.5"
+                >
+                  <span v-if="row.daily_limit_usd != null" class="whitespace-nowrap">
                     <span
                       v-if="usageLoading"
                       class="font-medium text-gray-400 dark:text-gray-500"
@@ -210,23 +224,23 @@
                   </span>
                   <span
                     v-if="
-                      row.daily_limit_usd &&
-                      (row.weekly_limit_usd || row.monthly_limit_usd)
+                      row.daily_limit_usd != null &&
+                      (row.weekly_limit_usd != null || row.monthly_limit_usd != null)
                     "
                     class="mx-1 text-gray-300 dark:text-gray-600"
                     >·</span
                   >
-                  <span v-if="row.weekly_limit_usd" class="whitespace-nowrap"
+                  <span v-if="row.weekly_limit_usd != null" class="whitespace-nowrap"
                     >{{ formatUsd(row.weekly_limit_usd) }}/{{
                       t("admin.groups.limitWeek")
                     }}</span
                   >
                   <span
-                    v-if="row.weekly_limit_usd && row.monthly_limit_usd"
+                    v-if="row.weekly_limit_usd != null && row.monthly_limit_usd != null"
                     class="mx-1 text-gray-300 dark:text-gray-600"
                     >·</span
                   >
-                  <span v-if="row.monthly_limit_usd" class="whitespace-nowrap"
+                  <span v-if="row.monthly_limit_usd != null" class="whitespace-nowrap"
                     >{{ formatUsd(row.monthly_limit_usd) }}/{{
                       t("admin.groups.limitMonth")
                     }}</span
@@ -713,6 +727,27 @@
             class="space-y-4 border-l-2 border-primary-200 pl-4 dark:border-primary-800"
           >
             <div>
+              <label class="input-label">{{ t("admin.groups.subscription.quotaResetMode") }}</label>
+              <Select
+                v-model="createForm.subscription_quota_reset_mode"
+                :options="subscriptionQuotaResetModeOptions"
+              />
+              <p class="input-hint">{{ t("admin.groups.subscription.quotaResetHint") }}</p>
+            </div>
+            <div v-if="createForm.subscription_quota_reset_mode === 'until_subscription_expires'">
+              <label class="input-label">{{ t("admin.groups.subscription.totalLimit") }}</label>
+              <input
+                v-model.number="createForm.subscription_total_limit_usd"
+                type="number"
+                step="0.01"
+                min="0"
+                class="input"
+                :placeholder="t('admin.groups.subscription.noLimit')"
+              />
+              <p class="input-hint">{{ t("admin.groups.subscription.totalLimitHint") }}</p>
+            </div>
+            <template v-else>
+              <div>
               <label class="input-label">{{
                 t("admin.groups.subscription.dailyLimit")
               }}</label>
@@ -724,8 +759,8 @@
                 class="input"
                 :placeholder="t('admin.groups.subscription.noLimit')"
               />
-            </div>
-            <div>
+              </div>
+              <div>
               <label class="input-label">{{
                 t("admin.groups.subscription.weeklyLimit")
               }}</label>
@@ -751,6 +786,7 @@
                 :placeholder="t('admin.groups.subscription.noLimit')"
               />
             </div>
+            </template>
           </div>
         </div>
 
@@ -2235,6 +2271,27 @@
             class="space-y-4 border-l-2 border-primary-200 pl-4 dark:border-primary-800"
           >
             <div>
+              <label class="input-label">{{ t("admin.groups.subscription.quotaResetMode") }}</label>
+              <Select
+                v-model="editForm.subscription_quota_reset_mode"
+                :options="subscriptionQuotaResetModeOptions"
+              />
+              <p class="input-hint">{{ t("admin.groups.subscription.quotaResetHint") }}</p>
+            </div>
+            <div v-if="editForm.subscription_quota_reset_mode === 'until_subscription_expires'">
+              <label class="input-label">{{ t("admin.groups.subscription.totalLimit") }}</label>
+              <input
+                v-model.number="editForm.subscription_total_limit_usd"
+                type="number"
+                step="0.01"
+                min="0"
+                class="input"
+                :placeholder="t('admin.groups.subscription.noLimit')"
+              />
+              <p class="input-hint">{{ t("admin.groups.subscription.totalLimitHint") }}</p>
+            </div>
+            <template v-else>
+            <div>
               <label class="input-label">{{
                 t("admin.groups.subscription.dailyLimit")
               }}</label>
@@ -2273,6 +2330,7 @@
                 :placeholder="t('admin.groups.subscription.noLimit')"
               />
             </div>
+            </template>
           </div>
         </div>
 
@@ -3976,6 +4034,7 @@ import type {
   CompositeRouteEndpoint,
   CompositeRouteMatchType,
   GroupPlatform,
+  SubscriptionQuotaResetMode,
   SubscriptionType,
 } from "@/types";
 import type { Column } from "@/components/common/types";
@@ -4278,6 +4337,14 @@ const subscriptionTypeOptions = computed(() => [
   { value: "subscription", label: t("admin.groups.subscription.subscription") },
 ]);
 
+const subscriptionQuotaResetModeOptions = computed(() => [
+  { value: "rolling", label: t("admin.groups.subscription.quotaResetRolling") },
+  {
+    value: "until_subscription_expires",
+    label: t("admin.groups.subscription.quotaResetUntilExpiry"),
+  },
+]);
+
 // 降级分组选项（创建时）- 仅包含 anthropic 平台且未启用 claude_code_only 的分组
 const fallbackGroupOptions = computed(() => {
   const options: { value: number | null; label: string }[] = [
@@ -4503,6 +4570,8 @@ const createForm = reactive({
   rate_multiplier: 1.0,
   is_exclusive: false,
   subscription_type: "standard" as SubscriptionType,
+  subscription_quota_reset_mode: "rolling" as SubscriptionQuotaResetMode,
+  subscription_total_limit_usd: null as number | null,
   daily_limit_usd: null as number | null,
   weekly_limit_usd: null as number | null,
   monthly_limit_usd: null as number | null,
@@ -4852,6 +4921,8 @@ const editForm = reactive({
   is_exclusive: false,
   status: "active" as "active" | "inactive",
   subscription_type: "standard" as SubscriptionType,
+  subscription_quota_reset_mode: "rolling" as SubscriptionQuotaResetMode,
+  subscription_total_limit_usd: null as number | null,
   daily_limit_usd: null as number | null,
   weekly_limit_usd: null as number | null,
   monthly_limit_usd: null as number | null,
@@ -5147,7 +5218,10 @@ const getQuotaUsageClass = (
   used: number,
   limit: number | null | undefined,
 ): string => {
-  if (!limit || limit <= 0) {
+  if (limit === 0) {
+    return "font-semibold text-red-600 dark:text-red-400";
+  }
+  if (limit == null || limit < 0) {
     return "font-medium text-gray-700 dark:text-gray-300";
   }
   const ratio = used / limit;
@@ -5261,6 +5335,8 @@ const closeCreateModal = () => {
   createForm.rate_multiplier = 1.0;
   createForm.is_exclusive = false;
   createForm.subscription_type = "standard";
+  createForm.subscription_quota_reset_mode = "rolling";
+  createForm.subscription_total_limit_usd = null;
   createForm.daily_limit_usd = null;
   createForm.weekly_limit_usd = null;
   createForm.monthly_limit_usd = null;
@@ -5346,6 +5422,9 @@ const handleCreateGroup = async () => {
     // 构建请求数据，包含模型路由配置
     const requestData = {
       ...createForm,
+      subscription_total_limit_usd: normalizeOptionalLimit(
+        createForm.subscription_total_limit_usd as number | string | null,
+      ),
       daily_limit_usd: normalizeOptionalLimit(
         createForm.daily_limit_usd as number | string | null,
       ),
@@ -5382,6 +5461,13 @@ const handleCreateGroup = async () => {
     requestData.daily_limit_usd = emptyToNull(requestData.daily_limit_usd);
     requestData.weekly_limit_usd = emptyToNull(requestData.weekly_limit_usd);
     requestData.monthly_limit_usd = emptyToNull(requestData.monthly_limit_usd);
+    if (requestData.subscription_quota_reset_mode === "until_subscription_expires") {
+      requestData.daily_limit_usd = null;
+      requestData.weekly_limit_usd = null;
+      requestData.monthly_limit_usd = null;
+    } else {
+      requestData.subscription_total_limit_usd = null;
+    }
     requestData.image_rate_multiplier = normalizeRateMultiplier(
       requestData.image_rate_multiplier,
     );
@@ -5440,6 +5526,9 @@ const handleEdit = async (group: AdminGroup) => {
   editForm.is_exclusive = group.is_exclusive;
   editForm.status = group.status;
   editForm.subscription_type = group.subscription_type || "standard";
+  editForm.subscription_quota_reset_mode =
+    group.subscription_quota_reset_mode || "rolling";
+  editForm.subscription_total_limit_usd = group.subscription_total_limit_usd ?? null;
   editForm.daily_limit_usd = group.daily_limit_usd;
   editForm.weekly_limit_usd = group.weekly_limit_usd;
   editForm.monthly_limit_usd = group.monthly_limit_usd;
@@ -5552,6 +5641,9 @@ const handleUpdateGroup = async () => {
     // 转换 fallback_group_id: null -> 0 (后端使用 0 表示清除)
     const payload = {
       ...editForm,
+      subscription_total_limit_usd: normalizeOptionalLimit(
+        editForm.subscription_total_limit_usd as number | string | null,
+      ),
       daily_limit_usd: normalizeOptionalLimit(
         editForm.daily_limit_usd as number | string | null,
       ),
@@ -5594,6 +5686,13 @@ const handleUpdateGroup = async () => {
     payload.daily_limit_usd = emptyToNull(payload.daily_limit_usd);
     payload.weekly_limit_usd = emptyToNull(payload.weekly_limit_usd);
     payload.monthly_limit_usd = emptyToNull(payload.monthly_limit_usd);
+    if (payload.subscription_quota_reset_mode === "until_subscription_expires") {
+      payload.daily_limit_usd = null;
+      payload.weekly_limit_usd = null;
+      payload.monthly_limit_usd = null;
+    } else {
+      payload.subscription_total_limit_usd = null;
+    }
     payload.image_rate_multiplier = normalizeRateMultiplier(
       payload.image_rate_multiplier,
     );
@@ -5626,10 +5725,14 @@ const handleUpdateGroup = async () => {
     payload.peak_rate_multiplier = normalizeRateMultiplier(
       editForm.peak_rate_multiplier,
     );
-    await adminAPI.groups.update(editingGroup.value.id, payload);
+    const updatedGroup = await adminAPI.groups.update(editingGroup.value.id, payload);
+    const index = groups.value.findIndex((group) => group.id === updatedGroup.id);
+    if (index !== -1) {
+      groups.value[index] = updatedGroup;
+    }
     appStore.showSuccess(t("admin.groups.groupUpdated"));
     closeEditModal();
-    loadGroups();
+    await loadGroups();
   } catch (error: any) {
     appStore.showError(
       error.response?.data?.detail || t("admin.groups.failedToUpdate"),

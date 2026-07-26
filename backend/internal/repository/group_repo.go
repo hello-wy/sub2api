@@ -56,6 +56,9 @@ func createGroupRecord(ctx context.Context, client *dbent.Client, groupIn *servi
 	if groupIn == nil {
 		return errors.New("group is nil")
 	}
+	if err := normalizeGroupSubscriptionQuotaResetMode(groupIn); err != nil {
+		return err
+	}
 	builder := client.Group.Create().
 		SetName(groupIn.Name).
 		SetDescription(groupIn.Description).
@@ -65,6 +68,8 @@ func createGroupRecord(ctx context.Context, client *dbent.Client, groupIn *servi
 		SetIsExclusive(groupIn.IsExclusive).
 		SetStatus(groupIn.Status).
 		SetSubscriptionType(groupIn.SubscriptionType).
+		SetSubscriptionQuotaResetMode(groupIn.SubscriptionQuotaResetMode).
+		SetNillableSubscriptionTotalLimitUsd(groupIn.SubscriptionTotalLimitUSD).
 		SetNillableDailyLimitUsd(groupIn.DailyLimitUSD).
 		SetNillableWeeklyLimitUsd(groupIn.WeeklyLimitUSD).
 		SetNillableMonthlyLimitUsd(groupIn.MonthlyLimitUSD).
@@ -225,6 +230,12 @@ func (r *groupRepository) GetByIDLite(ctx context.Context, id int64) (*service.G
 }
 
 func (r *groupRepository) Update(ctx context.Context, groupIn *service.Group) error {
+	if groupIn == nil {
+		return errors.New("group is nil")
+	}
+	if err := normalizeGroupSubscriptionQuotaResetMode(groupIn); err != nil {
+		return err
+	}
 	builder := r.client.Group.UpdateOneID(groupIn.ID).
 		SetName(groupIn.Name).
 		SetDescription(groupIn.Description).
@@ -233,6 +244,8 @@ func (r *groupRepository) Update(ctx context.Context, groupIn *service.Group) er
 		SetIsExclusive(groupIn.IsExclusive).
 		SetStatus(groupIn.Status).
 		SetSubscriptionType(groupIn.SubscriptionType).
+		SetSubscriptionQuotaResetMode(groupIn.SubscriptionQuotaResetMode).
+		SetNillableSubscriptionTotalLimitUsd(groupIn.SubscriptionTotalLimitUSD).
 		SetNillableDailyLimitUsd(groupIn.DailyLimitUSD).
 		SetNillableWeeklyLimitUsd(groupIn.WeeklyLimitUSD).
 		SetNillableMonthlyLimitUsd(groupIn.MonthlyLimitUSD).
@@ -269,6 +282,11 @@ func (r *groupRepository) Update(ctx context.Context, groupIn *service.Group) er
 		SetPeakRateMultiplier(groupIn.PeakRateMultiplier)
 
 	// 显式处理可空字段：nil 需要 clear，非 nil 需要 set。
+	if groupIn.SubscriptionTotalLimitUSD != nil {
+		builder = builder.SetSubscriptionTotalLimitUsd(*groupIn.SubscriptionTotalLimitUSD)
+	} else {
+		builder = builder.ClearSubscriptionTotalLimitUsd()
+	}
 	if groupIn.DailyLimitUSD != nil {
 		builder = builder.SetDailyLimitUsd(*groupIn.DailyLimitUSD)
 	} else {
@@ -351,6 +369,19 @@ func (r *groupRepository) Update(ctx context.Context, groupIn *service.Group) er
 	if err := enqueueSchedulerOutbox(ctx, r.sql, service.SchedulerOutboxEventGroupChanged, nil, &groupIn.ID, nil); err != nil {
 		logger.LegacyPrintf("repository.group", "[SchedulerOutbox] enqueue group update failed: group=%d err=%v", groupIn.ID, err)
 	}
+	return nil
+}
+
+func normalizeGroupSubscriptionQuotaResetMode(groupIn *service.Group) error {
+	mode, err := service.NormalizeSubscriptionQuotaResetMode(
+		groupIn.SubscriptionType,
+		groupIn.SubscriptionQuotaResetMode,
+	)
+	if err != nil {
+		return err
+	}
+	groupIn.SubscriptionQuotaResetMode = mode
+	groupIn.NormalizeSubscriptionQuotaLimits()
 	return nil
 }
 

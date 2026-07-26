@@ -32,12 +32,14 @@ func (r *userSubscriptionRepository) Create(ctx context.Context, sub *service.Us
 		SetUserID(sub.UserID).
 		SetGroupID(sub.GroupID).
 		SetExpiresAt(sub.ExpiresAt).
+		SetTermVersion(normalizeSubscriptionTermVersion(sub.TermVersion)).
 		SetNillableDailyWindowStart(sub.DailyWindowStart).
 		SetNillableWeeklyWindowStart(sub.WeeklyWindowStart).
 		SetNillableMonthlyWindowStart(sub.MonthlyWindowStart).
 		SetDailyUsageUsd(sub.DailyUsageUSD).
 		SetWeeklyUsageUsd(sub.WeeklyUsageUSD).
 		SetMonthlyUsageUsd(sub.MonthlyUsageUSD).
+		SetTotalUsageUsd(sub.TotalUsageUSD).
 		SetNillableAssignedBy(sub.AssignedBy)
 
 	if sub.StartsAt.IsZero() {
@@ -68,6 +70,24 @@ func (r *userSubscriptionRepository) GetByID(ctx context.Context, id int64) (*se
 		WithUser().
 		WithGroup().
 		WithAssignedByUser().
+		Only(ctx)
+	if err != nil {
+		return nil, translatePersistenceError(err, service.ErrSubscriptionNotFound, nil)
+	}
+	return userSubscriptionEntityToService(m), nil
+}
+
+// GetByIDForUpdate returns the latest subscription state while holding its row
+// lock for the surrounding transaction. Subscription term replacement uses it
+// to keep term_version monotonic across concurrent renewals.
+func (r *userSubscriptionRepository) GetByIDForUpdate(ctx context.Context, id int64) (*service.UserSubscription, error) {
+	client := clientFromContext(ctx, r.client)
+	m, err := client.UserSubscription.Query().
+		Where(usersubscription.IDEQ(id)).
+		WithUser().
+		WithGroup().
+		WithAssignedByUser().
+		ForUpdate().
 		Only(ctx)
 	if err != nil {
 		return nil, translatePersistenceError(err, service.ErrSubscriptionNotFound, nil)
@@ -131,12 +151,14 @@ func (r *userSubscriptionRepository) Update(ctx context.Context, sub *service.Us
 		SetStartsAt(sub.StartsAt).
 		SetExpiresAt(sub.ExpiresAt).
 		SetStatus(sub.Status).
+		SetTermVersion(normalizeSubscriptionTermVersion(sub.TermVersion)).
 		SetNillableDailyWindowStart(sub.DailyWindowStart).
 		SetNillableWeeklyWindowStart(sub.WeeklyWindowStart).
 		SetNillableMonthlyWindowStart(sub.MonthlyWindowStart).
 		SetDailyUsageUsd(sub.DailyUsageUSD).
 		SetWeeklyUsageUsd(sub.WeeklyUsageUSD).
 		SetMonthlyUsageUsd(sub.MonthlyUsageUSD).
+		SetTotalUsageUsd(sub.TotalUsageUSD).
 		SetNillableAssignedBy(sub.AssignedBy).
 		SetAssignedAt(sub.AssignedAt).
 		SetNotes(sub.Notes)
@@ -457,6 +479,7 @@ func (r *userSubscriptionRepository) IncrementUsage(ctx context.Context, id int6
 			daily_usage_usd = us.daily_usage_usd + $1,
 			weekly_usage_usd = us.weekly_usage_usd + $1,
 			monthly_usage_usd = us.monthly_usage_usd + $1,
+			total_usage_usd = us.total_usage_usd + $1,
 			updated_at = NOW()
 		FROM groups g
 		WHERE us.id = $2
@@ -629,12 +652,14 @@ func userSubscriptionEntityToServiceWithStatusMapping(m *dbent.UserSubscription,
 		StartsAt:           m.StartsAt,
 		ExpiresAt:          m.ExpiresAt,
 		Status:             status,
+		TermVersion:        m.TermVersion,
 		DailyWindowStart:   m.DailyWindowStart,
 		WeeklyWindowStart:  m.WeeklyWindowStart,
 		MonthlyWindowStart: m.MonthlyWindowStart,
 		DailyUsageUSD:      m.DailyUsageUsd,
 		WeeklyUsageUSD:     m.WeeklyUsageUsd,
 		MonthlyUsageUSD:    m.MonthlyUsageUsd,
+		TotalUsageUSD:      m.TotalUsageUsd,
 		AssignedBy:         m.AssignedBy,
 		AssignedAt:         m.AssignedAt,
 		Notes:              derefString(m.Notes),
@@ -652,6 +677,13 @@ func userSubscriptionEntityToServiceWithStatusMapping(m *dbent.UserSubscription,
 		out.AssignedByUser = userEntityToService(m.Edges.AssignedByUser)
 	}
 	return out
+}
+
+func normalizeSubscriptionTermVersion(version int64) int64 {
+	if version < 1 {
+		return 1
+	}
+	return version
 }
 
 func userSubscriptionEntitiesToService(models []*dbent.UserSubscription) []service.UserSubscription {

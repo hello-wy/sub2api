@@ -317,7 +317,7 @@ func TestAPIKeyService_SnapshotRoundTrip_PreservesReasoningEffortPolicy(t *testi
 	require.Equal(t, apiKey.Group.ReasoningEffortMappings, roundTrip.Group.ReasoningEffortMappings)
 }
 
-func TestAPIKeyService_GetByKey_IgnoresLegacyAuthCacheSnapshotWithoutMessagesDispatchConfig(t *testing.T) {
+func TestAPIKeyService_GetByKey_IgnoresV17AuthCacheSnapshotWithoutLifetimeQuotaFields(t *testing.T) {
 	cache := &authCacheStub{}
 	var repoCalls int32
 	repo := &authRepoStub{
@@ -364,6 +364,7 @@ func TestAPIKeyService_GetByKey_IgnoresLegacyAuthCacheSnapshotWithoutMessagesDis
 	cache.getAuthCache = func(ctx context.Context, key string) (*APIKeyAuthCacheEntry, error) {
 		return &APIKeyAuthCacheEntry{
 			Snapshot: &APIKeyAuthSnapshot{
+				Version:  17,
 				APIKeyID: 1,
 				UserID:   2,
 				GroupID:  &groupID,
@@ -392,6 +393,7 @@ func TestAPIKeyService_GetByKey_IgnoresLegacyAuthCacheSnapshotWithoutMessagesDis
 	apiKey, err := svc.GetByKey(context.Background(), "k-legacy")
 	require.NoError(t, err)
 	require.Equal(t, int32(1), atomic.LoadInt32(&repoCalls))
+	require.Len(t, cache.setAuthKeys, 1)
 	require.NotNil(t, apiKey.Group)
 	require.Equal(t, "gpt-5.4-nano", apiKey.Group.MessagesDispatchModelConfig.OpusMappedModel)
 }

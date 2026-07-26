@@ -26,20 +26,21 @@ var MaxExpiresAt = time.Date(2099, 12, 31, 23, 59, 59, 0, time.UTC)
 const MaxValidityDays = 36500
 
 var (
-	ErrSubscriptionNotFound        = infraerrors.NotFound("SUBSCRIPTION_NOT_FOUND", "subscription not found")
-	ErrSubscriptionExpired         = infraerrors.Forbidden("SUBSCRIPTION_EXPIRED", "subscription has expired")
-	ErrSubscriptionSuspended       = infraerrors.Forbidden("SUBSCRIPTION_SUSPENDED", "subscription is suspended")
-	ErrSubscriptionAlreadyExists   = infraerrors.Conflict("SUBSCRIPTION_ALREADY_EXISTS", "subscription already exists for this user and group")
-	ErrSubscriptionAssignConflict  = infraerrors.Conflict("SUBSCRIPTION_ASSIGN_CONFLICT", "subscription exists but request conflicts with existing assignment semantics")
-	ErrSubscriptionNotRevoked      = infraerrors.Conflict("SUBSCRIPTION_NOT_REVOKED", "subscription is not revoked")
-	ErrSubscriptionRestoreConflict = infraerrors.Conflict("SUBSCRIPTION_RESTORE_CONFLICT", "subscription already exists for this user and group")
-	ErrGroupNotSubscriptionType    = infraerrors.BadRequest("GROUP_NOT_SUBSCRIPTION_TYPE", "group is not a subscription type")
-	ErrInvalidInput                = infraerrors.BadRequest("INVALID_INPUT", "at least one of resetDaily, resetWeekly, or resetMonthly must be true")
-	ErrDailyLimitExceeded          = infraerrors.TooManyRequests("DAILY_LIMIT_EXCEEDED", "daily usage limit exceeded")
-	ErrWeeklyLimitExceeded         = infraerrors.TooManyRequests("WEEKLY_LIMIT_EXCEEDED", "weekly usage limit exceeded")
-	ErrMonthlyLimitExceeded        = infraerrors.TooManyRequests("MONTHLY_LIMIT_EXCEEDED", "monthly usage limit exceeded")
-	ErrSubscriptionNilInput        = infraerrors.BadRequest("SUBSCRIPTION_NIL_INPUT", "subscription input cannot be nil")
-	ErrAdjustWouldExpire           = infraerrors.BadRequest("ADJUST_WOULD_EXPIRE", "adjustment would result in expired subscription (remaining days must be > 0)")
+	ErrSubscriptionNotFound           = infraerrors.NotFound("SUBSCRIPTION_NOT_FOUND", "subscription not found")
+	ErrSubscriptionExpired            = infraerrors.Forbidden("SUBSCRIPTION_EXPIRED", "subscription has expired")
+	ErrSubscriptionSuspended          = infraerrors.Forbidden("SUBSCRIPTION_SUSPENDED", "subscription is suspended")
+	ErrSubscriptionAlreadyExists      = infraerrors.Conflict("SUBSCRIPTION_ALREADY_EXISTS", "subscription already exists for this user and group")
+	ErrSubscriptionAssignConflict     = infraerrors.Conflict("SUBSCRIPTION_ASSIGN_CONFLICT", "subscription exists but request conflicts with existing assignment semantics")
+	ErrSubscriptionNotRevoked         = infraerrors.Conflict("SUBSCRIPTION_NOT_REVOKED", "subscription is not revoked")
+	ErrSubscriptionRestoreConflict    = infraerrors.Conflict("SUBSCRIPTION_RESTORE_CONFLICT", "subscription already exists for this user and group")
+	ErrGroupNotSubscriptionType       = infraerrors.BadRequest("GROUP_NOT_SUBSCRIPTION_TYPE", "group is not a subscription type")
+	ErrInvalidInput                   = infraerrors.BadRequest("INVALID_INPUT", "at least one of resetDaily, resetWeekly, or resetMonthly must be true")
+	ErrDailyLimitExceeded             = infraerrors.TooManyRequests("DAILY_LIMIT_EXCEEDED", "daily usage limit exceeded")
+	ErrWeeklyLimitExceeded            = infraerrors.TooManyRequests("WEEKLY_LIMIT_EXCEEDED", "weekly usage limit exceeded")
+	ErrMonthlyLimitExceeded           = infraerrors.TooManyRequests("MONTHLY_LIMIT_EXCEEDED", "monthly usage limit exceeded")
+	ErrSubscriptionTotalLimitExceeded = infraerrors.TooManyRequests("SUBSCRIPTION_TOTAL_LIMIT_EXCEEDED", "subscription total usage limit exceeded")
+	ErrSubscriptionNilInput           = infraerrors.BadRequest("SUBSCRIPTION_NIL_INPUT", "subscription input cannot be nil")
+	ErrAdjustWouldExpire              = infraerrors.BadRequest("ADJUST_WOULD_EXPIRE", "adjustment would result in expired subscription (remaining days must be > 0)")
 )
 
 // SubscriptionService 订阅服务
@@ -56,6 +57,10 @@ type SubscriptionService struct {
 	subCacheJitter int // 抖动百分比
 
 	maintenanceQueue *SubscriptionMaintenanceQueue
+}
+
+type subscriptionTermLocker interface {
+	GetByIDForUpdate(ctx context.Context, id int64) (*UserSubscription, error)
 }
 
 // NewSubscriptionService 创建订阅服务
@@ -206,12 +211,9 @@ func (s *SubscriptionService) AssignSubscription(ctx context.Context, input *Ass
 	return sub, nil
 }
 
-// AssignOrExtendSubscription 分配或续期订阅（用于兑换码等场景）
-// 如果用户已有同分组的订阅：
-//   - 未过期：从当前过期时间累加天数
-//   - 已过期：从当前时间开始计算新的过期时间，并激活订阅
-//
-// 如果没有订阅：创建新订阅
+// AssignOrExtendSubscription 分配或覆盖订阅（用于兑换码等场景）。
+// 如果用户已有同分组的订阅，无论是否过期，都从当前时间开启一个
+// 全新订阅周期并清零用量；新周期不会叠加到原过期时间之后。
 func (s *SubscriptionService) AssignOrExtendSubscription(ctx context.Context, input *AssignSubscriptionInput) (*UserSubscription, bool, error) {
 	return s.assignOrExtendSubscription(ctx, input, false)
 }
@@ -241,26 +243,17 @@ func (s *SubscriptionService) assignOrExtendSubscription(ctx context.Context, in
 		validityDays = MaxValidityDays
 	}
 
-	// 已有订阅，执行续期（在事务中完成所有更新）
+	// 已有订阅，直接覆盖为从当前时间开始的新周期。
 	if existingSub != nil {
 		now := time.Now()
-		var newExpiresAt time.Time
-
-		isExpired := !existingSub.ExpiresAt.After(now)
-		if !isExpired {
-			// 未过期：从当前过期时间累加
-			newExpiresAt = existingSub.ExpiresAt.AddDate(0, 0, validityDays)
-		} else {
-			// 已过期：从当前时间开始计算
-			newExpiresAt = now.AddDate(0, 0, validityDays)
-		}
+		newExpiresAt := now.AddDate(0, 0, validityDays)
 
 		// 确保不超过最大过期时间
 		if newExpiresAt.After(MaxExpiresAt) {
 			newExpiresAt = MaxExpiresAt
 		}
 
-		if err := s.updateExistingSubscriptionTerm(ctx, existingSub, input.Notes, now, newExpiresAt, isExpired); err != nil {
+		if err := s.updateExistingSubscriptionTerm(ctx, existingSub, input.Notes, now, newExpiresAt, true); err != nil {
 			return nil, false, err
 		}
 
@@ -326,6 +319,10 @@ func (s *SubscriptionService) replaceSubscriptionForPayment(ctx context.Context,
 	if existing == nil || errors.Is(err, ErrSubscriptionNotFound) {
 		return s.createSubscription(ctx, input)
 	}
+	existing, err = s.lockSubscriptionTerm(ctx, existing)
+	if err != nil {
+		return nil, fmt.Errorf("lock subscription term: %w", err)
+	}
 
 	replaced := renewedSubscriptionTerm(existing, input.Notes, now, expiresAt)
 	replaced.AssignedAt = now
@@ -348,13 +345,8 @@ func (s *SubscriptionService) maybeInvalidateAssignmentCaches(userID, groupID in
 		return
 	}
 
-	s.InvalidateSubCache(userID, groupID)
-	if s.billingCacheService != nil {
-		go func() {
-			cacheCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer cancel()
-			_ = s.billingCacheService.InvalidateSubscription(cacheCtx, userID, groupID)
-		}()
+	if err := s.invalidateSubscriptionCaches(userID, groupID); err != nil {
+		log.Printf("Failed to invalidate subscription caches after assignment: %v", err)
 	}
 }
 
@@ -368,7 +360,11 @@ func (s *SubscriptionService) updateExistingSubscriptionTerm(
 ) error {
 	return s.withSubscriptionUpdateTx(ctx, func(txCtx context.Context) error {
 		if isExpired {
-			renewed := renewedSubscriptionTerm(existingSub, notes, startsAt, newExpiresAt)
+			current, err := s.lockSubscriptionTerm(txCtx, existingSub)
+			if err != nil {
+				return fmt.Errorf("lock subscription term: %w", err)
+			}
+			renewed := renewedSubscriptionTerm(current, notes, startsAt, newExpiresAt)
 			if err := s.userSubRepo.Update(txCtx, renewed); err != nil {
 				return fmt.Errorf("renew expired subscription: %w", err)
 			}
@@ -398,6 +394,17 @@ func (s *SubscriptionService) updateExistingSubscriptionTerm(
 	})
 }
 
+func (s *SubscriptionService) lockSubscriptionTerm(ctx context.Context, fallback *UserSubscription) (*UserSubscription, error) {
+	if fallback == nil {
+		return nil, ErrSubscriptionNilInput
+	}
+	locker, ok := s.userSubRepo.(subscriptionTermLocker)
+	if !ok {
+		return fallback, nil
+	}
+	return locker.GetByIDForUpdate(ctx, fallback.ID)
+}
+
 func (s *SubscriptionService) withSubscriptionUpdateTx(ctx context.Context, fn func(context.Context) error) error {
 	if dbent.TxFromContext(ctx) != nil {
 		return fn(ctx)
@@ -425,16 +432,22 @@ func (s *SubscriptionService) withSubscriptionUpdateTx(ctx context.Context, fn f
 
 func renewedSubscriptionTerm(existingSub *UserSubscription, notes string, startsAt, expiresAt time.Time) *UserSubscription {
 	renewed := *existingSub
+	currentTermVersion := renewed.TermVersion
+	if currentTermVersion < 1 {
+		currentTermVersion = 1
+	}
 	windowStart := startOfDay(startsAt)
 	renewed.StartsAt = startsAt
 	renewed.ExpiresAt = expiresAt
 	renewed.Status = SubscriptionStatusActive
+	renewed.TermVersion = currentTermVersion + 1
 	renewed.DailyWindowStart = &windowStart
 	renewed.WeeklyWindowStart = &windowStart
 	renewed.MonthlyWindowStart = &windowStart
 	renewed.DailyUsageUSD = 0
 	renewed.WeeklyUsageUSD = 0
 	renewed.MonthlyUsageUSD = 0
+	renewed.TotalUsageUSD = 0
 	renewed.Notes = appendSubscriptionNotes(existingSub.Notes, notes)
 	return &renewed
 }
@@ -466,15 +479,16 @@ func (s *SubscriptionService) createSubscription(ctx context.Context, input *Ass
 	}
 
 	sub := &UserSubscription{
-		UserID:     input.UserID,
-		GroupID:    input.GroupID,
-		StartsAt:   now,
-		ExpiresAt:  expiresAt,
-		Status:     SubscriptionStatusActive,
-		AssignedAt: now,
-		Notes:      input.Notes,
-		CreatedAt:  now,
-		UpdatedAt:  now,
+		UserID:      input.UserID,
+		GroupID:     input.GroupID,
+		StartsAt:    now,
+		ExpiresAt:   expiresAt,
+		Status:      SubscriptionStatusActive,
+		TermVersion: 1,
+		AssignedAt:  now,
+		Notes:       input.Notes,
+		CreatedAt:   now,
+		UpdatedAt:   now,
 	}
 	// 只有当 AssignedBy > 0 时才设置（0 表示系统分配，如兑换码）
 	if input.AssignedBy > 0 {
@@ -742,13 +756,12 @@ func (s *SubscriptionService) ExtendSubscription(ctx context.Context, subscripti
 		return nil, ErrAdjustWouldExpire
 	}
 
-	if err := s.userSubRepo.ExtendExpiry(ctx, subscriptionID, newExpiresAt); err != nil {
-		return nil, err
-	}
-
-	// 如果订阅已过期，恢复为active状态
-	if sub.Status == SubscriptionStatusExpired {
-		if err := s.userSubRepo.UpdateStatus(ctx, subscriptionID, SubscriptionStatusActive); err != nil {
+	if isExpired {
+		if err := s.updateExistingSubscriptionTerm(ctx, sub, "", now, newExpiresAt, true); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := s.userSubRepo.ExtendExpiry(ctx, subscriptionID, newExpiresAt); err != nil {
 			return nil, err
 		}
 	}
@@ -862,6 +875,9 @@ func (s *SubscriptionService) List(ctx context.Context, page, pageSize int, user
 func normalizeExpiredWindows(subs []UserSubscription) {
 	for i := range subs {
 		sub := &subs[i]
+		if sub.Group != nil && sub.Group.UsesSubscriptionLifetimeQuota() {
+			continue
+		}
 		// 日窗口过期：清零展示数据
 		if sub.NeedsDailyReset() {
 			sub.DailyWindowStart = nil
@@ -934,7 +950,11 @@ func (s *SubscriptionService) AdminResetQuota(ctx context.Context, subscriptionI
 }
 
 // CheckAndResetWindows 检查并重置过期的窗口
-func (s *SubscriptionService) CheckAndResetWindows(ctx context.Context, sub *UserSubscription) error {
+func (s *SubscriptionService) CheckAndResetWindows(ctx context.Context, sub *UserSubscription, groups ...*Group) error {
+	if !shouldResetSubscriptionUsageWindows(sub, groups...) {
+		return nil
+	}
+
 	// 使用当天零点作为新窗口起始时间
 	windowStart := startOfDay(time.Now())
 	needsInvalidateCache := false
@@ -986,7 +1006,7 @@ func (s *SubscriptionService) CheckAndResetWindows(ctx context.Context, sub *Use
 // EnsureWindowMaintenance advances expired usage windows before a request is
 // allowed to proceed. It returns a fresh database snapshot because a competing
 // request may have won one of the conditional resets.
-func (s *SubscriptionService) EnsureWindowMaintenance(ctx context.Context, sub *UserSubscription) (*UserSubscription, error) {
+func (s *SubscriptionService) EnsureWindowMaintenance(ctx context.Context, sub *UserSubscription, groups ...*Group) (*UserSubscription, error) {
 	if sub == nil {
 		return nil, ErrSubscriptionNilInput
 	}
@@ -995,7 +1015,7 @@ func (s *SubscriptionService) EnsureWindowMaintenance(ctx context.Context, sub *
 			return nil, err
 		}
 	}
-	if err := s.CheckAndResetWindows(ctx, sub); err != nil {
+	if err := s.CheckAndResetWindows(ctx, sub, groups...); err != nil {
 		return nil, err
 	}
 
@@ -1012,6 +1032,12 @@ func (s *SubscriptionService) EnsureWindowMaintenance(ctx context.Context, sub *
 // CheckUsageLimits 检查使用限额（返回错误如果超限）
 // 用于中间件的快速预检查，additionalCost 通常为 0
 func (s *SubscriptionService) CheckUsageLimits(ctx context.Context, sub *UserSubscription, group *Group, additionalCost float64) error {
+	if group.UsesSubscriptionLifetimeQuota() {
+		if !sub.CheckSubscriptionTotalLimit(group, additionalCost) {
+			return ErrSubscriptionTotalLimitExceeded
+		}
+		return nil
+	}
 	if !sub.CheckDailyLimit(group, additionalCost) {
 		return ErrDailyLimitExceeded
 	}
@@ -1041,23 +1067,31 @@ func (s *SubscriptionService) ValidateAndCheckLimits(sub *UserSubscription, grou
 
 	// 2. 内存中修正过期窗口的用量，确保预检查不会误拒绝用户。
 	//    调用方随后同步推进 DB 窗口，并用回读快照重新校验。
-	if sub.NeedsDailyReset() {
-		sub.DailyUsageUSD = 0
-		needsMaintenance = true
+	if shouldResetSubscriptionUsageWindows(sub, group) {
+		if sub.NeedsDailyReset() {
+			sub.DailyUsageUSD = 0
+			needsMaintenance = true
+		}
+		if sub.NeedsWeeklyReset() {
+			sub.WeeklyUsageUSD = 0
+			needsMaintenance = true
+		}
+		if sub.NeedsMonthlyReset() {
+			sub.MonthlyUsageUSD = 0
+			needsMaintenance = true
+		}
 	}
-	if sub.NeedsWeeklyReset() {
-		sub.WeeklyUsageUSD = 0
-		needsMaintenance = true
-	}
-	if sub.NeedsMonthlyReset() {
-		sub.MonthlyUsageUSD = 0
-		needsMaintenance = true
-	}
-	if !sub.IsWindowActivated() {
+	if !group.UsesSubscriptionLifetimeQuota() && !sub.IsWindowActivated() {
 		needsMaintenance = true
 	}
 
 	// 3. 检查用量限额
+	if group.UsesSubscriptionLifetimeQuota() {
+		if !sub.CheckSubscriptionTotalLimit(group, 0) {
+			return needsMaintenance, ErrSubscriptionTotalLimitExceeded
+		}
+		return needsMaintenance, nil
+	}
 	if !sub.CheckDailyLimit(group, 0) {
 		return needsMaintenance, ErrDailyLimitExceeded
 	}
@@ -1105,12 +1139,23 @@ func (s *SubscriptionService) doWindowMaintenance(sub *UserSubscription) {
 	}
 
 	// 重置过期窗口
-	if err := s.CheckAndResetWindows(ctx, sub); err != nil {
+	if err := s.CheckAndResetWindows(ctx, sub, sub.Group); err != nil {
 		log.Printf("Failed to reset subscription windows: %v", err)
 	}
 
 	// 失效 L1 缓存，确保后续请求拿到更新后的数据
 	s.InvalidateSubCache(sub.UserID, sub.GroupID)
+}
+
+func shouldResetSubscriptionUsageWindows(sub *UserSubscription, groups ...*Group) bool {
+	var group *Group
+	if len(groups) > 0 {
+		group = groups[0]
+	}
+	if group == nil && sub != nil {
+		group = sub.Group
+	}
+	return !group.UsesSubscriptionLifetimeQuota()
 }
 
 // RecordUsage 记录使用量到订阅
@@ -1127,6 +1172,7 @@ type SubscriptionProgress struct {
 	Daily         *UsageWindowProgress `json:"daily,omitempty"`
 	Weekly        *UsageWindowProgress `json:"weekly,omitempty"`
 	Monthly       *UsageWindowProgress `json:"monthly,omitempty"`
+	Total         *UsageWindowProgress `json:"total,omitempty"`
 }
 
 // UsageWindowProgress 使用窗口进度
@@ -1166,6 +1212,28 @@ func (s *SubscriptionService) calculateProgress(sub *UserSubscription, group *Gr
 		ExpiresAt:     sub.ExpiresAt,
 		ExpiresInDays: sub.DaysRemaining(),
 	}
+	if group.UsesSubscriptionLifetimeQuota() && group.HasSubscriptionTotalLimit() {
+		limit := *group.SubscriptionTotalLimitUSD
+		progress.Total = &UsageWindowProgress{
+			LimitUSD:        limit,
+			UsedUSD:         sub.TotalUsageUSD,
+			RemainingUSD:    limit - sub.TotalUsageUSD,
+			Percentage:      usagePercentage(sub.TotalUsageUSD, limit),
+			WindowStart:     sub.StartsAt,
+			ResetsAt:        sub.ExpiresAt,
+			ResetsInSeconds: int64(time.Until(sub.ExpiresAt).Seconds()),
+		}
+		if progress.Total.RemainingUSD < 0 {
+			progress.Total.RemainingUSD = 0
+		}
+		if progress.Total.Percentage > 100 {
+			progress.Total.Percentage = 100
+		}
+		if progress.Total.ResetsInSeconds < 0 {
+			progress.Total.ResetsInSeconds = 0
+		}
+		return progress
+	}
 
 	// 日进度
 	if group.HasDailyLimit() && sub.DailyWindowStart != nil {
@@ -1178,7 +1246,7 @@ func (s *SubscriptionService) calculateProgress(sub *UserSubscription, group *Gr
 			LimitUSD:        limit,
 			UsedUSD:         sub.DailyUsageUSD,
 			RemainingUSD:    limit - sub.DailyUsageUSD,
-			Percentage:      (sub.DailyUsageUSD / limit) * 100,
+			Percentage:      usagePercentage(sub.DailyUsageUSD, limit),
 			WindowStart:     *sub.DailyWindowStart,
 			ResetsAt:        resetsAt,
 			ResetsInSeconds: int64(time.Until(resetsAt).Seconds()),
@@ -1202,7 +1270,7 @@ func (s *SubscriptionService) calculateProgress(sub *UserSubscription, group *Gr
 			LimitUSD:        limit,
 			UsedUSD:         sub.WeeklyUsageUSD,
 			RemainingUSD:    limit - sub.WeeklyUsageUSD,
-			Percentage:      (sub.WeeklyUsageUSD / limit) * 100,
+			Percentage:      usagePercentage(sub.WeeklyUsageUSD, limit),
 			WindowStart:     *sub.WeeklyWindowStart,
 			ResetsAt:        resetsAt,
 			ResetsInSeconds: int64(time.Until(resetsAt).Seconds()),
@@ -1226,7 +1294,7 @@ func (s *SubscriptionService) calculateProgress(sub *UserSubscription, group *Gr
 			LimitUSD:        limit,
 			UsedUSD:         sub.MonthlyUsageUSD,
 			RemainingUSD:    limit - sub.MonthlyUsageUSD,
-			Percentage:      (sub.MonthlyUsageUSD / limit) * 100,
+			Percentage:      usagePercentage(sub.MonthlyUsageUSD, limit),
 			WindowStart:     *sub.MonthlyWindowStart,
 			ResetsAt:        resetsAt,
 			ResetsInSeconds: int64(time.Until(resetsAt).Seconds()),
@@ -1243,6 +1311,13 @@ func (s *SubscriptionService) calculateProgress(sub *UserSubscription, group *Gr
 	}
 
 	return progress
+}
+
+func usagePercentage(used, limit float64) float64 {
+	if limit <= 0 {
+		return 100
+	}
+	return (used / limit) * 100
 }
 
 // GetUserSubscriptionsWithProgress 获取用户所有订阅及进度

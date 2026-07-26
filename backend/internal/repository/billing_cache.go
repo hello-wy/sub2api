@@ -52,9 +52,11 @@ func billingSubKey(userID, groupID int64) string {
 const (
 	subFieldStatus       = "status"
 	subFieldExpiresAt    = "expires_at"
+	subFieldTermVersion  = "term_version"
 	subFieldDailyUsage   = "daily_usage"
 	subFieldWeeklyUsage  = "weekly_usage"
 	subFieldMonthlyUsage = "monthly_usage"
+	subFieldTotalUsage   = "total_usage"
 	subFieldVersion      = "version"
 )
 
@@ -89,11 +91,17 @@ var (
 		if exists == 0 then
 			return 0
 		end
-		local cost = tonumber(ARGV[1])
+		local cachedTermVersion = tonumber(redis.call('HGET', KEYS[1], 'term_version'))
+		local expectedTermVersion = tonumber(ARGV[1])
+		if cachedTermVersion == nil or cachedTermVersion ~= expectedTermVersion then
+			return 0
+		end
+		local cost = tonumber(ARGV[2])
 		redis.call('HINCRBYFLOAT', KEYS[1], 'daily_usage', cost)
 		redis.call('HINCRBYFLOAT', KEYS[1], 'weekly_usage', cost)
 		redis.call('HINCRBYFLOAT', KEYS[1], 'monthly_usage', cost)
-		redis.call('EXPIRE', KEYS[1], ARGV[2])
+		redis.call('HINCRBYFLOAT', KEYS[1], 'total_usage', cost)
+		redis.call('EXPIRE', KEYS[1], ARGV[3])
 		return 1
 	`)
 
@@ -199,6 +207,11 @@ func (c *billingCache) parseSubscriptionCache(data map[string]string) (*service.
 			result.ExpiresAt = time.Unix(expiresAt, 0)
 		}
 	}
+	termVersionStr, ok := data[subFieldTermVersion]
+	if !ok {
+		return nil, errors.New("invalid cache: missing term version")
+	}
+	result.TermVersion, _ = strconv.ParseInt(termVersionStr, 10, 64)
 
 	if dailyStr, ok := data[subFieldDailyUsage]; ok {
 		result.DailyUsage, _ = strconv.ParseFloat(dailyStr, 64)
@@ -211,6 +224,11 @@ func (c *billingCache) parseSubscriptionCache(data map[string]string) (*service.
 	if monthlyStr, ok := data[subFieldMonthlyUsage]; ok {
 		result.MonthlyUsage, _ = strconv.ParseFloat(monthlyStr, 64)
 	}
+	totalStr, ok := data[subFieldTotalUsage]
+	if !ok {
+		return nil, errors.New("invalid cache: missing total usage")
+	}
+	result.TotalUsage, _ = strconv.ParseFloat(totalStr, 64)
 
 	if versionStr, ok := data[subFieldVersion]; ok {
 		result.Version, _ = strconv.ParseInt(versionStr, 10, 64)
@@ -229,9 +247,11 @@ func (c *billingCache) SetSubscriptionCache(ctx context.Context, userID, groupID
 	fields := map[string]any{
 		subFieldStatus:       data.Status,
 		subFieldExpiresAt:    data.ExpiresAt.Unix(),
+		subFieldTermVersion:  data.TermVersion,
 		subFieldDailyUsage:   data.DailyUsage,
 		subFieldWeeklyUsage:  data.WeeklyUsage,
 		subFieldMonthlyUsage: data.MonthlyUsage,
+		subFieldTotalUsage:   data.TotalUsage,
 		subFieldVersion:      data.Version,
 	}
 
@@ -242,9 +262,9 @@ func (c *billingCache) SetSubscriptionCache(ctx context.Context, userID, groupID
 	return err
 }
 
-func (c *billingCache) UpdateSubscriptionUsage(ctx context.Context, userID, groupID int64, cost float64) error {
+func (c *billingCache) UpdateSubscriptionUsage(ctx context.Context, userID, groupID, termVersion int64, cost float64) error {
 	key := billingSubKey(userID, groupID)
-	_, err := updateSubUsageScript.Run(ctx, c.rdb, []string{key}, cost, int(jitteredTTL().Seconds())).Result()
+	_, err := updateSubUsageScript.Run(ctx, c.rdb, []string{key}, termVersion, cost, int(jitteredTTL().Seconds())).Result()
 	if err != nil && !errors.Is(err, redis.Nil) {
 		log.Printf("Warning: update subscription usage cache failed for user %d group %d: %v", userID, groupID, err)
 		return err

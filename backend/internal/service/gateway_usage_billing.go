@@ -270,6 +270,7 @@ func buildUsageBillingCommand(requestID string, usageLog *UsageLog, p *postUsage
 	// on "> 0" still correctly skip free subscriptions (RateMultiplier == 0).
 	if p.IsSubscriptionBill && p.Subscription != nil && p.Cost.TotalCost > 0 {
 		cmd.SubscriptionID = &p.Subscription.ID
+		cmd.SubscriptionTermVersion = p.Subscription.TermVersion
 		cmd.SubscriptionCost = p.Cost.ActualCost
 	} else if p.Cost.ActualCost > 0 {
 		cmd.BalanceCost = p.Cost.ActualCost
@@ -329,8 +330,27 @@ func finalizePostUsageBilling(ctx context.Context, p *postUsageBillingParams, de
 	}
 
 	if p.IsSubscriptionBill {
-		if p.Cost.ActualCost > 0 && p.User != nil && p.APIKey != nil && p.APIKey.GroupID != nil {
-			deps.billingCacheService.QueueUpdateSubscriptionUsage(p.User.ID, *p.APIKey.GroupID, p.Cost.ActualCost)
+		if result != nil && result.SubscriptionTermStale {
+			if p.Subscription != nil {
+				slog.Info("skip subscription cache update for stale term",
+					"subscription_id", p.Subscription.ID,
+					"term_version", p.Subscription.TermVersion,
+				)
+			}
+		} else if p.Cost.ActualCost > 0 && p.User != nil && p.APIKey != nil && p.APIKey.GroupID != nil && p.Subscription != nil {
+			if err := deps.billingCacheService.UpdateSubscriptionUsage(
+				ctx,
+				p.User.ID,
+				*p.APIKey.GroupID,
+				p.Subscription.TermVersion,
+				p.Cost.ActualCost,
+			); err != nil {
+				slog.Warn("update subscription usage cache after billing failed",
+					"user_id", p.User.ID,
+					"group_id", *p.APIKey.GroupID,
+					"error", err,
+				)
+			}
 		}
 	} else if p.Cost.ActualCost > 0 && p.User != nil {
 		syncBalanceCacheAfterDeduction(ctx, p, deps, result)

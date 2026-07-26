@@ -80,6 +80,15 @@ func (Group) Fields() []ent.Field {
 		field.String("subscription_type").
 			MaxLen(20).
 			Default(domain.SubscriptionTypeStandard),
+		field.String("subscription_quota_reset_mode").
+			MaxLen(32).
+			Default("rolling").
+			Comment("订阅额度周期：rolling=按日周月重置，until_subscription_expires=到期前不重置"),
+		field.Float("subscription_total_limit_usd").
+			Optional().
+			Nillable().
+			SchemaType(map[string]string{dialect.Postgres: "decimal(20,8)"}).
+			Comment("订阅总额度（仅 until_subscription_expires 模式使用）"),
 		field.Float("daily_limit_usd").
 			Optional().
 			Nillable().

@@ -4,6 +4,7 @@ package service
 
 import (
 	"context"
+	"math"
 	"testing"
 
 	"github.com/Wei-Shaw/sub2api/internal/pkg/pagination"
@@ -340,6 +341,113 @@ func TestAdminService_CreateGroup_NilImagePricing(t *testing.T) {
 	require.Nil(t, repo.created.ImagePrice1K)
 	require.Nil(t, repo.created.ImagePrice2K)
 	require.Nil(t, repo.created.ImagePrice4K)
+}
+
+func TestAdminService_CreateGroup_LifetimeQuotaClearsRollingLimits(t *testing.T) {
+	repo := &groupRepoStubForAdmin{}
+	svc := &adminServiceImpl{groupRepo: repo}
+	total, daily, weekly, monthly := 100.0, 10.0, 30.0, 80.0
+
+	group, err := svc.CreateGroup(context.Background(), &CreateGroupInput{
+		Name:                       "lifetime-quota",
+		RateMultiplier:             1,
+		SubscriptionType:           SubscriptionTypeSubscription,
+		SubscriptionQuotaResetMode: SubscriptionQuotaResetModeUntilSubscriptionExpires,
+		SubscriptionTotalLimitUSD:  &total,
+		DailyLimitUSD:              &daily,
+		WeeklyLimitUSD:             &weekly,
+		MonthlyLimitUSD:            &monthly,
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, group.SubscriptionTotalLimitUSD)
+	require.Nil(t, group.DailyLimitUSD)
+	require.Nil(t, group.WeeklyLimitUSD)
+	require.Nil(t, group.MonthlyLimitUSD)
+}
+
+func TestAdminService_UpdateGroup_RollingQuotaClearsLifetimeLimit(t *testing.T) {
+	total, daily := 100.0, 10.0
+	existing := &Group{
+		ID:                         1,
+		Name:                       "lifetime-quota",
+		Platform:                   PlatformAnthropic,
+		Status:                     StatusActive,
+		SubscriptionType:           SubscriptionTypeSubscription,
+		SubscriptionQuotaResetMode: SubscriptionQuotaResetModeUntilSubscriptionExpires,
+		SubscriptionTotalLimitUSD:  &total,
+	}
+	repo := &groupRepoStubForAdmin{getByID: existing}
+	svc := &adminServiceImpl{groupRepo: repo}
+
+	group, err := svc.UpdateGroup(context.Background(), existing.ID, &UpdateGroupInput{
+		SubscriptionQuotaResetMode: SubscriptionQuotaResetModeRolling,
+		DailyLimitUSD:              &daily,
+	})
+
+	require.NoError(t, err)
+	require.Nil(t, group.SubscriptionTotalLimitUSD)
+	require.NotNil(t, group.DailyLimitUSD)
+	require.InDelta(t, daily, *group.DailyLimitUSD, 1e-9)
+}
+
+func TestAdminService_UpdateGroup_OmittedLifetimeLimitIsPreserved(t *testing.T) {
+	total := 100.0
+	existing := &Group{
+		ID:                         1,
+		Name:                       "lifetime-quota",
+		Platform:                   PlatformAnthropic,
+		Status:                     StatusActive,
+		SubscriptionType:           SubscriptionTypeSubscription,
+		SubscriptionQuotaResetMode: SubscriptionQuotaResetModeUntilSubscriptionExpires,
+		SubscriptionTotalLimitUSD:  &total,
+	}
+	repo := &groupRepoStubForAdmin{getByID: existing}
+	svc := &adminServiceImpl{groupRepo: repo}
+
+	group, err := svc.UpdateGroup(context.Background(), existing.ID, &UpdateGroupInput{Name: "renamed"})
+
+	require.NoError(t, err)
+	require.NotNil(t, group.SubscriptionTotalLimitUSD)
+	require.InDelta(t, total, *group.SubscriptionTotalLimitUSD, 1e-9)
+}
+
+func TestAdminService_UpdateGroup_ExplicitNullClearsLifetimeLimit(t *testing.T) {
+	total := 100.0
+	existing := &Group{
+		ID:                         1,
+		Name:                       "lifetime-quota",
+		Platform:                   PlatformAnthropic,
+		Status:                     StatusActive,
+		SubscriptionType:           SubscriptionTypeSubscription,
+		SubscriptionQuotaResetMode: SubscriptionQuotaResetModeUntilSubscriptionExpires,
+		SubscriptionTotalLimitUSD:  &total,
+	}
+	repo := &groupRepoStubForAdmin{getByID: existing}
+	svc := &adminServiceImpl{groupRepo: repo}
+
+	group, err := svc.UpdateGroup(context.Background(), existing.ID, &UpdateGroupInput{
+		SubscriptionTotalLimitUSDSet: true,
+	})
+
+	require.NoError(t, err)
+	require.Nil(t, group.SubscriptionTotalLimitUSD)
+}
+
+func TestAdminService_CreateGroup_RejectsNonFiniteLimit(t *testing.T) {
+	nan := math.NaN()
+	repo := &groupRepoStubForAdmin{}
+	svc := &adminServiceImpl{groupRepo: repo}
+
+	_, err := svc.CreateGroup(context.Background(), &CreateGroupInput{
+		Name:                      "invalid-limit",
+		RateMultiplier:            1,
+		SubscriptionType:          SubscriptionTypeSubscription,
+		SubscriptionTotalLimitUSD: &nan,
+	})
+
+	require.ErrorContains(t, err, "must be finite")
+	require.Nil(t, repo.created)
 }
 
 func TestAdminService_CreateGroup_DefaultsGrokMediaGenerationEnabled(t *testing.T) {

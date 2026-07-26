@@ -303,6 +303,7 @@ func TestReplaceSubscriptionForPaymentResetsTermAndExpiresOtherPlans(t *testing.
 		DailyUsageUSD:   12,
 		WeeklyUsageUSD:  24,
 		MonthlyUsageUSD: 36,
+		TotalUsageUSD:   48,
 		Notes:           "old target",
 	})
 	subRepo.seed(&UserSubscription{
@@ -331,6 +332,7 @@ func TestReplaceSubscriptionForPaymentResetsTermAndExpiresOtherPlans(t *testing.
 	require.Zero(t, replaced.DailyUsageUSD)
 	require.Zero(t, replaced.WeeklyUsageUSD)
 	require.Zero(t, replaced.MonthlyUsageUSD)
+	require.Zero(t, replaced.TotalUsageUSD)
 	require.Contains(t, replaced.Notes, "payment order 42")
 
 	other, err := subRepo.GetByID(context.Background(), 11)

@@ -236,6 +236,47 @@ func (_u *GroupUpdate) SetNillableSubscriptionType(v *string) *GroupUpdate {
 	return _u
 }
 
+// SetSubscriptionQuotaResetMode sets the "subscription_quota_reset_mode" field.
+func (_u *GroupUpdate) SetSubscriptionQuotaResetMode(v string) *GroupUpdate {
+	_u.mutation.SetSubscriptionQuotaResetMode(v)
+	return _u
+}
+
+// SetNillableSubscriptionQuotaResetMode sets the "subscription_quota_reset_mode" field if the given value is not nil.
+func (_u *GroupUpdate) SetNillableSubscriptionQuotaResetMode(v *string) *GroupUpdate {
+	if v != nil {
+		_u.SetSubscriptionQuotaResetMode(*v)
+	}
+	return _u
+}
+
+// SetSubscriptionTotalLimitUsd sets the "subscription_total_limit_usd" field.
+func (_u *GroupUpdate) SetSubscriptionTotalLimitUsd(v float64) *GroupUpdate {
+	_u.mutation.ResetSubscriptionTotalLimitUsd()
+	_u.mutation.SetSubscriptionTotalLimitUsd(v)
+	return _u
+}
+
+// SetNillableSubscriptionTotalLimitUsd sets the "subscription_total_limit_usd" field if the given value is not nil.
+func (_u *GroupUpdate) SetNillableSubscriptionTotalLimitUsd(v *float64) *GroupUpdate {
+	if v != nil {
+		_u.SetSubscriptionTotalLimitUsd(*v)
+	}
+	return _u
+}
+
+// AddSubscriptionTotalLimitUsd adds value to the "subscription_total_limit_usd" field.
+func (_u *GroupUpdate) AddSubscriptionTotalLimitUsd(v float64) *GroupUpdate {
+	_u.mutation.AddSubscriptionTotalLimitUsd(v)
+	return _u
+}
+
+// ClearSubscriptionTotalLimitUsd clears the value of the "subscription_total_limit_usd" field.
+func (_u *GroupUpdate) ClearSubscriptionTotalLimitUsd() *GroupUpdate {
+	_u.mutation.ClearSubscriptionTotalLimitUsd()
+	return _u
+}
+
 // SetDailyLimitUsd sets the "daily_limit_usd" field.
 func (_u *GroupUpdate) SetDailyLimitUsd(v float64) *GroupUpdate {
 	_u.mutation.ResetDailyLimitUsd()
@@ -1234,6 +1275,11 @@ func (_u *GroupUpdate) check() error {
 			return &ValidationError{Name: "subscription_type", err: fmt.Errorf(`ent: validator failed for field "Group.subscription_type": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.SubscriptionQuotaResetMode(); ok {
+		if err := group.SubscriptionQuotaResetModeValidator(v); err != nil {
+			return &ValidationError{Name: "subscription_quota_reset_mode", err: fmt.Errorf(`ent: validator failed for field "Group.subscription_quota_reset_mode": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.DefaultMappedModel(); ok {
 		if err := group.DefaultMappedModelValidator(v); err != nil {
 			return &ValidationError{Name: "default_mapped_model", err: fmt.Errorf(`ent: validator failed for field "Group.default_mapped_model": %w`, err)}
@@ -1312,6 +1358,18 @@ func (_u *GroupUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.SubscriptionType(); ok {
 		_spec.SetField(group.FieldSubscriptionType, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.SubscriptionQuotaResetMode(); ok {
+		_spec.SetField(group.FieldSubscriptionQuotaResetMode, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.SubscriptionTotalLimitUsd(); ok {
+		_spec.SetField(group.FieldSubscriptionTotalLimitUsd, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.AddedSubscriptionTotalLimitUsd(); ok {
+		_spec.AddField(group.FieldSubscriptionTotalLimitUsd, field.TypeFloat64, value)
+	}
+	if _u.mutation.SubscriptionTotalLimitUsdCleared() {
+		_spec.ClearField(group.FieldSubscriptionTotalLimitUsd, field.TypeFloat64)
 	}
 	if value, ok := _u.mutation.DailyLimitUsd(); ok {
 		_spec.SetField(group.FieldDailyLimitUsd, field.TypeFloat64, value)
@@ -2038,6 +2096,47 @@ func (_u *GroupUpdateOne) SetNillableSubscriptionType(v *string) *GroupUpdateOne
 	if v != nil {
 		_u.SetSubscriptionType(*v)
 	}
+	return _u
+}
+
+// SetSubscriptionQuotaResetMode sets the "subscription_quota_reset_mode" field.
+func (_u *GroupUpdateOne) SetSubscriptionQuotaResetMode(v string) *GroupUpdateOne {
+	_u.mutation.SetSubscriptionQuotaResetMode(v)
+	return _u
+}
+
+// SetNillableSubscriptionQuotaResetMode sets the "subscription_quota_reset_mode" field if the given value is not nil.
+func (_u *GroupUpdateOne) SetNillableSubscriptionQuotaResetMode(v *string) *GroupUpdateOne {
+	if v != nil {
+		_u.SetSubscriptionQuotaResetMode(*v)
+	}
+	return _u
+}
+
+// SetSubscriptionTotalLimitUsd sets the "subscription_total_limit_usd" field.
+func (_u *GroupUpdateOne) SetSubscriptionTotalLimitUsd(v float64) *GroupUpdateOne {
+	_u.mutation.ResetSubscriptionTotalLimitUsd()
+	_u.mutation.SetSubscriptionTotalLimitUsd(v)
+	return _u
+}
+
+// SetNillableSubscriptionTotalLimitUsd sets the "subscription_total_limit_usd" field if the given value is not nil.
+func (_u *GroupUpdateOne) SetNillableSubscriptionTotalLimitUsd(v *float64) *GroupUpdateOne {
+	if v != nil {
+		_u.SetSubscriptionTotalLimitUsd(*v)
+	}
+	return _u
+}
+
+// AddSubscriptionTotalLimitUsd adds value to the "subscription_total_limit_usd" field.
+func (_u *GroupUpdateOne) AddSubscriptionTotalLimitUsd(v float64) *GroupUpdateOne {
+	_u.mutation.AddSubscriptionTotalLimitUsd(v)
+	return _u
+}
+
+// ClearSubscriptionTotalLimitUsd clears the value of the "subscription_total_limit_usd" field.
+func (_u *GroupUpdateOne) ClearSubscriptionTotalLimitUsd() *GroupUpdateOne {
+	_u.mutation.ClearSubscriptionTotalLimitUsd()
 	return _u
 }
 
@@ -3052,6 +3151,11 @@ func (_u *GroupUpdateOne) check() error {
 			return &ValidationError{Name: "subscription_type", err: fmt.Errorf(`ent: validator failed for field "Group.subscription_type": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.SubscriptionQuotaResetMode(); ok {
+		if err := group.SubscriptionQuotaResetModeValidator(v); err != nil {
+			return &ValidationError{Name: "subscription_quota_reset_mode", err: fmt.Errorf(`ent: validator failed for field "Group.subscription_quota_reset_mode": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.DefaultMappedModel(); ok {
 		if err := group.DefaultMappedModelValidator(v); err != nil {
 			return &ValidationError{Name: "default_mapped_model", err: fmt.Errorf(`ent: validator failed for field "Group.default_mapped_model": %w`, err)}
@@ -3147,6 +3251,18 @@ func (_u *GroupUpdateOne) sqlSave(ctx context.Context) (_node *Group, err error)
 	}
 	if value, ok := _u.mutation.SubscriptionType(); ok {
 		_spec.SetField(group.FieldSubscriptionType, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.SubscriptionQuotaResetMode(); ok {
+		_spec.SetField(group.FieldSubscriptionQuotaResetMode, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.SubscriptionTotalLimitUsd(); ok {
+		_spec.SetField(group.FieldSubscriptionTotalLimitUsd, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.AddedSubscriptionTotalLimitUsd(); ok {
+		_spec.AddField(group.FieldSubscriptionTotalLimitUsd, field.TypeFloat64, value)
+	}
+	if _u.mutation.SubscriptionTotalLimitUsdCleared() {
+		_spec.ClearField(group.FieldSubscriptionTotalLimitUsd, field.TypeFloat64)
 	}
 	if value, ok := _u.mutation.DailyLimitUsd(); ok {
 		_spec.SetField(group.FieldDailyLimitUsd, field.TypeFloat64, value)

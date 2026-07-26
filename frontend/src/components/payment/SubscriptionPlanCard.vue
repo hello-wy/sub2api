@@ -42,19 +42,23 @@
           <span class="text-gray-400 dark:text-dark-500">{{ t('payment.planCard.peakRate') }}</span>
           <span class="text-right font-medium text-amber-700 dark:text-amber-300">{{ peakRateDisplay }}</span>
         </div>
-        <div v-if="plan.daily_limit_usd != null" class="flex items-center justify-between gap-2">
+        <div v-if="plan.subscription_quota_reset_mode === 'until_subscription_expires'" class="flex items-center justify-between gap-2">
+          <span class="text-gray-400 dark:text-dark-500">{{ t('payment.planCard.totalLimit') }}</span>
+          <span class="shrink-0 font-medium text-gray-700 dark:text-gray-300">{{ plan.subscription_total_limit_usd != null ? '$' + plan.subscription_total_limit_usd : t('payment.planCard.unlimited') }}</span>
+        </div>
+        <div v-else-if="plan.daily_limit_usd != null" class="flex items-center justify-between gap-2">
           <span class="text-gray-400 dark:text-dark-500">{{ t('payment.planCard.dailyLimit') }}</span>
           <span class="shrink-0 font-medium text-gray-700 dark:text-gray-300">${{ plan.daily_limit_usd }}</span>
         </div>
-        <div v-if="plan.weekly_limit_usd != null" class="flex items-center justify-between gap-2">
+        <div v-if="plan.subscription_quota_reset_mode !== 'until_subscription_expires' && plan.weekly_limit_usd != null" class="flex items-center justify-between gap-2">
           <span class="text-gray-400 dark:text-dark-500">{{ t('payment.planCard.weeklyLimit') }}</span>
           <span class="shrink-0 font-medium text-gray-700 dark:text-gray-300">${{ plan.weekly_limit_usd }}</span>
         </div>
-        <div v-if="plan.monthly_limit_usd != null" class="flex items-center justify-between gap-2">
+        <div v-if="plan.subscription_quota_reset_mode !== 'until_subscription_expires' && plan.monthly_limit_usd != null" class="flex items-center justify-between gap-2">
           <span class="text-gray-400 dark:text-dark-500">{{ t('payment.planCard.monthlyLimit') }}</span>
           <span class="shrink-0 font-medium text-gray-700 dark:text-gray-300">${{ plan.monthly_limit_usd }}</span>
         </div>
-        <div v-if="plan.daily_limit_usd == null && plan.weekly_limit_usd == null && plan.monthly_limit_usd == null" class="flex items-center justify-between">
+        <div v-if="plan.subscription_quota_reset_mode !== 'until_subscription_expires' && plan.daily_limit_usd == null && plan.weekly_limit_usd == null && plan.monthly_limit_usd == null" class="flex items-center justify-between">
           <span class="text-gray-400 dark:text-dark-500">{{ t('payment.planCard.quota') }}</span>
           <span class="font-medium text-gray-700 dark:text-gray-300">{{ t('payment.planCard.unlimited') }}</span>
         </div>

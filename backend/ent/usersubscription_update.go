@@ -127,6 +127,27 @@ func (_u *UserSubscriptionUpdate) SetNillableStatus(v *string) *UserSubscription
 	return _u
 }
 
+// SetTermVersion sets the "term_version" field.
+func (_u *UserSubscriptionUpdate) SetTermVersion(v int64) *UserSubscriptionUpdate {
+	_u.mutation.ResetTermVersion()
+	_u.mutation.SetTermVersion(v)
+	return _u
+}
+
+// SetNillableTermVersion sets the "term_version" field if the given value is not nil.
+func (_u *UserSubscriptionUpdate) SetNillableTermVersion(v *int64) *UserSubscriptionUpdate {
+	if v != nil {
+		_u.SetTermVersion(*v)
+	}
+	return _u
+}
+
+// AddTermVersion adds value to the "term_version" field.
+func (_u *UserSubscriptionUpdate) AddTermVersion(v int64) *UserSubscriptionUpdate {
+	_u.mutation.AddTermVersion(v)
+	return _u
+}
+
 // SetDailyWindowStart sets the "daily_window_start" field.
 func (_u *UserSubscriptionUpdate) SetDailyWindowStart(v time.Time) *UserSubscriptionUpdate {
 	_u.mutation.SetDailyWindowStart(v)
@@ -247,6 +268,27 @@ func (_u *UserSubscriptionUpdate) SetNillableMonthlyUsageUsd(v *float64) *UserSu
 // AddMonthlyUsageUsd adds value to the "monthly_usage_usd" field.
 func (_u *UserSubscriptionUpdate) AddMonthlyUsageUsd(v float64) *UserSubscriptionUpdate {
 	_u.mutation.AddMonthlyUsageUsd(v)
+	return _u
+}
+
+// SetTotalUsageUsd sets the "total_usage_usd" field.
+func (_u *UserSubscriptionUpdate) SetTotalUsageUsd(v float64) *UserSubscriptionUpdate {
+	_u.mutation.ResetTotalUsageUsd()
+	_u.mutation.SetTotalUsageUsd(v)
+	return _u
+}
+
+// SetNillableTotalUsageUsd sets the "total_usage_usd" field if the given value is not nil.
+func (_u *UserSubscriptionUpdate) SetNillableTotalUsageUsd(v *float64) *UserSubscriptionUpdate {
+	if v != nil {
+		_u.SetTotalUsageUsd(*v)
+	}
+	return _u
+}
+
+// AddTotalUsageUsd adds value to the "total_usage_usd" field.
+func (_u *UserSubscriptionUpdate) AddTotalUsageUsd(v float64) *UserSubscriptionUpdate {
+	_u.mutation.AddTotalUsageUsd(v)
 	return _u
 }
 
@@ -480,6 +522,12 @@ func (_u *UserSubscriptionUpdate) sqlSave(ctx context.Context) (_node int, err e
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(usersubscription.FieldStatus, field.TypeString, value)
 	}
+	if value, ok := _u.mutation.TermVersion(); ok {
+		_spec.SetField(usersubscription.FieldTermVersion, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedTermVersion(); ok {
+		_spec.AddField(usersubscription.FieldTermVersion, field.TypeInt64, value)
+	}
 	if value, ok := _u.mutation.DailyWindowStart(); ok {
 		_spec.SetField(usersubscription.FieldDailyWindowStart, field.TypeTime, value)
 	}
@@ -515,6 +563,12 @@ func (_u *UserSubscriptionUpdate) sqlSave(ctx context.Context) (_node int, err e
 	}
 	if value, ok := _u.mutation.AddedMonthlyUsageUsd(); ok {
 		_spec.AddField(usersubscription.FieldMonthlyUsageUsd, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.TotalUsageUsd(); ok {
+		_spec.SetField(usersubscription.FieldTotalUsageUsd, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.AddedTotalUsageUsd(); ok {
+		_spec.AddField(usersubscription.FieldTotalUsageUsd, field.TypeFloat64, value)
 	}
 	if value, ok := _u.mutation.AssignedAt(); ok {
 		_spec.SetField(usersubscription.FieldAssignedAt, field.TypeTime, value)
@@ -773,6 +827,27 @@ func (_u *UserSubscriptionUpdateOne) SetNillableStatus(v *string) *UserSubscript
 	return _u
 }
 
+// SetTermVersion sets the "term_version" field.
+func (_u *UserSubscriptionUpdateOne) SetTermVersion(v int64) *UserSubscriptionUpdateOne {
+	_u.mutation.ResetTermVersion()
+	_u.mutation.SetTermVersion(v)
+	return _u
+}
+
+// SetNillableTermVersion sets the "term_version" field if the given value is not nil.
+func (_u *UserSubscriptionUpdateOne) SetNillableTermVersion(v *int64) *UserSubscriptionUpdateOne {
+	if v != nil {
+		_u.SetTermVersion(*v)
+	}
+	return _u
+}
+
+// AddTermVersion adds value to the "term_version" field.
+func (_u *UserSubscriptionUpdateOne) AddTermVersion(v int64) *UserSubscriptionUpdateOne {
+	_u.mutation.AddTermVersion(v)
+	return _u
+}
+
 // SetDailyWindowStart sets the "daily_window_start" field.
 func (_u *UserSubscriptionUpdateOne) SetDailyWindowStart(v time.Time) *UserSubscriptionUpdateOne {
 	_u.mutation.SetDailyWindowStart(v)
@@ -893,6 +968,27 @@ func (_u *UserSubscriptionUpdateOne) SetNillableMonthlyUsageUsd(v *float64) *Use
 // AddMonthlyUsageUsd adds value to the "monthly_usage_usd" field.
 func (_u *UserSubscriptionUpdateOne) AddMonthlyUsageUsd(v float64) *UserSubscriptionUpdateOne {
 	_u.mutation.AddMonthlyUsageUsd(v)
+	return _u
+}
+
+// SetTotalUsageUsd sets the "total_usage_usd" field.
+func (_u *UserSubscriptionUpdateOne) SetTotalUsageUsd(v float64) *UserSubscriptionUpdateOne {
+	_u.mutation.ResetTotalUsageUsd()
+	_u.mutation.SetTotalUsageUsd(v)
+	return _u
+}
+
+// SetNillableTotalUsageUsd sets the "total_usage_usd" field if the given value is not nil.
+func (_u *UserSubscriptionUpdateOne) SetNillableTotalUsageUsd(v *float64) *UserSubscriptionUpdateOne {
+	if v != nil {
+		_u.SetTotalUsageUsd(*v)
+	}
+	return _u
+}
+
+// AddTotalUsageUsd adds value to the "total_usage_usd" field.
+func (_u *UserSubscriptionUpdateOne) AddTotalUsageUsd(v float64) *UserSubscriptionUpdateOne {
+	_u.mutation.AddTotalUsageUsd(v)
 	return _u
 }
 
@@ -1156,6 +1252,12 @@ func (_u *UserSubscriptionUpdateOne) sqlSave(ctx context.Context) (_node *UserSu
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(usersubscription.FieldStatus, field.TypeString, value)
 	}
+	if value, ok := _u.mutation.TermVersion(); ok {
+		_spec.SetField(usersubscription.FieldTermVersion, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedTermVersion(); ok {
+		_spec.AddField(usersubscription.FieldTermVersion, field.TypeInt64, value)
+	}
 	if value, ok := _u.mutation.DailyWindowStart(); ok {
 		_spec.SetField(usersubscription.FieldDailyWindowStart, field.TypeTime, value)
 	}
@@ -1191,6 +1293,12 @@ func (_u *UserSubscriptionUpdateOne) sqlSave(ctx context.Context) (_node *UserSu
 	}
 	if value, ok := _u.mutation.AddedMonthlyUsageUsd(); ok {
 		_spec.AddField(usersubscription.FieldMonthlyUsageUsd, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.TotalUsageUsd(); ok {
+		_spec.SetField(usersubscription.FieldTotalUsageUsd, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.AddedTotalUsageUsd(); ok {
+		_spec.AddField(usersubscription.FieldTotalUsageUsd, field.TypeFloat64, value)
 	}
 	if value, ok := _u.mutation.AssignedAt(); ok {
 		_spec.SetField(usersubscription.FieldAssignedAt, field.TypeTime, value)

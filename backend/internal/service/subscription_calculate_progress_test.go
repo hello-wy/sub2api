@@ -1,6 +1,8 @@
 package service
 
 import (
+	"encoding/json"
+	"math"
 	"testing"
 	"time"
 
@@ -64,6 +66,32 @@ func TestCalculateProgress_DailyUsage(t *testing.T) {
 	assert.Equal(t, 7.0, progress.Daily.RemainingUSD)
 	assert.Equal(t, 30.0, progress.Daily.Percentage)
 	assert.Equal(t, dailyStart, progress.Daily.WindowStart)
+}
+
+func TestCalculateProgress_LifetimeZeroLimitIsSerializable(t *testing.T) {
+	svc := newTestSubscriptionService()
+	now := time.Now()
+	zero := 0.0
+	sub := &UserSubscription{
+		ID:            1,
+		StartsAt:      now,
+		ExpiresAt:     now.AddDate(0, 0, 7),
+		TotalUsageUSD: 0,
+	}
+	group := &Group{
+		Name:                       "Blocked",
+		SubscriptionType:           SubscriptionTypeSubscription,
+		SubscriptionQuotaResetMode: SubscriptionQuotaResetModeUntilSubscriptionExpires,
+		SubscriptionTotalLimitUSD:  &zero,
+	}
+
+	progress := svc.calculateProgress(sub, group)
+
+	require.NotNil(t, progress.Total)
+	require.Equal(t, 100.0, progress.Total.Percentage)
+	require.False(t, math.IsNaN(progress.Total.Percentage))
+	_, err := json.Marshal(progress)
+	require.NoError(t, err)
 }
 
 func TestCalculateProgress_DailyCardUsesExpiryAsDailyResetTime(t *testing.T) {

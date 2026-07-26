@@ -199,6 +199,29 @@ func (s *GroupRepoSuite) TestUpdate() {
 	s.Require().Equal("updated", got.Name)
 }
 
+func (s *GroupRepoSuite) TestUpdate_ClearsSubscriptionTotalLimitWhenReturningToRollingQuota(t *testing.T) {
+	total := 100.0
+	group := &service.Group{
+		Name:                       "lifetime-quota",
+		Platform:                   service.PlatformAnthropic,
+		RateMultiplier:             1,
+		Status:                     service.StatusActive,
+		SubscriptionType:           service.SubscriptionTypeSubscription,
+		SubscriptionQuotaResetMode: service.SubscriptionQuotaResetModeUntilSubscriptionExpires,
+		SubscriptionTotalLimitUSD:  &total,
+	}
+	s.Require().NoError(s.repo.Create(s.ctx, group))
+
+	group.SubscriptionQuotaResetMode = service.SubscriptionQuotaResetModeRolling
+	group.SubscriptionTotalLimitUSD = nil
+	s.Require().NoError(s.repo.Update(s.ctx, group))
+
+	got, err := s.repo.GetByID(s.ctx, group.ID)
+	s.Require().NoError(err)
+	s.Require().Equal(service.SubscriptionQuotaResetModeRolling, got.SubscriptionQuotaResetMode)
+	s.Require().Nil(got.SubscriptionTotalLimitUSD)
+}
+
 func (s *GroupRepoSuite) TestGetByID_PreservesMessagesDispatchModelConfig() {
 	group := &service.Group{
 		Name:                  "openai-dispatch",

@@ -82,12 +82,17 @@ func mustCreateGroup(t *testing.T, client *dbent.Client, g *service.Group) *serv
 	if g.SubscriptionType == "" {
 		g.SubscriptionType = service.SubscriptionTypeStandard
 	}
+	if g.SubscriptionQuotaResetMode == "" {
+		g.SubscriptionQuotaResetMode = service.SubscriptionQuotaResetModeRolling
+	}
 
 	create := client.Group.Create().
 		SetName(g.Name).
 		SetPlatform(g.Platform).
 		SetStatus(g.Status).
 		SetSubscriptionType(g.SubscriptionType).
+		SetSubscriptionQuotaResetMode(g.SubscriptionQuotaResetMode).
+		SetNillableSubscriptionTotalLimitUsd(g.SubscriptionTotalLimitUSD).
 		SetRateMultiplier(g.RateMultiplier).
 		SetIsExclusive(g.IsExclusive)
 	if g.Description != "" {
@@ -373,6 +378,9 @@ func mustCreateSubscription(t *testing.T, client *dbent.Client, s *service.UserS
 	if s.Status == "" {
 		s.Status = service.SubscriptionStatusActive
 	}
+	if s.TermVersion < 1 {
+		s.TermVersion = 1
+	}
 	now := time.Now()
 	if s.StartsAt.IsZero() {
 		s.StartsAt = now.Add(-1 * time.Hour)
@@ -396,11 +404,13 @@ func mustCreateSubscription(t *testing.T, client *dbent.Client, s *service.UserS
 		SetStartsAt(s.StartsAt).
 		SetExpiresAt(s.ExpiresAt).
 		SetStatus(s.Status).
+		SetTermVersion(s.TermVersion).
 		SetAssignedAt(s.AssignedAt).
 		SetNotes(s.Notes).
 		SetDailyUsageUsd(s.DailyUsageUSD).
 		SetWeeklyUsageUsd(s.WeeklyUsageUSD).
-		SetMonthlyUsageUsd(s.MonthlyUsageUSD)
+		SetMonthlyUsageUsd(s.MonthlyUsageUSD).
+		SetTotalUsageUsd(s.TotalUsageUSD)
 
 	if s.AssignedBy != nil {
 		create.SetAssignedBy(*s.AssignedBy)

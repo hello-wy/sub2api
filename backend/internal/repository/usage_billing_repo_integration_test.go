@@ -107,12 +107,13 @@ func TestUsageBillingRepositoryApply_DeduplicatesSubscriptionBilling(t *testing.
 
 	requestID := uuid.NewString()
 	cmd := &service.UsageBillingCommand{
-		RequestID:        requestID,
-		APIKeyID:         apiKey.ID,
-		UserID:           user.ID,
-		AccountID:        0,
-		SubscriptionID:   &subscription.ID,
-		SubscriptionCost: 2.5,
+		RequestID:               requestID,
+		APIKeyID:                apiKey.ID,
+		UserID:                  user.ID,
+		AccountID:               0,
+		SubscriptionID:          &subscription.ID,
+		SubscriptionTermVersion: subscription.TermVersion,
+		SubscriptionCost:        2.5,
 	}
 
 	result1, err := repo.Apply(ctx, cmd)
@@ -123,9 +124,136 @@ func TestUsageBillingRepositoryApply_DeduplicatesSubscriptionBilling(t *testing.
 	require.NoError(t, err)
 	require.False(t, result2.Applied)
 
-	var dailyUsage float64
-	require.NoError(t, integrationDB.QueryRowContext(ctx, "SELECT daily_usage_usd FROM user_subscriptions WHERE id = $1", subscription.ID).Scan(&dailyUsage))
+	var dailyUsage, totalUsage float64
+	require.NoError(t, integrationDB.QueryRowContext(ctx,
+		"SELECT daily_usage_usd, total_usage_usd FROM user_subscriptions WHERE id = $1",
+		subscription.ID,
+	).Scan(&dailyUsage, &totalUsage))
 	require.InDelta(t, 2.5, dailyUsage, 0.000001)
+	require.InDelta(t, 2.5, totalUsage, 0.000001)
+}
+
+func TestUsageBillingRepositoryApply_StaleSubscriptionTermDoesNotChargeReplacement(t *testing.T) {
+	ctx := context.Background()
+	client := testEntClient(t)
+	repo := NewUsageBillingRepository(client, integrationDB)
+
+	user := mustCreateUser(t, client, &service.User{
+		Email:        fmt.Sprintf("usage-billing-stale-term-%d@example.com", time.Now().UnixNano()),
+		PasswordHash: "hash",
+	})
+	group := mustCreateGroup(t, client, &service.Group{
+		Name:             "usage-billing-stale-term-" + uuid.NewString(),
+		Platform:         service.PlatformAnthropic,
+		SubscriptionType: service.SubscriptionTypeSubscription,
+	})
+	apiKey := mustCreateApiKey(t, client, &service.APIKey{
+		UserID:  user.ID,
+		GroupID: &group.ID,
+		Key:     "sk-usage-billing-stale-term-" + uuid.NewString(),
+		Name:    "billing-stale-term",
+	})
+	subscription := mustCreateSubscription(t, client, &service.UserSubscription{
+		UserID:        user.ID,
+		GroupID:       group.ID,
+		TermVersion:   5,
+		DailyUsageUSD: 1,
+		TotalUsageUSD: 4,
+	})
+
+	result, err := repo.Apply(ctx, &service.UsageBillingCommand{
+		RequestID:               uuid.NewString(),
+		APIKeyID:                apiKey.ID,
+		UserID:                  user.ID,
+		SubscriptionID:          &subscription.ID,
+		SubscriptionTermVersion: 4,
+		SubscriptionCost:        2.5,
+	})
+	require.NoError(t, err)
+	require.True(t, result.Applied)
+	require.True(t, result.SubscriptionTermStale)
+	require.Nil(t, result.SubscriptionTotalUsage)
+	require.False(t, result.SubscriptionQuotaExhausted)
+
+	var termVersion int64
+	var dailyUsage, totalUsage float64
+	require.NoError(t, integrationDB.QueryRowContext(ctx,
+		"SELECT term_version, daily_usage_usd, total_usage_usd FROM user_subscriptions WHERE id = $1",
+		subscription.ID,
+	).Scan(&termVersion, &dailyUsage, &totalUsage))
+	require.Equal(t, int64(5), termVersion)
+	require.InDelta(t, 1.0, dailyUsage, 0.000001)
+	require.InDelta(t, 4.0, totalUsage, 0.000001)
+}
+
+func TestUsageBillingRepositoryApply_MatchingLifetimeTermReportsQuotaExhaustion(t *testing.T) {
+	ctx := context.Background()
+	client := testEntClient(t)
+	repo := NewUsageBillingRepository(client, integrationDB)
+	totalLimit := 5.0
+
+	user := mustCreateUser(t, client, &service.User{
+		Email:        fmt.Sprintf("usage-billing-lifetime-%d@example.com", time.Now().UnixNano()),
+		PasswordHash: "hash",
+	})
+	group := mustCreateGroup(t, client, &service.Group{
+		Name:                       "usage-billing-lifetime-" + uuid.NewString(),
+		Platform:                   service.PlatformAnthropic,
+		SubscriptionType:           service.SubscriptionTypeSubscription,
+		SubscriptionQuotaResetMode: service.SubscriptionQuotaResetModeUntilSubscriptionExpires,
+		SubscriptionTotalLimitUSD:  &totalLimit,
+	})
+	apiKey := mustCreateApiKey(t, client, &service.APIKey{
+		UserID:  user.ID,
+		GroupID: &group.ID,
+		Key:     "sk-usage-billing-lifetime-" + uuid.NewString(),
+		Name:    "billing-lifetime",
+	})
+	subscription := mustCreateSubscription(t, client, &service.UserSubscription{
+		UserID:        user.ID,
+		GroupID:       group.ID,
+		TermVersion:   3,
+		TotalUsageUSD: 4,
+	})
+
+	result, err := repo.Apply(ctx, &service.UsageBillingCommand{
+		RequestID:               uuid.NewString(),
+		APIKeyID:                apiKey.ID,
+		UserID:                  user.ID,
+		SubscriptionID:          &subscription.ID,
+		SubscriptionTermVersion: subscription.TermVersion,
+		SubscriptionCost:        1.25,
+	})
+	require.NoError(t, err)
+	require.True(t, result.Applied)
+	require.False(t, result.SubscriptionTermStale)
+	require.True(t, result.SubscriptionQuotaExhausted)
+	require.NotNil(t, result.SubscriptionTotalUsage)
+	require.InDelta(t, 5.25, *result.SubscriptionTotalUsage, 0.000001)
+}
+
+func TestUsageBillingRepositoryApply_RequiresSubscriptionTermVersion(t *testing.T) {
+	repo := NewUsageBillingRepository(nil, integrationDB)
+	subscriptionID := int64(1)
+
+	for _, tt := range []struct {
+		name           string
+		subscriptionID *int64
+		termVersion    int64
+	}{
+		{name: "missing_subscription_id", termVersion: 1},
+		{name: "missing_term_version", subscriptionID: &subscriptionID},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := repo.Apply(context.Background(), &service.UsageBillingCommand{
+				RequestID:               uuid.NewString(),
+				SubscriptionID:          tt.subscriptionID,
+				SubscriptionTermVersion: tt.termVersion,
+				SubscriptionCost:        1,
+			})
+			require.ErrorIs(t, err, service.ErrUsageBillingSubscriptionTermRequired)
+		})
+	}
 }
 
 func TestUsageBillingRepositoryApply_RequestFingerprintConflict(t *testing.T) {

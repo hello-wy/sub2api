@@ -958,6 +958,13 @@ export default {
         dailyLimit: '每日限额（USD）',
         weeklyLimit: '每周限额（USD）',
         monthlyLimit: '每月限额（USD）',
+        quotaResetMode: '额度周期',
+        quotaResetRolling: '按日/周/月周期重置',
+        quotaResetUntilExpiry: '额度随订阅到期结束',
+        quotaResetHint: '选择“额度随订阅到期结束”后，套餐有效期内的已用额度不会清零。',
+        totalLimit: '套餐总额度（USD）',
+        totalLimitHint: '总额度从套餐生效起累计，到订阅到期后才结束。',
+        total: '总额度',
         defaultValidityDays: '默认有效期（天）',
         validityHint: '分配给用户时订阅的有效天数',
         noLimit: '无限制'

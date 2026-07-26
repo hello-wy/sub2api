@@ -193,4 +193,27 @@ describe('PlanEditDialog', () => {
     expect(options).toContain('OpenAI + Claude + Gemini + Grok — composite (1.2x)')
     expect(options).not.toContain('Standard OpenAI — openai (1x)')
   })
+
+  it('shows only the total quota for a lifetime-quota subscription group', async () => {
+    const wrapper = mountDialog({
+      groups: [
+        groupFixture({
+          id: 10,
+          subscription_quota_reset_mode: 'until_subscription_expires',
+          subscription_total_limit_usd: 120,
+          daily_limit_usd: 10,
+          weekly_limit_usd: 50,
+          monthly_limit_usd: 100,
+        }),
+      ],
+    })
+
+    await wrapper.find('select').setValue('10')
+
+    expect(wrapper.text()).toContain('payment.admin.totalLimit')
+    expect(wrapper.text()).toContain('$120')
+    expect(wrapper.text()).not.toContain('payment.admin.dailyLimit')
+    expect(wrapper.text()).not.toContain('payment.admin.weeklyLimit')
+    expect(wrapper.text()).not.toContain('payment.admin.monthlyLimit')
+  })
 })

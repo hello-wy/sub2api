@@ -31,6 +31,9 @@ func (r *usageBillingRepository) Apply(ctx context.Context, cmd *service.UsageBi
 	if cmd.RequestID == "" {
 		return nil, service.ErrUsageBillingRequestIDRequired
 	}
+	if cmd.SubscriptionCost > 0 && (cmd.SubscriptionID == nil || cmd.SubscriptionTermVersion < 1) {
+		return nil, service.ErrUsageBillingSubscriptionTermRequired
+	}
 
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -173,9 +176,19 @@ func (r *usageBillingRepository) applyBatchImageBalanceHold(
 
 func (r *usageBillingRepository) applyUsageBillingEffects(ctx context.Context, tx *sql.Tx, cmd *service.UsageBillingCommand, result *service.UsageBillingApplyResult) error {
 	if cmd.SubscriptionCost > 0 && cmd.SubscriptionID != nil {
-		if err := incrementUsageBillingSubscription(ctx, tx, *cmd.SubscriptionID, cmd.SubscriptionCost); err != nil {
+		subscriptionResult, err := incrementUsageBillingSubscription(
+			ctx,
+			tx,
+			*cmd.SubscriptionID,
+			cmd.SubscriptionTermVersion,
+			cmd.SubscriptionCost,
+		)
+		if err != nil {
 			return err
 		}
+		result.SubscriptionTermStale = subscriptionResult.TermStale
+		result.SubscriptionQuotaExhausted = subscriptionResult.QuotaExhausted
+		result.SubscriptionTotalUsage = subscriptionResult.TotalUsage
 	}
 
 	if cmd.BalanceCost > 0 {
@@ -212,32 +225,67 @@ func (r *usageBillingRepository) applyUsageBillingEffects(ctx context.Context, t
 	return nil
 }
 
-func incrementUsageBillingSubscription(ctx context.Context, tx *sql.Tx, subscriptionID int64, costUSD float64) error {
+type subscriptionBillingResult struct {
+	TermStale      bool
+	QuotaExhausted bool
+	TotalUsage     *float64
+}
+
+func incrementUsageBillingSubscription(ctx context.Context, tx *sql.Tx, subscriptionID, termVersion int64, costUSD float64) (*subscriptionBillingResult, error) {
 	const updateSQL = `
 		UPDATE user_subscriptions us
-		SET
-			daily_usage_usd = us.daily_usage_usd + $1,
-			weekly_usage_usd = us.weekly_usage_usd + $1,
-			monthly_usage_usd = us.monthly_usage_usd + $1,
-			updated_at = NOW()
+			SET
+				daily_usage_usd = us.daily_usage_usd + $1,
+				weekly_usage_usd = us.weekly_usage_usd + $1,
+				monthly_usage_usd = us.monthly_usage_usd + $1,
+				total_usage_usd = us.total_usage_usd + $1,
+				updated_at = NOW()
 		FROM groups g
 		WHERE us.id = $2
+			AND us.term_version = $3
 			AND us.deleted_at IS NULL
 			AND us.group_id = g.id
 			AND g.deleted_at IS NULL
+		RETURNING
+			us.total_usage_usd,
+			g.subscription_quota_reset_mode,
+			g.subscription_total_limit_usd
 	`
-	res, err := tx.ExecContext(ctx, updateSQL, costUSD, subscriptionID)
+	var totalUsage float64
+	var quotaResetMode string
+	var totalLimit sql.NullFloat64
+	err := tx.QueryRowContext(ctx, updateSQL, costUSD, subscriptionID, termVersion).Scan(
+		&totalUsage,
+		&quotaResetMode,
+		&totalLimit,
+	)
+	if err == nil {
+		return &subscriptionBillingResult{
+			QuotaExhausted: quotaResetMode == service.SubscriptionQuotaResetModeUntilSubscriptionExpires &&
+				totalLimit.Valid && totalUsage >= totalLimit.Float64,
+			TotalUsage: &totalUsage,
+		}, nil
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return nil, err
+	}
+
+	var currentTermVersion int64
+	err = tx.QueryRowContext(ctx, `
+		SELECT term_version
+		FROM user_subscriptions
+		WHERE id = $1 AND deleted_at IS NULL
+	`, subscriptionID).Scan(&currentTermVersion)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, service.ErrSubscriptionNotFound
+	}
 	if err != nil {
-		return err
+		return nil, err
 	}
-	affected, err := res.RowsAffected()
-	if err != nil {
-		return err
+	if currentTermVersion != termVersion {
+		return &subscriptionBillingResult{TermStale: true}, nil
 	}
-	if affected > 0 {
-		return nil
-	}
-	return service.ErrSubscriptionNotFound
+	return nil, service.ErrSubscriptionNotFound
 }
 
 func deductUsageBillingBalance(ctx context.Context, tx *sql.Tx, userID int64, amount float64) (float64, bool, error) {

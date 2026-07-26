@@ -209,15 +209,17 @@ type AdminBoundAuthIdentityChannel struct {
 }
 
 type CreateGroupInput struct {
-	Name             string
-	Description      string
-	Platform         string
-	RateMultiplier   float64
-	IsExclusive      bool
-	SubscriptionType string   // standard/subscription
-	DailyLimitUSD    *float64 // 日限额 (USD)
-	WeeklyLimitUSD   *float64 // 周限额 (USD)
-	MonthlyLimitUSD  *float64 // 月限额 (USD)
+	Name                       string
+	Description                string
+	Platform                   string
+	RateMultiplier             float64
+	IsExclusive                bool
+	SubscriptionType           string   // standard/subscription
+	SubscriptionQuotaResetMode string   // rolling/until_subscription_expires
+	SubscriptionTotalLimitUSD  *float64 // 套餐总额度 (USD)
+	DailyLimitUSD              *float64 // 日限额 (USD)
+	WeeklyLimitUSD             *float64 // 周限额 (USD)
+	MonthlyLimitUSD            *float64 // 月限额 (USD)
 	// 图片生成计费配置（仅 antigravity 平台使用）
 	AllowImageGeneration         bool
 	AllowBatchImageGeneration    bool
@@ -268,16 +270,22 @@ type CreateGroupInput struct {
 }
 
 type UpdateGroupInput struct {
-	Name             string
-	Description      *string
-	Platform         string
-	RateMultiplier   *float64 // 使用指针以支持设置为0
-	IsExclusive      *bool
-	Status           string
-	SubscriptionType string   // standard/subscription
-	DailyLimitUSD    *float64 // 日限额 (USD)
-	WeeklyLimitUSD   *float64 // 周限额 (USD)
-	MonthlyLimitUSD  *float64 // 月限额 (USD)
+	Name                         string
+	Description                  *string
+	Platform                     string
+	RateMultiplier               *float64 // 使用指针以支持设置为0
+	IsExclusive                  *bool
+	Status                       string
+	SubscriptionType             string   // standard/subscription
+	SubscriptionQuotaResetMode   string   // empty = do not modify
+	SubscriptionTotalLimitUSD    *float64 // 套餐总额度 (USD)
+	SubscriptionTotalLimitUSDSet bool     // true = request explicitly supplied the field, including null
+	DailyLimitUSD                *float64 // 日限额 (USD)
+	DailyLimitUSDSet             bool
+	WeeklyLimitUSD               *float64 // 周限额 (USD)
+	WeeklyLimitUSDSet            bool
+	MonthlyLimitUSD              *float64 // 月限额 (USD)
+	MonthlyLimitUSDSet           bool
 	// 图片生成计费配置（仅 antigravity 平台使用）
 	AllowImageGeneration         *bool
 	AllowBatchImageGeneration    *bool

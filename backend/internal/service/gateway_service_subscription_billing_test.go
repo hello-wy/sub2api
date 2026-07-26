@@ -15,6 +15,7 @@ func TestBuildUsageBillingCommand_SubscriptionAppliesRateMultiplier(t *testing.T
 
 	groupID := int64(7)
 	subID := int64(42)
+	const termVersion int64 = 3
 
 	tests := []struct {
 		name           string
@@ -66,7 +67,7 @@ func TestBuildUsageBillingCommand_SubscriptionAppliesRateMultiplier(t *testing.T
 				User:               &User{ID: 1},
 				APIKey:             &APIKey{ID: 2, GroupID: &groupID},
 				Account:            &Account{ID: 3},
-				Subscription:       &UserSubscription{ID: subID},
+				Subscription:       &UserSubscription{ID: subID, TermVersion: termVersion},
 				IsSubscriptionBill: tt.isSubscription,
 			}
 
@@ -76,6 +77,9 @@ func TestBuildUsageBillingCommand_SubscriptionAppliesRateMultiplier(t *testing.T
 			}
 			if cmd.SubscriptionCost != tt.wantSub {
 				t.Errorf("SubscriptionCost = %v, want %v", cmd.SubscriptionCost, tt.wantSub)
+			}
+			if tt.wantSub > 0 && cmd.SubscriptionTermVersion != termVersion {
+				t.Errorf("SubscriptionTermVersion = %v, want %v", cmd.SubscriptionTermVersion, termVersion)
 			}
 			if cmd.BalanceCost != tt.wantBalance {
 				t.Errorf("BalanceCost = %v, want %v", cmd.BalanceCost, tt.wantBalance)

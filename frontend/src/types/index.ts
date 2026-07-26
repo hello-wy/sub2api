@@ -495,6 +495,7 @@ export interface PaginationConfig {
 export type GroupPlatform = 'anthropic' | 'openai' | 'gemini' | 'antigravity' | 'grok' | 'composite'
 
 export type SubscriptionType = 'standard' | 'subscription'
+export type SubscriptionQuotaResetMode = 'rolling' | 'until_subscription_expires'
 
 export interface OpenAIMessagesDispatchModelConfig {
   opus_mapped_model?: string
@@ -520,6 +521,8 @@ export interface Group {
   is_exclusive: boolean
   status: 'active' | 'inactive'
   subscription_type: SubscriptionType
+  subscription_quota_reset_mode?: SubscriptionQuotaResetMode
+  subscription_total_limit_usd?: number | null
   daily_limit_usd: number | null
   weekly_limit_usd: number | null
   monthly_limit_usd: number | null
@@ -713,6 +716,8 @@ export interface CreateGroupRequest {
   rate_multiplier?: number
   is_exclusive?: boolean
   subscription_type?: SubscriptionType
+  subscription_quota_reset_mode?: SubscriptionQuotaResetMode
+  subscription_total_limit_usd?: number | null
   daily_limit_usd?: number | null
   weekly_limit_usd?: number | null
   monthly_limit_usd?: number | null
@@ -763,6 +768,8 @@ export interface UpdateGroupRequest {
   is_exclusive?: boolean
   status?: 'active' | 'inactive'
   subscription_type?: SubscriptionType
+  subscription_quota_reset_mode?: SubscriptionQuotaResetMode
+  subscription_total_limit_usd?: number | null
   daily_limit_usd?: number | null
   weekly_limit_usd?: number | null
   monthly_limit_usd?: number | null
@@ -1878,6 +1885,7 @@ export interface UserSubscription {
   daily_usage_usd: number
   weekly_usage_usd: number
   monthly_usage_usd: number
+  total_usage_usd: number
   daily_window_start: string | null
   weekly_window_start: string | null
   monthly_window_start: string | null
@@ -1889,28 +1897,30 @@ export interface UserSubscription {
   group?: Group
 }
 
+export interface SubscriptionUsageWindowProgress {
+  limit_usd: number
+  used_usd: number
+  remaining_usd: number
+  percentage: number
+  window_start: string
+  resets_at: string
+  resets_in_seconds: number
+}
+
 export interface SubscriptionProgress {
-  subscription_id: number
-  daily: {
-    used: number
-    limit: number | null
-    percentage: number
-    reset_in_seconds: number | null
-  } | null
-  weekly: {
-    used: number
-    limit: number | null
-    percentage: number
-    reset_in_seconds: number | null
-  } | null
-  monthly: {
-    used: number
-    limit: number | null
-    percentage: number
-    reset_in_seconds: number | null
-  } | null
-  expires_at: string | null
-  days_remaining: number | null
+  id: number
+  group_name: string
+  expires_at: string
+  expires_in_days: number
+  total?: SubscriptionUsageWindowProgress
+  daily?: SubscriptionUsageWindowProgress
+  weekly?: SubscriptionUsageWindowProgress
+  monthly?: SubscriptionUsageWindowProgress
+}
+
+export interface SubscriptionProgressInfo {
+  subscription: UserSubscription
+  progress: SubscriptionProgress
 }
 
 export interface AssignSubscriptionRequest {
