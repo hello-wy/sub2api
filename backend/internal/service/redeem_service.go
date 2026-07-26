@@ -556,7 +556,7 @@ func (s *RedeemService) invalidateRedeemCaches(ctx context.Context, userID int64
 		if s.authCacheInvalidator != nil {
 			s.authCacheInvalidator.InvalidateAuthCacheByUserID(ctx, userID)
 		}
-		if redeemCode.GroupID != nil {
+		if redeemCode.GroupID != nil && s.subscriptionService != nil {
 			groupID := *redeemCode.GroupID
 			if err := s.subscriptionService.invalidateSubscriptionCaches(userID, groupID); err != nil {
 				logger.LegacyPrintf("service.redeem", "invalidate subscription cache after redeem failed for user %d group %d: %v", userID, groupID, err)

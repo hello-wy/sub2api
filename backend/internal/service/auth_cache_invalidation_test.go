@@ -31,3 +31,15 @@ func TestRedeemService_InvalidateRedeemCaches_AuthCache(t *testing.T) {
 
 	require.Equal(t, []int64{11, 11, 11}, invalidator.userIDs)
 }
+
+func TestRedeemService_InvalidateRedeemCaches_SubscriptionWithoutCacheService(t *testing.T) {
+	groupID := int64(3)
+	svc := &RedeemService{}
+
+	require.NotPanics(t, func() {
+		svc.invalidateRedeemCaches(context.Background(), 11, &RedeemCode{
+			Type:    RedeemTypeSubscription,
+			GroupID: &groupID,
+		})
+	})
+}

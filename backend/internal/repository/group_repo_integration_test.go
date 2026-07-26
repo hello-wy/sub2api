@@ -199,7 +199,7 @@ func (s *GroupRepoSuite) TestUpdate() {
 	s.Require().Equal("updated", got.Name)
 }
 
-func (s *GroupRepoSuite) TestUpdate_ClearsSubscriptionTotalLimitWhenReturningToRollingQuota(t *testing.T) {
+func (s *GroupRepoSuite) TestUpdate_ClearsSubscriptionTotalLimitWhenReturningToRollingQuota() {
 	total := 100.0
 	group := &service.Group{
 		Name:                       "lifetime-quota",
