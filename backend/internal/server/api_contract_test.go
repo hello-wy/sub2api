@@ -1699,6 +1699,10 @@ func (stubGroupRepo) Update(ctx context.Context, group *service.Group) error {
 	return errors.New("not implemented")
 }
 
+func (stubGroupRepo) UpdateWithSubscriptionQuotaTransition(ctx context.Context, group *service.Group) ([]int64, error) {
+	return nil, errors.New("not implemented")
+}
+
 func (stubGroupRepo) Delete(ctx context.Context, id int64) error {
 	return errors.New("not implemented")
 }

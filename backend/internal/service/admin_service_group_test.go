@@ -4,6 +4,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"math"
 	"testing"
 
@@ -18,11 +19,14 @@ func ptrString[T ~string](v T) *string {
 
 // groupRepoStubForAdmin 用于测试 AdminService 的 GroupRepository Stub
 type groupRepoStubForAdmin struct {
-	created  *Group // 记录 Create 调用的参数
-	updated  *Group // 记录 Update 调用的参数
-	getByID  *Group // GetByID 返回值
-	getErr   error  // GetByID 返回的错误
-	createID int64
+	created                *Group // 记录 Create 调用的参数
+	updated                *Group // 记录 Update 调用的参数
+	quotaTransitionUpdated *Group
+	quotaTransitionUserIDs []int64
+	quotaTransitionErr     error
+	getByID                *Group // GetByID 返回值
+	getErr                 error  // GetByID 返回的错误
+	createID               int64
 
 	getByIDByID map[int64]*Group
 
@@ -52,6 +56,14 @@ func (s *groupRepoStubForAdmin) Create(_ context.Context, g *Group) error {
 func (s *groupRepoStubForAdmin) Update(_ context.Context, g *Group) error {
 	s.updated = g
 	return nil
+}
+
+func (s *groupRepoStubForAdmin) UpdateWithSubscriptionQuotaTransition(_ context.Context, g *Group) ([]int64, error) {
+	s.quotaTransitionUpdated = g
+	if s.quotaTransitionErr != nil {
+		return nil, s.quotaTransitionErr
+	}
+	return s.quotaTransitionUserIDs, nil
 }
 
 func (s *groupRepoStubForAdmin) GetByID(_ context.Context, id int64) (*Group, error) {
@@ -389,6 +401,77 @@ func TestAdminService_UpdateGroup_RollingQuotaClearsLifetimeLimit(t *testing.T) 
 	require.Nil(t, group.SubscriptionTotalLimitUSD)
 	require.NotNil(t, group.DailyLimitUSD)
 	require.InDelta(t, daily, *group.DailyLimitUSD, 1e-9)
+}
+
+func TestAdminService_UpdateGroup_LifetimeQuotaCarriesRollingUsageAndInvalidatesCache(t *testing.T) {
+	total := 100.0
+	existing := &Group{
+		ID:                         1,
+		Name:                       "rolling-quota",
+		Platform:                   PlatformAnthropic,
+		Status:                     StatusActive,
+		SubscriptionType:           SubscriptionTypeSubscription,
+		SubscriptionQuotaResetMode: SubscriptionQuotaResetModeRolling,
+	}
+	repo := &groupRepoStubForAdmin{
+		getByID:                existing,
+		quotaTransitionUserIDs: []int64{7, 9},
+	}
+	cache := newBillingCacheStub(2)
+	svc := &adminServiceImpl{
+		groupRepo:           repo,
+		groupQuotaRepo:      repo,
+		billingCacheService: &BillingCacheService{cache: cache},
+	}
+
+	group, err := svc.UpdateGroup(context.Background(), existing.ID, &UpdateGroupInput{
+		SubscriptionQuotaResetMode: SubscriptionQuotaResetModeUntilSubscriptionExpires,
+		SubscriptionTotalLimitUSD:  &total,
+	})
+
+	require.NoError(t, err)
+	require.Same(t, group, repo.quotaTransitionUpdated)
+	require.Nil(t, repo.updated)
+	require.ElementsMatch(t, []subscriptionInvalidateCall{
+		{userID: 7, groupID: existing.ID},
+		{userID: 9, groupID: existing.ID},
+	}, waitForInvalidations(t, cache.invalidations, 2))
+}
+
+func TestAdminService_UpdateGroup_LifetimeQuotaTransitionFailureDoesNotUpdateOrInvalidateCache(t *testing.T) {
+	total := 100.0
+	transitionErr := errors.New("transition failed")
+	existing := &Group{
+		ID:                         1,
+		Name:                       "rolling-quota",
+		Platform:                   PlatformAnthropic,
+		Status:                     StatusActive,
+		SubscriptionType:           SubscriptionTypeSubscription,
+		SubscriptionQuotaResetMode: SubscriptionQuotaResetModeRolling,
+	}
+	repo := &groupRepoStubForAdmin{
+		getByID:            existing,
+		quotaTransitionErr: transitionErr,
+	}
+	cache := newBillingCacheStub(1)
+	svc := &adminServiceImpl{
+		groupRepo:           repo,
+		groupQuotaRepo:      repo,
+		billingCacheService: &BillingCacheService{cache: cache},
+	}
+
+	_, err := svc.UpdateGroup(context.Background(), existing.ID, &UpdateGroupInput{
+		SubscriptionQuotaResetMode: SubscriptionQuotaResetModeUntilSubscriptionExpires,
+		SubscriptionTotalLimitUSD:  &total,
+	})
+
+	require.ErrorIs(t, err, transitionErr)
+	require.Nil(t, repo.updated)
+	select {
+	case call := <-cache.invalidations:
+		t.Fatalf("unexpected cache invalidation: %+v", call)
+	default:
+	}
 }
 
 func TestAdminService_UpdateGroup_OmittedLifetimeLimitIsPreserved(t *testing.T) {

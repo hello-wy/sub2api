@@ -633,6 +633,7 @@ func (s *adminServiceImpl) UpdateGroup(ctx context.Context, id int64, input *Upd
 	if err != nil {
 		return nil, err
 	}
+	wasLifetimeQuota := group.UsesSubscriptionLifetimeQuota()
 
 	if input.Name != "" {
 		group.Name = input.Name
@@ -865,12 +866,33 @@ func (s *adminServiceImpl) UpdateGroup(ctx context.Context, id int64, input *Upd
 	sanitizeGroupMessagesDispatchFields(group)
 	sanitizeGroupReasoningEffortPolicy(group)
 
-	if err := s.groupRepo.Update(ctx, group); err != nil {
+	var affectedUserIDs []int64
+	if !wasLifetimeQuota && group.UsesSubscriptionLifetimeQuota() {
+		if s.groupQuotaRepo == nil {
+			return nil, errors.New("group repository does not support subscription quota transitions")
+		}
+		affectedUserIDs, err = s.groupQuotaRepo.UpdateWithSubscriptionQuotaTransition(ctx, group)
+	} else {
+		err = s.groupRepo.Update(ctx, group)
+	}
+	if err != nil {
 		return nil, err
 	}
 
 	if s.authCacheInvalidator != nil {
 		s.authCacheInvalidator.InvalidateAuthCacheByGroupID(ctx, id)
+	}
+	if len(affectedUserIDs) > 0 && s.billingCacheService != nil {
+		cacheCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		for _, userID := range affectedUserIDs {
+			if err := s.billingCacheService.InvalidateSubscription(cacheCtx, userID, id); err != nil {
+				logger.LegacyPrintf("service.admin", "invalidate subscription cache after quota transition failed: user_id=%d group_id=%d err=%v", userID, id, err)
+			}
+			if err := s.billingCacheService.PublishSubscriptionCacheInvalidation(cacheCtx, subCacheKey(userID, id)); err != nil {
+				logger.LegacyPrintf("service.admin", "publish subscription cache invalidation after quota transition failed: user_id=%d group_id=%d err=%v", userID, id, err)
+			}
+		}
 	}
 
 	// 如果指定了复制账号的源分组，同步绑定（替换当前分组的账号）

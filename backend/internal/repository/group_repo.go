@@ -230,13 +230,23 @@ func (r *groupRepository) GetByIDLite(ctx context.Context, id int64) (*service.G
 }
 
 func (r *groupRepository) Update(ctx context.Context, groupIn *service.Group) error {
+	if err := r.updateGroupRecord(ctx, clientFromContext(ctx, r.client), groupIn); err != nil {
+		return err
+	}
+	if err := enqueueSchedulerOutbox(ctx, r.sql, service.SchedulerOutboxEventGroupChanged, nil, &groupIn.ID, nil); err != nil {
+		logger.LegacyPrintf("repository.group", "[SchedulerOutbox] enqueue group update failed: group=%d err=%v", groupIn.ID, err)
+	}
+	return nil
+}
+
+func (r *groupRepository) updateGroupRecord(ctx context.Context, client *dbent.Client, groupIn *service.Group) error {
 	if groupIn == nil {
 		return errors.New("group is nil")
 	}
 	if err := normalizeGroupSubscriptionQuotaResetMode(groupIn); err != nil {
 		return err
 	}
-	builder := r.client.Group.UpdateOneID(groupIn.ID).
+	builder := client.Group.UpdateOneID(groupIn.ID).
 		SetName(groupIn.Name).
 		SetDescription(groupIn.Description).
 		SetPlatform(groupIn.Platform).
@@ -366,10 +376,78 @@ func (r *groupRepository) Update(ctx context.Context, groupIn *service.Group) er
 		return translatePersistenceError(err, service.ErrGroupNotFound, service.ErrGroupExists)
 	}
 	groupIn.UpdatedAt = updated.UpdatedAt
-	if err := enqueueSchedulerOutbox(ctx, r.sql, service.SchedulerOutboxEventGroupChanged, nil, &groupIn.ID, nil); err != nil {
-		logger.LegacyPrintf("repository.group", "[SchedulerOutbox] enqueue group update failed: group=%d err=%v", groupIn.ID, err)
-	}
 	return nil
+}
+
+func (r *groupRepository) UpdateWithSubscriptionQuotaTransition(ctx context.Context, groupIn *service.Group) ([]int64, error) {
+	if groupIn == nil {
+		return nil, errors.New("group is nil")
+	}
+
+	baseCtx := ctx
+	client := r.client
+	contextTx := dbent.TxFromContext(ctx)
+	var tx *dbent.Tx
+	if contextTx != nil {
+		client = contextTx.Client()
+	} else {
+		var err error
+		tx, err = r.client.Tx(ctx)
+		if err != nil && !errors.Is(err, dbent.ErrTxStarted) {
+			return nil, err
+		}
+		if tx != nil {
+			defer func() { _ = tx.Rollback() }()
+			ctx = dbent.NewTxContext(ctx, tx)
+			client = tx.Client()
+		}
+	}
+
+	rows, err := client.QueryContext(ctx, `
+		UPDATE user_subscriptions
+		SET total_usage_usd = GREATEST(
+				total_usage_usd,
+				daily_usage_usd,
+				weekly_usage_usd,
+				monthly_usage_usd
+			),
+			updated_at = NOW()
+		WHERE group_id = $1
+			AND deleted_at IS NULL
+		RETURNING user_id`, groupIn.ID)
+	if err != nil {
+		return nil, err
+	}
+	affectedUserIDs := make([]int64, 0)
+	for rows.Next() {
+		var userID int64
+		if err := rows.Scan(&userID); err != nil {
+			_ = rows.Close()
+			return nil, err
+		}
+		affectedUserIDs = append(affectedUserIDs, userID)
+	}
+	if err := rows.Err(); err != nil {
+		_ = rows.Close()
+		return nil, err
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+
+	if err := r.updateGroupRecord(ctx, client, groupIn); err != nil {
+		return nil, err
+	}
+	if tx != nil {
+		if err := tx.Commit(); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := enqueueSchedulerOutbox(baseCtx, r.sql, service.SchedulerOutboxEventGroupChanged, nil, &groupIn.ID, nil); err != nil {
+		logger.LegacyPrintf("repository.group", "[SchedulerOutbox] enqueue group quota transition failed: group=%d err=%v", groupIn.ID, err)
+	}
+	return affectedUserIDs, nil
 }
 
 func normalizeGroupSubscriptionQuotaResetMode(groupIn *service.Group) error {
