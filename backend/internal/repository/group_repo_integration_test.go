@@ -6,12 +6,15 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	dbent "github.com/Wei-Shaw/sub2api/ent"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/pagination"
 	"github.com/Wei-Shaw/sub2api/internal/service"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -45,6 +48,63 @@ func (s *GroupRepoSuite) SetupTest() {
 
 func TestGroupRepoSuite(t *testing.T) {
 	suite.Run(t, new(GroupRepoSuite))
+}
+
+func TestUpdateWithSubscriptionQuotaTransitionRollsBackUsageWhenGroupUpdateFails(t *testing.T) {
+	ctx := context.Background()
+	client := testEntClient(t)
+	repo := newGroupRepositoryWithSQL(client, integrationDB)
+	suffix := time.Now().UnixNano()
+	target := &service.Group{
+		Name:                       fmt.Sprintf("quota-transition-rollback-%d", suffix),
+		Platform:                   service.PlatformAnthropic,
+		RateMultiplier:             1,
+		Status:                     service.StatusActive,
+		SubscriptionType:           service.SubscriptionTypeSubscription,
+		SubscriptionQuotaResetMode: service.SubscriptionQuotaResetModeRolling,
+	}
+	conflict := &service.Group{
+		Name:             fmt.Sprintf("quota-transition-conflict-%d", suffix),
+		Platform:         service.PlatformAnthropic,
+		RateMultiplier:   1,
+		Status:           service.StatusActive,
+		SubscriptionType: service.SubscriptionTypeStandard,
+	}
+	require.NoError(t, repo.Create(ctx, target))
+	require.NoError(t, repo.Create(ctx, conflict))
+	user := mustCreateUser(t, client, &service.User{})
+	t.Cleanup(func() {
+		_, _ = integrationDB.ExecContext(context.Background(), "DELETE FROM users WHERE id = $1", user.ID)
+		_, _ = integrationDB.ExecContext(context.Background(), "DELETE FROM groups WHERE id IN ($1, $2)", target.ID, conflict.ID)
+	})
+	subscription := mustCreateSubscription(t, client, &service.UserSubscription{
+		UserID:          user.ID,
+		GroupID:         target.ID,
+		DailyUsageUSD:   4,
+		WeeklyUsageUSD:  8,
+		MonthlyUsageUSD: 6,
+		TotalUsageUSD:   2,
+	})
+
+	target.Name = conflict.Name
+	target.SubscriptionQuotaResetMode = service.SubscriptionQuotaResetModeUntilSubscriptionExpires
+	totalLimit := 100.0
+	target.SubscriptionTotalLimitUSD = &totalLimit
+	_, err := repo.UpdateWithSubscriptionQuotaTransition(ctx, target)
+
+	require.Error(t, err)
+	var totalUsage float64
+	require.NoError(t, integrationDB.QueryRowContext(ctx,
+		"SELECT total_usage_usd FROM user_subscriptions WHERE id = $1",
+		subscription.ID,
+	).Scan(&totalUsage))
+	require.InDelta(t, 2, totalUsage, 1e-9)
+	var resetMode string
+	require.NoError(t, integrationDB.QueryRowContext(ctx,
+		"SELECT subscription_quota_reset_mode FROM groups WHERE id = $1",
+		target.ID,
+	).Scan(&resetMode))
+	require.Equal(t, service.SubscriptionQuotaResetModeRolling, resetMode)
 }
 
 // --- Create / GetByID / Update / Delete ---
@@ -220,6 +280,85 @@ func (s *GroupRepoSuite) TestUpdate_ClearsSubscriptionTotalLimitWhenReturningToR
 	s.Require().NoError(err)
 	s.Require().Equal(service.SubscriptionQuotaResetModeRolling, got.SubscriptionQuotaResetMode)
 	s.Require().Nil(got.SubscriptionTotalLimitUSD)
+}
+
+func (s *GroupRepoSuite) TestUpdateWithSubscriptionQuotaTransitionCarriesCurrentUsage() {
+	daily, weekly, monthly, totalLimit := 10.0, 50.0, 100.0, 200.0
+	group := &service.Group{
+		Name:                       "quota-transition",
+		Platform:                   service.PlatformAnthropic,
+		RateMultiplier:             1,
+		Status:                     service.StatusActive,
+		SubscriptionType:           service.SubscriptionTypeSubscription,
+		SubscriptionQuotaResetMode: service.SubscriptionQuotaResetModeRolling,
+		DailyLimitUSD:              &daily,
+		WeeklyLimitUSD:             &weekly,
+		MonthlyLimitUSD:            &monthly,
+	}
+	s.Require().NoError(s.repo.Create(s.ctx, group))
+
+	user1 := mustCreateUser(s.T(), s.tx.Client(), &service.User{})
+	user2 := mustCreateUser(s.T(), s.tx.Client(), &service.User{})
+	startsAt := time.Now().Add(-48 * time.Hour)
+	expiresAt := time.Now().Add(12 * 24 * time.Hour)
+	sub1 := mustCreateSubscription(s.T(), s.tx.Client(), &service.UserSubscription{
+		UserID:          user1.ID,
+		GroupID:         group.ID,
+		StartsAt:        startsAt,
+		ExpiresAt:       expiresAt,
+		TermVersion:     3,
+		DailyUsageUSD:   4,
+		WeeklyUsageUSD:  8,
+		MonthlyUsageUSD: 6,
+		TotalUsageUSD:   2,
+	})
+	sub2 := mustCreateSubscription(s.T(), s.tx.Client(), &service.UserSubscription{
+		UserID:          user2.ID,
+		GroupID:         group.ID,
+		StartsAt:        startsAt,
+		ExpiresAt:       expiresAt,
+		TermVersion:     5,
+		DailyUsageUSD:   4,
+		WeeklyUsageUSD:  8,
+		MonthlyUsageUSD: 6,
+		TotalUsageUSD:   12,
+	})
+
+	group.SubscriptionQuotaResetMode = service.SubscriptionQuotaResetModeUntilSubscriptionExpires
+	group.SubscriptionTotalLimitUSD = &totalLimit
+	group.DailyLimitUSD = nil
+	group.WeeklyLimitUSD = nil
+	group.MonthlyLimitUSD = nil
+	affectedUserIDs, err := s.repo.UpdateWithSubscriptionQuotaTransition(s.ctx, group)
+
+	s.Require().NoError(err)
+	s.Require().ElementsMatch([]int64{user1.ID, user2.ID}, affectedUserIDs)
+	assertSubscription := func(subscriptionID int64, expectedUsage float64, expectedTermVersion int64) {
+		var gotStartsAt, gotExpiresAt time.Time
+		var gotTermVersion int64
+		var gotTotalUsage float64
+		s.Require().NoError(scanSingleRow(s.ctx, s.tx, `
+			SELECT starts_at, expires_at, term_version, total_usage_usd
+			FROM user_subscriptions
+			WHERE id = $1`, []any{subscriptionID},
+			&gotStartsAt,
+			&gotExpiresAt,
+			&gotTermVersion,
+			&gotTotalUsage,
+		))
+		s.Require().WithinDuration(startsAt, gotStartsAt, time.Microsecond)
+		s.Require().WithinDuration(expiresAt, gotExpiresAt, time.Microsecond)
+		s.Require().Equal(expectedTermVersion, gotTermVersion)
+		s.Require().InDelta(expectedUsage, gotTotalUsage, 1e-9)
+	}
+	assertSubscription(sub1.ID, 8, 3)
+	assertSubscription(sub2.ID, 12, 5)
+
+	updatedGroup, err := s.repo.GetByID(s.ctx, group.ID)
+	s.Require().NoError(err)
+	s.Require().True(updatedGroup.UsesSubscriptionLifetimeQuota())
+	s.Require().NotNil(updatedGroup.SubscriptionTotalLimitUSD)
+	s.Require().InDelta(totalLimit, *updatedGroup.SubscriptionTotalLimitUSD, 1e-9)
 }
 
 func (s *GroupRepoSuite) TestGetByID_PreservesMessagesDispatchModelConfig() {

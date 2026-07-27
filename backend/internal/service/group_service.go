@@ -46,11 +46,18 @@ type GroupDuplicateRepository interface {
 	CreateFromSource(ctx context.Context, group *Group, sourceGroupID int64) error
 }
 
+type GroupSubscriptionQuotaTransitionRepository interface {
+	// UpdateWithSubscriptionQuotaTransition atomically carries the current rolling
+	// usage into the subscription-term total and updates the group configuration.
+	UpdateWithSubscriptionQuotaTransition(ctx context.Context, group *Group) ([]int64, error)
+}
+
 // AdminGroupRepository makes the group-duplication write capability an explicit
 // admin-service dependency without widening gateway-only group test doubles.
 type AdminGroupRepository interface {
 	GroupRepository
 	GroupDuplicateRepository
+	GroupSubscriptionQuotaTransitionRepository
 }
 
 // GroupSortOrderUpdate 分组排序更新
