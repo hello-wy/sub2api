@@ -165,6 +165,10 @@ type SystemSettings struct {
 	WelfareLeaderboardRewardRatios string
 	LoyaltyWeeklyRules             string
 	LoyaltyPermanentRules          string
+	DailyCheckinRewardMin          float64
+	DailyCheckinRewardMax          float64
+	DailyCheckinRewardRanges       string
+	DailyCheckinStreakRules        string
 
 	// Model fallback configuration
 	EnableModelFallback      bool   `json:"enable_model_fallback"`

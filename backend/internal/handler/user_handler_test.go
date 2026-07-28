@@ -680,11 +680,11 @@ func TestUserHandlerCheckInDailySuccess(t *testing.T) {
 	}
 	require.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &resp))
 	require.Equal(t, 0, resp.Code)
-	require.GreaterOrEqual(t, resp.Data.Balance, 11.0)
+	require.GreaterOrEqual(t, resp.Data.Balance, 10.0)
 	require.LessOrEqual(t, resp.Data.Balance, 13.0)
 	require.True(t, resp.Data.Summary.QQBound)
 	require.True(t, resp.Data.Summary.CheckedInToday)
-	require.GreaterOrEqual(t, resp.Data.Summary.BaseReward, 1.0)
+	require.GreaterOrEqual(t, resp.Data.Summary.BaseReward, 0.0)
 	require.LessOrEqual(t, resp.Data.Summary.BaseReward, 3.0)
 	require.Equal(t, resp.Data.Summary.BaseReward, resp.Data.Summary.TodayReward)
 	require.Equal(t, 1, resp.Data.Summary.StreakDays)

@@ -81,10 +81,14 @@ type SystemSettings struct {
 	DingTalkConnectSyncDeptAttrName        string `json:"dingtalk_connect_sync_dept_attr_name"`
 
 	// 排行榜福利设置
-	WelfareLeaderboardRankLimit    int    `json:"welfare_leaderboard_rank_limit"`
-	WelfareLeaderboardRewardRatios string `json:"welfare_leaderboard_reward_ratios"`
-	LoyaltyWeeklyRules             string `json:"loyalty_weekly_rules"`
-	LoyaltyPermanentRules          string `json:"loyalty_permanent_rules"`
+	WelfareLeaderboardRankLimit    int     `json:"welfare_leaderboard_rank_limit"`
+	WelfareLeaderboardRewardRatios string  `json:"welfare_leaderboard_reward_ratios"`
+	LoyaltyWeeklyRules             string  `json:"loyalty_weekly_rules"`
+	LoyaltyPermanentRules          string  `json:"loyalty_permanent_rules"`
+	DailyCheckinRewardMin          float64 `json:"daily_checkin_reward_min"`
+	DailyCheckinRewardMax          float64 `json:"daily_checkin_reward_max"`
+	DailyCheckinRewardRanges       string  `json:"daily_checkin_reward_ranges"`
+	DailyCheckinStreakRules        string  `json:"daily_checkin_streak_rules"`
 
 	WeChatConnectEnabled                   bool   `json:"wechat_connect_enabled"`
 	WeChatConnectAppID                     string `json:"wechat_connect_app_id"`

@@ -18,6 +18,7 @@ export default {
         subtabsLabel: '运营管理分区',
         subtabs: {
           welfare: '福利设置',
+          checkin: '签到设置',
           membership: '会员计划',
         },
         title: '福利排行榜设置',

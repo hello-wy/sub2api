@@ -116,7 +116,7 @@ func TestUserHandlerCheckInUserByID(t *testing.T) {
 	require.NotNil(t, repo.createdRecord)
 	require.Equal(t, int64(31), repo.updatedBalanceUser)
 	require.Equal(t, int64(31), repo.createdRecord.UserID)
-	require.GreaterOrEqual(t, repo.createdRecord.BaseReward, 1.0)
+	require.GreaterOrEqual(t, repo.createdRecord.BaseReward, 0.0)
 	require.LessOrEqual(t, repo.createdRecord.BaseReward, 3.0)
 	require.Equal(t, repo.createdRecord.TotalReward, repo.updatedBalanceDelta)
 

@@ -490,7 +490,7 @@ func TestCheckInDailyComputesStreakAndReward(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Equal(t, 3, result.Record.StreakDays)
-	require.GreaterOrEqual(t, result.Record.BaseReward, 1.0)
+	require.GreaterOrEqual(t, result.Record.BaseReward, 0.0)
 	require.LessOrEqual(t, result.Record.BaseReward, 3.0)
 	require.Equal(t, 3.0, result.Record.BonusReward)
 	require.Equal(t, result.Record.BaseReward+result.Record.BonusReward, result.Record.TotalReward)
@@ -516,15 +516,43 @@ func TestComputeDailyCheckinBonusOnlyRewardsMilestoneDays(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.want, computeDailyCheckinBonus(tt.streakDays))
+			require.Equal(t, tt.want, computeDailyCheckinBonus(tt.streakDays, defaultDailyCheckinSettings().StreakRules))
 		})
 	}
 }
 
 func TestRandomDailyCheckinBaseRewardSupportsCents(t *testing.T) {
-	reward := randomDailyCheckinBaseRewardFromReader(bytes.NewReader([]byte{23}))
+	reward, err := randomDailyCheckinBaseRewardFromReader(bytes.NewReader([]byte{0, 0, 0, 23}), DailyCheckinSettings{
+		RewardMin:    1,
+		RewardMax:    3,
+		RewardRanges: []DailyCheckinRewardRange{{Min: 1, Max: 3, Probability: 1}},
+	})
 
+	require.NoError(t, err)
 	require.Equal(t, 1.23, reward)
+}
+
+func TestParseDailyCheckinSettingsUsesConfiguredRangesAndRules(t *testing.T) {
+	settings, err := ParseDailyCheckinSettings(map[string]string{
+		SettingKeyDailyCheckinRewardMin:    "0",
+		SettingKeyDailyCheckinRewardMax:    "3",
+		SettingKeyDailyCheckinRewardRanges: `[{"min":0,"max":1,"probability":0.5},{"min":1,"max":2,"probability":0.4},{"min":2,"max":2.5,"probability":0.0999},{"min":2.5,"max":3,"probability":0.0001}]`,
+		SettingKeyDailyCheckinStreakRules:  `[{"threshold":2,"bonus":1.5}]`,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, 0.0, settings.RewardMin)
+	require.Equal(t, 3.0, settings.RewardMax)
+	require.Len(t, settings.RewardRanges, 4)
+	require.Equal(t, 1.5, computeDailyCheckinBonus(2, settings.StreakRules))
+}
+
+func TestParseDailyCheckinSettingsRejectsInvalidProbabilityTotal(t *testing.T) {
+	_, err := ParseDailyCheckinSettings(map[string]string{
+		SettingKeyDailyCheckinRewardRanges: `[{"min":0,"max":3,"probability":0.9}]`,
+	})
+
+	require.ErrorContains(t, err, "probabilities must total 1")
 }
 
 func TestGetProfileIdentitySummaries_AllowsUnbindWhenAnotherLoginMethodRemains(t *testing.T) {

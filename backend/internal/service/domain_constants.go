@@ -180,6 +180,10 @@ const (
 	SettingKeyWelfareLeaderboardRewardRatios = "welfare_leaderboard_reward_ratios" // 排行榜福利每名获得的比例
 	SettingKeyLoyaltyWeeklyRules             = "loyalty_weekly_rules"              // 会员周计划规则（JSON）
 	SettingKeyLoyaltyPermanentRules          = "loyalty_permanent_rules"           // 会员永久计划规则（JSON）
+	SettingKeyDailyCheckinRewardMin          = "daily_checkin_reward_min"          // 每日签到奖励最小金额
+	SettingKeyDailyCheckinRewardMax          = "daily_checkin_reward_max"          // 每日签到奖励最大金额
+	SettingKeyDailyCheckinRewardRanges       = "daily_checkin_reward_ranges"       // 每日签到分段奖励概率（JSON）
+	SettingKeyDailyCheckinStreakRules        = "daily_checkin_streak_rules"        // 每日签到连续奖励规则（JSON）
 
 	// 会话安全设置
 	SettingKeySessionBindingEnabled = "session_binding_enabled" // 会话 IP/UA 绑定（变更即失效），默认关闭

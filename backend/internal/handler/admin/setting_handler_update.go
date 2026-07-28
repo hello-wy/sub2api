@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
@@ -162,6 +163,10 @@ type UpdateSettingsRequest struct {
 	WelfareLeaderboardRewardRatios            string                            `json:"welfare_leaderboard_reward_ratios"`
 	LoyaltyWeeklyRules                        string                            `json:"loyalty_weekly_rules"`
 	LoyaltyPermanentRules                     string                            `json:"loyalty_permanent_rules"`
+	DailyCheckinRewardMin                     float64                           `json:"daily_checkin_reward_min"`
+	DailyCheckinRewardMax                     float64                           `json:"daily_checkin_reward_max"`
+	DailyCheckinRewardRanges                  string                            `json:"daily_checkin_reward_ranges"`
+	DailyCheckinStreakRules                   string                            `json:"daily_checkin_streak_rules"`
 	AuthSourceDefaultEmailBalance             *float64                          `json:"auth_source_default_email_balance"`
 	AuthSourceDefaultEmailConcurrency         *int                              `json:"auth_source_default_email_concurrency"`
 	AuthSourceDefaultEmailSubscriptions       *[]dto.DefaultSubscriptionSetting `json:"auth_source_default_email_subscriptions"`
@@ -510,6 +515,16 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		return
 	}
 	if _, err := service.NormalizePaymentLoyaltyRulesJSON("permanent", req.LoyaltyPermanentRules); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+	normalizeDailyCheckinUpdateRequest(&req, previousSettings)
+	if _, err := service.ParseDailyCheckinSettings(map[string]string{
+		service.SettingKeyDailyCheckinRewardMin:    strconv.FormatFloat(req.DailyCheckinRewardMin, 'f', -1, 64),
+		service.SettingKeyDailyCheckinRewardMax:    strconv.FormatFloat(req.DailyCheckinRewardMax, 'f', -1, 64),
+		service.SettingKeyDailyCheckinRewardRanges: req.DailyCheckinRewardRanges,
+		service.SettingKeyDailyCheckinStreakRules:  req.DailyCheckinStreakRules,
+	}); err != nil {
 		response.BadRequest(c, err.Error())
 		return
 	}
@@ -1276,6 +1291,10 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		WelfareLeaderboardRewardRatios:   req.WelfareLeaderboardRewardRatios,
 		LoyaltyWeeklyRules:               req.LoyaltyWeeklyRules,
 		LoyaltyPermanentRules:            req.LoyaltyPermanentRules,
+		DailyCheckinRewardMin:            req.DailyCheckinRewardMin,
+		DailyCheckinRewardMax:            req.DailyCheckinRewardMax,
+		DailyCheckinRewardRanges:         req.DailyCheckinRewardRanges,
+		DailyCheckinStreakRules:          req.DailyCheckinStreakRules,
 		SessionBindingEnabled:            sessionBindingEnabled,
 		StepUpEnabled:                    stepUpEnabled,
 		AuditLogRetentionDays:            req.AuditLogRetentionDays,
@@ -1814,6 +1833,10 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		WelfareLeaderboardRewardRatios:                         updatedSettings.WelfareLeaderboardRewardRatios,
 		LoyaltyWeeklyRules:                                     updatedSettings.LoyaltyWeeklyRules,
 		LoyaltyPermanentRules:                                  updatedSettings.LoyaltyPermanentRules,
+		DailyCheckinRewardMin:                                  updatedSettings.DailyCheckinRewardMin,
+		DailyCheckinRewardMax:                                  updatedSettings.DailyCheckinRewardMax,
+		DailyCheckinRewardRanges:                               updatedSettings.DailyCheckinRewardRanges,
+		DailyCheckinStreakRules:                                updatedSettings.DailyCheckinStreakRules,
 		SessionBindingEnabled:                                  updatedSettings.SessionBindingEnabled,
 		StepUpEnabled:                                          updatedSettings.StepUpEnabled,
 		AuditLogRetentionDays:                                  updatedSettings.AuditLogRetentionDays,
@@ -2090,6 +2113,15 @@ func normalizeLoyaltyUpdateRequest(req *UpdateSettingsRequest, previous *service
 	}
 	if strings.TrimSpace(req.LoyaltyPermanentRules) == "" {
 		req.LoyaltyPermanentRules = service.DefaultPaymentLoyaltyRulesJSON("permanent")
+	}
+}
+
+func normalizeDailyCheckinUpdateRequest(req *UpdateSettingsRequest, previous *service.SystemSettings) {
+	if req.DailyCheckinRewardRanges == "" && req.DailyCheckinStreakRules == "" && req.DailyCheckinRewardMin == 0 && req.DailyCheckinRewardMax == 0 {
+		req.DailyCheckinRewardMin = previous.DailyCheckinRewardMin
+		req.DailyCheckinRewardMax = previous.DailyCheckinRewardMax
+		req.DailyCheckinRewardRanges = previous.DailyCheckinRewardRanges
+		req.DailyCheckinStreakRules = previous.DailyCheckinStreakRules
 	}
 }
 

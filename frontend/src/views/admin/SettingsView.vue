@@ -7330,6 +7330,73 @@
             </div>
           </div>
 
+          <div v-show="activeOperationsSubTab === 'checkin'" class="card">
+            <div class="border-b border-gray-100 px-6 py-4 dark:border-dark-700">
+              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+                {{ localText("每日签到设置", "Daily Check-in Settings") }}
+              </h2>
+              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                {{ localText("配置可领取金额范围、分段概率和连续签到额外奖励。分段概率总和必须为 1。", "Configure the reward range, weighted reward segments, and streak bonuses. Segment probabilities must total 1.") }}
+              </p>
+            </div>
+            <div class="space-y-6 p-6">
+              <div class="grid max-w-xl gap-4 sm:grid-cols-2">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {{ localText("签到金额最小值", "Minimum reward") }}
+                  <input v-model.number="form.daily_checkin_reward_min" type="number" min="0" step="0.01" class="input mt-2" />
+                </label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {{ localText("签到金额最大值", "Maximum reward") }}
+                  <input v-model.number="form.daily_checkin_reward_max" type="number" :min="form.daily_checkin_reward_min" step="0.01" class="input mt-2" />
+                </label>
+              </div>
+
+              <section>
+                <div class="mb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <h3 class="font-semibold text-gray-900 dark:text-white">{{ localText("分段概率", "Reward segments") }}</h3>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ localText("每次签到先按该概率抽取一个金额区间，再随机发放区间内金额。", "Each check-in picks a reward segment by probability, then a random amount within it.") }}</p>
+                  </div>
+                  <button type="button" class="btn btn-secondary btn-sm" @click="addDailyCheckinRewardRange">+ {{ localText("添加分段", "Add segment") }}</button>
+                </div>
+                <div class="overflow-x-auto rounded-lg border border-gray-100 dark:border-dark-700">
+                  <table class="w-full min-w-[600px] text-sm">
+                    <thead class="bg-gray-50 text-left text-gray-500 dark:bg-dark-800 dark:text-dark-400">
+                      <tr><th class="px-3 py-2">{{ localText("最小金额", "Min") }}</th><th class="px-3 py-2">{{ localText("最大金额", "Max") }}</th><th class="px-3 py-2">{{ localText("概率", "Probability") }}</th><th class="px-3 py-2">{{ localText("操作", "Action") }}</th></tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="(range, index) in dailyCheckinRewardRanges" :key="index" class="border-t border-gray-100 dark:border-dark-700">
+                        <td class="p-2"><input v-model.number="range.min" type="number" :min="form.daily_checkin_reward_min" :max="form.daily_checkin_reward_max" step="0.01" class="input" /></td>
+                        <td class="p-2"><input v-model.number="range.max" type="number" :min="range.min" :max="form.daily_checkin_reward_max" step="0.01" class="input" /></td>
+                        <td class="p-2"><input v-model.number="range.probability" type="number" min="0" max="1" step="0.0001" class="input" /></td>
+                        <td class="p-2"><button type="button" class="btn btn-ghost btn-sm text-red-600" :disabled="dailyCheckinRewardRanges.length === 1" @click="removeDailyCheckinRewardRange(index)">{{ localText("删除", "Remove") }}</button></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <p class="mt-2 text-sm font-medium" :class="Math.abs(dailyCheckinProbabilityTotal - 1) <= 0.0000001 ? 'text-green-600' : 'text-red-600'">
+                  {{ localText("当前概率总和：", "Current probability total: ") }}{{ dailyCheckinProbabilityTotal.toFixed(6) }}
+                </p>
+              </section>
+
+              <section>
+                <div class="mb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <h3 class="font-semibold text-gray-900 dark:text-white">{{ localText("连续签到额外奖励", "Streak bonuses") }}</h3>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ localText("达到指定连续签到天数时，额外发放一次奖励。", "An extra reward is issued when the specified streak day is reached.") }}</p>
+                  </div>
+                  <button type="button" class="btn btn-secondary btn-sm" @click="addDailyCheckinStreakRule">+ {{ localText("添加规则", "Add rule") }}</button>
+                </div>
+                <div class="overflow-x-auto rounded-lg border border-gray-100 dark:border-dark-700">
+                  <table class="w-full min-w-[480px] text-sm">
+                    <thead class="bg-gray-50 text-left text-gray-500 dark:bg-dark-800 dark:text-dark-400"><tr><th class="px-3 py-2">{{ localText("连续天数", "Streak days") }}</th><th class="px-3 py-2">{{ localText("额外奖励", "Bonus") }}</th><th class="px-3 py-2">{{ localText("操作", "Action") }}</th></tr></thead>
+                    <tbody><tr v-for="(rule, index) in dailyCheckinStreakRules" :key="index" class="border-t border-gray-100 dark:border-dark-700"><td class="p-2"><input v-model.number="rule.threshold" type="number" min="1" step="1" class="input" /></td><td class="p-2"><input v-model.number="rule.bonus" type="number" min="0" step="0.01" class="input" /></td><td class="p-2"><button type="button" class="btn btn-ghost btn-sm text-red-600" @click="removeDailyCheckinStreakRule(index)">{{ localText("删除", "Remove") }}</button></td></tr></tbody>
+                  </table>
+                </div>
+              </section>
+            </div>
+          </div>
+
           <div v-show="activeOperationsSubTab === 'membership'" class="card">
             <div class="border-b border-gray-100 px-6 py-4 dark:border-dark-700">
               <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
@@ -8013,6 +8080,8 @@ import type {
   UpdateSettingsRequest,
   DefaultSubscriptionSetting,
   DefaultPlatformQuotasMap,
+  DailyCheckinRewardRangeSetting,
+  DailyCheckinStreakRuleSetting,
   LoyaltyRuleSetting,
   OpenAIFastPolicyRule,
   WeChatConnectMode,
@@ -8104,7 +8173,9 @@ type SettingsTab =
   | "operations";
 const activeTab = ref<SettingsTab>("general");
 const welfareRatios = ref<number[]>([1.0, 0.5, 0.2]);
-type OperationsSubTab = "welfare" | "membership";
+const dailyCheckinRewardRanges = ref<DailyCheckinRewardRangeSetting[]>([]);
+const dailyCheckinStreakRules = ref<DailyCheckinStreakRuleSetting[]>([]);
+type OperationsSubTab = "welfare" | "checkin" | "membership";
 const activeOperationsSubTab = ref<OperationsSubTab>("welfare");
 const loyaltyWeeklyRules = ref<LoyaltyRuleSetting[]>([
   { scope: "weekly", level: "L1", points: 20, discount: 2 },
@@ -8120,6 +8191,7 @@ const loyaltyPermanentRules = ref<LoyaltyRuleSetting[]>([
 
 const operationsSubTabs = [
   { key: "welfare" as OperationsSubTab, icon: "gift" as const },
+  { key: "checkin" as OperationsSubTab, icon: "calendar" as const },
   { key: "membership" as OperationsSubTab, icon: "badge" as const },
 ];
 
@@ -8151,6 +8223,78 @@ function parseWelfareRatios(raw: unknown): number[] {
   } catch {
     return [1.0, 0.5, 0.2];
   }
+}
+
+const defaultDailyCheckinRewardRanges: DailyCheckinRewardRangeSetting[] = [
+  { min: 0, max: 1, probability: 0.5 },
+  { min: 1, max: 2, probability: 0.4 },
+  { min: 2, max: 2.5, probability: 0.0999 },
+  { min: 2.5, max: 3, probability: 0.0001 },
+];
+const defaultDailyCheckinStreakRules: DailyCheckinStreakRuleSetting[] = [
+  { threshold: 3, bonus: 3 },
+  { threshold: 7, bonus: 6 },
+  { threshold: 14, bonus: 12 },
+  { threshold: 30, bonus: 24 },
+];
+
+function parseDailyCheckinSettings<T>(raw: unknown, defaults: T[]): T[] {
+  if (Array.isArray(raw)) return raw as T[];
+  if (typeof raw !== "string" || raw.trim() === "") return defaults;
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed as T[] : defaults;
+  } catch {
+    return defaults;
+  }
+}
+
+function normalizeDailyCheckinSettings(): void {
+  form.daily_checkin_reward_min = Math.max(0, Number(form.daily_checkin_reward_min) || 0);
+  form.daily_checkin_reward_max = Math.max(
+    form.daily_checkin_reward_min,
+    Number(form.daily_checkin_reward_max) || form.daily_checkin_reward_min,
+  );
+  dailyCheckinRewardRanges.value = dailyCheckinRewardRanges.value.map((range) => {
+    const min = Math.min(
+      form.daily_checkin_reward_max,
+      Math.max(form.daily_checkin_reward_min, Number(range.min) || 0),
+    );
+    return {
+      min,
+      max: Math.min(form.daily_checkin_reward_max, Math.max(min, Number(range.max) || min)),
+      probability: Math.max(0, Number(range.probability) || 0),
+    };
+  });
+  dailyCheckinStreakRules.value = dailyCheckinStreakRules.value.map((rule) => ({
+    threshold: Math.max(1, Math.floor(Number(rule.threshold) || 1)),
+    bonus: Math.max(0, Number(rule.bonus) || 0),
+  }));
+}
+
+const dailyCheckinProbabilityTotal = computed(() =>
+  dailyCheckinRewardRanges.value.reduce((total, range) => total + (Number(range.probability) || 0), 0),
+);
+
+function addDailyCheckinRewardRange(): void {
+  dailyCheckinRewardRanges.value.push({
+    min: form.daily_checkin_reward_min,
+    max: form.daily_checkin_reward_max,
+    probability: 0,
+  });
+}
+
+function removeDailyCheckinRewardRange(index: number): void {
+  if (dailyCheckinRewardRanges.value.length > 1) dailyCheckinRewardRanges.value.splice(index, 1);
+}
+
+function addDailyCheckinStreakRule(): void {
+  const last = dailyCheckinStreakRules.value.at(-1);
+  dailyCheckinStreakRules.value.push({ threshold: (last?.threshold || 0) + 1, bonus: last?.bonus || 0 });
+}
+
+function removeDailyCheckinStreakRule(index: number): void {
+  dailyCheckinStreakRules.value.splice(index, 1);
 }
 
 function defaultLoyaltyRules(scope: "weekly" | "permanent"): LoyaltyRuleSetting[] {
@@ -8861,6 +9005,10 @@ const form = reactive<SettingsForm>({
   welfare_leaderboard_reward_ratios: "[1.0, 0.5, 0.2]",
   loyalty_weekly_rules: serializeLoyaltyRules("weekly", loyaltyWeeklyRules.value),
   loyalty_permanent_rules: serializeLoyaltyRules("permanent", loyaltyPermanentRules.value),
+  daily_checkin_reward_min: 0,
+  daily_checkin_reward_max: 3,
+  daily_checkin_reward_ranges: JSON.stringify(defaultDailyCheckinRewardRanges),
+  daily_checkin_streak_rules: JSON.stringify(defaultDailyCheckinStreakRules),
   registration_email_suffix_whitelist: [],
   promo_code_enabled: true,
   invitation_code_enabled: false,
@@ -10016,6 +10164,15 @@ async function loadSettings() {
       form.loyalty_permanent_rules,
       "permanent",
     );
+    dailyCheckinRewardRanges.value = parseDailyCheckinSettings(
+      form.daily_checkin_reward_ranges,
+      defaultDailyCheckinRewardRanges,
+    );
+    dailyCheckinStreakRules.value = parseDailyCheckinSettings(
+      form.daily_checkin_streak_rules,
+      defaultDailyCheckinStreakRules,
+    );
+    normalizeDailyCheckinSettings();
     if (!form.claude_oauth_system_prompt_blocks?.trim()) {
       form.claude_oauth_system_prompt_blocks =
         defaultClaudeOAuthSystemPromptBlocks;
@@ -10379,6 +10536,11 @@ async function saveSettings() {
       claudeOAuthSystemPromptBlocksJSON;
 
     normalizeWelfareSettings();
+    normalizeDailyCheckinSettings();
+    if (Math.abs(dailyCheckinProbabilityTotal.value - 1) > 0.0000001) {
+      appStore.showError(localText("签到概率总和必须等于 1。", "Check-in probabilities must total 1."));
+      return;
+    }
     const payload: UpdateSettingsRequest = {
       registration_enabled: form.registration_enabled,
       email_verify_enabled: form.email_verify_enabled,
@@ -10659,6 +10821,10 @@ async function saveSettings() {
       welfare_leaderboard_reward_ratios: JSON.stringify(welfareRatios.value),
       loyalty_weekly_rules: serializeLoyaltyRules("weekly", loyaltyWeeklyRules.value),
       loyalty_permanent_rules: serializeLoyaltyRules("permanent", loyaltyPermanentRules.value),
+      daily_checkin_reward_min: form.daily_checkin_reward_min,
+      daily_checkin_reward_max: form.daily_checkin_reward_max,
+      daily_checkin_reward_ranges: JSON.stringify(dailyCheckinRewardRanges.value),
+      daily_checkin_streak_rules: JSON.stringify(dailyCheckinStreakRules.value),
     };
 
     // 仅当 openai_fast_policy_settings 已成功从后端加载时才回写，

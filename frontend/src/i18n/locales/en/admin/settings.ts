@@ -18,6 +18,7 @@ export default {
         subtabsLabel: 'Operations sections',
         subtabs: {
           welfare: 'Welfare',
+          checkin: 'Check-in',
           membership: 'Membership',
         },
         title: 'Welfare Leaderboard Settings',

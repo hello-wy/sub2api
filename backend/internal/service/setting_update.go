@@ -79,6 +79,26 @@ func (s *SettingService) buildSystemSettingsUpdates(ctx context.Context, setting
 	if err := s.normalizeOpenAIAdvancedSchedulerOverrides(settings); err != nil {
 		return nil, err
 	}
+	if settings.DailyCheckinRewardRanges == "" && settings.DailyCheckinStreakRules == "" && settings.DailyCheckinRewardMin == 0 && settings.DailyCheckinRewardMax == 0 {
+		defaults := defaultDailyCheckinSettings()
+		settings.DailyCheckinRewardMin = defaults.RewardMin
+		settings.DailyCheckinRewardMax = defaults.RewardMax
+		settings.DailyCheckinRewardRanges = formatDailyCheckinJSON(defaults.RewardRanges)
+		settings.DailyCheckinStreakRules = formatDailyCheckinJSON(defaults.StreakRules)
+	}
+	dailyCheckinSettings, err := ParseDailyCheckinSettings(map[string]string{
+		SettingKeyDailyCheckinRewardMin:    strconv.FormatFloat(settings.DailyCheckinRewardMin, 'f', -1, 64),
+		SettingKeyDailyCheckinRewardMax:    strconv.FormatFloat(settings.DailyCheckinRewardMax, 'f', -1, 64),
+		SettingKeyDailyCheckinRewardRanges: settings.DailyCheckinRewardRanges,
+		SettingKeyDailyCheckinStreakRules:  settings.DailyCheckinStreakRules,
+	})
+	if err != nil {
+		return nil, infraerrors.BadRequest("INVALID_DAILY_CHECKIN_SETTINGS", err.Error())
+	}
+	settings.DailyCheckinRewardMin = dailyCheckinSettings.RewardMin
+	settings.DailyCheckinRewardMax = dailyCheckinSettings.RewardMax
+	settings.DailyCheckinRewardRanges = formatDailyCheckinJSON(dailyCheckinSettings.RewardRanges)
+	settings.DailyCheckinStreakRules = formatDailyCheckinJSON(dailyCheckinSettings.StreakRules)
 	settings.PaymentVisibleMethodAlipaySource = alipaySource
 	settings.PaymentVisibleMethodWxpaySource = wxpaySource
 	settings.WeChatConnectAppID = strings.TrimSpace(settings.WeChatConnectAppID)
@@ -139,6 +159,10 @@ func (s *SettingService) buildSystemSettingsUpdates(ctx context.Context, setting
 	}
 	updates[SettingKeyLoyaltyWeeklyRules] = loyaltyWeeklyRulesJSON
 	updates[SettingKeyLoyaltyPermanentRules] = loyaltyPermanentRulesJSON
+	updates[SettingKeyDailyCheckinRewardMin] = strconv.FormatFloat(settings.DailyCheckinRewardMin, 'f', -1, 64)
+	updates[SettingKeyDailyCheckinRewardMax] = strconv.FormatFloat(settings.DailyCheckinRewardMax, 'f', -1, 64)
+	updates[SettingKeyDailyCheckinRewardRanges] = settings.DailyCheckinRewardRanges
+	updates[SettingKeyDailyCheckinStreakRules] = settings.DailyCheckinStreakRules
 	updates[SettingKeySessionBindingEnabled] = strconv.FormatBool(settings.SessionBindingEnabled)
 	updates[SettingKeyStepUpEnabled] = strconv.FormatBool(settings.StepUpEnabled)
 	updates[SettingKeyAuditLogRetentionDays] = strconv.Itoa(settings.AuditLogRetentionDays)

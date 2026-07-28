@@ -102,6 +102,17 @@ export interface LoyaltyRuleSetting {
   discount: number;
 }
 
+export interface DailyCheckinRewardRangeSetting {
+  min: number;
+  max: number;
+  probability: number;
+}
+
+export interface DailyCheckinStreakRuleSetting {
+  threshold: number;
+  bonus: number;
+}
+
 export interface WeChatConnectModeOption {
   value: WeChatConnectMode;
   labelZh: string;
@@ -384,6 +395,10 @@ export interface SystemSettings {
   welfare_leaderboard_reward_ratios: string;
   loyalty_weekly_rules: string;
   loyalty_permanent_rules: string;
+  daily_checkin_reward_min: number;
+  daily_checkin_reward_max: number;
+  daily_checkin_reward_ranges: string;
+  daily_checkin_streak_rules: string;
   // Default settings
   default_balance: number;
   affiliate_rebate_rate: number;
@@ -696,6 +711,10 @@ export interface UpdateSettingsRequest {
   welfare_leaderboard_reward_ratios?: string;
   loyalty_weekly_rules?: string;
   loyalty_permanent_rules?: string;
+  daily_checkin_reward_min?: number;
+  daily_checkin_reward_max?: number;
+  daily_checkin_reward_ranges?: string;
+  daily_checkin_streak_rules?: string;
   default_balance?: number;
   affiliate_rebate_rate?: number;
   affiliate_rebate_freeze_hours?: number;
