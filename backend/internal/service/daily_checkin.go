@@ -30,10 +30,6 @@ var (
 	)
 )
 
-const (
-	dailyCheckinCycleDays = 30
-)
-
 type DailyCheckinRecord struct {
 	ID          int64     `json:"id"`
 	UserID      int64     `json:"user_id"`
