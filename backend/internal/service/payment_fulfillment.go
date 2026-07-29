@@ -548,7 +548,7 @@ func (s *PaymentService) ensurePaymentSubscriptionAssigned(ctx context.Context, 
 		case lookupErr != nil && !errors.Is(lookupErr, ErrSubscriptionNotFound):
 			return fmt.Errorf("check existing subscription assignment: %w", lookupErr)
 		default:
-			if _, err := s.subscriptionSvc.replaceSubscriptionForPayment(txCtx, &AssignSubscriptionInput{
+			if _, err := s.subscriptionSvc.renewSubscriptionForPayment(txCtx, &AssignSubscriptionInput{
 				UserID:       o.UserID,
 				GroupID:      groupID,
 				ValidityDays: days,
@@ -587,19 +587,9 @@ func (s *PaymentService) ensurePaymentSubscriptionAssigned(ctx context.Context, 
 		return fmt.Errorf("commit subscription fulfillment tx: %w", err)
 	}
 	// Assignment cache invalidation is deferred while this transaction is open,
-	// then performed synchronously for the new plan and every plan it replaced.
-	subscriptions, err := s.subscriptionSvc.userSubRepo.ListByUserID(ctx, o.UserID)
-	if err != nil {
-		return fmt.Errorf("list subscriptions after fulfillment: %w", err)
-	}
-	groups := map[int64]struct{}{groupID: {}}
-	for i := range subscriptions {
-		groups[subscriptions[i].GroupID] = struct{}{}
-	}
-	for affectedGroupID := range groups {
-		if err := s.subscriptionSvc.invalidateSubscriptionCaches(o.UserID, affectedGroupID); err != nil {
-			return fmt.Errorf("invalidate subscription cache after fulfillment: %w", err)
-		}
+	// then performed synchronously for the purchased subscription group.
+	if err := s.subscriptionSvc.invalidateSubscriptionCaches(o.UserID, groupID); err != nil {
+		return fmt.Errorf("invalidate subscription cache after fulfillment: %w", err)
 	}
 	return nil
 }

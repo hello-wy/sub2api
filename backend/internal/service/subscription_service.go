@@ -277,9 +277,10 @@ func (s *SubscriptionService) assignOrExtendSubscription(ctx context.Context, in
 	return sub, false, nil // false 表示是新建
 }
 
-// replaceSubscriptionForPayment applies purchase semantics: a paid plan starts a
-// fresh term immediately and replaces every other active plan for the user.
-func (s *SubscriptionService) replaceSubscriptionForPayment(ctx context.Context, input *AssignSubscriptionInput) (*UserSubscription, error) {
+// renewSubscriptionForPayment applies purchase semantics for one subscription
+// group. Repurchasing the same group starts a fresh term, while subscriptions
+// in other groups remain active.
+func (s *SubscriptionService) renewSubscriptionForPayment(ctx context.Context, input *AssignSubscriptionInput) (*UserSubscription, error) {
 	group, err := s.groupRepo.GetByID(ctx, input.GroupID)
 	if err != nil {
 		return nil, fmt.Errorf("group not found: %w", err)
@@ -293,23 +294,6 @@ func (s *SubscriptionService) replaceSubscriptionForPayment(ctx context.Context,
 	expiresAt := now.AddDate(0, 0, validityDays)
 	if expiresAt.After(MaxExpiresAt) {
 		expiresAt = MaxExpiresAt
-	}
-
-	activeSubscriptions, err := s.userSubRepo.ListActiveByUserID(ctx, input.UserID)
-	if err != nil {
-		return nil, fmt.Errorf("list active subscriptions: %w", err)
-	}
-	for i := range activeSubscriptions {
-		current := activeSubscriptions[i]
-		if current.GroupID == input.GroupID {
-			continue
-		}
-		current.Status = SubscriptionStatusExpired
-		current.ExpiresAt = now
-		current.Notes = appendSubscriptionNotes(current.Notes, "replaced by "+input.Notes)
-		if err := s.userSubRepo.Update(ctx, &current); err != nil {
-			return nil, fmt.Errorf("replace previous subscription: %w", err)
-		}
 	}
 
 	existing, err := s.userSubRepo.GetByUserIDAndGroupID(ctx, input.UserID, input.GroupID)

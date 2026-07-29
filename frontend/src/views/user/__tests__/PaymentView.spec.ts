@@ -416,8 +416,8 @@ describe('PaymentView balance loyalty discount', () => {
     expect(text).toContain('userSubscriptions.weekly')
     expect(text).toContain('$8.00 / $40.00')
     const subscriptionNotice = wrapper.findComponent({ name: 'HelpTooltip' })
-    expect(subscriptionNotice.props('content')).toBe('wallet.singleSubscriptionNotice')
-    expect(text).not.toContain('wallet.singleSubscriptionNotice')
+    expect(subscriptionNotice.props('content')).toBe('wallet.subscriptionGroupNotice')
+    expect(text).not.toContain('wallet.subscriptionGroupNotice')
     expect(text).not.toContain('wallet.balanceDescription')
     expect(wrapper.find('[style="width: 25%;"]').exists()).toBe(true)
   })
@@ -546,6 +546,32 @@ describe('PaymentView inline subscription checkout', () => {
       expect.stringMatching(/^balance-subscription-7-/),
     )
     expect(refreshUser).toHaveBeenCalled()
+  })
+
+  it('does not warn about replacement when purchasing a different subscription group', async () => {
+    authUserState.user = { username: 'demo-user', balance: 600 }
+    activeSubscriptionsState.items = [{
+      id: 9,
+      user_id: 1,
+      group_id: 3,
+      status: 'active',
+      starts_at: '2026-07-01T00:00:00Z',
+      expires_at: '2099-08-01T00:00:00Z',
+      daily_usage_usd: 0,
+      weekly_usage_usd: 0,
+      monthly_usage_usd: 0,
+      created_at: '2026-07-01T00:00:00Z',
+      updated_at: '2026-07-18T00:00:00Z',
+    } as UserSubscription]
+
+    const wrapper = await mountSubscriptionConfirm({ plan: { group_id: 4 } })
+    const card = wrapper.findComponent({ name: 'SubscriptionPlanCard' })
+    card.vm.$emit('subscribe', card.props('plan'), 'balance')
+    await flushPromises()
+
+    const dialog = wrapper.findComponent({ name: 'ConfirmDialog' })
+    expect(dialog.props('show')).toBe(true)
+    expect(dialog.props('warningMessage')).toBe('')
   })
 
   it('reuses the balance subscription idempotency key after a lost response and page reload', async () => {

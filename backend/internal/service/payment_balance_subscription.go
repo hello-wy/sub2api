@@ -150,16 +150,8 @@ func (s *PaymentService) PurchaseSubscriptionWithBalance(ctx context.Context, re
 	if err := recordBalanceSubscriptionPayment(txCtx, txClient, req.UserID, balancePrice, plan.Name, now); err != nil {
 		return nil, err
 	}
-	affectedGroups := map[int64]struct{}{plan.GroupID: {}}
-	activeSubscriptions, err := s.subscriptionSvc.userSubRepo.ListActiveByUserID(txCtx, req.UserID)
-	if err != nil {
-		return nil, fmt.Errorf("list active subscriptions before replacement: %w", err)
-	}
-	for i := range activeSubscriptions {
-		affectedGroups[activeSubscriptions[i].GroupID] = struct{}{}
-	}
 	orderNote := paymentSubscriptionOrderNote(order.ID)
-	subscription, err := s.subscriptionSvc.replaceSubscriptionForPayment(txCtx, &AssignSubscriptionInput{
+	subscription, err := s.subscriptionSvc.renewSubscriptionForPayment(txCtx, &AssignSubscriptionInput{
 		UserID:       req.UserID,
 		GroupID:      plan.GroupID,
 		ValidityDays: psComputeValidityDays(plan.ValidityDays, plan.ValidityUnit),
@@ -183,11 +175,9 @@ func (s *PaymentService) PurchaseSubscriptionWithBalance(ctx context.Context, re
 	if s.subscriptionSvc.billingCacheService != nil {
 		_ = s.subscriptionSvc.billingCacheService.InvalidateUserBalance(ctx, req.UserID)
 	}
-	for groupID := range affectedGroups {
-		if err := s.subscriptionSvc.invalidateSubscriptionCaches(req.UserID, groupID); err != nil {
-			slog.Error("invalidate subscription cache after balance purchase failed",
-				"user_id", req.UserID, "group_id", groupID, "order_id", order.ID, "error", err)
-		}
+	if err := s.subscriptionSvc.invalidateSubscriptionCaches(req.UserID, plan.GroupID); err != nil {
+		slog.Error("invalidate subscription cache after balance purchase failed",
+			"user_id", req.UserID, "group_id", plan.GroupID, "order_id", order.ID, "error", err)
 	}
 	s.dispatchPaymentFulfillmentNotification(order, "SUBSCRIPTION_SUCCESS")
 

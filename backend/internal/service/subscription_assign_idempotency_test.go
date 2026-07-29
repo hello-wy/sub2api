@@ -288,11 +288,12 @@ func (s *subscriptionUserSubRepoStub) ListActiveByUserID(_ context.Context, user
 	return result, nil
 }
 
-func TestReplaceSubscriptionForPaymentResetsTermAndExpiresOtherPlans(t *testing.T) {
+func TestRenewSubscriptionForPaymentResetsTargetTermAndKeepsOtherGroupsActive(t *testing.T) {
 	groupRepo := &subscriptionGroupRepoStub{
 		group: &Group{ID: 1, SubscriptionType: SubscriptionTypeSubscription},
 	}
 	subRepo := newSubscriptionUserSubRepoStub()
+	otherExpiresAt := time.Now().AddDate(0, 0, 20)
 	subRepo.seed(&UserSubscription{
 		ID:              10,
 		UserID:          1001,
@@ -311,14 +312,14 @@ func TestReplaceSubscriptionForPaymentResetsTermAndExpiresOtherPlans(t *testing.
 		UserID:    1001,
 		GroupID:   2,
 		StartsAt:  time.Now().AddDate(0, 0, -5),
-		ExpiresAt: time.Now().AddDate(0, 0, 20),
+		ExpiresAt: otherExpiresAt,
 		Status:    SubscriptionStatusActive,
 		Notes:     "old other",
 	})
 
 	before := time.Now()
 	svc := NewSubscriptionService(groupRepo, subRepo, nil, nil, nil)
-	replaced, err := svc.replaceSubscriptionForPayment(context.Background(), &AssignSubscriptionInput{
+	replaced, err := svc.renewSubscriptionForPayment(context.Background(), &AssignSubscriptionInput{
 		UserID:       1001,
 		GroupID:      1,
 		ValidityDays: 30,
@@ -337,8 +338,8 @@ func TestReplaceSubscriptionForPaymentResetsTermAndExpiresOtherPlans(t *testing.
 
 	other, err := subRepo.GetByID(context.Background(), 11)
 	require.NoError(t, err)
-	require.Equal(t, SubscriptionStatusExpired, other.Status)
-	require.False(t, other.ExpiresAt.After(after))
+	require.Equal(t, SubscriptionStatusActive, other.Status)
+	require.Equal(t, otherExpiresAt, other.ExpiresAt)
 }
 
 func TestAssignSubscriptionReuseWhenSemanticsMatch(t *testing.T) {
