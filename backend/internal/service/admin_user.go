@@ -218,24 +218,33 @@ func (s *adminServiceImpl) UpdateUser(ctx context.Context, id int64, input *Upda
 	oldRPMLimit := user.RPMLimit
 	oldAllowedGroups := append([]int64(nil), user.AllowedGroups...)
 
+	// fields 与下面的 input.X 判空条件一一对应：管理员没提交的列不写回，
+	// 避免这份快照回滚并发的扣费、状态变更或批量限额调整。
+	var fields UserUpdateFields
+
 	if input.Email != "" {
 		user.Email = input.Email
+		fields.Email = true
 	}
 	if input.Password != "" {
 		if err := user.SetPassword(input.Password); err != nil {
 			return nil, err
 		}
+		fields.PasswordHash = true
 	}
 
 	if input.Username != nil {
 		user.Username = *input.Username
+		fields.Username = true
 	}
 	if input.Notes != nil {
 		user.Notes = *input.Notes
+		fields.Notes = true
 	}
 
 	if input.Status != "" {
 		user.Status = input.Status
+		fields.Status = true
 	}
 
 	// 角色变更(admin/user);空字符串表示不修改。
@@ -252,21 +261,25 @@ func (s *adminServiceImpl) UpdateUser(ctx context.Context, id int64, input *Upda
 			}
 		}
 		user.Role = role
+		fields.Role = true
 	}
 
 	if input.Concurrency != nil {
 		user.Concurrency = *input.Concurrency
+		fields.Concurrency = true
 	}
 
 	if input.RPMLimit != nil {
 		user.RPMLimit = *input.RPMLimit
+		fields.RPMLimit = true
 	}
 
 	if input.AllowedGroups != nil {
 		user.AllowedGroups = *input.AllowedGroups
+		fields.AllowedGroups = true
 	}
 
-	if err := s.userRepo.Update(ctx, user); err != nil {
+	if err := s.userRepo.Update(ctx, user, fields); err != nil {
 		return nil, err
 	}
 
@@ -493,92 +506,48 @@ func (s *adminServiceImpl) BatchUpdateLimits(ctx context.Context, userIDs []int6
 }
 
 func (s *adminServiceImpl) UpdateUserBalance(ctx context.Context, userID int64, balance float64, operation string, notes string) (*User, error) {
-	if operation != "set" && operation != "add" && operation != "subtract" {
-		return nil, fmt.Errorf("invalid balance operation: %s", operation)
+	// 余额调整必须走原子接口：先读后整行写回会把并发的计费扣款覆盖掉。
+	var (
+		change BalanceChange
+		err    error
+	)
+	switch operation {
+	case "set":
+		change, err = s.userRepo.SetBalance(ctx, userID, balance)
+	case "add":
+		change, err = s.userRepo.AdjustBalance(ctx, userID, balance)
+	case "subtract":
+		change, err = s.userRepo.AdjustBalance(ctx, userID, -balance)
+	default:
+		return nil, fmt.Errorf("unsupported balance operation: %q", operation)
 	}
+	if errors.Is(err, ErrBalanceNegative) {
+		return nil, fmt.Errorf("balance cannot be negative, current balance: %.2f, requested operation would result in: %.2f", change.Old, change.New)
+	}
+	if err != nil {
+		return nil, err
+	}
+
 	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
-	if adjustmentRepo, ok := s.userRepo.(AdminBalanceAdjustmentRepository); ok && s.entClient != nil && s.redeemCodeRepo != nil {
-		return s.updateUserBalanceAtomic(ctx, user, balance, operation, notes, adjustmentRepo)
-	}
-	return s.updateUserBalanceLegacy(ctx, user, balance, operation, notes)
-}
 
-func (s *adminServiceImpl) updateUserBalanceAtomic(
-	ctx context.Context,
-	user *User,
-	amount float64,
-	operation string,
-	notes string,
-	adjustmentRepo AdminBalanceAdjustmentRepository,
-) (*User, error) {
-	tx, err := s.entClient.Tx(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("begin admin balance transaction: %w", err)
+	balanceDiff := change.New - change.Old
+	if s.authCacheInvalidator != nil && balanceDiff != 0 {
+		s.authCacheInvalidator.InvalidateAuthCacheByUserID(ctx, userID)
 	}
-	defer func() { _ = tx.Rollback() }()
-	txCtx := dbent.NewTxContext(ctx, tx)
+	s.tryAccrueAffiliateRebateForAdminRecharge(ctx, userID, operation, balance)
 
-	oldBalance, newBalance, err := adjustmentRepo.ApplyAdminBalanceAdjustment(txCtx, user.ID, amount, operation)
-	if err != nil {
-		return nil, err
+	if s.billingCacheService != nil {
+		go func() {
+			cacheCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			if err := s.billingCacheService.InvalidateUserBalance(cacheCtx, userID); err != nil {
+				logger.LegacyPrintf("service.admin", "invalidate user balance cache failed: user_id=%d err=%v", userID, err)
+			}
+		}()
 	}
-	balanceDiff := newBalance - oldBalance
-	if balanceDiff != 0 {
-		code, err := GenerateRedeemCode()
-		if err != nil {
-			return nil, fmt.Errorf("generate balance adjustment code: %w", err)
-		}
-		now := time.Now()
-		adjustmentRecord := &RedeemCode{
-			Code:   code,
-			Type:   AdjustmentTypeAdminBalance,
-			Value:  balanceDiff,
-			Status: StatusUsed,
-			UsedBy: &user.ID,
-			UsedAt: &now,
-			Notes:  notes,
-		}
-		if err := s.redeemCodeRepo.Create(txCtx, adjustmentRecord); err != nil {
-			return nil, fmt.Errorf("record admin balance adjustment: %w", err)
-		}
-	}
-	if _, err := s.accrueAffiliateRebateForAdminRecharge(txCtx, user.ID, operation, amount); err != nil {
-		return nil, fmt.Errorf("accrue affiliate rebate for admin recharge: %w", err)
-	}
-	if err := tx.Commit(); err != nil {
-		return nil, fmt.Errorf("commit admin balance transaction: %w", err)
-	}
-
-	user.Balance = newBalance
-	s.afterAdminBalanceCommit(ctx, user.ID, balanceDiff)
-	return user, nil
-}
-
-func (s *adminServiceImpl) updateUserBalanceLegacy(ctx context.Context, user *User, balance float64, operation string, notes string) (*User, error) {
-
-	oldBalance := user.Balance
-
-	switch operation {
-	case "set":
-		user.Balance = balance
-	case "add":
-		user.Balance += balance
-	case "subtract":
-		user.Balance -= balance
-	}
-
-	if user.Balance < 0 {
-		return nil, fmt.Errorf("balance cannot be negative, current balance: %.2f, requested operation would result in: %.2f", oldBalance, user.Balance)
-	}
-
-	if err := s.userRepo.Update(ctx, user); err != nil {
-		return nil, err
-	}
-	balanceDiff := user.Balance - oldBalance
-	s.tryAccrueAffiliateRebateForAdminRecharge(ctx, user.ID, operation, balance)
 
 	if balanceDiff != 0 {
 		code, err := GenerateRedeemCode()
@@ -603,12 +572,18 @@ func (s *adminServiceImpl) updateUserBalanceLegacy(ctx context.Context, user *Us
 		}
 	}
 
-	s.afterAdminBalanceCommit(ctx, user.ID, balanceDiff)
 	return user, nil
 }
 
 func (s *adminServiceImpl) tryAccrueAffiliateRebateForAdminRecharge(ctx context.Context, userID int64, operation string, amount float64) {
-	rebate, err := s.accrueAffiliateRebateForAdminRecharge(ctx, userID, operation, amount)
+	if operation != "add" || amount <= 0 || s.settingService == nil || s.affiliateService == nil {
+		return
+	}
+	if !s.settingService.IsAffiliateAdminRechargeEnabled(ctx) {
+		return
+	}
+
+	rebate, err := s.affiliateService.AccrueInviteRebate(ctx, userID, amount)
 	if err != nil {
 		logger.LegacyPrintf("service.admin", "affiliate rebate failed for admin recharge: user_id=%d amount=%.8f err=%v", userID, amount, err)
 		return
@@ -616,32 +591,6 @@ func (s *adminServiceImpl) tryAccrueAffiliateRebateForAdminRecharge(ctx context.
 	if rebate > 0 {
 		logger.LegacyPrintf("service.admin", "affiliate rebate accrued for admin recharge: user_id=%d amount=%.8f rebate=%.8f", userID, amount, rebate)
 	}
-}
-
-func (s *adminServiceImpl) accrueAffiliateRebateForAdminRecharge(ctx context.Context, userID int64, operation string, amount float64) (float64, error) {
-	if operation != "add" || amount <= 0 || s.settingService == nil || s.affiliateService == nil {
-		return 0, nil
-	}
-	if !s.settingService.IsAffiliateAdminRechargeEnabled(ctx) {
-		return 0, nil
-	}
-	return s.affiliateService.AccrueInviteRebate(ctx, userID, amount)
-}
-
-func (s *adminServiceImpl) afterAdminBalanceCommit(ctx context.Context, userID int64, balanceDiff float64) {
-	if s.authCacheInvalidator != nil && balanceDiff != 0 {
-		s.authCacheInvalidator.InvalidateAuthCacheByUserID(ctx, userID)
-	}
-	if s.billingCacheService == nil {
-		return
-	}
-	go func() {
-		cacheCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		if err := s.billingCacheService.InvalidateUserBalance(cacheCtx, userID); err != nil {
-			logger.LegacyPrintf("service.admin", "invalidate user balance cache failed: user_id=%d err=%v", userID, err)
-		}
-	}()
 }
 
 func (s *adminServiceImpl) GetUserAPIKeys(ctx context.Context, userID int64, page, pageSize int, sortBy, sortOrder string) ([]APIKey, int64, error) {

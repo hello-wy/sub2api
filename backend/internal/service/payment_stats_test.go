@@ -1,97 +1,84 @@
+//go:build unit
+
 package service
 
 import (
-	"context"
-	"fmt"
 	"testing"
 	"time"
 
 	dbent "github.com/Wei-Shaw/sub2api/ent"
-	"github.com/Wei-Shaw/sub2api/internal/payment"
-	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/stretchr/testify/require"
 )
 
-func TestPaymentDashboardExcludesBalanceConsumptionAndSeparatesCurrencies(t *testing.T) {
-	ctx := context.Background()
-	client := newPaymentConfigServiceTestClient(t)
-	user, err := client.User.Create().
-		SetEmail("payment-dashboard@example.com").
-		SetPasswordHash("hash").
-		SetUsername("payment-dashboard").
-		SetStatus(StatusActive).
-		Save(ctx)
-	require.NoError(t, err)
+func TestComputeBasicStatsGroupsAmountsByCurrency(t *testing.T) {
+	t.Parallel()
 
-	now := time.Now()
-	createDashboardPaymentOrder(t, ctx, client, user.ID, "alipay", "CNY", OrderStatusCompleted, 20, now, 1)
-	createDashboardPaymentOrder(t, ctx, client, user.ID, internalBalancePaymentType, "CNY", OrderStatusCompleted, 200, now, 2)
-	createDashboardPaymentOrder(t, ctx, client, user.ID, "stripe", "USD", OrderStatusCompleted, 10, now, 3)
-	createDashboardPaymentOrder(t, ctx, client, user.ID, "stripe", "USD", OrderStatusPending, 15, now, 4)
-	createDashboardPaymentOrder(t, ctx, client, user.ID, internalBalancePaymentType, "CNY", OrderStatusPending, 300, now, 5)
+	todayStart := time.Date(2026, time.July, 25, 0, 0, 0, 0, time.UTC)
+	yesterday := todayStart.Add(-time.Hour)
+	today := todayStart.Add(time.Hour)
+	orders := []*dbent.PaymentOrder{
+		paymentStatsTestOrder(1, "alice@example.com", "CNY", 10, &today),
+		paymentStatsTestOrder(2, "bob@example.com", "USD", 10, &today),
+		paymentStatsTestOrder(1, "alice@example.com", "CNY", 5, &yesterday),
+	}
 
-	svc := &PaymentService{entClient: client}
-	cnyStats, err := svc.GetDashboardStats(ctx, 30, "")
-	require.NoError(t, err)
-	require.Equal(t, "CNY", cnyStats.Currency)
-	require.Equal(t, []string{"CNY", "USD"}, cnyStats.Currencies)
-	require.Equal(t, 1, cnyStats.TotalCount)
-	require.Equal(t, 20.0, cnyStats.TotalAmount)
-	require.Zero(t, cnyStats.PendingOrders)
-	require.Len(t, cnyStats.PaymentMethods, 1)
-	require.Equal(t, "alipay", cnyStats.PaymentMethods[0].Type)
+	stats := &DashboardStats{}
+	computeBasicStats(stats, orders, todayStart)
 
-	usdStats, err := svc.GetDashboardStats(ctx, 30, "usd")
-	require.NoError(t, err)
-	require.Equal(t, "USD", usdStats.Currency)
-	require.Equal(t, 1, usdStats.TotalCount)
-	require.Equal(t, 10.0, usdStats.TotalAmount)
-	require.Equal(t, 1, usdStats.PendingOrders)
-	require.Len(t, usdStats.PaymentMethods, 1)
-	require.Equal(t, "stripe", usdStats.PaymentMethods[0].Type)
+	require.Equal(t, CurrencyAmounts{"CNY": 15, "USD": 10}, stats.TotalAmount)
+	require.Equal(t, CurrencyAmounts{"CNY": 10, "USD": 10}, stats.TodayAmount)
+	require.Equal(t, CurrencyAmounts{"CNY": 7.5, "USD": 10}, stats.AvgAmount)
+	require.Equal(t, 3, stats.TotalCount)
+	require.Equal(t, 2, stats.TodayCount)
 }
 
-func TestPaymentDashboardRejectsInvalidCurrency(t *testing.T) {
-	svc := &PaymentService{entClient: newPaymentConfigServiceTestClient(t)}
-	_, err := svc.GetDashboardStats(context.Background(), 30, "US")
-	require.Error(t, err)
-	require.Equal(t, "INVALID_CURRENCY", infraerrors.Reason(err))
+func TestPaymentDashboardBreakdownsGroupAmountsAndRankingsByCurrency(t *testing.T) {
+	t.Parallel()
+
+	firstDay := time.Date(2026, time.July, 24, 12, 0, 0, 0, time.UTC)
+	secondDay := firstDay.AddDate(0, 0, 1)
+	orders := []*dbent.PaymentOrder{
+		paymentStatsTestOrder(1, "alice@example.com", "CNY", 5.555, &firstDay),
+		paymentStatsTestOrder(2, "bob@example.com", "CNY", 10, &firstDay),
+		paymentStatsTestOrder(1, "alice@example.com", "USD", 20, &secondDay),
+		paymentStatsTestOrder(2, "bob@example.com", "USD", 10, &secondDay),
+	}
+	orders[0].PaymentType = "stripe"
+	orders[1].PaymentType = "stripe"
+	orders[2].PaymentType = "stripe"
+	orders[3].PaymentType = "alipay"
+
+	daily := buildDailySeries(orders, firstDay.AddDate(0, 0, -1), 2)
+	require.Equal(t, []DailyStats{
+		{Date: "2026-07-24", Amount: CurrencyAmounts{"CNY": 15.56}, Count: 2},
+		{Date: "2026-07-25", Amount: CurrencyAmounts{"USD": 30}, Count: 2},
+	}, daily)
+
+	methods := buildMethodDistribution(orders)
+	require.Equal(t, []PaymentMethodStat{
+		{Type: "alipay", Amount: CurrencyAmounts{"USD": 10}, Count: 1},
+		{Type: "stripe", Amount: CurrencyAmounts{"CNY": 15.56, "USD": 20}, Count: 3},
+	}, methods)
+
+	users := buildTopUsers(orders)
+	require.Equal(t, TopUsersByCurrency{
+		"CNY": {
+			{UserID: 2, Email: "bob@example.com", Amount: 10},
+			{UserID: 1, Email: "alice@example.com", Amount: 5.56},
+		},
+		"USD": {
+			{UserID: 1, Email: "alice@example.com", Amount: 20},
+			{UserID: 2, Email: "bob@example.com", Amount: 10},
+		},
+	}, users)
 }
 
-func createDashboardPaymentOrder(
-	t *testing.T,
-	ctx context.Context,
-	client *dbent.Client,
-	userID int64,
-	paymentType string,
-	currency string,
-	status string,
-	payAmount float64,
-	at time.Time,
-	sequence int,
-) {
-	t.Helper()
-	builder := client.PaymentOrder.Create().
-		SetUserID(userID).
-		SetUserEmail("payment-dashboard@example.com").
-		SetUserName("payment-dashboard").
-		SetAmount(payAmount).
-		SetPayAmount(payAmount).
-		SetRechargeCode("").
-		SetOutTradeNo(fmt.Sprintf("stats-%d-%d", at.UnixNano(), sequence)).
-		SetPaymentType(paymentType).
-		SetPaymentTradeNo(fmt.Sprintf("trade-%d", sequence)).
-		SetOrderType(payment.OrderTypeBalance).
-		SetStatus(status).
-		SetExpiresAt(at.Add(time.Hour)).
-		SetClientIP("127.0.0.1").
-		SetSrcHost("test")
-	if status != OrderStatusPending {
-		builder.SetPaidAt(at)
+func paymentStatsTestOrder(userID int64, email, currency string, amount float64, paidAt *time.Time) *dbent.PaymentOrder {
+	return &dbent.PaymentOrder{
+		UserID:           userID,
+		UserEmail:        email,
+		PayAmount:        amount,
+		PaidAt:           paidAt,
+		ProviderSnapshot: map[string]any{"currency": currency},
 	}
-	if currency != payment.DefaultPaymentCurrency {
-		builder.SetProviderSnapshot(map[string]any{"schema_version": 2, "currency": currency})
-	}
-	_, err := builder.Save(ctx)
-	require.NoError(t, err)
 }

@@ -25,21 +25,6 @@ solidapi.top {
 	}
 
 	# =========================================================================
-	# 静态资源长期缓存（高优先级，放在最前面）
-	# 带 hash 的文件可以永久缓存，浏览器和 CDN 都会缓存
-	# =========================================================================
-	@static {
-		path /assets/*
-		path /logo.png
-		path /favicon.ico
-	}
-	header @static {
-		Cache-Control "public, max-age=31536000, immutable"
-		-Pragma
-		-Expires
-	}
-
-	# =========================================================================
 	# CORS：全局开放跨域（覆盖所有 API 路径）
 	# =========================================================================
 	@cors_preflight {
@@ -63,7 +48,7 @@ solidapi.top {
 	# =========================================================================
 	# 反向代理配置
 	# =========================================================================
-	reverse_proxy 127.0.0.1:8080 {
+	reverse_proxy localhost:8080 {
 		# 健康检查
 		health_uri /health
 		health_interval 30s
@@ -103,7 +88,14 @@ solidapi.top {
 		gzip 6
 		minimum_length 256
 		match {
-			header Content-Type text/*
+			# 不使用 text/*，否则 text/event-stream 会被压缩并缓冲到流结束
+			header Content-Type text/css*
+			header Content-Type text/csv*
+			header Content-Type text/html*
+			header Content-Type text/javascript*
+			header Content-Type text/markdown*
+			header Content-Type text/plain*
+			header Content-Type text/xml*
 			header Content-Type application/json*
 			header Content-Type application/javascript*
 			header Content-Type application/xml*
@@ -153,8 +145,6 @@ shop.solidapi.top {
 		header_up X-Forwarded-Host {host}
 		header_up CF-Connecting-IP {http.request.header.CF-Connecting-IP}
 	}
-
-	encode zstd gzip
 
 	request_body {
 		max_size 100MB

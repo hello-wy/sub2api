@@ -44,25 +44,21 @@ var (
 
 func TestMain(m *testing.M) {
 	ctx := context.Background()
+	bootstrapCtx, bootstrapCancel := context.WithTimeout(ctx, 2*time.Minute)
+	defer bootstrapCancel()
 
 	if err := timezone.Init("UTC"); err != nil {
 		log.Printf("failed to init timezone: %v", err)
 		os.Exit(1)
 	}
 
-	if !dockerIsAvailable(ctx) {
-		// In CI we expect Docker to be available so integration tests should fail loudly.
-		if os.Getenv("CI") != "" {
-			log.Printf("docker is not available (CI=true); failing integration tests")
-			os.Exit(1)
-		}
-		log.Printf("docker is not available; skipping integration tests (start Docker to enable)")
-		os.Exit(0)
+	if !dockerIsAvailable(bootstrapCtx) {
+		failOrSkipTestMain("docker is not available")
 	}
 
-	postgresImage := selectDockerImage(ctx, postgresImageTag)
+	postgresImage := selectDockerImage(bootstrapCtx, postgresImageTag)
 	pgContainer, err := tcpostgres.Run(
-		ctx,
+		bootstrapCtx,
 		postgresImage,
 		tcpostgres.WithDatabase("sub2api_test"),
 		tcpostgres.WithUsername("postgres"),
@@ -70,35 +66,30 @@ func TestMain(m *testing.M) {
 		tcpostgres.BasicWaitStrategies(),
 	)
 	if err != nil {
-		log.Printf("failed to start postgres container: %v", err)
-		os.Exit(1)
+		failOrSkipTestMainWithErr("failed to start postgres container", err)
 	}
 	defer func() { _ = pgContainer.Terminate(ctx) }()
 
 	redisContainer, err := tcredis.Run(
-		ctx,
+		bootstrapCtx,
 		redisImageTag,
 	)
 	if err != nil {
-		log.Printf("failed to start redis container: %v", err)
-		os.Exit(1)
+		failOrSkipTestMainWithErr("failed to start redis container", err)
 	}
 	defer func() { _ = redisContainer.Terminate(ctx) }()
 
 	dsn, err := pgContainer.ConnectionString(ctx, "sslmode=disable", "TimeZone=UTC")
 	if err != nil {
-		log.Printf("failed to get postgres dsn: %v", err)
-		os.Exit(1)
+		failOrSkipTestMainWithErr("failed to get postgres dsn", err)
 	}
 
 	integrationDB, err = openSQLWithRetry(ctx, dsn, 30*time.Second)
 	if err != nil {
-		log.Printf("failed to open sql db: %v", err)
-		os.Exit(1)
+		failOrSkipTestMainWithErr("failed to open sql db", err)
 	}
 	if err := ApplyMigrations(ctx, integrationDB); err != nil {
-		log.Printf("failed to apply db migrations: %v", err)
-		os.Exit(1)
+		failOrSkipTestMainWithErr("failed to apply db migrations", err)
 	}
 
 	// 创建 ent client 用于集成测试
@@ -107,13 +98,11 @@ func TestMain(m *testing.M) {
 
 	redisHost, err := redisContainer.Host(ctx)
 	if err != nil {
-		log.Printf("failed to get redis host: %v", err)
-		os.Exit(1)
+		failOrSkipTestMainWithErr("failed to get redis host", err)
 	}
 	redisPort, err := redisContainer.MappedPort(ctx, "6379/tcp")
 	if err != nil {
-		log.Printf("failed to get redis port: %v", err)
-		os.Exit(1)
+		failOrSkipTestMainWithErr("failed to get redis port", err)
 	}
 
 	integrationRedis = redisclient.NewClient(&redisclient.Options{
@@ -121,8 +110,7 @@ func TestMain(m *testing.M) {
 		DB:   0,
 	})
 	if err := integrationRedis.Ping(ctx).Err(); err != nil {
-		log.Printf("failed to ping redis: %v", err)
-		os.Exit(1)
+		failOrSkipTestMainWithErr("failed to ping redis", err)
 	}
 
 	code := m.Run()
@@ -140,7 +128,20 @@ func dockerIsAvailable(ctx context.Context) bool {
 	return cmd.Run() == nil
 }
 
+// selectDockerImage resolves the container image for the harness.
+//
+// SUB2API_TEST_POSTGRES_IMAGE overrides the PostgreSQL image so the suite can be
+// run against the oldest documented-supported server, not just the newest. That
+// matters for SQL that behaves differently across major versions: jsonpath
+// .datetime() only accepts the ISO-8601 "Z" designator from PostgreSQL 17 on, so
+// a suite pinned to 18 cannot observe breakage on 14-16.
+//
+//	SUB2API_TEST_POSTGRES_IMAGE=postgres:15-alpine go test -tags integration ./internal/repository/
 func selectDockerImage(ctx context.Context, preferred string) string {
+	if override := strings.TrimSpace(os.Getenv("SUB2API_TEST_POSTGRES_IMAGE")); override != "" &&
+		strings.HasPrefix(preferred, "postgres:") {
+		return override
+	}
 	if dockerImageExists(ctx, preferred) {
 		return preferred
 	}
@@ -154,6 +155,24 @@ func dockerImageExists(ctx context.Context, image string) bool {
 	cmd.Stdout = nil
 	cmd.Stderr = nil
 	return cmd.Run() == nil
+}
+
+func failOrSkipTestMain(msg string) {
+	if os.Getenv("CI") != "" {
+		log.Printf("%s (CI=true); failing integration tests", msg)
+		os.Exit(1)
+	}
+
+	log.Printf("%s; skipping integration tests (start Docker to enable)", msg)
+	os.Exit(0)
+}
+
+func failOrSkipTestMainWithErr(msg string, err error) {
+	if err == nil {
+		failOrSkipTestMain(msg)
+	}
+
+	failOrSkipTestMain(fmt.Sprintf("%s: %v", msg, err))
 }
 
 func openSQLWithRetry(ctx context.Context, dsn string, timeout time.Duration) (*sql.DB, error) {

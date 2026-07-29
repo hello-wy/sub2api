@@ -41,8 +41,6 @@ export interface PaymentConfig {
   help_image_url: string
   help_text: string
   stripe_publishable_key: string
-  /** When true, official Alipay mobile orders use precreate plus an Alipay app deep link */
-  alipay_mobile_precreate_deep_link?: boolean
 }
 
 export interface MethodLimit {
@@ -105,6 +103,13 @@ export interface CheckoutInfoResponse {
   /** When true, official Alipay mobile orders use precreate plus an Alipay app deep link */
   alipay_mobile_precreate_deep_link?: boolean
   loyalty?: PaymentLoyaltyInfo
+}
+
+export interface BalanceSubscriptionPurchaseResult {
+  order_id: number
+  amount: number
+  new_balance: number
+  subscription: UserSubscription
 }
 
 // ==================== Orders ====================
@@ -245,31 +250,39 @@ export interface CreateOrderResult {
   out_trade_no?: string
   payment_mode?: string
   resume_token?: string
+  alipay_mobile_precreate_deep_link?: boolean
   oauth?: WechatOAuthInfo
   jsapi?: WechatJSAPIPayload
   jsapi_payload?: WechatJSAPIPayload
-  /** When true, official Alipay mobile orders use precreate plus an Alipay app deep link */
-  alipay_mobile_precreate_deep_link?: boolean
-  loyalty?: PaymentLoyaltyInfo
 }
 
-export interface BalanceSubscriptionPurchaseResult {
-  order_id: number
+export type CurrencyAmounts = Record<string, number>
+
+export interface DailyPaymentStats {
+  date: string
+  amount: CurrencyAmounts
+  count: number
+}
+
+export interface PaymentMethodStats {
+  type: string
+  amount: CurrencyAmounts
+  count: number
+}
+
+export interface TopUserPaymentStats {
+  user_id: number
+  email: string
   amount: number
-  new_balance: number
-  subscription: UserSubscription
 }
 
 export interface DashboardStats {
-  today_amount: number
-  total_amount: number
+  today_amount: CurrencyAmounts
+  total_amount: CurrencyAmounts
   today_count: number
   total_count: number
-  avg_amount: number
-  pending_orders: number
-  currency: string
-  available_currencies: string[]
-  daily_series: { date: string; amount: number; count: number }[]
-  payment_methods: { type: string; amount: number; count: number }[]
-  top_users: { user_id: number; email: string; amount: number }[]
+  avg_amount: CurrencyAmounts
+  daily_series: DailyPaymentStats[]
+  payment_methods: PaymentMethodStats[]
+  top_users: Record<string, TopUserPaymentStats[]>
 }

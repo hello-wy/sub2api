@@ -8,9 +8,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"path/filepath"
-	"strconv"
+	"os/exec"
 	"strings"
+	"time"
 	"testing"
 
 	"github.com/redis/go-redis/v9"
@@ -48,7 +48,16 @@ func startAuthRouteRedis(t *testing.T, ctx context.Context) *redis.Client {
 	t.Helper()
 	ensureAuthRouteDockerAvailable(t)
 
-	redisContainer, err := tcredis.Run(ctx, authRouteRedisImageTag)
+	runCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	redisContainer, err := tcredis.Run(runCtx, authRouteRedisImageTag)
+	if err != nil {
+		if os.Getenv("CI") == "" {
+			t.Skipf("Redis test container unavailable: %v", err)
+		}
+		require.NoError(t, err)
+	}
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		_ = redisContainer.Terminate(ctx)
@@ -79,33 +88,10 @@ func ensureAuthRouteDockerAvailable(t *testing.T) {
 }
 
 func authRouteDockerAvailable() bool {
-	if os.Getenv("DOCKER_HOST") != "" {
-		return true
-	}
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
 
-	socketCandidates := []string{
-		"/var/run/docker.sock",
-		filepath.Join(os.Getenv("XDG_RUNTIME_DIR"), "docker.sock"),
-		filepath.Join(authRouteUserHomeDir(), ".docker", "run", "docker.sock"),
-		filepath.Join(authRouteUserHomeDir(), ".docker", "desktop", "docker.sock"),
-		filepath.Join("/run/user", strconv.Itoa(os.Getuid()), "docker.sock"),
-	}
-
-	for _, socket := range socketCandidates {
-		if socket == "" {
-			continue
-		}
-		if _, err := os.Stat(socket); err == nil {
-			return true
-		}
-	}
-	return false
-}
-
-func authRouteUserHomeDir() string {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return ""
-	}
-	return home
+	cmd := exec.CommandContext(ctx, "docker", "info")
+	cmd.Env = os.Environ()
+	return cmd.Run() == nil
 }

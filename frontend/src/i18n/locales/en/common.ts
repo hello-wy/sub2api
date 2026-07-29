@@ -180,6 +180,7 @@ export default {
     modelSquare: 'Model Square',
     rechargeAddress: 'Recharge Address',
     imageGeneration: 'Image Generation',
+    modelPlaza: 'Model Plaza',
     subscriptions: 'Subscriptions',
     accounts: 'Accounts',
     proxies: 'Proxies',
