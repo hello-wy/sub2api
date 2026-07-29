@@ -152,7 +152,7 @@
                 <header class="flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-4 dark:border-dark-700">
                   <div class="flex items-center gap-1.5">
                     <h2 class="text-base font-semibold text-gray-900 dark:text-white">{{ t('wallet.activeSubscriptions') }}</h2>
-                    <HelpTooltip :content="t('wallet.singleSubscriptionNotice')" width-class="w-72" />
+                    <HelpTooltip :content="t('wallet.subscriptionGroupNotice')" width-class="w-72" />
                   </div>
                 </header>
                 <div v-if="activeSubscriptions.length" class="divide-y divide-gray-100 dark:divide-dark-700">
@@ -885,11 +885,19 @@ async function handleSubmitRecharge() {
   await createOrder(validAmount.value, 'balance')
 }
 
-const activeSubscriptionToReplace = computed(() => activeSubscriptions.value.find((subscription) => {
-  if (subscription.status !== 'active') return false
-  if (!subscription.expires_at) return true
-  return new Date(subscription.expires_at).getTime() > Date.now()
-}) ?? null)
+function findActiveSubscriptionForGroup(groupID: number): UserSubscription | null {
+  return activeSubscriptions.value.find((subscription) => {
+    if (subscription.group_id !== groupID) return false
+    if (subscription.status !== 'active') return false
+    if (!subscription.expires_at) return true
+    return new Date(subscription.expires_at).getTime() > Date.now()
+  }) ?? null
+}
+
+const activeSubscriptionToReplace = computed(() => {
+  const plan = pendingSubscriptionPurchase.value?.plan
+  return plan ? findActiveSubscriptionForGroup(plan.group_id) : null
+})
 
 const subscriptionOverrideMessage = computed(() => {
   const subscription = activeSubscriptionToReplace.value
@@ -946,7 +954,7 @@ async function subscribeToPlan(plan: SubscriptionPlan, source: SubscriptionPayme
     return
   }
 
-  if (activeSubscriptionToReplace.value) {
+  if (findActiveSubscriptionForGroup(plan.group_id)) {
     pendingSubscriptionPurchase.value = { plan, source, stage: 'override' }
     return
   }
