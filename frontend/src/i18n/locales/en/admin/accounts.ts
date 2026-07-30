@@ -796,7 +796,7 @@ export default {
       priority: 'Priority',
       priorityHint: 'Lower value accounts are used first',
       billingRateMultiplier: 'Billing Rate Multiplier',
-      billingRateMultiplierHint: '0 = free, affects account billing only',
+      billingRateMultiplierHint: 'Variable cost ratio for API Key accounts; each request snapshots the current ratio. Record OAuth operating cost by period in Business Analytics',
       expiresAt: 'Expires At',
       expiresAtHint: 'Leave empty for no expiration',
       higherPriorityFirst: 'Lower value means higher priority',

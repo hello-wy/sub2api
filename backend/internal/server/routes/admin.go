@@ -285,6 +285,15 @@ func registerDashboardRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		dashboard.POST("/users-usage", h.Admin.Dashboard.GetBatchUsersUsage)
 		dashboard.POST("/api-keys-usage", h.Admin.Dashboard.GetBatchAPIKeysUsage)
 		dashboard.GET("/user-breakdown", h.Admin.Dashboard.GetUserBreakdown)
+		dashboard.GET("/business-analytics", h.Admin.Dashboard.GetBusinessAnalytics)
+		dashboard.GET("/business-settings", h.Admin.Dashboard.GetBusinessAnalyticsSettings)
+		dashboard.GET("/business-api-key-cost-rates", h.Admin.Dashboard.GetBusinessAPIKeyCostRates)
+		dashboard.POST("/business-api-key-cost-rates", h.Admin.Dashboard.CreateBusinessAPIKeyCostRate)
+		dashboard.DELETE("/business-api-key-cost-rates/:id", h.Admin.Dashboard.DeleteBusinessAPIKeyCostRate)
+		dashboard.GET("/business-costs", h.Admin.Dashboard.ListBusinessCosts)
+		dashboard.POST("/business-costs", h.Admin.Dashboard.CreateBusinessCost)
+		dashboard.DELETE("/business-costs/:id", h.Admin.Dashboard.DeleteBusinessCost)
+		dashboard.POST("/business-capacity-snapshot", h.Admin.Dashboard.CaptureBusinessCapacitySnapshot)
 		dashboard.POST("/aggregation/backfill", h.Admin.Dashboard.BackfillAggregation)
 	}
 }
