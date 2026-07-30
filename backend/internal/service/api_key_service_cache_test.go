@@ -317,7 +317,62 @@ func TestAPIKeyService_SnapshotRoundTrip_PreservesReasoningEffortPolicy(t *testi
 	require.Equal(t, apiKey.Group.ReasoningEffortMappings, roundTrip.Group.ReasoningEffortMappings)
 }
 
-func TestAPIKeyService_GetByKey_IgnoresV16AuthCacheSnapshotWithoutLifetimeQuotaFields(t *testing.T) {
+func TestAPIKeyService_SnapshotRoundTrip_PreservesSubscriptionLifetimeQuota(t *testing.T) {
+	totalLimit := 100.0
+	groupID := int64(9)
+	svc := NewAPIKeyService(nil, nil, nil, nil, nil, nil, &config.Config{})
+	apiKey := &APIKey{
+		ID:      1,
+		UserID:  2,
+		GroupID: &groupID,
+		Key:     "k-lifetime-quota",
+		Status:  StatusActive,
+		User: &User{
+			ID:          2,
+			Status:      StatusActive,
+			Role:        RoleUser,
+			Balance:     10,
+			Concurrency: 3,
+		},
+		Group: &Group{
+			ID:                         groupID,
+			Name:                       "lifetime",
+			Platform:                   PlatformOpenAI,
+			Status:                     StatusActive,
+			SubscriptionType:           SubscriptionTypeSubscription,
+			SubscriptionQuotaResetMode: SubscriptionQuotaResetModeUntilSubscriptionExpires,
+			SubscriptionTotalLimitUSD:  &totalLimit,
+			RateMultiplier:             1,
+		},
+	}
+
+	snapshot := svc.snapshotFromAPIKey(context.Background(), apiKey)
+	roundTrip := svc.snapshotToAPIKey(apiKey.Key, snapshot)
+
+	require.NotNil(t, snapshot.Group)
+	require.Equal(t, SubscriptionQuotaResetModeUntilSubscriptionExpires, snapshot.Group.SubscriptionQuotaResetMode)
+	require.Equal(t, &totalLimit, snapshot.Group.SubscriptionTotalLimitUSD)
+	require.NotNil(t, roundTrip.Group)
+	require.True(t, roundTrip.Group.UsesSubscriptionLifetimeQuota())
+	require.Equal(t, &totalLimit, roundTrip.Group.SubscriptionTotalLimitUSD)
+
+	cache := &subscriptionTermCacheStub{data: &SubscriptionCacheData{
+		Status:      SubscriptionStatusActive,
+		ExpiresAt:   time.Now().Add(time.Hour),
+		TermVersion: 1,
+		TotalUsage:  totalLimit,
+	}}
+	billingSvc := &BillingCacheService{cache: cache}
+	err := billingSvc.checkSubscriptionEligibility(
+		context.Background(),
+		apiKey.UserID,
+		roundTrip.Group,
+		&UserSubscription{TermVersion: 1},
+	)
+	require.ErrorIs(t, err, ErrSubscriptionTotalLimitExceeded)
+}
+
+func TestAPIKeyService_GetByKey_IgnoresV17AuthCacheSnapshotWithoutLifetimeQuotaFields(t *testing.T) {
 	cache := &authCacheStub{}
 	var repoCalls int32
 	repo := &authRepoStub{
@@ -364,7 +419,7 @@ func TestAPIKeyService_GetByKey_IgnoresV16AuthCacheSnapshotWithoutLifetimeQuotaF
 	cache.getAuthCache = func(ctx context.Context, key string) (*APIKeyAuthCacheEntry, error) {
 		return &APIKeyAuthCacheEntry{
 			Snapshot: &APIKeyAuthSnapshot{
-				Version:  16,
+				Version:  17,
 				APIKeyID: 1,
 				UserID:   2,
 				GroupID:  &groupID,
