@@ -446,7 +446,7 @@ func (s *BusinessAnalyticsService) loadGroupUsage(ctx context.Context, start, en
 	if err != nil {
 		return nil, nil, fmt.Errorf("query group usage: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	groups := make(map[int64]*businessGroupAccumulator)
 	daily := make(map[string]*businessDailyAccumulator)
 	for rows.Next() {
@@ -482,7 +482,7 @@ func (s *BusinessAnalyticsService) loadAccruedCosts(ctx context.Context, start, 
 	if err != nil {
 		return nil, 0, 0, false, fmt.Errorf("query account costs: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	byGroup := make(map[int64]float64)
 	var unallocated, total float64
 	configured := false
@@ -529,7 +529,7 @@ func (s *BusinessAnalyticsService) loadWelfare(ctx context.Context, start, end t
 	if err != nil {
 		return 0, fmt.Errorf("query welfare grants: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var total float64
 	for rows.Next() {
 		var day time.Time
@@ -579,7 +579,7 @@ func (s *BusinessAnalyticsService) loadPoolCapacity(ctx context.Context, groups 
 	if err != nil {
 		return fmt.Errorf("query pool capacity: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		var id, accounts, concurrency int64
 		if err := rows.Scan(&id, &accounts, &concurrency); err != nil {
@@ -615,7 +615,7 @@ func (s *BusinessAnalyticsService) loadSnapshotCapacity(ctx context.Context, gro
 	if err != nil {
 		return fmt.Errorf("query capacity snapshots: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		var groupID int64
 		var capacity float64
@@ -642,7 +642,7 @@ func (s *BusinessAnalyticsService) loadCashReceipts(ctx context.Context, start, 
 	if err != nil {
 		return nil, fmt.Errorf("query cash receipts: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	items := make([]BusinessCurrencyAmount, 0)
 	for rows.Next() {
 		var item BusinessCurrencyAmount
@@ -675,7 +675,7 @@ func (s *BusinessAnalyticsService) loadLiabilities(ctx context.Context, apiKeyUs
 	if err != nil {
 		return out, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	now := time.Now()
 	for rows.Next() {
 		var expiresAt time.Time
@@ -784,7 +784,7 @@ func (s *BusinessAnalyticsService) GetAPIKeyCostRateConfig(ctx context.Context) 
 	if err != nil {
 		return nil, fmt.Errorf("query API key cost rates: %w", err)
 	}
-	defer rateRows.Close()
+	defer func() { _ = rateRows.Close() }()
 	for rateRows.Next() {
 		var rate BusinessAPIKeyCostRate
 		if err := rateRows.Scan(&rate.ID, &rate.AccountID, &rate.CreditsPerCNY, &rate.Notes, &rate.CreatedAt); err != nil {
@@ -863,7 +863,7 @@ func (s *BusinessAnalyticsService) ListAccountCosts(ctx context.Context, limit i
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	items := make([]BusinessAccountCost, 0)
 	for rows.Next() {
 		var item BusinessAccountCost
