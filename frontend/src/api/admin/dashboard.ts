@@ -16,12 +16,196 @@ import type {
   UsageRequestType
 } from '@/types'
 
+export interface BusinessCurrencyAmount {
+  currency: string
+  amount: number
+}
+
+export interface BusinessLiabilitySummary {
+  balance_credits_usd: number
+  balance_face_value_cny: number
+  balance_estimated_cost_cny: number
+  active_subscriptions: number
+  subscription_commitment_usd: number
+  subscription_estimated_cost_cny: number
+  unlimited_subscriptions: number
+}
+
+export interface BusinessAnalyticsSettings {
+  balance_credits_per_cny: number
+}
+
+export interface BusinessProfitSummary {
+  start_at: string
+  end_at: string
+  usage_revenue_cny: number
+  api_key_usage_cost_cny: number
+  welfare_cost_cny: number
+  account_cost_cny: number
+  total_cost_cny: number
+  operating_profit_cny: number
+  operating_margin: number
+  unpriced_api_key_usage_cost_usd: number
+  profit_complete: boolean
+}
+
+export interface BusinessDailyAnalytics {
+  date: string
+  usage_revenue_cny: number
+  api_key_usage_cost_cny: number
+  unpriced_api_key_usage_cost_usd: number
+  profit_complete: boolean
+  welfare_granted_usd: number
+  welfare_cost_cny: number
+  account_cost_cny: number
+  operating_profit_cny: number
+}
+
+export interface BusinessGroupAnalytics {
+  group_id: number
+  group_name: string
+  effective_rate_multiplier: number
+  usage_credits_usd: number
+  usage_revenue_cny: number
+  api_key_usage_cost_usd: number
+  api_key_usage_cost_cny: number
+  unpriced_api_key_usage_cost_usd: number
+  profit_complete: boolean
+  gross_profit_cny: number
+  gross_margin: number
+  allocated_welfare_cost_cny: number
+  allocated_account_cost_cny: number
+  operating_profit_cny: number
+  forecast_p50_daily_cost_usd: number
+  forecast_p95_daily_cost_usd: number
+  observed_capacity_per_account: number
+  schedulable_accounts: number
+  concurrency_max: number
+  required_accounts: number
+  additional_accounts: number
+}
+
+export interface BusinessAnalyticsOverview {
+  start_at: string
+  end_at: string
+  settings: BusinessAnalyticsSettings
+  usage_credits_usd: number
+  usage_revenue_cny: number
+  api_key_usage_cost_usd: number
+  api_key_usage_cost_cny: number
+  unpriced_api_key_usage_cost_usd: number
+  profit_complete: boolean
+  gross_profit_cny: number
+  gross_margin: number
+  welfare_granted_usd: number
+  welfare_cost_cny: number
+  account_cost_cny: number
+  operating_profit_cny: number
+  operating_margin: number
+  cumulative: BusinessProfitSummary
+  cost_ledger_configured: boolean
+  cash_receipts: BusinessCurrencyAmount[]
+  liabilities: BusinessLiabilitySummary
+  daily: BusinessDailyAnalytics[]
+  groups: BusinessGroupAnalytics[]
+  snapshot_captured_at?: string
+}
+
+export interface BusinessAccountCost {
+  id: number
+  account_id?: number
+  group_id?: number
+  cost_type: string
+  amount: number
+  currency: string
+  fx_rate: number
+  starts_at: string
+  ends_at: string
+  notes: string
+  created_at: string
+}
+
+export interface CreateBusinessAccountCostInput {
+  account_id?: number
+  group_id?: number
+  cost_type: string
+  amount: number
+  currency: string
+  fx_rate: number
+  starts_at: string
+  ends_at: string
+  notes?: string
+}
+
+export interface BusinessAPIKeyAccount {
+  id: number
+  name: string
+  platform: string
+}
+
+export interface BusinessAPIKeyCostRate {
+  id: number
+  account_id: number
+  credits_per_cny: number
+  notes: string
+  created_at: string
+}
+
+export interface BusinessAPIKeyCostRateConfig {
+  accounts: BusinessAPIKeyAccount[]
+  rates: BusinessAPIKeyCostRate[]
+}
+
+export interface CreateBusinessAPIKeyCostRateInput {
+  account_id: number
+  credits_per_cny: number
+  notes?: string
+}
+
 /**
  * Get dashboard statistics
  * @returns Dashboard statistics including users, keys, accounts, and token usage
  */
 export async function getStats(): Promise<DashboardStats> {
   const { data } = await apiClient.get<DashboardStats>('/admin/dashboard/stats')
+  return data
+}
+
+export async function getBusinessAnalytics(params?: { start_date?: string; end_date?: string }): Promise<BusinessAnalyticsOverview> {
+  const { data } = await apiClient.get<BusinessAnalyticsOverview>('/admin/dashboard/business-analytics', { params })
+  return data
+}
+
+export async function getBusinessAPIKeyCostRates(): Promise<BusinessAPIKeyCostRateConfig> {
+  const { data } = await apiClient.get<BusinessAPIKeyCostRateConfig>('/admin/dashboard/business-api-key-cost-rates')
+  return data
+}
+
+export async function createBusinessAPIKeyCostRate(input: CreateBusinessAPIKeyCostRateInput): Promise<BusinessAPIKeyCostRate> {
+  const { data } = await apiClient.post<BusinessAPIKeyCostRate>('/admin/dashboard/business-api-key-cost-rates', input)
+  return data
+}
+
+export async function deleteBusinessAPIKeyCostRate(id: number): Promise<void> {
+  await apiClient.delete(`/admin/dashboard/business-api-key-cost-rates/${id}`)
+}
+
+export async function listBusinessCosts(): Promise<BusinessAccountCost[]> {
+  const { data } = await apiClient.get<BusinessAccountCost[]>('/admin/dashboard/business-costs')
+  return data
+}
+
+export async function createBusinessCost(input: CreateBusinessAccountCostInput): Promise<BusinessAccountCost> {
+  const { data } = await apiClient.post<BusinessAccountCost>('/admin/dashboard/business-costs', input)
+  return data
+}
+
+export async function deleteBusinessCost(id: number): Promise<void> {
+  await apiClient.delete(`/admin/dashboard/business-costs/${id}`)
+}
+
+export async function captureBusinessCapacitySnapshot(): Promise<{ captured_at: string }> {
+  const { data } = await apiClient.post<{ captured_at: string }>('/admin/dashboard/business-capacity-snapshot')
   return data
 }
 
@@ -326,6 +510,14 @@ export async function getBatchApiKeysUsage(
 
 export const dashboardAPI = {
   getStats,
+  getBusinessAnalytics,
+  getBusinessAPIKeyCostRates,
+  createBusinessAPIKeyCostRate,
+  deleteBusinessAPIKeyCostRate,
+  listBusinessCosts,
+  createBusinessCost,
+  deleteBusinessCost,
+  captureBusinessCapacitySnapshot,
   getRealtimeMetrics,
   getUsageTrend,
   getModelStats,
