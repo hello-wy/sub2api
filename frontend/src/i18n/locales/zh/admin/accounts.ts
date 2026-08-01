@@ -860,7 +860,7 @@ export default {
       priority: '优先级',
       priorityHint: '优先级越小的账号优先使用',
       billingRateMultiplier: '账号计费倍率',
-      billingRateMultiplierHint: '0 表示不计费，仅影响账号计费',
+      billingRateMultiplierHint: 'API Key 的按量成本比例；每次请求会保存当时倍率。OAuth 经营成本请在经营分析中按有效期录入',
       expiresAt: '过期时间',
       expiresAtHint: '留空表示不过期',
       higherPriorityFirst: '数值越小优先级越高',

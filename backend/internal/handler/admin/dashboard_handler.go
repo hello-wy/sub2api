@@ -21,6 +21,7 @@ import (
 type DashboardHandler struct {
 	dashboardService   *service.DashboardService
 	aggregationService *service.DashboardAggregationService
+	businessService    *service.BusinessAnalyticsService
 	startTime          time.Time // Server start time for uptime calculation
 }
 
@@ -31,6 +32,165 @@ func NewDashboardHandler(dashboardService *service.DashboardService, aggregation
 		aggregationService: aggregationService,
 		startTime:          time.Now(),
 	}
+}
+
+// SetBusinessAnalyticsService keeps the public dashboard-handler constructor
+// backwards compatible for focused handler tests while allowing Wire to attach
+// the optional operating-analysis service in the application.
+func (h *DashboardHandler) SetBusinessAnalyticsService(businessService *service.BusinessAnalyticsService) {
+	h.businessService = businessService
+}
+
+// GetBusinessAnalytics returns the operating analysis for the selected period.
+// GET /api/v1/admin/dashboard/business-analytics
+func (h *DashboardHandler) GetBusinessAnalytics(c *gin.Context) {
+	if h.businessService == nil {
+		response.Error(c, 503, "Business analytics is unavailable")
+		return
+	}
+	start, end := parseTimeRange(c)
+	overview, err := h.businessService.GetOverview(c.Request.Context(), start, end)
+	if err != nil {
+		response.Error(c, 500, "Failed to get business analytics")
+		return
+	}
+	response.Success(c, overview)
+}
+
+// GetBusinessAnalyticsSettings returns the conversion rates used by the
+// operating analysis. The balance multiplier is shared with payment settings.
+// GET /api/v1/admin/dashboard/business-settings
+func (h *DashboardHandler) GetBusinessAnalyticsSettings(c *gin.Context) {
+	if h.businessService == nil {
+		response.Error(c, 503, "Business analytics is unavailable")
+		return
+	}
+	settings, err := h.businessService.GetSettings(c.Request.Context())
+	if err != nil {
+		response.Error(c, 500, "Failed to get business analytics settings")
+		return
+	}
+	response.Success(c, settings)
+}
+
+// GetBusinessAPIKeyCostRates returns API key accounts and their current
+// score-credit-per-CNY cost conversion rates.
+func (h *DashboardHandler) GetBusinessAPIKeyCostRates(c *gin.Context) {
+	if h.businessService == nil {
+		response.Error(c, 503, "Business analytics is unavailable")
+		return
+	}
+	config, err := h.businessService.GetAPIKeyCostRateConfig(c.Request.Context())
+	if err != nil {
+		response.Error(c, 500, "Failed to get API key cost rates")
+		return
+	}
+	response.Success(c, config)
+}
+
+func (h *DashboardHandler) CreateBusinessAPIKeyCostRate(c *gin.Context) {
+	if h.businessService == nil {
+		response.Error(c, 503, "Business analytics is unavailable")
+		return
+	}
+	var input service.BusinessAPIKeyCostRateInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		response.BadRequest(c, "Invalid API key cost rate payload")
+		return
+	}
+	item, err := h.businessService.CreateAPIKeyCostRate(c.Request.Context(), input)
+	if err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+	response.Created(c, item)
+}
+
+func (h *DashboardHandler) DeleteBusinessAPIKeyCostRate(c *gin.Context) {
+	if h.businessService == nil {
+		response.Error(c, 503, "Business analytics is unavailable")
+		return
+	}
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || id <= 0 {
+		response.BadRequest(c, "Invalid API key cost rate ID")
+		return
+	}
+	if err := h.businessService.DeleteAPIKeyCostRate(c.Request.Context(), id); err != nil {
+		response.NotFound(c, "API key cost rate not found")
+		return
+	}
+	response.Success(c, gin.H{"message": "API key cost rate deleted"})
+}
+
+// ListBusinessCosts returns account procurement and renewal cost entries.
+// GET /api/v1/admin/dashboard/business-costs
+func (h *DashboardHandler) ListBusinessCosts(c *gin.Context) {
+	if h.businessService == nil {
+		response.Error(c, 503, "Business analytics is unavailable")
+		return
+	}
+	items, err := h.businessService.ListAccountCosts(c.Request.Context(), 100)
+	if err != nil {
+		response.Error(c, 500, "Failed to list business costs")
+		return
+	}
+	response.Success(c, items)
+}
+
+// CreateBusinessCost adds a period-based account cost entry.
+// POST /api/v1/admin/dashboard/business-costs
+func (h *DashboardHandler) CreateBusinessCost(c *gin.Context) {
+	if h.businessService == nil {
+		response.Error(c, 503, "Business analytics is unavailable")
+		return
+	}
+	var input service.BusinessAccountCostInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		response.BadRequest(c, "Invalid business cost payload")
+		return
+	}
+	item, err := h.businessService.CreateAccountCost(c.Request.Context(), input)
+	if err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+	response.Created(c, item)
+}
+
+// DeleteBusinessCost removes an incorrectly entered account cost entry.
+// DELETE /api/v1/admin/dashboard/business-costs/:id
+func (h *DashboardHandler) DeleteBusinessCost(c *gin.Context) {
+	if h.businessService == nil {
+		response.Error(c, 503, "Business analytics is unavailable")
+		return
+	}
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || id <= 0 {
+		response.BadRequest(c, "Invalid business cost ID")
+		return
+	}
+	if err := h.businessService.DeleteAccountCost(c.Request.Context(), id); err != nil {
+		response.NotFound(c, "Business cost not found")
+		return
+	}
+	response.Success(c, gin.H{"message": "business cost deleted"})
+}
+
+// CaptureBusinessCapacitySnapshot records the previous 24-hour observed account
+// load. It is a local capacity baseline, not a claim about upstream quota.
+// POST /api/v1/admin/dashboard/business-capacity-snapshot
+func (h *DashboardHandler) CaptureBusinessCapacitySnapshot(c *gin.Context) {
+	if h.businessService == nil {
+		response.Error(c, 503, "Business analytics is unavailable")
+		return
+	}
+	capturedAt, err := h.businessService.CaptureCapacitySnapshot(c.Request.Context())
+	if err != nil {
+		response.Error(c, 500, "Failed to capture capacity snapshot")
+		return
+	}
+	response.Success(c, gin.H{"captured_at": capturedAt})
 }
 
 // parseTimeRange parses start_date, end_date query parameters

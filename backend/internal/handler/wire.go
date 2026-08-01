@@ -90,6 +90,18 @@ func ProvideAdminHandlers(
 	}
 }
 
+// ProvideDashboardHandler attaches optional operational analytics without
+// changing NewDashboardHandler's long-standing test-facing constructor.
+func ProvideDashboardHandler(
+	dashboardService *service.DashboardService,
+	aggregationService *service.DashboardAggregationService,
+	businessService *service.BusinessAnalyticsService,
+) *admin.DashboardHandler {
+	handler := admin.NewDashboardHandler(dashboardService, aggregationService)
+	handler.SetBusinessAnalyticsService(businessService)
+	return handler
+}
+
 func ProvideGatewayHandler(
 	gatewayService *service.GatewayService,
 	openAIGatewayService *service.OpenAIGatewayService,
@@ -239,7 +251,7 @@ var ProviderSet = wire.NewSet(
 	ProvideBatchImageHandler,
 
 	// Admin handlers
-	admin.NewDashboardHandler,
+	ProvideDashboardHandler,
 	admin.NewUserHandler,
 	admin.NewGroupHandler,
 	admin.ProvideAccountHandler,
