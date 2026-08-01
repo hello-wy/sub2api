@@ -3,6 +3,7 @@ import { flushPromises, shallowMount } from '@vue/test-utils'
 import PaymentView from '../PaymentView.vue'
 import { PAYMENT_RECOVERY_STORAGE_KEY } from '@/components/payment/paymentFlow'
 import { formatPaymentAmount } from '@/components/payment/currency'
+import SubscriptionPlanCard from '@/components/payment/SubscriptionPlanCard.vue'
 import type { CheckoutInfoResponse, MethodLimit, SubscriptionPlan } from '@/types/payment'
 import type { UserSubscription } from '@/types'
 
@@ -144,6 +145,7 @@ function checkoutInfoWithPlansFixture(options: {
   checkout?: Partial<CheckoutInfoResponse>
   method?: Partial<MethodLimit>
   plan?: Partial<SubscriptionPlan>
+  plans?: SubscriptionPlan[]
 } = {}) {
   const base = checkoutInfoFixture(options.checkout).data
   const plan: SubscriptionPlan = {
@@ -177,7 +179,7 @@ function checkoutInfoWithPlansFixture(options: {
           ...options.method,
         },
       },
-      plans: [plan],
+      plans: options.plans ?? [plan],
     },
   }
 }
@@ -313,6 +315,16 @@ async function mountRecharge(options: {
   await flushPromises()
   await flushPromises()
   return wrapper
+}
+
+async function mountSubscriptionPlanList(planCount: number) {
+  const basePlan = checkoutInfoWithPlansFixture().data.plans[0]
+  const plans = Array.from({ length: planCount }, (_, index) => ({
+    ...basePlan,
+    id: index + 1,
+    name: `Plan ${index + 1}`,
+  }))
+  return mountSubscriptionConfirm({ plans })
 }
 
 describe('PaymentView balance loyalty discount', () => {
@@ -725,6 +737,23 @@ describe('PaymentView inline subscription checkout', () => {
     expect(card.props('loyaltyDiscountLabel')).toBe('wallet.subscriptionPermanentDiscount')
   })
 
+describe('PaymentView subscription plan grid', () => {
+  it.each([3, 4, 6])('keeps %i plans on the existing mobile/tablet/desktop grid', async (planCount) => {
+    const wrapper = await mountSubscriptionPlanList(planCount)
+    const cards = wrapper.findAllComponents(SubscriptionPlanCard)
+
+    expect(cards).toHaveLength(planCount)
+    expect([...(cards[0].element.parentElement?.classList ?? [])]).toEqual(expect.arrayContaining([
+      'grid',
+      'grid-cols-1',
+      'sm:grid-cols-2',
+      '2xl:grid-cols-3',
+    ]))
+  })
+})
+})
+
+describe('PaymentView subscription confirmation amounts', () => {
   it('shows converted CNY pay amount using the subscription rate, not the balance multiplier', async () => {
     const wrapper = await mountSubscriptionConfirm({
       checkout: {

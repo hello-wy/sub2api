@@ -6,28 +6,33 @@
 
     <div class="flex flex-1 flex-col p-4">
       <!-- Header: name + badge + price -->
-      <div class="mb-3">
-        <div class="flex min-w-0 items-center justify-between gap-2">
-          <h3 class="truncate text-base font-bold text-gray-900 dark:text-white">{{ plan.name }}</h3>
-          <span class="shrink-0 rounded-md border border-primary-200 bg-primary-50 px-2 py-0.5 text-[11px] font-medium text-primary-700 dark:border-primary-500/30 dark:bg-primary-500/10 dark:text-primary-300">
-            {{ pLabel }}
-          </span>
+      <div class="mb-3 flex items-start justify-between gap-2">
+        <div class="min-w-0 flex-1">
+          <h3
+            :title="plan.name"
+            class="h-12 min-w-0 break-words [overflow-wrap:anywhere] text-base font-bold leading-6 text-gray-900 dark:text-white line-clamp-2"
+          >
+            {{ plan.name }}
+          </h3>
+          <p v-if="plan.description" class="mt-0.5 text-xs leading-relaxed text-gray-500 dark:text-dark-400 line-clamp-2">
+            {{ plan.description }}
+          </p>
         </div>
-        <p v-if="plan.description" class="mt-0.5 text-xs leading-relaxed text-gray-500 dark:text-dark-400 line-clamp-2">
-          {{ plan.description }}
-        </p>
-        <div class="mt-3 flex items-end justify-between gap-3">
+        <div class="shrink-0 text-right">
           <div class="flex items-baseline gap-1">
             <span class="text-sm font-semibold text-primary-600 dark:text-primary-400">{{ planCurrencySymbol }}</span>
             <span class="text-2xl font-extrabold tracking-tight text-gray-950 dark:text-white">{{ plan.price }}</span>
             <span v-if="plan.currency" class="text-xs font-medium text-gray-400 dark:text-dark-500">{{ plan.currency }}</span>
           </div>
-          <div class="shrink-0 text-right">
+          <div class="flex items-center justify-end gap-1">
+            <span class="shrink-0 rounded-md border border-primary-200 bg-primary-50 px-2 py-0.5 text-[11px] font-medium text-primary-700 dark:border-primary-500/30 dark:bg-primary-500/10 dark:text-primary-300">
+              {{ pLabel }}
+            </span>
             <span class="text-[11px] text-gray-400 dark:text-dark-500">/ {{ validitySuffix }}</span>
-            <div v-if="plan.original_price" class="mt-0.5 flex items-center justify-end gap-1.5">
-              <span class="text-xs text-gray-400 line-through dark:text-dark-500">{{ planCurrencySymbol }}{{ plan.original_price }}<template v-if="plan.currency"> {{ plan.currency }}</template></span>
-              <span class="rounded bg-primary-50 px-1.5 py-0.5 text-[10px] font-semibold text-primary-700 dark:bg-primary-500/10 dark:text-primary-300">{{ discountText }}</span>
-            </div>
+          </div>
+          <div v-if="plan.original_price" class="mt-0.5 flex items-center justify-end gap-1.5">
+            <span class="text-xs text-gray-400 line-through dark:text-dark-500">{{ planCurrencySymbol }}{{ plan.original_price }}<template v-if="plan.currency"> {{ plan.currency }}</template></span>
+            <span class="rounded bg-primary-50 px-1.5 py-0.5 text-[10px] font-semibold text-primary-700 dark:bg-primary-500/10 dark:text-primary-300">{{ discountText }}</span>
           </div>
         </div>
       </div>
