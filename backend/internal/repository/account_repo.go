@@ -2679,11 +2679,7 @@ func (r *accountRepository) updateUpstreamBillingProbeSnapshotInTx(
 	if account.ProxyID != nil {
 		proxyID = *account.ProxyID
 	}
-	computedRateMultiplier, syncRateMultiplier := service.UpstreamBillingRateMultiplierNeedsSync(account, snapshot)
 	updatedRateMultiplier := rateMultiplier
-	if syncRateMultiplier {
-		updatedRateMultiplier = &computedRateMultiplier
-	}
 	result, err := client.ExecContext(ctx, `
 		UPDATE accounts
 		SET

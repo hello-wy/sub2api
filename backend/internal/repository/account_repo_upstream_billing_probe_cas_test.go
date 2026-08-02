@@ -160,10 +160,11 @@ func TestUpdateUpstreamBillingProbeSnapshotSyncsChangedDeclaredRateMultiplier(t 
 		},
 	}
 
+	declaredRate := 0.06
 	err = repo.UpdateUpstreamBillingProbeSnapshot(context.Background(), account, &service.UpstreamBillingProbeSnapshot{
 		Status: service.UpstreamBillingProbeStatusOK,
 		Data:   map[string]any{"effective_rate_multiplier": 0.06},
-	}, nil)
+	}, &declaredRate)
 
 	require.NoError(t, err)
 	require.NoError(t, mock.ExpectationsWereMet())

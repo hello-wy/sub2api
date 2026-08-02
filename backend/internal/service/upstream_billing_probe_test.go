@@ -125,9 +125,6 @@ func (r *upstreamBillingProbeAccountRepo) UpdateUpstreamBillingProbeSnapshot(
 	if account.Extra == nil {
 		account.Extra = make(map[string]any)
 	}
-	if rate, changed := UpstreamBillingRateMultiplierNeedsSync(account, snapshot); changed {
-		account.RateMultiplier = &rate
-	}
 	account.Extra[UpstreamBillingProbeExtraKey] = snapshot
 	if snapshot.Status == UpstreamBillingProbeStatusOK &&
 		rateMultiplier != nil &&
