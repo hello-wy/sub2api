@@ -2680,27 +2680,32 @@ func (r *accountRepository) updateUpstreamBillingProbeSnapshotInTx(
 		proxyID = *account.ProxyID
 	}
 	computedRateMultiplier, syncRateMultiplier := service.UpstreamBillingRateMultiplierNeedsSync(account, snapshot)
-	setClause := "extra = COALESCE(extra, '{}'::jsonb) || $1::jsonb"
-	args := []any{string(payload)}
-	nextArg := 2
+	updatedRateMultiplier := rateMultiplier
 	if syncRateMultiplier {
-		setClause += ", rate_multiplier = $" + itoa(nextArg)
-		args = append(args, computedRateMultiplier)
-		nextArg++
+		updatedRateMultiplier = &computedRateMultiplier
 	}
-	query := `UPDATE accounts
-		SET ` + setClause + `, updated_at = NOW()
-		WHERE id = $` + itoa(nextArg) + `
-			AND platform = $` + itoa(nextArg+1) + `
-			AND type = $` + itoa(nextArg+2) + `
-			AND credentials = $` + itoa(nextArg+3) + `::jsonb
-			AND proxy_id IS NOT DISTINCT FROM $` + itoa(nextArg+4) + `
-			AND COALESCE(extra -> 'upstream_billing_probe', 'null'::jsonb) = $` + itoa(nextArg+5) + `::jsonb
-			AND COALESCE(extra -> 'upstream_billing_probe_enabled', 'null'::jsonb) = $` + itoa(nextArg+6) + `::jsonb
-			AND COALESCE(extra -> 'upstream_billing_rate_sync_enabled', 'null'::jsonb) = $` + itoa(nextArg+7) + `::jsonb
-			AND deleted_at IS NULL`
-	args = append(args, account.ID, account.Platform, account.Type, string(credentials), proxyID, string(expectedSnapshotJSON), string(expectedEnabledJSON), string(expectedRateSyncEnabledJSON))
-	result, err := client.ExecContext(ctx, query, args...)
+	result, err := client.ExecContext(ctx, `
+		UPDATE accounts
+		SET
+			extra = COALESCE(extra, '{}'::jsonb) || $1::jsonb,
+			rate_multiplier = CASE
+				WHEN $10::numeric IS NOT NULL
+					AND extra @> '{"upstream_billing_probe_enabled": true}'::jsonb
+					AND extra @> '{"upstream_billing_rate_sync_enabled": true}'::jsonb
+				THEN $10::numeric
+				ELSE rate_multiplier
+			END,
+			updated_at = NOW()
+		WHERE id = $2
+			AND platform = $3
+			AND type = $4
+			AND credentials = $5::jsonb
+			AND proxy_id IS NOT DISTINCT FROM $6
+			AND COALESCE(extra -> 'upstream_billing_probe', 'null'::jsonb) = $7::jsonb
+			AND COALESCE(extra -> 'upstream_billing_probe_enabled', 'null'::jsonb) = $8::jsonb
+			AND COALESCE(extra -> 'upstream_billing_rate_sync_enabled', 'null'::jsonb) = $9::jsonb
+			AND deleted_at IS NULL
+	`, string(payload), account.ID, account.Platform, account.Type, string(credentials), proxyID, string(expectedSnapshotJSON), string(expectedEnabledJSON), string(expectedRateSyncEnabledJSON), updatedRateMultiplier)
 	if err != nil {
 		return err
 	}
