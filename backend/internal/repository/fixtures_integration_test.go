@@ -94,7 +94,10 @@ func mustCreateGroup(t *testing.T, client *dbent.Client, g *service.Group) *serv
 		SetSubscriptionQuotaResetMode(g.SubscriptionQuotaResetMode).
 		SetNillableSubscriptionTotalLimitUsd(g.SubscriptionTotalLimitUSD).
 		SetRateMultiplier(g.RateMultiplier).
-		SetIsExclusive(g.IsExclusive)
+		SetIsExclusive(g.IsExclusive).
+		SetProfitControlEnabled(g.ProfitControlEnabled).
+		SetProfitMinMargin(g.ProfitMinMargin).
+		SetProfitSafetyBuffer(g.ProfitSafetyBuffer)
 	if g.Description != "" {
 		create.SetDescription(g.Description)
 	}
