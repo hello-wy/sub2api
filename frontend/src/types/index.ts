@@ -1744,6 +1744,9 @@ export interface BatchUpdateRedeemCodesRequest {
 export interface RedeemCodeRequest {
   code: string
   confirm_subscription_overwrite?: boolean
+  expected_subscription_id?: number
+  expected_subscription_term_version?: number
+  expected_subscription_expires_at?: string
 }
 
 // ==================== Dashboard & Statistics ====================

@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -34,8 +35,11 @@ const (
 // RedeemOptions controls confirmation-sensitive redemption behavior.
 type RedeemOptions struct {
 	// ConfirmSubscriptionOverwrite acknowledges that a subscription code replaces
-	// an active subscription in the same group instead of extending it.
-	ConfirmSubscriptionOverwrite bool
+	// the exact active subscription snapshot returned by the confirmation error.
+	ConfirmSubscriptionOverwrite    bool
+	ExpectedSubscriptionID          int64
+	ExpectedSubscriptionTermVersion int64
+	ExpectedSubscriptionExpiresAt   *time.Time
 }
 
 type ctxKeySkipRedeemAffiliate struct{}
@@ -464,12 +468,8 @@ func (s *RedeemService) RedeemWithOptions(ctx context.Context, userID int64, cod
 		s.incrementRedeemErrorCount(ctx, userID)
 		return nil, ErrRedeemCodeUsed
 	}
-
-	// Subscription replacement is destructive and requires explicit confirmation.
-	if redeemCode.Type == RedeemTypeSubscription {
-		if err := s.ensureSubscriptionOverwriteConfirmation(ctx, userID, *redeemCode.GroupID, redeemCode.ValidityDays, options); err != nil {
-			return nil, err
-		}
+	if redeemCode.Type == RedeemTypeSubscription && s.subscriptionService == nil {
+		return nil, errors.New("subscription service is not configured")
 	}
 
 	// 获取用户信息
@@ -487,6 +487,14 @@ func (s *RedeemService) RedeemWithOptions(ctx context.Context, userID int64, cod
 
 	// 将事务放入 context，使 repository 方法能够使用同一事务
 	txCtx := dbent.NewTxContext(ctx, tx)
+
+	// Lock and re-check the exact subscription snapshot inside the redemption
+	// transaction. A confirmation obtained before a renewal cannot overwrite it.
+	if redeemCode.Type == RedeemTypeSubscription {
+		if err := s.ensureSubscriptionOverwriteConfirmationLocked(txCtx, tx.Client(), userID, *redeemCode.GroupID, redeemCode.ValidityDays, options); err != nil {
+			return nil, err
+		}
+	}
 
 	// 【关键】先标记兑换码为已使用，确保并发安全
 	// 利用数据库乐观锁（WHERE status = 'unused'）保证原子性
@@ -574,28 +582,46 @@ func (s *RedeemService) RedeemWithOptions(ctx context.Context, userID int64, cod
 	return redeemCode, nil
 }
 
-func (s *RedeemService) ensureSubscriptionOverwriteConfirmation(ctx context.Context, userID, groupID int64, validityDays int, options RedeemOptions) error {
-	if validityDays < 0 || options.ConfirmSubscriptionOverwrite {
+func (s *RedeemService) ensureSubscriptionOverwriteConfirmationLocked(ctx context.Context, client interface {
+	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
+}, userID, groupID int64, validityDays int, options RedeemOptions) error {
+	if validityDays < 0 {
 		return nil
-	}
-	if s.subscriptionService == nil {
-		return errors.New("subscription service is not configured")
 	}
 
-	activeSubscription, err := s.subscriptionService.GetActiveSubscription(ctx, userID, groupID)
-	switch {
-	case err == nil && activeSubscription != nil:
-		return infraerrors.Conflict(
-			"SUBSCRIPTION_OVERWRITE_CONFIRMATION_REQUIRED",
-			"redeeming this code will replace your current subscription",
-		).WithMetadata(map[string]string{
-			"expires_at": activeSubscription.ExpiresAt.Format(time.RFC3339),
-		})
-	case err != nil && !errors.Is(err, ErrSubscriptionNotFound):
-		return fmt.Errorf("get active subscription: %w", err)
-	default:
+	var subscriptionID, termVersion int64
+	var expiresAt time.Time
+	err := scanOne(ctx, client, `
+SELECT id, term_version, expires_at
+FROM user_subscriptions
+WHERE user_id = $1
+  AND group_id = $2
+  AND deleted_at IS NULL
+  AND status = 'active'
+  AND expires_at > NOW()
+FOR UPDATE`, []any{userID, groupID}, &subscriptionID, &termVersion, &expiresAt)
+	if err == sql.ErrNoRows {
 		return nil
 	}
+	if err != nil {
+		return fmt.Errorf("get active subscription: %w", err)
+	}
+	if options.ConfirmSubscriptionOverwrite &&
+		options.ExpectedSubscriptionID == subscriptionID &&
+		options.ExpectedSubscriptionTermVersion == termVersion &&
+		options.ExpectedSubscriptionExpiresAt != nil &&
+		options.ExpectedSubscriptionExpiresAt.Equal(expiresAt) {
+		return nil
+	}
+
+	return infraerrors.Conflict(
+		"SUBSCRIPTION_OVERWRITE_CONFIRMATION_REQUIRED",
+		"redeeming this code will replace your current subscription",
+	).WithMetadata(map[string]string{
+		"subscription_id": strconv.FormatInt(subscriptionID, 10),
+		"term_version":    strconv.FormatInt(termVersion, 10),
+		"expires_at":      expiresAt.Format(time.RFC3339Nano),
+	})
 }
 
 // invalidateRedeemCaches 失效兑换相关的缓存

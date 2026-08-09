@@ -2,6 +2,7 @@ package handler
 
 import (
 	"strconv"
+	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/handler/dto"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
@@ -25,8 +26,11 @@ func NewRedeemHandler(redeemService *service.RedeemService) *RedeemHandler {
 
 // RedeemRequest represents the redeem code request payload
 type RedeemRequest struct {
-	Code                         string `json:"code" binding:"required"`
-	ConfirmSubscriptionOverwrite bool   `json:"confirm_subscription_overwrite"`
+	Code                            string     `json:"code" binding:"required"`
+	ConfirmSubscriptionOverwrite    bool       `json:"confirm_subscription_overwrite"`
+	ExpectedSubscriptionID          int64      `json:"expected_subscription_id"`
+	ExpectedSubscriptionTermVersion int64      `json:"expected_subscription_term_version"`
+	ExpectedSubscriptionExpiresAt   *time.Time `json:"expected_subscription_expires_at"`
 }
 
 // RedeemResponse represents the redeem response
@@ -54,7 +58,10 @@ func (h *RedeemHandler) Redeem(c *gin.Context) {
 	}
 
 	result, err := h.redeemService.RedeemWithOptions(c.Request.Context(), subject.UserID, req.Code, service.RedeemOptions{
-		ConfirmSubscriptionOverwrite: req.ConfirmSubscriptionOverwrite,
+		ConfirmSubscriptionOverwrite:    req.ConfirmSubscriptionOverwrite,
+		ExpectedSubscriptionID:          req.ExpectedSubscriptionID,
+		ExpectedSubscriptionTermVersion: req.ExpectedSubscriptionTermVersion,
+		ExpectedSubscriptionExpiresAt:   req.ExpectedSubscriptionExpiresAt,
 	})
 	if err != nil {
 		response.ErrorFrom(c, err)

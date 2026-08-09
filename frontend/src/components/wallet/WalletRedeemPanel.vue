@@ -60,7 +60,7 @@
       :confirm-text="t('redeem.subscriptionOverwriteConfirm')"
       danger
       @confirm="confirmSubscriptionOverwrite"
-      @cancel="showSubscriptionOverwriteDialog = false"
+      @cancel="cancelSubscriptionOverwrite"
     />
   </div>
 </template>
@@ -69,6 +69,7 @@
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { redeemAPI } from '@/api'
+import type { SubscriptionOverwriteConfirmation } from '@/api/redeem'
 import { useAuthStore } from '@/stores/auth'
 import { useSubscriptionStore } from '@/stores/subscriptions'
 import { useAppStore } from '@/stores/app'
@@ -88,14 +89,16 @@ const errorMessage = ref('')
 const result = ref<{ message: string; type: string } | null>(null)
 const showSubscriptionOverwriteDialog = ref(false)
 const subscriptionOverwriteExpiresAt = ref('')
+const subscriptionOverwriteConfirmation = ref<SubscriptionOverwriteConfirmation | null>(null)
 
-async function handleRedeem(confirmSubscriptionOverwrite = false) {
+async function handleRedeem(confirmation?: SubscriptionOverwriteConfirmation) {
   if (!code.value.trim()) return
   submitting.value = true
   result.value = null
   errorMessage.value = ''
   try {
-    const response = await redeemAPI.redeem(code.value.trim(), confirmSubscriptionOverwrite)
+    const response = await redeemAPI.redeem(code.value.trim(), confirmation)
+    subscriptionOverwriteConfirmation.value = null
     result.value = response
     code.value = ''
     try {
@@ -115,9 +118,13 @@ async function handleRedeem(confirmSubscriptionOverwrite = false) {
   } catch (error: any) {
     if (extractApiErrorCode(error) === 'SUBSCRIPTION_OVERWRITE_CONFIRMATION_REQUIRED') {
       const metadata = extractApiErrorMetadata(error)
-      subscriptionOverwriteExpiresAt.value = formatSubscriptionExpiration(metadata?.expires_at)
-      showSubscriptionOverwriteDialog.value = true
-      return
+      const nextConfirmation = parseSubscriptionOverwriteConfirmation(metadata)
+      if (nextConfirmation) {
+        subscriptionOverwriteConfirmation.value = nextConfirmation
+        subscriptionOverwriteExpiresAt.value = formatSubscriptionExpiration(nextConfirmation.expiresAt)
+        showSubscriptionOverwriteDialog.value = true
+        return
+      }
     }
     errorMessage.value = error.response?.data?.detail || t('redeem.failedToRedeem')
     appStore.showError(t('redeem.redeemFailed'))
@@ -127,8 +134,25 @@ async function handleRedeem(confirmSubscriptionOverwrite = false) {
 }
 
 function confirmSubscriptionOverwrite() {
+  const confirmation = subscriptionOverwriteConfirmation.value
+  if (!confirmation) return
   showSubscriptionOverwriteDialog.value = false
-  void handleRedeem(true)
+  void handleRedeem(confirmation)
+}
+
+function cancelSubscriptionOverwrite() {
+  showSubscriptionOverwriteDialog.value = false
+  subscriptionOverwriteConfirmation.value = null
+}
+
+function parseSubscriptionOverwriteConfirmation(metadata?: Record<string, unknown>): SubscriptionOverwriteConfirmation | null {
+  const subscriptionId = Number(metadata?.subscription_id)
+  const termVersion = Number(metadata?.term_version)
+  const expiresAt = metadata?.expires_at
+  if (!Number.isSafeInteger(subscriptionId) || subscriptionId <= 0) return null
+  if (!Number.isSafeInteger(termVersion) || termVersion <= 0) return null
+  if (typeof expiresAt !== 'string' || Number.isNaN(new Date(expiresAt).getTime())) return null
+  return { subscriptionId, termVersion, expiresAt }
 }
 
 function formatSubscriptionExpiration(value: unknown): string {

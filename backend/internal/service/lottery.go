@@ -34,6 +34,7 @@ const (
 	lotteryInvitationFirstPaymentAmountKey = "lottery_invitation_first_payment_amount"
 	lotteryInvitationConsumptionAmountKey  = "lottery_invitation_consumption_amount"
 	lotteryPrizeIDLength                   = 32
+	lotteryTicketSourceRefMaxLength        = 128
 )
 
 type LotteryStatus struct {
@@ -316,6 +317,9 @@ func (s *LotteryService) UpdatePrizePoolConfig(ctx context.Context, config Lotte
 		if err != nil {
 			return nil, err
 		}
+		if _, err := s.lotterySubscriptionWelfareAmount(ctx, s.entClient, prize.SubscriptionGroupID); err != nil {
+			return nil, err
+		}
 		prize.Label = groupName
 	}
 	raw, err := json.Marshal(config.Prizes)
@@ -590,22 +594,28 @@ WHERE user_id = $1 AND remaining > 0 AND expires_at IS NOT NULL AND expires_at <
 	if err != nil {
 		return nil, err
 	}
-	available, err := s.countAvailableTickets(ctx, s.entClient, userID)
+	return s.buildLotteryStatus(ctx, s.entClient, userID, state, timezone.Today())
+}
+
+func (s *LotteryService) buildLotteryStatus(ctx context.Context, client interface {
+	ExecContext(context.Context, string, ...any) (sql.Result, error)
+	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
+}, userID int64, state lotteryUserState, today time.Time) (*LotteryStatus, error) {
+	available, err := s.countAvailableTickets(ctx, client, userID)
 	if err != nil {
 		return nil, err
 	}
 	if available != state.AvailableTickets {
-		if _, err := s.entClient.ExecContext(ctx, `UPDATE lottery_user_states SET available_tickets = $2, updated_at = NOW(), version = version + 1 WHERE user_id = $1`, userID, available); err != nil {
+		if _, err := client.ExecContext(ctx, `UPDATE lottery_user_states SET available_tickets = $2, updated_at = NOW(), version = version + 1 WHERE user_id = $1`, userID, available); err != nil {
 			return nil, err
 		}
 	}
 	purchaseCount := state.PurchaseCount
-	if !sameBusinessDate(state.PurchaseDate, timezone.Today()) {
+	if !sameBusinessDate(state.PurchaseDate, today) {
 		purchaseCount = 0
 	}
-	today := timezone.Today()
 	var rechargeTicketsToday, invitationTicketsToday int
-	if err := scanOne(ctx, s.entClient, `
+	if err := scanOne(ctx, client, `
 SELECT
   COALESCE(SUM(CASE WHEN source_type = 'recharge' THEN delta ELSE 0 END), 0),
   COALESCE(SUM(CASE WHEN source_type = 'invitation' THEN delta ELSE 0 END), 0)
@@ -650,15 +660,22 @@ func (s *LotteryService) PurchaseTicket(ctx context.Context, userID int64, reque
 	if !sameBusinessDate(state.PurchaseDate, today) {
 		state.PurchaseCount = 0
 	}
-	ref := fmt.Sprintf("%d:%s", userID, requestID)
+	ref, err := lotteryPurchaseSourceRef(userID, requestID)
+	if err != nil {
+		return nil, err
+	}
 	var existing int64
 	err = scanOne(txCtx, client, `SELECT id FROM lottery_ticket_ledger WHERE source_type = 'purchase' AND source_ref = $1`, []any{ref}, &existing)
 	if err == nil {
+		status, err := s.buildLotteryStatus(txCtx, client, userID, state, today)
+		if err != nil {
+			return nil, err
+		}
 		if err := tx.Commit(); err != nil {
 			return nil, err
 		}
 		s.invalidateBalanceCaches(userID)
-		return s.GetStatus(ctx, userID)
+		return status, nil
 	}
 	if err != sql.ErrNoRows {
 		return nil, fmt.Errorf("check lottery purchase replay: %w", err)
@@ -694,11 +711,16 @@ SET purchase_business_date = $2, purchase_count = $3, updated_at = NOW(), versio
 WHERE user_id = $1`, userID, today, state.PurchaseCount); err != nil {
 		return nil, err
 	}
+	state.PurchaseDate = sql.NullTime{Time: today, Valid: true}
+	status, err := s.buildLotteryStatus(txCtx, client, userID, state, today)
+	if err != nil {
+		return nil, err
+	}
 	if err := tx.Commit(); err != nil {
 		return nil, fmt.Errorf("commit lottery purchase: %w", err)
 	}
 	s.invalidateBalanceCaches(userID)
-	return s.GetStatus(ctx, userID)
+	return status, nil
 }
 
 func (s *LotteryService) Draw(ctx context.Context, userID int64, requestID string) (*LotteryDrawResult, error) {
@@ -1372,6 +1394,14 @@ func validateLotteryRequestID(requestID string) error {
 		return infraerrors.BadRequest("LOTTERY_REQUEST_ID_INVALID", "valid idempotency key is required")
 	}
 	return nil
+}
+
+func lotteryPurchaseSourceRef(userID int64, requestID string) (string, error) {
+	ref := fmt.Sprintf("%d:%s", userID, strings.TrimSpace(requestID))
+	if len(ref) > lotteryTicketSourceRefMaxLength {
+		return "", infraerrors.BadRequest("LOTTERY_REQUEST_ID_INVALID", "idempotency key is too long for lottery purchase")
+	}
+	return ref, nil
 }
 
 func sameBusinessDate(value sql.NullTime, day time.Time) bool {

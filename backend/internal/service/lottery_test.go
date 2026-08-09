@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"math"
+	"strings"
 	"testing"
 )
 
@@ -79,6 +80,24 @@ func TestValidateLotteryRequestID(t *testing.T) {
 	}
 	if err := validateLotteryRequestID("lottery-request-123"); err != nil {
 		t.Fatalf("valid idempotency key rejected: %v", err)
+	}
+}
+
+func TestLotteryPurchaseSourceRefFitsLedgerColumn(t *testing.T) {
+	const userID int64 = 42
+	prefixLength := len("42:")
+	requestID := strings.Repeat("a", lotteryTicketSourceRefMaxLength-prefixLength)
+
+	ref, err := lotteryPurchaseSourceRef(userID, requestID)
+	if err != nil {
+		t.Fatalf("maximum purchase request id rejected: %v", err)
+	}
+	if len(ref) != lotteryTicketSourceRefMaxLength {
+		t.Fatalf("source ref length = %d, want %d", len(ref), lotteryTicketSourceRefMaxLength)
+	}
+
+	if _, err := lotteryPurchaseSourceRef(userID, requestID+"a"); err == nil {
+		t.Fatal("purchase request id exceeding source_ref must be rejected")
 	}
 }
 
