@@ -1,6 +1,6 @@
 <template>
-  <div v-if="attributes.length > 0" class="space-y-4">
-    <div v-for="attr in attributes" :key="attr.id">
+  <div v-if="editableAttributes.length > 0" class="space-y-4">
+    <div v-for="attr in editableAttributes" :key="attr.id">
       <label class="input-label">
         {{ attr.name }}
         <span v-if="attr.required" class="text-red-500">*</span>
@@ -92,7 +92,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { computed, ref, watch, onMounted } from 'vue'
 import { adminAPI } from '@/api/admin'
 import type { UserAttributeDefinition, UserAttributeValuesMap } from '@/types'
 import Select from '@/components/common/Select.vue'
@@ -112,6 +112,7 @@ const emit = defineEmits<Emits>()
 const loading = ref(false)
 const attributes = ref<UserAttributeDefinition[]>([])
 const localValues = ref<UserAttributeValuesMap>({})
+const editableAttributes = computed(() => attributes.value.filter((attr) => !attr.read_only))
 
 const loadAttributes = async () => {
   loading.value = true

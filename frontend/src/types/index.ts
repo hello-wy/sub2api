@@ -2151,6 +2151,7 @@ export interface UserAttributeDefinition {
   placeholder: string
   display_order: number
   enabled: boolean
+  read_only?: boolean
   created_at: string
   updated_at: string
 }

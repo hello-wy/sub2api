@@ -62,6 +62,17 @@ type UserAttributeDefinition struct {
 	UpdatedAt    time.Time
 }
 
+const LotteryAvailableTicketsAttributeKey = "lottery_available_tickets"
+
+// IsReadOnlyUserAttributeDefinition reports whether the attribute is computed
+// from system state instead of user_attribute_values.
+func IsReadOnlyUserAttributeDefinition(def UserAttributeDefinition) bool {
+	if def.Key == LotteryAvailableTicketsAttributeKey {
+		return true
+	}
+	return def.Type == AttributeTypeNumber && (def.Name == "剩余抽奖次数" || def.Name == "抽奖次数")
+}
+
 // UserAttributeValue represents a user's attribute value
 type UserAttributeValue struct {
 	ID          int64
@@ -119,6 +130,7 @@ type UserAttributeDefinitionRepository interface {
 type UserAttributeValueRepository interface {
 	GetByUserID(ctx context.Context, userID int64) ([]UserAttributeValue, error)
 	GetByUserIDs(ctx context.Context, userIDs []int64) ([]UserAttributeValue, error)
+	GetAvailableLotteryTickets(ctx context.Context, userIDs []int64) (map[int64]int, error)
 	UpsertBatch(ctx context.Context, userID int64, values []UpdateUserAttributeInput) error
 	DeleteByAttributeID(ctx context.Context, attributeID int64) error
 	DeleteByUserID(ctx context.Context, userID int64) error

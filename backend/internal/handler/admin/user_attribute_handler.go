@@ -87,6 +87,7 @@ type AttributeDefinitionResponse struct {
 	Placeholder  string                          `json:"placeholder"`
 	DisplayOrder int                             `json:"display_order"`
 	Enabled      bool                            `json:"enabled"`
+	ReadOnly     bool                            `json:"read_only"`
 	CreatedAt    string                          `json:"created_at"`
 	UpdatedAt    string                          `json:"updated_at"`
 }
@@ -116,6 +117,7 @@ func defToResponse(def *service.UserAttributeDefinition) *AttributeDefinitionRes
 		Placeholder:  def.Placeholder,
 		DisplayOrder: def.DisplayOrder,
 		Enabled:      def.Enabled,
+		ReadOnly:     service.IsReadOnlyUserAttributeDefinition(*def),
 		CreatedAt:    def.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		UpdatedAt:    def.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	}

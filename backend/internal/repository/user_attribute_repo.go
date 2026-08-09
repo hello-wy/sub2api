@@ -2,11 +2,13 @@ package repository
 
 import (
 	"context"
+	"fmt"
 
 	dbent "github.com/Wei-Shaw/sub2api/ent"
 	"github.com/Wei-Shaw/sub2api/ent/userattributedefinition"
 	"github.com/Wei-Shaw/sub2api/ent/userattributevalue"
 	"github.com/Wei-Shaw/sub2api/internal/service"
+	"github.com/lib/pq"
 )
 
 // UserAttributeDefinitionRepository implementation
@@ -204,6 +206,40 @@ func (r *userAttributeValueRepository) GetByUserIDs(ctx context.Context, userIDs
 			CreatedAt:   e.CreatedAt,
 			UpdatedAt:   e.UpdatedAt,
 		})
+	}
+	return result, nil
+}
+
+func (r *userAttributeValueRepository) GetAvailableLotteryTickets(ctx context.Context, userIDs []int64) (map[int64]int, error) {
+	result := make(map[int64]int, len(userIDs))
+	if len(userIDs) == 0 {
+		return result, nil
+	}
+
+	client := clientFromContext(ctx, r.client)
+	rows, err := client.QueryContext(ctx, `
+		SELECT user_id, COALESCE(SUM(remaining), 0)
+		FROM lottery_ticket_ledger
+		WHERE user_id = ANY($1)
+		  AND remaining > 0
+		  AND revoked_at IS NULL
+		  AND (expires_at IS NULL OR expires_at > NOW())
+		GROUP BY user_id`, pq.Array(userIDs))
+	if err != nil {
+		return nil, fmt.Errorf("get available lottery tickets: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	for rows.Next() {
+		var userID int64
+		var count int
+		if err := rows.Scan(&userID, &count); err != nil {
+			return nil, fmt.Errorf("scan available lottery tickets: %w", err)
+		}
+		result[userID] = count
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate available lottery tickets: %w", err)
 	}
 	return result, nil
 }
