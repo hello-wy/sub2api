@@ -176,6 +176,33 @@ func (s *UserAttributeService) GetBatchUserAttributes(ctx context.Context, userI
 		result[v.UserID][v.AttributeID] = v.Value
 	}
 
+	defs, err := s.defRepo.List(ctx, true)
+	if err != nil {
+		return nil, err
+	}
+	readOnlyIDs := make([]int64, 0, 1)
+	for _, def := range defs {
+		if IsReadOnlyUserAttributeDefinition(def) {
+			readOnlyIDs = append(readOnlyIDs, def.ID)
+		}
+	}
+	if len(readOnlyIDs) == 0 {
+		return result, nil
+	}
+
+	availableTickets, err := s.valueRepo.GetAvailableLotteryTickets(ctx, userIDs)
+	if err != nil {
+		return nil, err
+	}
+	for _, userID := range userIDs {
+		if result[userID] == nil {
+			result[userID] = make(map[int64]string)
+		}
+		for _, attributeID := range readOnlyIDs {
+			result[userID][attributeID] = strconv.Itoa(availableTickets[userID])
+		}
+	}
+
 	return result, nil
 }
 
@@ -196,6 +223,9 @@ func (s *UserAttributeService) UpdateUserAttributes(ctx context.Context, userID 
 		def, ok := defMap[input.AttributeID]
 		if !ok {
 			return ErrAttributeDefinitionNotFound
+		}
+		if IsReadOnlyUserAttributeDefinition(*def) {
+			return validationError(fmt.Sprintf("%s is read-only", def.Name))
 		}
 
 		if err := s.validateValue(def, input.Value); err != nil {

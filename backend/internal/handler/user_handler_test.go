@@ -286,6 +286,10 @@ func (s *userAttributeValueRepoStub) GetByUserIDs(_ context.Context, userIDs []i
 	return out, nil
 }
 
+func (s *userAttributeValueRepoStub) GetAvailableLotteryTickets(_ context.Context, _ []int64) (map[int64]int, error) {
+	return map[int64]int{}, nil
+}
+
 func (s *userAttributeValueRepoStub) UpsertBatch(context.Context, int64, []service.UpdateUserAttributeInput) error {
 	return nil
 }
