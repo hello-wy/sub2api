@@ -856,7 +856,7 @@ WHERE d.user_id = $1 ORDER BY d.created_at DESC, d.id DESC LIMIT $2`, userID, li
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	items := make([]LotteryDrawResult, 0, limit)
 	for rows.Next() {
 		var item LotteryDrawResult
@@ -889,7 +889,7 @@ ORDER BY created_at DESC, id DESC LIMIT $2`, userID, limit)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	items := make([]LotteryBalanceTransaction, 0, limit)
 	for rows.Next() {
 		var item LotteryBalanceTransaction
@@ -942,12 +942,8 @@ WHERE user_id = $1 AND order_type = 'balance'
 		}
 		ref := fmt.Sprintf("%d:%s:%d", order.UserID, day.Format("2006-01-02"), tier)
 		expires := timezone.Now().Add(lotteryFreeTicketValidity)
-		granted, err := s.addTicketsLocked(txCtx, client, order.UserID, &state, 1, "recharge", ref, &order.ID, &tier, &expires, &day)
-		if err != nil {
+		if _, err := s.addTicketsLocked(txCtx, client, order.UserID, &state, 1, "recharge", ref, &order.ID, &tier, &expires, &day); err != nil {
 			return err
-		}
-		if !granted {
-			continue
 		}
 	}
 	if err := tx.Commit(); err != nil {
@@ -1430,7 +1426,7 @@ func scanOne(ctx context.Context, client interface {
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	if !rows.Next() {
 		if err := rows.Err(); err != nil {
 			return err
