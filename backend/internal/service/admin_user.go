@@ -689,10 +689,24 @@ func (s *adminServiceImpl) GetUserUsageStats(ctx context.Context, userID int64, 
 }
 
 // GetUserBalanceHistory returns paginated balance/concurrency change records for a user.
+// Lottery wallet movements are represented as read-only synthetic records so
+// they share the existing administrator history UI without becoming payment
+// orders or affecting the recharge aggregate.
 func (s *adminServiceImpl) GetUserBalanceHistory(ctx context.Context, userID int64, page, pageSize int, codeType string) ([]RedeemCode, int64, float64, error) {
 	params := pagination.PaginationParams{Page: page, PageSize: pageSize}
 	if codeType == RedeemTypeAffiliateBalance {
 		codes, total, err := s.listAffiliateBalanceHistory(ctx, userID, params)
+		if err != nil {
+			return nil, 0, 0, err
+		}
+		totalRecharged, err := s.redeemCodeRepo.SumPositiveBalanceByUser(ctx, userID)
+		if err != nil {
+			return nil, 0, 0, err
+		}
+		return codes, total, totalRecharged, nil
+	}
+	if codeType == "lottery_reward" || codeType == "lottery_ticket_purchase" {
+		codes, total, err := s.listLotteryBalanceHistory(ctx, userID, params, codeType)
 		if err != nil {
 			return nil, 0, 0, err
 		}
@@ -734,13 +748,17 @@ func (s *adminServiceImpl) getAllUserBalanceHistory(ctx context.Context, userID 
 	if err != nil {
 		return nil, 0, 0, err
 	}
-	codes := mergeBalanceHistoryCodes(redeemCodes, affiliateCodes, params)
+	lotteryCodes, lotteryTotal, err := s.listLotteryBalanceHistoryForMerge(ctx, userID, needed)
+	if err != nil {
+		return nil, 0, 0, err
+	}
+	codes := mergeBalanceHistoryCodes(redeemCodes, affiliateCodes, lotteryCodes, params)
 
 	totalRecharged, err := s.redeemCodeRepo.SumPositiveBalanceByUser(ctx, userID)
 	if err != nil {
 		return nil, 0, 0, err
 	}
-	return codes, redeemTotal + affiliateTotal, totalRecharged, nil
+	return codes, redeemTotal + affiliateTotal + lotteryTotal, totalRecharged, nil
 }
 
 func (s *adminServiceImpl) listRedeemBalanceHistoryForMerge(ctx context.Context, userID int64, needed int) ([]RedeemCode, int64, error) {
@@ -797,6 +815,70 @@ func (s *adminServiceImpl) listAffiliateBalanceHistoryForMerge(ctx context.Conte
 		out = out[:needed]
 	}
 	return out, total, nil
+}
+
+func (s *adminServiceImpl) listLotteryBalanceHistoryForMerge(ctx context.Context, userID int64, needed int) ([]RedeemCode, int64, error) {
+	if needed <= 0 {
+		return nil, 0, nil
+	}
+	return s.listLotteryBalanceHistory(ctx, userID, pagination.PaginationParams{Page: 1, PageSize: needed}, "")
+}
+
+func (s *adminServiceImpl) listLotteryBalanceHistory(ctx context.Context, userID int64, params pagination.PaginationParams, transactionType string) ([]RedeemCode, int64, error) {
+	if s == nil || s.entClient == nil || userID <= 0 {
+		return nil, 0, nil
+	}
+	rows, err := s.entClient.QueryContext(ctx, `
+SELECT id, transaction_type, amount::double precision, description, created_at
+FROM balance_transactions
+WHERE user_id = $1
+  AND transaction_type IN ('lottery_reward', 'lottery_ticket_purchase')
+  AND ($2 = '' OR transaction_type = $2)
+ORDER BY created_at DESC, id DESC
+OFFSET $3 LIMIT $4`, userID, transactionType, params.Offset(), params.Limit())
+	if err != nil {
+		return nil, 0, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	codes := make([]RedeemCode, 0, params.Limit())
+	for rows.Next() {
+		var id int64
+		var recordType string
+		var amount float64
+		var notes string
+		var createdAt time.Time
+		if err := rows.Scan(&id, &recordType, &amount, &notes, &createdAt); err != nil {
+			return nil, 0, err
+		}
+		usedBy := userID
+		usedAt := createdAt
+		codes = append(codes, RedeemCode{
+			ID:        -id,
+			Code:      fmt.Sprintf("LOTTERY-%d", id),
+			Type:      recordType,
+			Value:     amount,
+			Status:    StatusUsed,
+			UsedBy:    &usedBy,
+			UsedAt:    &usedAt,
+			Notes:     notes,
+			CreatedAt: createdAt,
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+
+	var total int64
+	if err := scanOne(ctx, s.entClient, `
+SELECT COUNT(*)
+FROM balance_transactions
+WHERE user_id = $1
+  AND transaction_type IN ('lottery_reward', 'lottery_ticket_purchase')
+  AND ($2 = '' OR transaction_type = $2)`, []any{userID, transactionType}, &total); err != nil {
+		return nil, 0, err
+	}
+	return codes, total, nil
 }
 
 func (s *adminServiceImpl) listAffiliateBalanceHistory(ctx context.Context, userID int64, params pagination.PaginationParams) ([]RedeemCode, int64, error) {
@@ -877,8 +959,8 @@ WHERE user_id = $1
 	return total.Int64, nil
 }
 
-func mergeBalanceHistoryCodes(redeemCodes, affiliateCodes []RedeemCode, params pagination.PaginationParams) []RedeemCode {
-	combined := append(append([]RedeemCode{}, redeemCodes...), affiliateCodes...)
+func mergeBalanceHistoryCodes(redeemCodes, affiliateCodes, lotteryCodes []RedeemCode, params pagination.PaginationParams) []RedeemCode {
+	combined := append(append(append([]RedeemCode{}, redeemCodes...), affiliateCodes...), lotteryCodes...)
 	sort.SliceStable(combined, func(i, j int) bool {
 		return redeemCodeHistoryTime(combined[i]).After(redeemCodeHistoryTime(combined[j]))
 	})

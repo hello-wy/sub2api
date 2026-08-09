@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"testing"
+	"time"
 
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/pagination"
@@ -12,6 +13,19 @@ import (
 type redeemRejectRepo struct {
 	code      RedeemCode
 	useCalled bool
+}
+
+type activeSubscriptionLookupStub struct {
+	userSubRepoNoop
+	sub *UserSubscription
+}
+
+func (r *activeSubscriptionLookupStub) GetActiveByUserIDAndGroupID(_ context.Context, userID, groupID int64) (*UserSubscription, error) {
+	if r.sub == nil || r.sub.UserID != userID || r.sub.GroupID != groupID {
+		return nil, ErrSubscriptionNotFound
+	}
+	clone := *r.sub
+	return &clone, nil
 }
 
 func (r *redeemRejectRepo) Create(ctx context.Context, code *RedeemCode) error {
@@ -99,4 +113,27 @@ func TestRedeemRejectsInvitationCodeBeforeTransaction(t *testing.T) {
 	require.False(t, redeemRepo.useCalled)
 	require.Equal(t, StatusUnused, redeemRepo.code.Status)
 	require.Nil(t, redeemRepo.code.UsedBy)
+}
+
+func TestRedeemRequiresConfirmationBeforeOverwritingActiveSubscription(t *testing.T) {
+	expiresAt := time.Now().Add(48 * time.Hour).UTC().Truncate(time.Second)
+	subscriptionService := NewSubscriptionService(groupRepoNoop{}, &activeSubscriptionLookupStub{
+		sub: &UserSubscription{
+			UserID:    2,
+			GroupID:   3,
+			Status:    SubscriptionStatusActive,
+			ExpiresAt: expiresAt,
+		},
+	}, nil, nil, nil)
+	redeemService := &RedeemService{subscriptionService: subscriptionService}
+
+	err := redeemService.ensureSubscriptionOverwriteConfirmation(context.Background(), 2, 3, 30, RedeemOptions{})
+
+	require.Error(t, err)
+	require.True(t, infraerrors.IsConflict(err))
+	require.Equal(t, "SUBSCRIPTION_OVERWRITE_CONFIRMATION_REQUIRED", infraerrors.Reason(err))
+	require.Equal(t, expiresAt.Format(time.RFC3339), infraerrors.FromError(err).Metadata["expires_at"])
+
+	err = redeemService.ensureSubscriptionOverwriteConfirmation(context.Background(), 2, 3, 30, RedeemOptions{ConfirmSubscriptionOverwrite: true})
+	require.NoError(t, err)
 }

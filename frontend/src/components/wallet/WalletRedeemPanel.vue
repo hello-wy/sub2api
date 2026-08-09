@@ -11,7 +11,7 @@
         </div>
       </div>
 
-      <form class="space-y-4" @submit.prevent="handleRedeem">
+      <form class="space-y-4" @submit.prevent="handleRedeem()">
         <div>
           <label for="wallet-redeem-code" class="input-label">{{ t('redeem.redeemCodeLabel') }}</label>
           <input
@@ -51,6 +51,17 @@
         <li class="flex gap-2"><Icon name="check" size="sm" class="mt-0.5 shrink-0 text-primary-500" />{{ t('redeem.codeRule4') }}</li>
       </ul>
     </aside>
+
+    <ConfirmDialog
+      :show="showSubscriptionOverwriteDialog"
+      :title="t('redeem.subscriptionOverwriteTitle')"
+      :message="t('redeem.subscriptionOverwriteMessage', { expiresAt: subscriptionOverwriteExpiresAt })"
+      :warning-message="t('redeem.subscriptionOverwriteWarning')"
+      :confirm-text="t('redeem.subscriptionOverwriteConfirm')"
+      danger
+      @confirm="confirmSubscriptionOverwrite"
+      @cancel="showSubscriptionOverwriteDialog = false"
+    />
   </div>
 </template>
 
@@ -61,6 +72,8 @@ import { redeemAPI } from '@/api'
 import { useAuthStore } from '@/stores/auth'
 import { useSubscriptionStore } from '@/stores/subscriptions'
 import { useAppStore } from '@/stores/app'
+import { extractApiErrorCode, extractApiErrorMetadata } from '@/utils/apiError'
+import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import Icon from '@/components/icons/Icon.vue'
 
 const { t } = useI18n()
@@ -73,14 +86,16 @@ const code = ref('')
 const submitting = ref(false)
 const errorMessage = ref('')
 const result = ref<{ message: string; type: string } | null>(null)
+const showSubscriptionOverwriteDialog = ref(false)
+const subscriptionOverwriteExpiresAt = ref('')
 
-async function handleRedeem() {
+async function handleRedeem(confirmSubscriptionOverwrite = false) {
   if (!code.value.trim()) return
   submitting.value = true
   result.value = null
   errorMessage.value = ''
   try {
-    const response = await redeemAPI.redeem(code.value.trim())
+    const response = await redeemAPI.redeem(code.value.trim(), confirmSubscriptionOverwrite)
     result.value = response
     code.value = ''
     try {
@@ -98,10 +113,35 @@ async function handleRedeem() {
     }
     appStore.showSuccess(t('redeem.codeRedeemSuccess'))
   } catch (error: any) {
+    if (extractApiErrorCode(error) === 'SUBSCRIPTION_OVERWRITE_CONFIRMATION_REQUIRED') {
+      const metadata = extractApiErrorMetadata(error)
+      subscriptionOverwriteExpiresAt.value = formatSubscriptionExpiration(metadata?.expires_at)
+      showSubscriptionOverwriteDialog.value = true
+      return
+    }
     errorMessage.value = error.response?.data?.detail || t('redeem.failedToRedeem')
     appStore.showError(t('redeem.redeemFailed'))
   } finally {
     submitting.value = false
   }
+}
+
+function confirmSubscriptionOverwrite() {
+  showSubscriptionOverwriteDialog.value = false
+  void handleRedeem(true)
+}
+
+function formatSubscriptionExpiration(value: unknown): string {
+  if (typeof value !== 'string') return t('common.unknown')
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return new Intl.DateTimeFormat(undefined, {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(date)
 }
 </script>

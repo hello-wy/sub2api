@@ -1743,6 +1743,7 @@ export interface BatchUpdateRedeemCodesRequest {
 
 export interface RedeemCodeRequest {
   code: string
+  confirm_subscription_overwrite?: boolean
 }
 
 // ==================== Dashboard & Statistics ====================

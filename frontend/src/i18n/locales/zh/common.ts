@@ -202,6 +202,7 @@ export default {
     docs: '文档',
     myOrders: '我的订单',
     dailyCheckin: '每日签到',
+    lottery: '幸运大抽奖',
     orderManagement: '订单管理',
     paymentDashboard: '支付概览',
     paymentConfig: '支付配置',

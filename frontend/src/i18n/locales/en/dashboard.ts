@@ -676,7 +676,7 @@ export default {
     subscriptionOverrideConfirm: 'Renew subscription',
     availablePlans: 'Available plans',
     balanceHistory: 'Balance Activity',
-    balanceHistoryHint: 'Review redeem, check-in, rebate, and admin adjustments',
+    balanceHistoryHint: 'Review redeem, check-in, rebate, lottery, and admin adjustments',
     recordsCount: '{count} records',
     noBalanceHistory: 'No balance activity yet',
     noBalanceHistoryHint: 'Balance changes will appear here',
@@ -713,6 +713,8 @@ export default {
     balanceAddedAffiliate: 'Balance Added (Affiliate Transfer)',
     balanceAddedAdmin: 'Balance Added (Admin)',
     balanceDeductedAdmin: 'Balance Deducted (Admin)',
+    balanceAddedLottery: 'Lottery Reward',
+    balanceDeductedLotteryTicket: 'Lottery Ticket Purchase',
     balanceAddedDailyCheckin: 'Daily Check-in',
     balanceAddedUsageRebate: 'Usage Rebate',
     balanceDeductedSubscription: 'Subscription Plan (Balance Payment)',
@@ -727,7 +729,11 @@ export default {
     codeRedeemSuccess: 'Code redeemed successfully!',
     failedToRedeem: 'Failed to redeem code. Please check the code and try again.',
     subscriptionRefreshFailed: 'Redeemed successfully, but failed to refresh subscription status.',
-    pleaseEnterCode: 'Please enter a redeem code'
+    pleaseEnterCode: 'Please enter a redeem code',
+    subscriptionOverwriteTitle: 'Replace current subscription?',
+    subscriptionOverwriteMessage: 'This code will replace your current subscription in the same plan and reset its validity and usage. It is active until {expiresAt}. Continue?',
+    subscriptionOverwriteWarning: 'Unused benefits from the current plan will not be retained after replacement.',
+    subscriptionOverwriteConfirm: 'Replace and redeem'
   },
 
   // Profile

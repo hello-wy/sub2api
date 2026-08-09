@@ -117,4 +117,37 @@ describe('TokenUsageTrend', () => {
     // Hit rate = 500 / (200 + 500 + 300) * 100 = 50%
     expect(hitRateDataset.data[0]).toBe(50)
   })
+
+  it('总量模式只显示每日总 Token 序列', () => {
+    const wrapper = mount(TokenUsageTrend, {
+      props: {
+        totalOnly: true,
+        trendData: [
+          {
+            date: '2026-05-08',
+            requests: 1,
+            input_tokens: 200,
+            output_tokens: 50,
+            cache_creation_tokens: 300,
+            cache_read_tokens: 500,
+            total_tokens: 1050,
+            cost: 0.02,
+            actual_cost: 0.01,
+          },
+        ],
+      },
+      global: {
+        stubs: {
+          LoadingSpinner: true,
+        },
+      },
+    })
+
+    const chartData = JSON.parse(wrapper.find('.chart-data').text())
+    expect(chartData.datasets).toHaveLength(1)
+    expect(chartData.datasets[0]).toMatchObject({
+      label: 'Total Tokens',
+      data: [1050],
+    })
+  })
 })

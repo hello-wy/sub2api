@@ -14,8 +14,8 @@
           </div>
           <div class="dashboard-actions">
             <DashboardRangeSelect v-model="timeRange" :options="rangeOptions" @change="applyTimeRange" />
-            <button type="button" class="refresh-button" :disabled="chartsLoading" @click="loadDashboard">
-              <Icon name="refresh" size="sm" :class="chartsLoading ? 'animate-spin' : ''" />
+            <button type="button" class="refresh-button" :disabled="chartsLoading || dailyTrendLoading" @click="loadDashboard">
+              <Icon name="refresh" size="sm" :class="chartsLoading || dailyTrendLoading ? 'animate-spin' : ''" />
               刷新
             </button>
           </div>
@@ -113,14 +113,26 @@
           </article>
         </section>
 
-        <section class="dashboard-card user-trend-card" aria-labelledby="user-trend-title">
-          <div class="card-heading">
-            <div>
-              <h2 id="user-trend-title">用户使用趋势（Top 12）</h2>
-              <p>选定时间范围内 Top 12 用户的每日 Token 用量</p>
+        <section class="dashboard-trends-row" aria-label="每日 Token 与用户使用趋势">
+          <article class="dashboard-card daily-token-trend-card" aria-labelledby="daily-token-trend-title">
+            <div class="card-heading">
+              <div>
+                <h2 id="daily-token-trend-title">每日 Token 使用趋势</h2>
+                <p>近 30 天的平台 Token 总量，按天汇总</p>
+              </div>
             </div>
-          </div>
-          <UserUsageTrend :trend-data="userTrend" :loading="chartsLoading" />
+            <TokenUsageTrend :trend-data="dailyTrendData" :loading="dailyTrendLoading" :total-only="true" embedded />
+          </article>
+
+          <article class="dashboard-card user-trend-card" aria-labelledby="user-trend-title">
+            <div class="card-heading">
+              <div>
+                <h2 id="user-trend-title">用户使用趋势（Top 10）</h2>
+                <p>选定时间范围内 Top 10 用户的每日 Token 用量</p>
+              </div>
+            </div>
+            <UserUsageTrend :trend-data="userTrend" :loading="chartsLoading" />
+          </article>
         </section>
       </template>
 
@@ -151,8 +163,10 @@ const authStore = useAuthStore()
 const stats = ref<DashboardStats | null>(null)
 const loading = ref(false)
 const chartsLoading = ref(false)
+const dailyTrendLoading = ref(false)
 const rankingLoading = ref(false)
 const trendData = ref<TrendDataPoint[]>([])
+const dailyTrendData = ref<TrendDataPoint[]>([])
 const modelStats = ref<ModelStat[]>([])
 const userTrend = ref<UserUsageTrendPoint[]>([])
 const rankingItems = ref<UserSpendingRankingItem[]>([])
@@ -176,7 +190,7 @@ const greeting = computed(() => {
 const modelWidth = (tokens: number) => tokens > 0 ? (tokens / maxModelTokens.value) * 100 : 0
 const modelPercent = (tokens: number) => totalModelTokens.value > 0 ? `${Math.round((tokens / totalModelTokens.value) * 100)}%` : '0%'
 const formatNumber = (value: number) => Number(value || 0).toLocaleString()
-const formatTokens = (value: number) => value >= 1_000_000 ? `${(value / 1_000_000).toFixed(2)}M` : value >= 1_000 ? `${(value / 1_000).toFixed(1)}K` : formatNumber(value)
+const formatTokens = (value: number) => value >= 1_000_000_000 ? `${(value / 1_000_000_000).toFixed(2)}B` : value >= 1_000_000 ? `${(value / 1_000_000).toFixed(2)}M` : value >= 1_000 ? `${(value / 1_000).toFixed(1)}K` : formatNumber(value)
 const formatCost = (value: number) => Number(value || 0).toFixed(2)
 const formatDuration = (value: number) => value >= 1000 ? `${(value / 1000).toFixed(2)}s` : `${Math.round(value || 0)}ms`
 
@@ -201,12 +215,17 @@ const updateDateRange = () => {
   startDate.value = formatLocalDate(start)
   endDate.value = formatLocalDate(end)
 }
+const getDailyTrendStartDate = () => {
+  const start = new Date()
+  start.setDate(start.getDate() - 29)
+  return formatLocalDate(start)
+}
 
 const loadSnapshot = async () => {
   chartsLoading.value = true
   if (!stats.value) loading.value = true
   try {
-    const response = await adminAPI.dashboard.getSnapshotV2({ start_date: startDate.value, end_date: endDate.value, granularity: granularity.value, include_stats: true, include_trend: true, include_model_stats: true, include_group_stats: false, include_users_trend: true, users_trend_limit: 12 })
+    const response = await adminAPI.dashboard.getSnapshotV2({ start_date: startDate.value, end_date: endDate.value, granularity: granularity.value, include_stats: true, include_trend: true, include_model_stats: true, include_group_stats: false, include_users_trend: true, users_trend_limit: 10 })
     stats.value = response.stats || null
     trendData.value = response.trend || []
     modelStats.value = response.models || []
@@ -234,7 +253,23 @@ const loadRanking = async () => {
     rankingLoading.value = false
   }
 }
-const loadDashboard = () => { void loadSnapshot(); void loadRanking() }
+const loadDailyTrend = async () => {
+  dailyTrendLoading.value = true
+  try {
+    const response = await adminAPI.dashboard.getUsageTrend({
+      start_date: getDailyTrendStartDate(),
+      end_date: formatLocalDate(new Date()),
+      granularity: 'day'
+    })
+    dailyTrendData.value = response.trend || []
+  } catch (error) {
+    dailyTrendData.value = []
+    console.error('Failed to load daily token trend:', error)
+  } finally {
+    dailyTrendLoading.value = false
+  }
+}
+const loadDashboard = () => { void loadSnapshot(); void loadRanking(); void loadDailyTrend() }
 const applyTimeRange = () => { updateDateRange(); loadDashboard() }
 
 onMounted(() => { updateDateRange(); loadDashboard() })
@@ -285,7 +320,8 @@ onMounted(() => { updateDateRange(); loadDashboard() })
 .strip-item small { color:#8a9ab4; font-size:10px; }
 .dashboard-grid { display:grid; grid-template-columns:1.18fr .92fr .92fr; gap:16px; }
 .dashboard-card { min-width:0; min-height:254px; border:1px solid var(--dashboard-line); border-radius:16px; background:var(--dashboard-surface); padding:20px; box-shadow:0 8px 22px rgba(28,56,104,.04); }
-.user-trend-card { min-height:0; margin-top:16px; }
+.dashboard-trends-row { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; margin-top:16px; }
+.daily-token-trend-card,.user-trend-card { min-height:0; }
 .card-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
 .card-heading h2 { margin:0; color:#253556; font-size:15px; font-weight:760; letter-spacing:-.025em; }
 .card-heading p { margin:5px 0 0; color:var(--dashboard-muted); font-size:11px; }
@@ -312,7 +348,7 @@ onMounted(() => { updateDateRange(); loadDashboard() })
 .dashboard-state--error strong { color:var(--dashboard-ink); font-size:17px; }
 .dashboard-state--error .refresh-button { margin-top:4px; }
 @media (max-width:1180px) { .dashboard-grid { grid-template-columns:1fr 1fr; }.recent-card { grid-column:span 2; }.operation-strip { grid-template-columns:repeat(3,1fr); }.strip-item:nth-child(3) { border-right:0; }.strip-item:nth-child(-n+3) { border-bottom:1px solid var(--dashboard-line); } }
-@media (max-width:760px) { .dashboard-page { padding-top:0; }.dashboard-header { flex-direction:column; gap:16px; }.dashboard-header h1 { font-size:27px; }.dashboard-actions { width:100%; }.refresh-button { flex:1; justify-content:center; }.hero-metrics,.dashboard-grid { grid-template-columns:1fr; }.operation-strip { grid-template-columns:1fr 1fr; }.strip-item { border-bottom:1px solid var(--dashboard-line); }.strip-item:nth-child(2n) { border-right:0; }.recent-card { grid-column:auto; } }
+@media (max-width:760px) { .dashboard-page { padding-top:0; }.dashboard-header { flex-direction:column; gap:16px; }.dashboard-header h1 { font-size:27px; }.dashboard-actions { width:100%; }.refresh-button { flex:1; justify-content:center; }.hero-metrics,.dashboard-grid,.dashboard-trends-row { grid-template-columns:1fr; }.operation-strip { grid-template-columns:1fr 1fr; }.strip-item { border-bottom:1px solid var(--dashboard-line); }.strip-item:nth-child(2n) { border-right:0; }.recent-card { grid-column:auto; } }
 @media (prefers-reduced-motion:reduce) { .hero-card--primary,.hero-card--primary::after { transition:none; } }
 .dark .dashboard-page { --dashboard-ink:#eef4ff; --dashboard-muted:#9aa9c3; --dashboard-line:rgba(152,180,224,.16); --dashboard-surface:#0e192b; }
 .dark .hero-card:not(.hero-card--primary),.dark .operation-strip,.dark .dashboard-card,.dark .refresh-button { background:#0e192b; }

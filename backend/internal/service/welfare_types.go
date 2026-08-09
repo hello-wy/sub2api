@@ -10,6 +10,7 @@ import (
 const (
 	WelfareBenefitTypeLeaderboard = "leaderboard"
 	WelfareBenefitTypeCheckin     = "checkin"
+	WelfareBenefitTypeLottery     = "lottery"
 )
 
 const (
@@ -34,6 +35,7 @@ type WelfareSummary struct {
 	TotalAmount       float64 `json:"total_amount"`
 	CheckinAmount     float64 `json:"checkin_amount"`
 	LeaderboardAmount float64 `json:"leaderboard_amount"`
+	LotteryAmount     float64 `json:"lottery_amount"`
 }
 
 type WelfareListFilter struct {

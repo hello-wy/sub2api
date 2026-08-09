@@ -54,6 +54,7 @@ const props = defineProps<{
   trendData: TrendDataPoint[]
   loading?: boolean
   embedded?: boolean
+  totalOnly?: boolean
 }>()
 
 const isDarkMode = ref(document.documentElement.classList.contains('dark'))
@@ -80,6 +81,25 @@ const chartColors = computed(() => ({
 
 const chartData = computed(() => {
   if (!props.trendData?.length) return null
+
+  if (props.totalOnly) {
+    return {
+      labels: props.trendData.map((d) => d.date),
+      datasets: [
+        {
+          label: 'Total Tokens',
+          data: props.trendData.map((d) => d.total_tokens),
+          borderColor: chartColors.value.input,
+          backgroundColor: `${chartColors.value.input}20`,
+          fill: true,
+          tension: 0.38,
+          borderWidth: 2,
+          pointRadius: 0,
+          pointHoverRadius: 3
+        }
+      ]
+    }
+  }
 
   return {
     labels: props.trendData.map((d) => d.date),
@@ -181,6 +201,7 @@ const lineOptions = computed(() => ({
           return `${context.dataset.label}: ${formatTokens(context.raw)}`
         },
         footer: (tooltipItems: any) => {
+          if (props.totalOnly) return ''
           const dataIndex = tooltipItems[0]?.dataIndex
           if (dataIndex !== undefined && props.trendData[dataIndex]) {
             const data = props.trendData[dataIndex]
@@ -215,21 +236,23 @@ const lineOptions = computed(() => ({
         callback: (value: string | number) => formatTokens(Number(value))
       }
     },
-    yPercent: {
-      position: 'right' as const,
-      min: 0,
-      max: 100,
-      grid: {
-        drawOnChartArea: false
-      },
-      ticks: {
-        color: chartColors.value.cacheHitRate,
-        font: {
-          size: 10
+    ...(props.totalOnly ? {} : {
+      yPercent: {
+        position: 'right' as const,
+        min: 0,
+        max: 100,
+        grid: {
+          drawOnChartArea: false
         },
-        callback: (value: string | number) => `${value}%`
+        ticks: {
+          color: chartColors.value.cacheHitRate,
+          font: {
+            size: 10
+          },
+          callback: (value: string | number) => `${value}%`
+        }
       }
-    }
+    })
   }
 }))
 

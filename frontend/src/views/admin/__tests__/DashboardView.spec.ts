@@ -5,8 +5,9 @@ import { createPinia, setActivePinia } from 'pinia'
 import type { DashboardStats, ModelStat, TrendDataPoint, UserSpendingRankingItem, UserUsageTrendPoint } from '@/types'
 import DashboardView from '../DashboardView.vue'
 
-const { getSnapshotV2, getUserSpendingRanking, push } = vi.hoisted(() => ({
+const { getSnapshotV2, getUsageTrend, getUserSpendingRanking, push } = vi.hoisted(() => ({
   getSnapshotV2: vi.fn(),
+  getUsageTrend: vi.fn(),
   getUserSpendingRanking: vi.fn(),
   push: vi.fn()
 }))
@@ -15,6 +16,7 @@ vi.mock('@/api/admin', () => ({
   adminAPI: {
     dashboard: {
       getSnapshotV2,
+      getUsageTrend,
       getUserSpendingRanking
     }
   }
@@ -81,7 +83,7 @@ const mountDashboard = () => mount(DashboardView, {
     stubs: {
       AppLayout: { template: '<div><slot /></div>' },
       DashboardRangeSelect: { props: ['modelValue', 'options'], emits: ['update:modelValue', 'change'], template: '<select :value="modelValue" @change="$emit(\'update:modelValue\', $event.target.value); $emit(\'change\', $event.target.value)"><option v-for="option in options" :key="option.value" :value="option.value">{{ option.label }}</option></select>' },
-      TokenUsageTrend: { template: '<div data-testid="token-usage-trend" />' },
+      TokenUsageTrend: { props: ['trendData', 'loading', 'totalOnly'], template: '<div data-testid="token-usage-trend" :data-total-only="totalOnly">{{ trendData.length }}</div>' },
       UserUsageTrend: { props: ['trendData', 'loading'], template: '<div data-testid="user-usage-trend">{{ trendData.length }}</div>' },
       LoadingSpinner: true,
       Icon: true,
@@ -97,6 +99,7 @@ describe('admin DashboardView', () => {
     setActivePinia(createPinia())
 
     getSnapshotV2.mockReset()
+    getUsageTrend.mockReset()
     getUserSpendingRanking.mockReset()
     push.mockReset()
 
@@ -104,6 +107,12 @@ describe('admin DashboardView', () => {
       stats: createDashboardStats(),
       trend: [],
       models: []
+    })
+    getUsageTrend.mockResolvedValue({
+      trend: [],
+      start_date: '',
+      end_date: '',
+      granularity: 'day'
     })
     getUserSpendingRanking.mockResolvedValue({
       ranking: [],
@@ -132,9 +141,16 @@ describe('admin DashboardView', () => {
       end_date: formatLocalDate(now),
       granularity: 'hour'
     }))
+    const thirtyDaysAgo = new Date(now)
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29)
+    expect(getUsageTrend).toHaveBeenCalledWith({
+      start_date: formatLocalDate(thirtyDaysAgo),
+      end_date: formatLocalDate(now),
+      granularity: 'day'
+    })
     expect(getSnapshotV2).toHaveBeenCalledWith(expect.objectContaining({
       include_users_trend: true,
-      users_trend_limit: 12
+      users_trend_limit: 10
     }))
     expect(wrapper.text()).toContain('晚上好，Kuhne')
     expect(wrapper.findAll('.hero-card')).toHaveLength(3)
@@ -142,9 +158,11 @@ describe('admin DashboardView', () => {
     expect(wrapper.findAll('.hero-card')[0].text()).toContain('今日 Token 消耗')
     expect(wrapper.findAll('.hero-card')[1].text()).toContain('今日 API 调用')
     expect(wrapper.findAll('.hero-card')[2].text()).toContain('今日消耗')
-    expect(wrapper.find('[data-testid="token-usage-trend"]').exists()).toBe(true)
+    expect(wrapper.findAll('[data-testid="token-usage-trend"]')).toHaveLength(2)
+    expect(wrapper.findAll('[data-testid="token-usage-trend"]')[1].attributes('data-total-only')).toBe('true')
     expect(wrapper.find('[data-testid="user-usage-trend"]').exists()).toBe(true)
-    expect(wrapper.text()).toContain('用户使用趋势（Top 12）')
+    expect(wrapper.find('.dashboard-trends-row').findAll('.dashboard-card')).toHaveLength(2)
+    expect(wrapper.text()).toContain('用户使用趋势（Top 10）')
     expect(wrapper.text()).toContain('该时间范围暂无模型使用数据')
     expect(wrapper.text()).toContain('该时间范围暂无用户使用数据')
   })
@@ -169,12 +187,19 @@ describe('admin DashboardView', () => {
       models,
       users_trend: usersTrend
     })
+    getUsageTrend.mockResolvedValueOnce({
+      trend,
+      start_date: '2026-06-16',
+      end_date: '2026-07-15',
+      granularity: 'day'
+    })
     getUserSpendingRanking.mockResolvedValueOnce({ ranking, total_actual_cost: 12.34, total_requests: 20, total_tokens: 1000, start_date: '', end_date: '' })
 
     const wrapper = mountDashboard()
     await flushPromises()
 
-    expect(wrapper.find('[data-testid="token-usage-trend"]').exists()).toBe(true)
+    expect(wrapper.findAll('[data-testid="token-usage-trend"]')).toHaveLength(2)
+    expect(wrapper.findAll('[data-testid="token-usage-trend"]')[1].text()).toBe('2')
     expect(wrapper.find('[data-testid="user-usage-trend"]').text()).toBe('1')
     expect(wrapper.text()).toContain('128,420')
     expect(wrapper.findAll('.hero-card')[0].text()).toContain('2.84M')
@@ -189,6 +214,19 @@ describe('admin DashboardView', () => {
       path: '/admin/usage',
       query: expect.objectContaining({ user_id: '42' })
     }))
+  })
+
+  it('今日 Token 消耗达到十亿时使用 B 作为单位', async () => {
+    getSnapshotV2.mockResolvedValueOnce({
+      stats: createDashboardStats({ today_tokens: 2_840_000_000 }),
+      trend: [],
+      models: []
+    })
+
+    const wrapper = mountDashboard()
+    await flushPromises()
+
+    expect(wrapper.findAll('.hero-card')[0].text()).toContain('2.84B')
   })
 
   it('切换时间范围后以天粒度重新加载仪表盘', async () => {

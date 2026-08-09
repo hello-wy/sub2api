@@ -6,7 +6,8 @@ export default {
     type: {
       all: '全部类型',
       leaderboard: '排行榜奖励',
-      checkin: '签到奖励'
+      checkin: '签到奖励',
+      lottery: '幸运抽奖'
     },
     statusFilter: {
       all: '全部状态'
@@ -18,7 +19,7 @@ export default {
     dashboard: {
       totalRewards: '发放笔数',
       totalAmount: '发放总金额',
-      breakdown: '签到：{checkin} · 排行榜：{leaderboard}'
+      breakdown: '签到：{checkin} · 排行榜：{leaderboard} · 抽奖：{lottery}'
     },
     table: {
       email: '用户邮箱',

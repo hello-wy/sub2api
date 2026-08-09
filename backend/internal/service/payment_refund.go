@@ -616,6 +616,12 @@ func (s *PaymentService) markRefundOk(ctx context.Context, p *RefundPlan) (*Refu
 		return nil, fmt.Errorf("mark refund: %w", err)
 	}
 	s.writeAuditLog(ctx, p.OrderID, "REFUND_SUCCESS", "admin", map[string]any{"refundAmount": p.RefundAmount, "reason": p.Reason, "balanceDeducted": p.BalanceToDeduct, "force": p.Force})
+	if s.lotteryService != nil {
+		if reconcileErr := s.lotteryService.ReconcileRechargeRefund(ctx, p.Order); reconcileErr != nil {
+			slog.Error("lottery recharge reward reconciliation failed after refund", "orderID", p.OrderID, "error", reconcileErr)
+			s.writeAuditLog(ctx, p.OrderID, "LOTTERY_REFUND_RECONCILIATION_FAILED", "system", map[string]any{"detail": reconcileErr.Error()})
+		}
+	}
 	return &RefundResult{Success: true, BalanceDeducted: p.BalanceToDeduct, SubDaysDeducted: p.SubDaysToDeduct}, nil
 }
 

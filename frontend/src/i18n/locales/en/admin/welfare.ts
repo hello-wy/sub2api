@@ -6,7 +6,8 @@ export default {
     type: {
       all: 'All types',
       leaderboard: 'Leaderboard reward',
-      checkin: 'Daily check-in reward'
+      checkin: 'Daily check-in reward',
+      lottery: 'Lucky draw'
     },
     statusFilter: {
       all: 'All statuses'
@@ -18,7 +19,7 @@ export default {
     dashboard: {
       totalRewards: 'Total distributions',
       totalAmount: 'Total amount',
-      breakdown: 'Daily check-in: {checkin} · Leaderboard: {leaderboard}'
+      breakdown: 'Daily check-in: {checkin} · Leaderboard: {leaderboard} · Lottery: {lottery}'
     },
     table: {
       email: 'User email',

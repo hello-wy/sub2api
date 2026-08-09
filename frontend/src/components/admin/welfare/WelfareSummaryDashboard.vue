@@ -14,7 +14,8 @@
       <div class="mt-1 text-xs text-gray-500 dark:text-dark-400">
         {{ t('admin.welfare.dashboard.breakdown', {
           checkin: summary.checkin_amount.toFixed(2),
-          leaderboard: summary.leaderboard_amount.toFixed(2)
+          leaderboard: summary.leaderboard_amount.toFixed(2),
+          lottery: summary.lottery_amount.toFixed(2)
         }) }}
       </div>
     </div>

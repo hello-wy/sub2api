@@ -236,6 +236,9 @@ func normalizeWelfareBenefitType(benefitType string) string {
 	if benefitType == WelfareBenefitTypeCheckin {
 		return WelfareBenefitTypeCheckin
 	}
+	if benefitType == WelfareBenefitTypeLottery {
+		return WelfareBenefitTypeLottery
+	}
 	return WelfareBenefitTypeLeaderboard
 }
 

@@ -24,6 +24,7 @@ type UserHandler struct {
 	affiliateService      *service.AffiliateService
 	userPlatformQuotaRepo service.UserPlatformQuotaRepository
 	userAttributeService  *service.UserAttributeService
+	lotteryService        *service.LotteryService
 }
 
 type DailyCheckinResponse struct {
@@ -86,6 +87,10 @@ func NewUserHandler(
 		userPlatformQuotaRepo: userPlatformQuotaRepo,
 		userAttributeService:  userAttributeService,
 	}
+}
+
+func (h *UserHandler) SetLotteryService(lotteryService *service.LotteryService) {
+	h.lotteryService = lotteryService
 }
 
 // GetMyPlatformQuotas GET /user/platform-quotas
