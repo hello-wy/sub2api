@@ -30,7 +30,7 @@ describe('membership route', () => {
     )
   })
 
-  it('uses the shared payment feature flag for payment-gated routes', () => {
-    expect(routerSource).toContain("isFeatureFlagEnabled(FeatureFlags.payment)")
+  it('marks payment-gated routes with the shared route meta flag', () => {
+    expect(routerSource).toContain('requiresPayment: true')
   })
 })

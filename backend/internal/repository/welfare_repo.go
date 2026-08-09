@@ -137,12 +137,17 @@ func welfareUnionParts(filter service.WelfareListFilter) []string {
 	if filter.BenefitType == service.WelfareBenefitTypeCheckin {
 		return []string{checkinWelfareSelect()}
 	}
-	return []string{leaderboardWelfareSelect(), checkinWelfareSelect()}
+	if filter.BenefitType == service.WelfareBenefitTypeLottery {
+		return []string{lotteryWelfareSelect()}
+	}
+	return []string{leaderboardWelfareSelect(), checkinWelfareSelect(), lotteryWelfareSelect()}
 }
 
 func leaderboardWelfareSelect() string {
 	return `SELECT id, user_id, user_email, amount, remarks, status, '` +
-		service.WelfareBenefitTypeLeaderboard + `' AS type, created_at, updated_at FROM welfare_records`
+		service.WelfareBenefitTypeLeaderboard + `' AS type, created_at, updated_at
+FROM welfare_records
+WHERE COALESCE(source_type, '') <> 'lottery_draw'`
 }
 
 func checkinWelfareSelect() string {
@@ -151,6 +156,13 @@ func checkinWelfareSelect() string {
        d.status, '` + service.WelfareBenefitTypeCheckin + `' AS type, d.created_at, d.updated_at
 FROM daily_checkin_records d
 JOIN users u ON u.id = d.user_id`
+}
+
+func lotteryWelfareSelect() string {
+	return `SELECT id, user_id, user_email, amount, remarks, status, '` +
+		service.WelfareBenefitTypeLottery + `' AS type, created_at, updated_at
+FROM welfare_records
+WHERE source_type = 'lottery_draw'`
 }
 
 func buildWelfareWhere(filter service.WelfareListFilter, args *[]any) string {
@@ -185,10 +197,11 @@ func appendWelfareArg(args *[]any, value any) int {
 func (r *welfareRepository) getWelfareSummary(ctx context.Context, exec sqlQueryExecutor, baseQuery string, args []any) (*service.WelfareSummary, error) {
 	query := `SELECT COUNT(*), COALESCE(SUM(amount), 0),
 COALESCE(SUM(CASE WHEN type = 'checkin' THEN amount ELSE 0 END), 0),
-COALESCE(SUM(CASE WHEN type = 'leaderboard' THEN amount ELSE 0 END), 0)
+COALESCE(SUM(CASE WHEN type = 'leaderboard' THEN amount ELSE 0 END), 0),
+COALESCE(SUM(CASE WHEN type = 'lottery' THEN amount ELSE 0 END), 0)
 FROM (` + baseQuery + `) welfare_union`
 	summary := &service.WelfareSummary{}
-	err := scanSingleRow(ctx, exec, query, args, &summary.TotalCount, &summary.TotalAmount, &summary.CheckinAmount, &summary.LeaderboardAmount)
+	err := scanSingleRow(ctx, exec, query, args, &summary.TotalCount, &summary.TotalAmount, &summary.CheckinAmount, &summary.LeaderboardAmount, &summary.LotteryAmount)
 	return summary, err
 }
 

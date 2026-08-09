@@ -681,7 +681,7 @@ export default {
     subscriptionOverrideConfirm: '确认续订',
     availablePlans: '可选订阅套餐',
     balanceHistory: '余额变动明细',
-    balanceHistoryHint: '查看兑换、签到、返利和管理员调整记录',
+    balanceHistoryHint: '查看兑换、签到、返利、抽奖和管理员调整记录',
     recordsCount: '{count} 条记录',
     noBalanceHistory: '暂无余额变动',
     noBalanceHistoryHint: '产生余额变动后将在这里显示',
@@ -718,6 +718,8 @@ export default {
     balanceAddedAffiliate: '余额充值（返利转入）',
     balanceAddedAdmin: '余额充值（管理员）',
     balanceDeductedAdmin: '余额扣除（管理员）',
+    balanceAddedLottery: '抽奖奖励',
+    balanceDeductedLotteryTicket: '购买抽奖次数',
     balanceAddedDailyCheckin: '每日签到',
     balanceAddedUsageRebate: '用量返利',
     balanceDeductedSubscription: '订阅套餐（余额支付）',
@@ -732,7 +734,11 @@ export default {
     codeRedeemSuccess: '兑换成功！',
     failedToRedeem: '兑换失败，请检查兑换码后重试。',
     subscriptionRefreshFailed: '兑换成功，但订阅状态刷新失败。',
-    pleaseEnterCode: '请输入兑换码'
+    pleaseEnterCode: '请输入兑换码',
+    subscriptionOverwriteTitle: '确认覆盖当前订阅',
+    subscriptionOverwriteMessage: '该兑换码会覆盖当前同一订阅套餐，并重置有效期和用量。当前有效期至：{expiresAt}。确认兑换吗？',
+    subscriptionOverwriteWarning: '覆盖后，当前套餐尚未使用的权益将不再保留。',
+    subscriptionOverwriteConfirm: '确认覆盖并兑换'
   },
 
   // Profile

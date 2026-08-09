@@ -113,6 +113,23 @@ export interface DailyCheckinStreakRuleSetting {
   bonus: number;
 }
 
+export interface LotteryPrizeSetting {
+  id: string;
+  label: string;
+  type: "none" | "balance" | "subscription";
+  amount?: number;
+  probability: number;
+  subscription_group_id?: number;
+  eligible_for_pity: boolean;
+}
+
+export interface LotteryPrizePoolSettings {
+  enabled: boolean;
+  prizes: LotteryPrizeSetting[];
+  invitation_first_payment_amount: number;
+  invitation_consumption_amount: number;
+}
+
 export interface WeChatConnectModeOption {
   value: WeChatConnectMode;
   labelZh: string;
@@ -1453,6 +1470,16 @@ export async function getBetaPolicySettings(): Promise<BetaPolicySettings> {
   return data;
 }
 
+export async function getLotteryPrizePoolSettings(): Promise<LotteryPrizePoolSettings> {
+  const { data } = await apiClient.get<LotteryPrizePoolSettings>("/admin/settings/lottery");
+  return data;
+}
+
+export async function updateLotteryPrizePoolSettings(settings: LotteryPrizePoolSettings): Promise<LotteryPrizePoolSettings> {
+  const { data } = await apiClient.put<LotteryPrizePoolSettings>("/admin/settings/lottery", settings);
+  return data;
+}
+
 /**
  * Update beta policy settings
  * @param settings - Beta policy settings to update
@@ -1553,6 +1580,8 @@ export const settingsAPI = {
   updateRectifierSettings,
   getBetaPolicySettings,
   updateBetaPolicySettings,
+  getLotteryPrizePoolSettings,
+  updateLotteryPrizePoolSettings,
   getWebSearchEmulationConfig,
   updateWebSearchEmulationConfig,
   testWebSearchEmulation,

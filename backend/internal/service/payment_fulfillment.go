@@ -334,6 +334,11 @@ func (s *PaymentService) doBalance(ctx context.Context, o *dbent.PaymentOrder, l
 
 	switch action {
 	case redeemActionSkipCompleted:
+		if s.lotteryService != nil {
+			if err := s.lotteryService.ApplyRechargeReward(ctx, o); err != nil {
+				return fmt.Errorf("apply lottery recharge reward: %w", err)
+			}
+		}
 		if err := s.applyLoyaltyPointsForOrder(ctx, o); err != nil {
 			return err
 		}
@@ -352,6 +357,11 @@ func (s *PaymentService) doBalance(ctx context.Context, o *dbent.PaymentOrder, l
 	}
 	if _, err := s.redeemService.Redeem(ContextSkipRedeemAffiliate(ctx), o.UserID, o.RechargeCode); err != nil {
 		return fmt.Errorf("redeem balance: %w", err)
+	}
+	if s.lotteryService != nil {
+		if err := s.lotteryService.ApplyRechargeReward(ctx, o); err != nil {
+			return fmt.Errorf("apply lottery recharge reward: %w", err)
+		}
 	}
 	if err := s.applyLoyaltyPointsForOrder(ctx, o); err != nil {
 		return err

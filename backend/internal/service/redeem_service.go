@@ -3,9 +3,11 @@ package service
 import (
 	"context"
 	"crypto/rand"
+	"database/sql"
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -29,6 +31,16 @@ const (
 	redeemRateLimitDuration = time.Hour
 	redeemLockDuration      = 10 * time.Second // 锁超时时间，防止死锁
 )
+
+// RedeemOptions controls confirmation-sensitive redemption behavior.
+type RedeemOptions struct {
+	// ConfirmSubscriptionOverwrite acknowledges that a subscription code replaces
+	// the exact active subscription snapshot returned by the confirmation error.
+	ConfirmSubscriptionOverwrite    bool
+	ExpectedSubscriptionID          int64
+	ExpectedSubscriptionTermVersion int64
+	ExpectedSubscriptionExpiresAt   *time.Time
+}
 
 type ctxKeySkipRedeemAffiliate struct{}
 
@@ -386,6 +398,12 @@ func unsupportedRedeemTypeError(codeType string) error {
 
 // Redeem 使用兑换码
 func (s *RedeemService) Redeem(ctx context.Context, userID int64, code string) (*RedeemCode, error) {
+	return s.RedeemWithOptions(ctx, userID, code, RedeemOptions{})
+}
+
+// RedeemWithOptions redeems a code while enforcing confirmation for destructive
+// subscription replacement.
+func (s *RedeemService) RedeemWithOptions(ctx context.Context, userID int64, code string, options RedeemOptions) (*RedeemCode, error) {
 	// 检查限流
 	if err := s.checkRedeemRateLimit(ctx, userID); err != nil {
 		return nil, err
@@ -406,6 +424,40 @@ func (s *RedeemService) Redeem(ctx context.Context, userID int64, code string) (
 		}
 		return nil, fmt.Errorf("get redeem code: %w", err)
 	}
+	// Reject unsupported code types before touching owner storage. Apart from
+	// preserving the public contract, this keeps invitation validation independent
+	// from the lottery-specific owner column.
+	switch redeemCode.Type {
+	case RedeemTypeBalance, RedeemTypeConcurrency:
+	case RedeemTypeSubscription:
+		if redeemCode.GroupID == nil {
+			return nil, infraerrors.BadRequest("REDEEM_CODE_INVALID", "invalid subscription redeem code: missing group_id")
+		}
+	default:
+		return nil, unsupportedRedeemTypeError(redeemCode.Type)
+	}
+	// Lottery vouchers are bound to their winner. Existing administrative codes
+	// have owner_user_id NULL and keep their original transferable behavior.
+	var owner sql.NullInt64
+	rows, ownerErr := s.entClient.QueryContext(ctx, `SELECT owner_user_id FROM redeem_codes WHERE id = $1`, redeemCode.ID)
+	if ownerErr != nil {
+		return nil, fmt.Errorf("check redeem code owner: %w", ownerErr)
+	}
+	if rows.Next() {
+		ownerErr = rows.Scan(&owner)
+	}
+	if rowsErr := rows.Err(); rowsErr != nil && ownerErr == nil {
+		ownerErr = rowsErr
+	}
+	if closeErr := rows.Close(); closeErr != nil && ownerErr == nil {
+		ownerErr = closeErr
+	}
+	if ownerErr != nil {
+		return nil, fmt.Errorf("scan redeem code owner: %w", ownerErr)
+	}
+	if owner.Valid && owner.Int64 != userID {
+		return nil, infraerrors.Forbidden("REDEEM_CODE_OWNER_MISMATCH", "redeem code belongs to another user")
+	}
 
 	// 检查兑换码状态和码本身的过期时间
 	if redeemCode.IsExpired() {
@@ -416,16 +468,8 @@ func (s *RedeemService) Redeem(ctx context.Context, userID int64, code string) (
 		s.incrementRedeemErrorCount(ctx, userID)
 		return nil, ErrRedeemCodeUsed
 	}
-
-	// 验证兑换码类型的前置条件。邀请码属于注册流程，不能通过普通兑换接口使用。
-	switch redeemCode.Type {
-	case RedeemTypeBalance, RedeemTypeConcurrency:
-	case RedeemTypeSubscription:
-		if redeemCode.GroupID == nil {
-			return nil, infraerrors.BadRequest("REDEEM_CODE_INVALID", "invalid subscription redeem code: missing group_id")
-		}
-	default:
-		return nil, unsupportedRedeemTypeError(redeemCode.Type)
+	if redeemCode.Type == RedeemTypeSubscription && s.subscriptionService == nil {
+		return nil, errors.New("subscription service is not configured")
 	}
 
 	// 获取用户信息
@@ -443,6 +487,14 @@ func (s *RedeemService) Redeem(ctx context.Context, userID int64, code string) (
 
 	// 将事务放入 context，使 repository 方法能够使用同一事务
 	txCtx := dbent.NewTxContext(ctx, tx)
+
+	// Lock and re-check the exact subscription snapshot inside the redemption
+	// transaction. A confirmation obtained before a renewal cannot overwrite it.
+	if redeemCode.Type == RedeemTypeSubscription {
+		if err := s.ensureSubscriptionOverwriteConfirmationLocked(txCtx, tx.Client(), userID, *redeemCode.GroupID, redeemCode.ValidityDays, options); err != nil {
+			return nil, err
+		}
+	}
 
 	// 【关键】先标记兑换码为已使用，确保并发安全
 	// 利用数据库乐观锁（WHERE status = 'unused'）保证原子性
@@ -528,6 +580,48 @@ func (s *RedeemService) Redeem(ctx context.Context, userID int64, code string) (
 	}
 
 	return redeemCode, nil
+}
+
+func (s *RedeemService) ensureSubscriptionOverwriteConfirmationLocked(ctx context.Context, client interface {
+	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
+}, userID, groupID int64, validityDays int, options RedeemOptions) error {
+	if validityDays < 0 {
+		return nil
+	}
+
+	var subscriptionID, termVersion int64
+	var expiresAt time.Time
+	err := scanOne(ctx, client, `
+SELECT id, term_version, expires_at
+FROM user_subscriptions
+WHERE user_id = $1
+  AND group_id = $2
+  AND deleted_at IS NULL
+  AND status = 'active'
+  AND expires_at > NOW()
+FOR UPDATE`, []any{userID, groupID}, &subscriptionID, &termVersion, &expiresAt)
+	if err == sql.ErrNoRows {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("get active subscription: %w", err)
+	}
+	if options.ConfirmSubscriptionOverwrite &&
+		options.ExpectedSubscriptionID == subscriptionID &&
+		options.ExpectedSubscriptionTermVersion == termVersion &&
+		options.ExpectedSubscriptionExpiresAt != nil &&
+		options.ExpectedSubscriptionExpiresAt.Equal(expiresAt) {
+		return nil
+	}
+
+	return infraerrors.Conflict(
+		"SUBSCRIPTION_OVERWRITE_CONFIRMATION_REQUIRED",
+		"redeeming this code will replace your current subscription",
+	).WithMetadata(map[string]string{
+		"subscription_id": strconv.FormatInt(subscriptionID, 10),
+		"term_version":    strconv.FormatInt(termVersion, 10),
+		"expires_at":      expiresAt.Format(time.RFC3339Nano),
+	})
 }
 
 // invalidateRedeemCaches 失效兑换相关的缓存

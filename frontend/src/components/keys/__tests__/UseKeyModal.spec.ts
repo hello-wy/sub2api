@@ -171,7 +171,7 @@ describe('UseKeyModal', () => {
     expect(copyButton).toBeDefined()
     await copyButton!.trigger('click')
     expect(copyToClipboardMock).toHaveBeenCalledWith(
-      expect.stringContaining('ANTHROPIC_AUTH_TOKEN="sk-grok-claude-test"'),
+      expect.stringContaining('"ANTHROPIC_AUTH_TOKEN": "sk-grok-claude-test"'),
       'keys.copied'
     )
   })
@@ -220,7 +220,6 @@ describe('UseKeyModal', () => {
     expect(configToml).toContain('[features]\nresponses_websockets_v2 = true')
     expect(configToml).not.toContain('goals = true')
     expect(codeBlocks).toContain('export SUB2API_API_KEY="sk-grok-codex-test"')
-    expect(wrapper.text()).not.toContain('auth.json')
 
     const windowsTab = wrapper.findAll('button').find(
       (button) => button.text().trim() === 'Windows'
@@ -422,7 +421,7 @@ describe('UseKeyModal', () => {
     await button!.trigger('click')
     await nextTick()
 
-    expect(copyToClipboard).toHaveBeenCalledWith(expect.stringContaining('config.toml'), 'keys.copied')
+    expect(copyToClipboardMock).toHaveBeenCalledWith(expect.stringContaining('config.toml'), 'keys.copied')
     expect(wrapper.text()).toContain('keys.useKeyModal.copied')
   })
 

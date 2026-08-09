@@ -72,6 +72,9 @@ func (RedeemCode) Fields() []ent.Field {
 			Nillable(),
 		field.Int("validity_days").
 			Default(30),
+		field.Int64("owner_user_id").
+			Optional().
+			Nillable(),
 	}
 }
 

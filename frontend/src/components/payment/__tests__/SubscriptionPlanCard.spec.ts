@@ -105,10 +105,10 @@ describe("SubscriptionPlanCard", () => {
   // 'month'，「1 个月」的套餐卡片被显示成「1天」。测试环境的 vue-i18n 为
   // runtime-only 构建，t() 原样返回 key，故按 key 断言单位分支。
   it("renders plural admin-form validity units instead of mislabeled days (#4607)", () => {
-    expect(mountPlanCard("openai", { validity_days: 1, validity_unit: "months" }).text()).toContain("/ payment.perMonth");
-    expect(mountPlanCard("openai", { validity_days: 3, validity_unit: "months" }).text()).toContain("/ 3payment.months");
-    expect(mountPlanCard("openai", { validity_days: 2, validity_unit: "weeks" }).text()).toContain("/ 2payment.weeks");
-    expect(mountPlanCard("openai", { validity_days: 30, validity_unit: "day" }).text()).toContain("/ 30payment.days");
+    expect(mountPlanCard("openai", 0, { validity_days: 1, validity_unit: "months" }).text()).toContain("/ payment.perMonth");
+    expect(mountPlanCard("openai", 0, { validity_days: 3, validity_unit: "months" }).text()).toContain("/ 3payment.months");
+    expect(mountPlanCard("openai", 0, { validity_days: 2, validity_unit: "weeks" }).text()).toContain("/ 2payment.weeks");
+    expect(mountPlanCard("openai", 0, { validity_days: 30, validity_unit: "day" }).text()).toContain("/ 30payment.days");
   });
 
   it("uses the configured currency symbol while preserving USD for legacy plans", () => {

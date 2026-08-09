@@ -56,7 +56,8 @@ describe('WelfareRecordsFilters', () => {
     expect(selects[0].props('options')).toEqual([
       { value: '', label: 'admin.welfare.type.all' },
       { value: 'leaderboard', label: 'admin.welfare.type.leaderboard' },
-      { value: 'checkin', label: 'admin.welfare.type.checkin' }
+      { value: 'checkin', label: 'admin.welfare.type.checkin' },
+      { value: 'lottery', label: 'admin.welfare.type.lottery' }
     ])
     expect(selects[1].props('options')).toEqual([
       { value: '', label: 'admin.welfare.statusFilter.all' },

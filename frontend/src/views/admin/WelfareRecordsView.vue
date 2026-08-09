@@ -48,7 +48,9 @@
                 'badge',
                 value === 'checkin'
                   ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400'
-                  : 'bg-purple-50 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400'
+                  : value === 'lottery'
+                    ? 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300'
+                    : 'bg-purple-50 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400'
               ]"
             >
               {{ formatBenefitType(value) }}
@@ -77,14 +79,14 @@
           <template #cell-actions="{ row }">
             <div class="flex items-center space-x-1">
               <button
-                v-if="row.status !== 'revoked'"
+                v-if="row.status !== 'revoked' && row.type !== 'lottery'"
                 @click="confirmRevoke(row)"
                 class="btn btn-sm btn-danger"
                 :title="t('admin.welfare.action.revoke')"
               >
                 {{ t('admin.welfare.action.revokeButton') }}
               </button>
-              <span v-else class="text-xs text-gray-400 dark:text-gray-500 px-1.5 py-1">
+              <span v-else-if="row.status === 'revoked'" class="text-xs text-gray-400 dark:text-gray-500 px-1.5 py-1">
                 {{ t('admin.welfare.status.revoked') }}
               </span>
             </div>
@@ -155,7 +157,8 @@ const summary = reactive<WelfareSummary>({
   total_count: 0,
   total_amount: 0,
   checkin_amount: 0,
-  leaderboard_amount: 0
+  leaderboard_amount: 0,
+  lottery_amount: 0
 })
 
 const columns = [
@@ -197,6 +200,7 @@ function applySummary(nextSummary?: WelfareSummary) {
   summary.total_amount = nextSummary?.total_amount || 0
   summary.checkin_amount = nextSummary?.checkin_amount || 0
   summary.leaderboard_amount = nextSummary?.leaderboard_amount || 0
+  summary.lottery_amount = nextSummary?.lottery_amount || 0
 }
 
 let searchTimeout: ReturnType<typeof setTimeout>
@@ -254,9 +258,9 @@ async function executeRevoke() {
 }
 
 function formatBenefitType(value: string) {
-  return value === 'checkin'
-    ? t('admin.welfare.type.checkin')
-    : t('admin.welfare.type.leaderboard')
+  if (value === 'checkin') return t('admin.welfare.type.checkin')
+  if (value === 'lottery') return t('admin.welfare.type.lottery')
+  return t('admin.welfare.type.leaderboard')
 }
 
 function formatDateTime(val: string) {

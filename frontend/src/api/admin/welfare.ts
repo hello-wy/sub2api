@@ -22,9 +22,10 @@ export interface WelfareSummary {
   total_amount: number
   checkin_amount: number
   leaderboard_amount: number
+  lottery_amount: number
 }
 
-export type WelfareBenefitType = 'leaderboard' | 'checkin'
+export type WelfareBenefitType = 'leaderboard' | 'checkin' | 'lottery'
 export type WelfareRecordStatus = 'success' | 'revoked'
 
 export interface WelfareListResponse extends BasePaginationResponse<WelfareRecord> {

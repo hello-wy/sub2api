@@ -105,9 +105,9 @@
               <component v-else :is="item.icon" class="h-5 w-5 flex-shrink-0" />
               <span class="sidebar-label" :class="{ 'sidebar-label-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'">{{ item.label }}</span>
               <span
-                v-if="shouldShowCheckinDot(item.path)"
-                class="checkin-menu-dot"
-                :class="sidebarCollapsed ? 'checkin-menu-dot-icon' : 'checkin-menu-dot-label'"
+                v-if="shouldShowSidebarDot(item.path)"
+                class="sidebar-reminder-dot"
+                :class="sidebarCollapsed ? 'sidebar-reminder-dot-icon' : 'sidebar-reminder-dot-label'"
               ></span>
             </router-link>
           </template>
@@ -135,9 +135,9 @@
             <component v-else :is="item.icon" class="h-5 w-5 flex-shrink-0" />
             <span class="sidebar-label" :class="{ 'sidebar-label-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'">{{ item.label }}</span>
             <span
-              v-if="shouldShowCheckinDot(item.path)"
-              class="checkin-menu-dot"
-              :class="sidebarCollapsed ? 'checkin-menu-dot-icon' : 'checkin-menu-dot-label'"
+              v-if="shouldShowSidebarDot(item.path)"
+              class="sidebar-reminder-dot"
+              :class="sidebarCollapsed ? 'sidebar-reminder-dot-icon' : 'sidebar-reminder-dot-label'"
             ></span>
           </router-link>
         </div>
@@ -160,9 +160,9 @@
             <component v-else :is="item.icon" class="h-5 w-5 flex-shrink-0" />
             <span class="sidebar-label" :class="{ 'sidebar-label-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'">{{ item.label }}</span>
             <span
-              v-if="shouldShowCheckinDot(item.path)"
-              class="checkin-menu-dot"
-              :class="sidebarCollapsed ? 'checkin-menu-dot-icon' : 'checkin-menu-dot-label'"
+              v-if="shouldShowSidebarDot(item.path)"
+              class="sidebar-reminder-dot"
+              :class="sidebarCollapsed ? 'sidebar-reminder-dot-icon' : 'sidebar-reminder-dot-label'"
             ></span>
           </router-link>
         </div>
@@ -206,6 +206,8 @@ import { sanitizeSvg } from '@/utils/sanitize'
 import { FeatureFlags, makeSidebarFlag } from '@/utils/featureFlags'
 import { useBatchImageAccess } from '@/composables/useBatchImageAccess'
 import { useCheckinReminder } from '@/composables/useCheckinReminder'
+import { useLotteryState } from '@/composables/useLotteryState'
+import { lotteryAPI } from '@/api/lottery'
 
 interface NavItem {
   path: string
@@ -253,6 +255,7 @@ const onboardingStore = useOnboardingStore()
 const adminSettingsStore = useAdminSettingsStore()
 const { canUseBatchImage, refreshBatchImageAccess } = useBatchImageAccess()
 const { checkinReminderVisible, refreshCheckinReminder } = useCheckinReminder()
+const { hasLotteryTickets, lotteryEnabled, setLotteryEnabled } = useLotteryState()
 
 const sidebarCollapsed = computed(() => appStore.sidebarCollapsed)
 const mobileOpen = computed(() => appStore.mobileOpen)
@@ -692,6 +695,7 @@ function buildSelfNavItems(withDashboard: boolean): NavItem[] {
     { path: '/membership', label: t('nav.loyalty'), icon: GiftIcon, hideInSimpleMode: true, featureFlag: flagPayment },
     { path: '/orders', label: t('nav.myOrders'), icon: OrderListIcon, hideInSimpleMode: true, featureFlag: flagPayment },
     { path: '/checkin', label: t('nav.dailyCheckin'), icon: CalendarIcon },
+    ...(lotteryEnabled.value ? [{ path: '/lottery', label: t('nav.lottery'), icon: TicketIcon }] : []),
     { path: '/affiliate', label: t('nav.affiliate'), icon: UsersIcon, hideInSimpleMode: true, featureFlag: flagAffiliate },
     { path: '/profile', label: t('nav.profile'), icon: UserIcon },
     ...customMenuItemsForUser.value.map((item): NavItem => ({
@@ -860,8 +864,8 @@ function isGroupExpanded(item: NavItem): boolean {
   return expandedGroups.value.has(item.path) || isGroupActive(item)
 }
 
-function shouldShowCheckinDot(path: string): boolean {
-  return path === '/checkin' && checkinReminderVisible.value
+function shouldShowSidebarDot(path: string): boolean {
+  return (path === '/checkin' && checkinReminderVisible.value) || (path === '/lottery' && hasLotteryTickets.value)
 }
 
 function toggleGroup(item: NavItem) {
@@ -911,6 +915,8 @@ onMounted(() => {
     adminSettingsStore.fetch()
   }
   void refreshCheckinReminder()
+  void refreshLotteryMenu()
+  window.addEventListener('lottery-settings-updated', handleLotterySettingsUpdated)
   // Restore sidebar scroll position after route change re-mounts the component
   if (appStore.sidebarScrollTop > 0 && sidebarNavRef.value) {
     void nextTick(() => {
@@ -922,10 +928,30 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  window.removeEventListener('lottery-settings-updated', handleLotterySettingsUpdated)
   if (sidebarNavRef.value) {
     appStore.sidebarScrollTop = sidebarNavRef.value.scrollTop
   }
 })
+
+async function refreshLotteryMenu(): Promise<void> {
+  if (!authStore.isAuthenticated) return
+  try {
+    const response = await lotteryAPI.getPrizePool()
+    setLotteryEnabled(response.data.enabled !== false)
+  } catch {
+    setLotteryEnabled(false)
+  }
+}
+
+function handleLotterySettingsUpdated(event: Event): void {
+  const enabled = (event as CustomEvent<{ enabled?: unknown }>).detail?.enabled
+  if (typeof enabled === 'boolean') {
+    setLotteryEnabled(enabled)
+    return
+  }
+  void refreshLotteryMenu()
+}
 
 watch(
   () => [authStore.isAuthenticated, route.path],
@@ -1150,7 +1176,7 @@ watch(
   height: 1.25rem;
 }
 
-.checkin-menu-dot {
+.sidebar-reminder-dot {
   position: absolute;
   width: 0.5rem;
   height: 0.5rem;
@@ -1161,17 +1187,17 @@ watch(
     0 0 12px rgba(239, 68, 68, 0.55);
 }
 
-.checkin-menu-dot-label {
+.sidebar-reminder-dot-label {
   right: 0.75rem;
   top: 0.625rem;
 }
 
-.checkin-menu-dot-icon {
+.sidebar-reminder-dot-icon {
   left: 2.125rem;
   top: 0.5rem;
 }
 
-.dark .checkin-menu-dot {
+.dark .sidebar-reminder-dot {
   box-shadow:
     0 0 0 2px rgb(17 24 39),
     0 0 12px rgba(248, 113, 113, 0.55);

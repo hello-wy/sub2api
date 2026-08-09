@@ -83,7 +83,8 @@ const { t } = useI18n()
 const typeOptions = computed(() => [
   { value: '', label: t('admin.welfare.type.all') },
   { value: 'leaderboard', label: t('admin.welfare.type.leaderboard') },
-  { value: 'checkin', label: t('admin.welfare.type.checkin') }
+  { value: 'checkin', label: t('admin.welfare.type.checkin') },
+  { value: 'lottery', label: t('admin.welfare.type.lottery') }
 ])
 
 const statusOptions = computed(() => [

@@ -202,6 +202,7 @@ export default {
     docs: 'Docs',
     myOrders: 'My Orders',
     dailyCheckin: 'Daily Check-in',
+    lottery: 'Lucky Draw',
     orderManagement: 'Orders',
     paymentDashboard: 'Payment Dashboard',
     paymentConfig: 'Payment Config',

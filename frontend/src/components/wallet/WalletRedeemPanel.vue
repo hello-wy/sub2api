@@ -11,7 +11,7 @@
         </div>
       </div>
 
-      <form class="space-y-4" @submit.prevent="handleRedeem">
+      <form class="space-y-4" @submit.prevent="handleRedeem()">
         <div>
           <label for="wallet-redeem-code" class="input-label">{{ t('redeem.redeemCodeLabel') }}</label>
           <input
@@ -51,6 +51,17 @@
         <li class="flex gap-2"><Icon name="check" size="sm" class="mt-0.5 shrink-0 text-primary-500" />{{ t('redeem.codeRule4') }}</li>
       </ul>
     </aside>
+
+    <ConfirmDialog
+      :show="showSubscriptionOverwriteDialog"
+      :title="t('redeem.subscriptionOverwriteTitle')"
+      :message="t('redeem.subscriptionOverwriteMessage', { expiresAt: subscriptionOverwriteExpiresAt })"
+      :warning-message="t('redeem.subscriptionOverwriteWarning')"
+      :confirm-text="t('redeem.subscriptionOverwriteConfirm')"
+      danger
+      @confirm="confirmSubscriptionOverwrite"
+      @cancel="cancelSubscriptionOverwrite"
+    />
   </div>
 </template>
 
@@ -58,9 +69,12 @@
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { redeemAPI } from '@/api'
+import type { SubscriptionOverwriteConfirmation } from '@/api/redeem'
 import { useAuthStore } from '@/stores/auth'
 import { useSubscriptionStore } from '@/stores/subscriptions'
 import { useAppStore } from '@/stores/app'
+import { extractApiErrorCode, extractApiErrorMetadata } from '@/utils/apiError'
+import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import Icon from '@/components/icons/Icon.vue'
 
 const { t } = useI18n()
@@ -73,14 +87,18 @@ const code = ref('')
 const submitting = ref(false)
 const errorMessage = ref('')
 const result = ref<{ message: string; type: string } | null>(null)
+const showSubscriptionOverwriteDialog = ref(false)
+const subscriptionOverwriteExpiresAt = ref('')
+const subscriptionOverwriteConfirmation = ref<SubscriptionOverwriteConfirmation | null>(null)
 
-async function handleRedeem() {
+async function handleRedeem(confirmation?: SubscriptionOverwriteConfirmation) {
   if (!code.value.trim()) return
   submitting.value = true
   result.value = null
   errorMessage.value = ''
   try {
-    const response = await redeemAPI.redeem(code.value.trim())
+    const response = await redeemAPI.redeem(code.value.trim(), confirmation)
+    subscriptionOverwriteConfirmation.value = null
     result.value = response
     code.value = ''
     try {
@@ -98,10 +116,56 @@ async function handleRedeem() {
     }
     appStore.showSuccess(t('redeem.codeRedeemSuccess'))
   } catch (error: any) {
+    if (extractApiErrorCode(error) === 'SUBSCRIPTION_OVERWRITE_CONFIRMATION_REQUIRED') {
+      const metadata = extractApiErrorMetadata(error)
+      const nextConfirmation = parseSubscriptionOverwriteConfirmation(metadata)
+      if (nextConfirmation) {
+        subscriptionOverwriteConfirmation.value = nextConfirmation
+        subscriptionOverwriteExpiresAt.value = formatSubscriptionExpiration(nextConfirmation.expiresAt)
+        showSubscriptionOverwriteDialog.value = true
+        return
+      }
+    }
     errorMessage.value = error.response?.data?.detail || t('redeem.failedToRedeem')
     appStore.showError(t('redeem.redeemFailed'))
   } finally {
     submitting.value = false
   }
+}
+
+function confirmSubscriptionOverwrite() {
+  const confirmation = subscriptionOverwriteConfirmation.value
+  if (!confirmation) return
+  showSubscriptionOverwriteDialog.value = false
+  void handleRedeem(confirmation)
+}
+
+function cancelSubscriptionOverwrite() {
+  showSubscriptionOverwriteDialog.value = false
+  subscriptionOverwriteConfirmation.value = null
+}
+
+function parseSubscriptionOverwriteConfirmation(metadata?: Record<string, unknown>): SubscriptionOverwriteConfirmation | null {
+  const subscriptionId = Number(metadata?.subscription_id)
+  const termVersion = Number(metadata?.term_version)
+  const expiresAt = metadata?.expires_at
+  if (!Number.isSafeInteger(subscriptionId) || subscriptionId <= 0) return null
+  if (!Number.isSafeInteger(termVersion) || termVersion <= 0) return null
+  if (typeof expiresAt !== 'string' || Number.isNaN(new Date(expiresAt).getTime())) return null
+  return { subscriptionId, termVersion, expiresAt }
+}
+
+function formatSubscriptionExpiration(value: unknown): string {
+  if (typeof value !== 'string') return t('common.unknown')
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return new Intl.DateTimeFormat(undefined, {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(date)
 }
 </script>

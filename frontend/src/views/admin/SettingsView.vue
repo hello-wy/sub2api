@@ -7962,7 +7962,7 @@
               @click="activeOperationsSubTab = tab.key"
             >
               <Icon :name="tab.icon" size="sm" />
-              <span>{{ t(`admin.settings.operations.subtabs.${tab.key}`) }}</span>
+              <span>{{ tab.key === 'lottery' ? localText('幸运抽奖', 'Lottery') : t(`admin.settings.operations.subtabs.${tab.key}`) }}</span>
             </button>
           </div>
 
@@ -8268,6 +8268,68 @@
               <p class="text-xs text-gray-500 dark:text-gray-400">
                 {{ t("admin.settings.operations.membership.saveHint") }}
               </p>
+            </div>
+          </div>
+
+          <div v-show="activeOperationsSubTab === 'lottery'" class="card">
+            <div class="border-b border-gray-100 px-6 py-4 dark:border-dark-700">
+              <div>
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{{ localText("幸运抽奖设置", "Lottery settings") }}</h2>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ localText("填写每个奖项的概率小数，全部奖项相加必须为 1；保底仅从勾选的中奖项中随机。", "Enter each prize probability as a decimal. All prizes must total 1; pity draws use only eligible winning prizes.") }}</p>
+              </div>
+            </div>
+            <div v-if="lotterySettingsLoading" class="flex items-center gap-2 p-6 text-sm text-gray-500 dark:text-gray-400"><span class="h-4 w-4 animate-spin rounded-full border-2 border-primary-200 border-t-primary-600"></span>{{ localText("正在加载", "Loading") }}</div>
+            <div v-else class="space-y-6 p-6">
+              <section class="flex items-center justify-between gap-5 rounded-lg border border-gray-100 bg-gray-50/60 px-4 py-3.5 dark:border-dark-700 dark:bg-dark-800/50">
+                <div>
+                  <h3 class="text-sm font-semibold text-gray-900 dark:text-white">{{ localText("启用幸运抽奖", "Enable lottery") }}</h3>
+                  <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ localText("关闭后，用户侧边栏将不再显示抽奖入口，抽奖与购票接口也会停止服务。", "When disabled, the lottery entry is hidden from the user sidebar and drawing or purchasing tickets is unavailable.") }}</p>
+                </div>
+                <label class="relative inline-flex shrink-0 cursor-pointer items-center">
+                  <input v-model="lotteryPrizePoolSettings.enabled" type="checkbox" class="peer sr-only" />
+                  <span class="h-6 w-11 rounded-full bg-gray-300 transition-colors peer-checked:bg-primary-600 peer-focus-visible:ring-2 peer-focus-visible:ring-primary-500 peer-focus-visible:ring-offset-2 dark:bg-dark-600 dark:peer-focus-visible:ring-offset-dark-800"></span>
+                  <span class="pointer-events-none absolute left-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform peer-checked:translate-x-5"></span>
+                </label>
+              </section>
+              <section class="rounded-lg border border-gray-100 bg-gray-50/60 p-4 dark:border-dark-700 dark:bg-dark-800/50">
+                <div>
+                  <h3 class="text-sm font-semibold text-gray-900 dark:text-white">{{ localText("邀请奖励条件", "Invitation reward conditions") }}</h3>
+                  <p class="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">{{ localText("受邀用户的首笔成功人民币余额充值或订阅套餐订单达到首充金额，且累计实际消费达到设定值后，邀请人才会获得 2 次抽奖机会。", "The inviter receives two tickets only after the invitee's first completed CNY balance recharge or subscription order reaches the first-payment amount and cumulative actual usage reaches the threshold.") }}</p>
+                </div>
+                <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                  <label class="block"><span class="mb-1.5 block text-xs font-medium text-gray-700 dark:text-dark-200">{{ localText("首充金额", "First payment amount") }}</span><div class="relative"><span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">¥</span><input v-model.number="lotteryPrizePoolSettings.invitation_first_payment_amount" type="number" min="0.01" max="1000000" step="0.01" class="input pl-7 tabular-nums" /></div></label>
+                  <label class="block"><span class="mb-1.5 block text-xs font-medium text-gray-700 dark:text-dark-200">{{ localText("实际消费金额", "Actual usage amount") }}</span><div class="relative"><span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span><input v-model.number="lotteryPrizePoolSettings.invitation_consumption_amount" type="number" min="0.01" max="1000000" step="0.01" class="input pl-7 tabular-nums" /></div></label>
+                </div>
+              </section>
+              <div class="overflow-x-auto rounded-lg border border-gray-100 dark:border-dark-700">
+                <table class="min-w-[860px] w-full text-sm">
+                  <thead class="bg-gray-50 text-left text-xs text-gray-500 dark:bg-dark-800 dark:text-dark-400">
+                    <tr><th class="px-3 py-2.5">{{ localText("奖项", "Prize") }}</th><th class="px-3 py-2.5">{{ localText("类型", "Type") }}</th><th class="px-3 py-2.5">{{ localText("奖励内容", "Reward") }}</th><th class="px-3 py-2.5">{{ localText("概率", "Probability") }}</th><th class="px-3 py-2.5">{{ localText("保底候选", "Pity eligible") }}</th><th class="px-3 py-2.5"></th></tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="(prize, index) in lotteryPrizePoolSettings.prizes" :key="prize.id || index" class="border-t border-gray-100 dark:border-dark-700">
+                      <td class="p-2"><input :value="prize.type === 'balance' ? formatLotteryBalanceLabel(prize.amount) : prize.label" class="input min-w-[180px]" disabled /></td>
+                      <td class="p-2"><span v-if="prize.type === 'none'" class="text-xs text-gray-400">{{ localText("未中奖", "No prize") }}</span><select v-else v-model="prize.type" class="input" @change="onLotteryPrizeTypeChange(prize)"><option value="balance">{{ localText("余额", "Balance") }}</option><option value="subscription">{{ localText("订阅", "Subscription") }}</option></select></td>
+                      <td class="p-2"><div v-if="prize.type === 'balance'" class="relative max-w-[180px]"><span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span><input v-model.number="prize.amount" type="number" min="0" step="1" class="input pl-7" @input="onLotteryBalanceAmountChange(prize)" /></div><select v-else-if="prize.type === 'subscription'" v-model.number="prize.subscription_group_id" class="input max-w-[240px]" @change="onLotterySubscriptionGroupChange(prize)"><option :value="0">{{ localText("选择订阅套餐", "Select subscription plan") }}</option><option v-for="group in subscriptionGroups" :key="group.id" :value="group.id">{{ group.name }}</option></select><span v-else class="text-xs text-gray-400">-</span></td>
+                      <td class="p-2"><input v-model.number="prize.probability" type="number" min="0.000001" max="1" step="0.000001" class="input max-w-[150px] tabular-nums" /></td>
+                      <td class="p-2"><label class="inline-flex items-center gap-2 text-xs text-gray-600 dark:text-dark-300"><input v-model="prize.eligible_for_pity" type="checkbox" :disabled="prize.type === 'none'" class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" />{{ prize.eligible_for_pity ? localText("参与", "Included") : localText("不参与", "Excluded") }}</label></td>
+                      <td class="p-2 text-right"><button type="button" class="btn btn-ghost btn-sm text-red-600" :disabled="prize.type === 'none' || lotteryPrizePoolSettings.prizes.length <= 2" @click="removeLotteryPrize(index)"><Icon name="trash" size="sm" /></button></td>
+                    </tr>
+                  </tbody>
+                  <tfoot class="border-t-2 border-gray-200 bg-gray-50/80 text-xs dark:border-dark-600 dark:bg-dark-800/60">
+                    <tr>
+                      <td colspan="3" class="px-3 py-3">
+                        <div class="flex items-center justify-between gap-3">
+                          <button type="button" class="btn btn-secondary btn-sm" :disabled="lotteryPrizePoolSettings.prizes.length >= 12" @click="addLotteryPrize"><Icon name="plus" size="xs" />{{ localText("添加奖项", "Add prize") }}</button>
+                          <span class="font-medium text-gray-500 dark:text-dark-300">{{ localText("总计", "Total") }}</span>
+                        </div>
+                      </td>
+                      <td class="px-3 py-3"><div class="flex items-center gap-2"><strong class="tabular-nums" :class="lotteryTotalProbability === 1 ? 'text-emerald-600 dark:text-emerald-300' : 'text-amber-600 dark:text-amber-300'">{{ lotteryTotalProbability.toFixed(6) }}</strong><span class="text-[11px] text-gray-400 dark:text-dark-400">{{ lotteryTotalProbability === 1 ? localText("有效", "Valid") : localText("需为 1", "Must be 1") }}</span></div></td>
+                      <td colspan="2"></td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
             </div>
           </div>
         </div>
@@ -8796,6 +8858,8 @@ import type {
   DailyCheckinRewardRangeSetting,
   DailyCheckinStreakRuleSetting,
   LoyaltyRuleSetting,
+  LotteryPrizePoolSettings,
+  LotteryPrizeSetting,
   OpenAIFastPolicyRule,
   WeChatConnectMode,
   WebSearchEmulationConfig,
@@ -8888,7 +8952,7 @@ const activeTab = ref<SettingsTab>("general");
 const welfareRatios = ref<number[]>([1.0, 0.5, 0.2]);
 const dailyCheckinRewardRanges = ref<DailyCheckinRewardRangeSetting[]>([]);
 const dailyCheckinStreakRules = ref<DailyCheckinStreakRuleSetting[]>([]);
-type OperationsSubTab = "welfare" | "checkin" | "membership";
+type OperationsSubTab = "welfare" | "checkin" | "membership" | "lottery";
 const activeOperationsSubTab = ref<OperationsSubTab>("welfare");
 const loyaltyWeeklyRules = ref<LoyaltyRuleSetting[]>([
   { scope: "weekly", level: "L1", points: 20, discount: 2 },
@@ -8901,11 +8965,20 @@ const loyaltyPermanentRules = ref<LoyaltyRuleSetting[]>([
   { scope: "permanent", level: "L3", points: 4000, discount: 6 },
   { scope: "permanent", level: "L4", points: 8000, discount: 8 },
 ]);
+const lotterySettingsLoading = ref(true);
+const lotterySettingsSaving = ref(false);
+const lotteryPrizePoolSettings = reactive<LotteryPrizePoolSettings>({
+  enabled: true,
+  prizes: [],
+  invitation_first_payment_amount: 20,
+  invitation_consumption_amount: 100,
+});
 
 const operationsSubTabs = [
   { key: "welfare" as OperationsSubTab, icon: "gift" as const },
   { key: "checkin" as OperationsSubTab, icon: "calendar" as const },
   { key: "membership" as OperationsSubTab, icon: "badge" as const },
+  { key: "lottery" as OperationsSubTab, icon: "sparkles" as const },
 ];
 
 function normalizeWelfareRankLimit(value: unknown): number {
@@ -9078,6 +9151,115 @@ function removeLoyaltyRule(scope: "weekly" | "permanent", index: number): void {
   const target = scope === "weekly" ? loyaltyWeeklyRules.value : loyaltyPermanentRules.value;
   if (target.length <= 1) return;
   target.splice(index, 1);
+}
+
+const lotteryTotalProbability = computed(() =>
+  Number(lotteryPrizePoolSettings.prizes.reduce((total, prize) => total + (Number(prize.probability) || 0), 0).toFixed(6)),
+);
+
+function normalizeLotteryPrize(prize: LotteryPrizeSetting): LotteryPrizeSetting {
+  const type = ["none", "balance", "subscription"].includes(prize.type) ? prize.type : "none";
+  return {
+    id: String(prize.id || "").trim().toLowerCase(),
+    label: type === "balance" ? formatLotteryBalanceLabel(prize.amount) : String(prize.label || "").trim(),
+    type,
+    amount: type === "balance" ? Math.max(0, Number(prize.amount) || 0) : 0,
+    probability: Math.max(0, Number(Number(prize.probability || 0).toFixed(6))),
+    subscription_group_id: type === "subscription" ? Math.max(0, Math.floor(Number(prize.subscription_group_id) || 0)) : 0,
+    eligible_for_pity: type === "none" ? false : prize.eligible_for_pity === true,
+  };
+}
+
+function addLotteryPrize(): void {
+  lotteryPrizePoolSettings.prizes.push({
+    id: "",
+    label: formatLotteryBalanceLabel(10),
+    type: "balance",
+    amount: 10,
+    probability: 0.01,
+    subscription_group_id: 0,
+    eligible_for_pity: false,
+  });
+}
+
+function removeLotteryPrize(index: number): void {
+  lotteryPrizePoolSettings.prizes.splice(index, 1);
+}
+
+function onLotteryPrizeTypeChange(prize: LotteryPrizeSetting): void {
+  if (prize.type === "none") {
+    prize.amount = 0;
+    prize.subscription_group_id = 0;
+    prize.eligible_for_pity = false;
+  } else if (prize.type === "subscription") {
+    prize.amount = 0;
+    prize.subscription_group_id = Math.max(0, Number(prize.subscription_group_id) || 0);
+  } else {
+    prize.subscription_group_id = 0;
+    prize.amount = Math.max(1, Number(prize.amount) || 1);
+    prize.label = formatLotteryBalanceLabel(prize.amount);
+  }
+}
+
+function formatLotteryBalanceLabel(amount: unknown): string {
+  const normalized = Math.max(0, Number(amount) || 0);
+  return `$${Number.isInteger(normalized) ? normalized : normalized.toString()}`;
+}
+
+function onLotteryBalanceAmountChange(prize: LotteryPrizeSetting): void {
+  prize.label = formatLotteryBalanceLabel(prize.amount);
+}
+
+function onLotterySubscriptionGroupChange(prize: LotteryPrizeSetting): void {
+  const group = subscriptionGroups.value.find((item) => item.id === prize.subscription_group_id);
+  if (group) prize.label = group.name;
+}
+
+async function loadLotteryPrizePoolSettings(): Promise<void> {
+  lotterySettingsLoading.value = true;
+  try {
+    const data = await adminAPI.settings.getLotteryPrizePoolSettings();
+    lotteryPrizePoolSettings.prizes = data.prizes.map(normalizeLotteryPrize);
+    lotteryPrizePoolSettings.enabled = data.enabled !== false;
+    lotteryPrizePoolSettings.invitation_first_payment_amount = Math.max(0.01, Number(data.invitation_first_payment_amount) || 20);
+    lotteryPrizePoolSettings.invitation_consumption_amount = Math.max(0.01, Number(data.invitation_consumption_amount) || 100);
+  } catch (error) {
+    appStore.showError(extractApiErrorMessage(error, localText("加载抽奖设置失败", "Failed to load lottery settings")));
+  } finally {
+    lotterySettingsLoading.value = false;
+  }
+}
+
+async function saveLotteryPrizePoolSettings(): Promise<void> {
+  const prizes = lotteryPrizePoolSettings.prizes.map(normalizeLotteryPrize);
+  const totalProbability = prizes.reduce((total, prize) => total + prize.probability, 0);
+  if (prizes.length < 2 || Math.abs(totalProbability - 1) > 0.0000001 || !prizes.some((prize) => prize.eligible_for_pity && prize.probability > 0)) {
+    appStore.showError(localText("请至少保留两个奖项，设置保底奖项，并使全部概率相加为 1。", "Keep at least two prizes, configure a pity prize, and make all probabilities total 1."));
+    return;
+  }
+  if (prizes.some((prize) => prize.type === "subscription" && !prize.subscription_group_id)) {
+    appStore.showError(localText("每个订阅奖项都需要选择一个有效订阅套餐。", "Select an active subscription plan for every subscription prize."));
+    return;
+  }
+  lotterySettingsSaving.value = true;
+  try {
+    const data = await adminAPI.settings.updateLotteryPrizePoolSettings({
+      enabled: lotteryPrizePoolSettings.enabled,
+      prizes,
+      invitation_first_payment_amount: Math.max(0.01, Number(lotteryPrizePoolSettings.invitation_first_payment_amount) || 0),
+      invitation_consumption_amount: Math.max(0.01, Number(lotteryPrizePoolSettings.invitation_consumption_amount) || 0),
+    });
+    lotteryPrizePoolSettings.prizes = data.prizes.map(normalizeLotteryPrize);
+    lotteryPrizePoolSettings.enabled = data.enabled !== false;
+    lotteryPrizePoolSettings.invitation_first_payment_amount = data.invitation_first_payment_amount;
+    lotteryPrizePoolSettings.invitation_consumption_amount = data.invitation_consumption_amount;
+    appStore.showSuccess(localText("抽奖设置已保存", "Lottery settings saved"));
+    window.dispatchEvent(new CustomEvent("lottery-settings-updated", { detail: { enabled: lotteryPrizePoolSettings.enabled } }));
+  } catch (error) {
+    appStore.showError(extractApiErrorMessage(error, localText("保存抽奖设置失败", "Failed to save lottery settings")));
+  } finally {
+    lotterySettingsSaving.value = false;
+  }
 }
 
 const settingsTabs = [
@@ -11212,6 +11394,11 @@ function findDuplicateDefaultSubscription(
 async function saveSettings() {
   saving.value = true;
   try {
+    if (activeTab.value === "operations" && activeOperationsSubTab.value === "lottery") {
+      await saveLotteryPrizePoolSettings();
+      return;
+    }
+
     const normalizedTableDefaultPageSize = Math.floor(
       Number(form.table_default_page_size),
     );
@@ -12757,6 +12944,7 @@ onMounted(() => {
   loadStreamTimeoutSettings();
   loadRectifierSettings();
   loadBetaPolicySettings();
+  loadLotteryPrizePoolSettings();
   loadProviders();
 });
 

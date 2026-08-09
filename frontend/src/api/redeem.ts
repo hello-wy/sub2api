@@ -25,19 +25,31 @@ export interface RedeemHistoryItem {
   }
 }
 
+export interface SubscriptionOverwriteConfirmation {
+  subscriptionId: number
+  termVersion: number
+  expiresAt: string
+}
+
 /**
  * Redeem a code
  * @param code - Redeem code string
  * @returns Redemption result with updated balance or concurrency
  */
-export async function redeem(code: string): Promise<{
+export async function redeem(code: string, confirmation?: SubscriptionOverwriteConfirmation): Promise<{
   message: string
   type: string
   value: number
   new_balance?: number
   new_concurrency?: number
 }> {
-  const payload: RedeemCodeRequest = { code }
+  const payload: RedeemCodeRequest = {
+    code,
+    confirm_subscription_overwrite: confirmation ? true : undefined,
+    expected_subscription_id: confirmation?.subscriptionId,
+    expected_subscription_term_version: confirmation?.termVersion,
+    expected_subscription_expires_at: confirmation?.expiresAt,
+  }
 
   const { data } = await apiClient.post<{
     message: string

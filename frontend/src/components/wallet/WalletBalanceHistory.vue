@@ -53,20 +53,24 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { redeemAPI, type RedeemHistoryItem } from '@/api'
+import { lotteryAPI, redeemAPI, type RedeemHistoryItem } from '@/api'
 import Icon from '@/components/icons/Icon.vue'
 import { formatDateTime } from '@/utils/format'
 
 const { t } = useI18n()
 const props = withDefaults(defineProps<{ compact?: boolean }>(), { compact: false })
-const history = ref<RedeemHistoryItem[]>([])
+type WalletHistoryItem = Omit<RedeemHistoryItem, 'id'> & { id: number | string }
+
+const history = ref<WalletHistoryItem[]>([])
 const loading = ref(true)
 
 const balanceHistory = computed(() => history.value.filter((item) =>
-  ['balance', 'admin_balance', 'daily_checkin', 'usage_rebate', 'subscription_payment'].includes(item.type)))
+  ['balance', 'admin_balance', 'daily_checkin', 'usage_rebate', 'subscription_payment', 'lottery_reward', 'lottery_ticket_purchase'].includes(item.type)))
 const displayedHistory = computed(() => balanceHistory.value)
 
-function itemTitle(item: RedeemHistoryItem): string {
+function itemTitle(item: WalletHistoryItem): string {
+  if (item.type === 'lottery_reward') return t('redeem.balanceAddedLottery')
+  if (item.type === 'lottery_ticket_purchase') return t('redeem.balanceDeductedLotteryTicket')
   if (item.type === 'balance') return t('redeem.balanceAddedRedeem')
   if (item.type === 'daily_checkin') return t('redeem.balanceAddedDailyCheckin')
   if (item.type === 'usage_rebate') return t('redeem.balanceAddedUsageRebate')
@@ -74,7 +78,7 @@ function itemTitle(item: RedeemHistoryItem): string {
   return item.value >= 0 ? t('redeem.balanceAddedAdmin') : t('redeem.balanceDeductedAdmin')
 }
 
-function historyNote(item: RedeemHistoryItem): string {
+function historyNote(item: WalletHistoryItem): string {
   if (!item.notes || ['daily_checkin', 'usage_rebate'].includes(item.type)) return ''
   const note = item.notes.trim()
   const title = itemTitle(item)
@@ -84,7 +88,25 @@ function historyNote(item: RedeemHistoryItem): string {
 async function refresh() {
   loading.value = true
   try {
-    history.value = await redeemAPI.getHistory(props.compact ? 200 : 25)
+    const limit = props.compact ? 200 : 25
+    const [redeemHistory, lotteryHistoryResponse] = await Promise.all([
+      redeemAPI.getHistory(limit),
+      lotteryAPI.listBalanceTransactions(limit),
+    ])
+    const lotteryHistory = lotteryHistoryResponse.data
+    history.value = [
+      ...redeemHistory,
+      ...lotteryHistory.map((item) => ({
+        id: `lottery-${item.id}`,
+        code: '',
+        type: item.transaction_type,
+        value: item.amount,
+        status: 'completed',
+        used_at: item.created_at,
+        created_at: item.created_at,
+        notes: item.description,
+      })),
+    ].sort((left, right) => new Date(right.used_at).getTime() - new Date(left.used_at).getTime())
   } catch (error) {
     console.error('Failed to fetch wallet balance history:', error)
   } finally {
