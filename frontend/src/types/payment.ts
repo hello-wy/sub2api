@@ -103,6 +103,8 @@ export interface CheckoutInfoResponse {
   /** When true, official Alipay mobile orders use precreate plus an Alipay app deep link */
   alipay_mobile_precreate_deep_link?: boolean
   loyalty?: PaymentLoyaltyInfo
+  /** When true, official Alipay mobile orders use precreate plus an Alipay app deep link */
+  alipay_mobile_precreate_deep_link?: boolean
 }
 
 export interface BalanceSubscriptionPurchaseResult {

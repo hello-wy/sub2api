@@ -68,7 +68,7 @@ describe('AppSidebar header styles', () => {
   })
 
   it('keeps the right toolbar fixed while route titles change width', () => {
-    expect(headerSource).toContain('class="flex min-w-0 flex-1 items-center gap-4 overflow-hidden"')
+    expect(headerSource).toContain('class="app-header-leading flex min-w-0 flex-1 items-center gap-4 overflow-hidden"')
     expect(headerSource).toContain('class="app-header-toolbar flex shrink-0 items-center gap-2"')
   })
 })

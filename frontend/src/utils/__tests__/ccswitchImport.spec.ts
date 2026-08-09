@@ -32,7 +32,7 @@ describe('ccswitchImport utils', () => {
       buildCcSwitchImportDeeplink({
         ...baseInput,
         platform: 'openai',
-        clientType: 'claude'
+        clientType: 'codex'
       })
     )
 

@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -8,8 +8,6 @@ const dir = dirname(fileURLToPath(import.meta.url))
 const layoutSource = readFileSync(resolve(dir, '../AuthLayout.vue'), 'utf8')
 const loginSource = readFileSync(resolve(dir, '../../../views/auth/LoginView.vue'), 'utf8')
 const styleSource = readFileSync(resolve(dir, '../../../style.css'), 'utf8')
-const brandDir = resolve(dir, '../../../../public/brand')
-
 describe('AuthLayout branded login variant', () => {
   it('uses the dedicated minimal variant only for the login page', () => {
     expect(loginSource).toContain('<AuthLayout variant="minimal">')
@@ -42,12 +40,9 @@ describe('AuthLayout branded login variant', () => {
     expect(layoutSource).toContain('class="auth-minimal-footer"')
   })
 
-  it('shows a corner brand and provides locale and theme controls on the panel', () => {
-    expect(layoutSource).toContain('class="auth-corner-brand"')
-    expect(layoutSource).toContain("'/brand/solidapi-lockup-dark.png'")
-    expect(layoutSource).toContain("'/brand/solidapi-lockup-light.png'")
-    expect(existsSync(resolve(brandDir, 'solidapi-lockup-light.png'))).toBe(true)
-    expect(existsSync(resolve(brandDir, 'solidapi-lockup-dark.png'))).toBe(true)
+  it('shows the minimal brand and provides locale and theme controls on the panel', () => {
+    expect(layoutSource).toContain('class="auth-minimal-brand"')
+    expect(layoutSource).toContain('class="auth-minimal-lockup"')
     expect(layoutSource).toContain('<LocaleSwitcher class="auth-minimal-locale" toolbar />')
     expect(layoutSource).toContain('class="auth-minimal-tool-button"')
     expect(layoutSource).toContain('@click="toggleTheme"')
