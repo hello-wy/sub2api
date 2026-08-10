@@ -1509,6 +1509,7 @@ describe("admin SettingsView payment visible method controls", () => {
 
     await flushPromises();
     await openPaymentTab(wrapper);
+    await vi.waitFor(() => expect(receivedProviders).toHaveLength(1));
 
     // The provider should still be in the list
     expect(receivedProviders.length).toBe(1);
