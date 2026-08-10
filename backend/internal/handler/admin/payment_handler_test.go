@@ -2,13 +2,51 @@ package admin
 
 import (
 	"encoding/json"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
 	dbent "github.com/Wei-Shaw/sub2api/ent"
 	"github.com/Wei-Shaw/sub2api/internal/service"
+	"github.com/gin-gonic/gin"
 )
+
+func TestParseAdminOrderDateRange(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	tests := []struct {
+		name      string
+		query     string
+		wantOK    bool
+		wantStart time.Time
+		wantEnd   time.Time
+	}{
+		{
+			name:      "inclusive dates become half open range",
+			query:     "?start_date=2026-03-01&end_date=2026-03-03&timezone=UTC",
+			wantOK:    true,
+			wantStart: time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC),
+			wantEnd:   time.Date(2026, 3, 4, 0, 0, 0, 0, time.UTC),
+		},
+		{name: "empty range", query: "", wantOK: true},
+		{name: "invalid start", query: "?start_date=2026-02-30", wantOK: false},
+		{name: "end before start", query: "?start_date=2026-03-03&end_date=2026-03-01&timezone=UTC", wantOK: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, _ := gin.CreateTestContext(httptest.NewRecorder())
+			ctx.Request = httptest.NewRequest("GET", "/admin/payment/orders"+tt.query, nil)
+			start, end, ok := parseAdminOrderDateRange(ctx)
+			if ok != tt.wantOK {
+				t.Fatalf("ok = %t, want %t", ok, tt.wantOK)
+			}
+			if tt.wantOK && (!start.Equal(tt.wantStart) || !end.Equal(tt.wantEnd)) {
+				t.Fatalf("range = (%s, %s), want (%s, %s)", start, end, tt.wantStart, tt.wantEnd)
+			}
+		})
+	}
+}
 
 func TestParseAdminOrderID(t *testing.T) {
 	tests := []struct {

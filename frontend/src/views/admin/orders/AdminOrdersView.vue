@@ -11,6 +11,11 @@
           <Select v-model="orderFilters.status" :options="statusFilterOptions" class="w-36" @change="loadOrders" />
           <Select v-model="orderFilters.payment_type" :options="paymentTypeFilterOptions" class="w-40" @change="loadOrders" />
           <Select v-model="orderFilters.order_type" :options="orderTypeFilterOptions" class="w-36" @change="loadOrders" />
+          <DateRangePicker
+            v-model:start-date="orderDateRange.start"
+            v-model:end-date="orderDateRange.end"
+            @change="handleOrderDateRangeChange"
+          />
           <div class="flex flex-1 flex-wrap items-center justify-end gap-2">
             <button @click="loadOrders" :disabled="ordersLoading" class="btn btn-secondary" :title="t('common.refresh')">
               <Icon name="refresh" size="md" :class="ordersLoading ? 'animate-spin' : ''" />
@@ -132,6 +137,7 @@ import ScrollablePageLayout from '@/components/layout/ScrollablePageLayout.vue'
 import Pagination from '@/components/common/Pagination.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import Select from '@/components/common/Select.vue'
+import DateRangePicker from '@/components/common/DateRangePicker.vue'
 import Icon from '@/components/icons/Icon.vue'
 import AdminRefundDialog from '@/components/admin/payment/AdminRefundDialog.vue'
 import OrderStatusBadge from '@/components/payment/OrderStatusBadge.vue'
@@ -154,6 +160,7 @@ const orders = ref<AdminOrder[]>([])
 const subscriptionPlanNames = ref<Record<number, string>>({})
 const orderSearch = ref('')
 const orderFilters = reactive({ status: '', payment_type: '', order_type: '' })
+const orderDateRange = reactive({ start: '', end: '' })
 const orderPagination = reactive({ page: 1, page_size: 20, total: 0 })
 const selectedOrder = ref<AdminOrder | null>(null)
 const showDetailDialog = ref(false)
@@ -182,6 +189,9 @@ async function loadOrders() {
       page: orderPagination.page, page_size: orderPagination.page_size,
       keyword: orderSearch.value || undefined, status: orderFilters.status || undefined,
       payment_type: orderFilters.payment_type || undefined, order_type: orderFilters.order_type || undefined,
+      start_date: orderDateRange.start || undefined,
+      end_date: orderDateRange.end || undefined,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || undefined,
     })
     orders.value = res.data.items || []
     orderPagination.total = res.data.total || 0
@@ -197,6 +207,12 @@ async function loadSubscriptionPlanNames() {
 
 function handleOrderPageChange(page: number) { orderPagination.page = page; loadOrders() }
 function handleOrderPageSizeChange(size: number) { orderPagination.page_size = size; orderPagination.page = 1; loadOrders() }
+function handleOrderDateRangeChange(range: { startDate: string; endDate: string; preset: string | null }) {
+  orderDateRange.start = range.startDate
+  orderDateRange.end = range.endDate
+  orderPagination.page = 1
+  loadOrders()
+}
 
 const statusFilterOptions = computed(() => [
   { value: '', label: t('payment.admin.allStatuses') },

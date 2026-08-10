@@ -99,6 +99,7 @@ export const adminPaymentAPI = {
     keyword?: string
     start_date?: string
     end_date?: string
+    timezone?: string
     order_type?: string
   }) {
     return apiClient.get<BasePaginationResponse<AdminOrder>>('/admin/payment/orders', { params })
