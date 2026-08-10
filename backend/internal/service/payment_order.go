@@ -1008,6 +1008,14 @@ func (s *PaymentService) adminLotteryOrders(ctx context.Context, userID int64, p
 		args = append(args, p.Keyword)
 		filters = append(filters, fmt.Sprintf("(bt.source_id ILIKE '%%' || $%d || '%%' OR u.email ILIKE '%%' || $%d || '%%' OR u.username ILIKE '%%' || $%d || '%%')", len(args), len(args), len(args)))
 	}
+	if !p.StartTime.IsZero() {
+		args = append(args, p.StartTime)
+		filters = append(filters, fmt.Sprintf("bt.created_at >= $%d", len(args)))
+	}
+	if !p.EndTime.IsZero() {
+		args = append(args, p.EndTime)
+		filters = append(filters, fmt.Sprintf("bt.created_at < $%d", len(args)))
+	}
 	where := strings.Join(filters, " AND ")
 	var total int
 	if err := scanOne(ctx, s.entClient, "SELECT COUNT(*) FROM balance_transactions bt JOIN users u ON u.id = bt.user_id WHERE "+where, args, &total); err != nil {
@@ -1084,6 +1092,12 @@ func (s *PaymentService) AdminListOrders(ctx context.Context, userID int64, p Or
 		}
 		if p.Keyword != "" {
 			q = q.Where(paymentorder.Or(paymentorder.OutTradeNoContainsFold(p.Keyword), paymentorder.UserEmailContainsFold(p.Keyword), paymentorder.UserNameContainsFold(p.Keyword)))
+		}
+		if !p.StartTime.IsZero() {
+			q = q.Where(paymentorder.CreatedAtGTE(p.StartTime))
+		}
+		if !p.EndTime.IsZero() {
+			q = q.Where(paymentorder.CreatedAtLT(p.EndTime))
 		}
 		var err error
 		paymentTotal, err = q.Clone().Count(ctx)

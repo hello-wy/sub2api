@@ -7,6 +7,7 @@ import (
 
 	dbent "github.com/Wei-Shaw/sub2api/ent"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/timezone"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -51,6 +52,10 @@ func (h *PaymentHandler) GetDashboard(c *gin.Context) {
 // GET /api/v1/admin/payment/orders
 func (h *PaymentHandler) ListOrders(c *gin.Context) {
 	page, pageSize := response.ParsePagination(c)
+	startTime, endTime, ok := parseAdminOrderDateRange(c)
+	if !ok {
+		return
+	}
 	var userID int64
 	if uid := c.Query("user_id"); uid != "" {
 		if v, err := strconv.ParseInt(uid, 10, 64); err == nil {
@@ -64,12 +69,46 @@ func (h *PaymentHandler) ListOrders(c *gin.Context) {
 		OrderType:   c.Query("order_type"),
 		PaymentType: c.Query("payment_type"),
 		Keyword:     c.Query("keyword"),
+		StartTime:   startTime,
+		EndTime:     endTime,
 	})
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return
 	}
 	response.Paginated(c, sanitizeAdminOrdersForResponse(orders), int64(total), page, pageSize)
+}
+
+func parseAdminOrderDateRange(c *gin.Context) (time.Time, time.Time, bool) {
+	startRaw := strings.TrimSpace(c.Query("start_date"))
+	endRaw := strings.TrimSpace(c.Query("end_date"))
+	if startRaw == "" && endRaw == "" {
+		return time.Time{}, time.Time{}, true
+	}
+
+	var startTime, endTime time.Time
+	var err error
+	if startRaw != "" {
+		startTime, err = timezone.ParseInUserLocation("2006-01-02", startRaw, c.Query("timezone"))
+		if err != nil {
+			response.BadRequest(c, "Invalid start_date")
+			return time.Time{}, time.Time{}, false
+		}
+	}
+	if endRaw != "" {
+		endTime, err = timezone.ParseInUserLocation("2006-01-02", endRaw, c.Query("timezone"))
+		if err != nil {
+			response.BadRequest(c, "Invalid end_date")
+			return time.Time{}, time.Time{}, false
+		}
+		// The UI's end date is inclusive; query with a half-open interval.
+		endTime = endTime.AddDate(0, 0, 1)
+	}
+	if !startTime.IsZero() && !endTime.IsZero() && !endTime.After(startTime) {
+		response.BadRequest(c, "end_date must be on or after start_date")
+		return time.Time{}, time.Time{}, false
+	}
+	return startTime, endTime, true
 }
 
 // GetOrderDetail returns detailed information about a single order.
