@@ -1481,8 +1481,10 @@ describe("admin SettingsView payment visible method controls", () => {
         },
       },
       setup(props) {
-        receivedProviders = props.providers as Array<Record<string, unknown>>;
-        return () => h("div", { class: "provider-list-capture" });
+        return () => {
+          receivedProviders = props.providers as Array<Record<string, unknown>>;
+          return h("div", { class: "provider-list-capture" });
+        };
       },
     });
 
