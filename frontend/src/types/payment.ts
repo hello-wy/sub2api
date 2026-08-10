@@ -138,6 +138,31 @@ export interface PaymentOrder {
   provider_instance_id?: string
 }
 
+export type AdminOrderType = OrderType | 'lottery'
+
+export interface AdminOrder extends Omit<PaymentOrder, 'id' | 'order_type'> {
+  id: string
+  source_kind: 'payment_order' | 'lottery_ticket_purchase'
+  order_type: AdminOrderType
+  user_email?: string
+  user_name?: string
+  user_notes?: string
+  ticket_count?: number
+  balance_before?: number
+  balance_after?: number
+}
+
+export interface AdminOrderDetail {
+  order: AdminOrder
+  auditLogs: Array<{
+    id: number
+    action: string
+    detail: string | null
+    operator: string | null
+    created_at: string
+  }>
+}
+
 // ==================== Plans & Channels ====================
 
 export interface SubscriptionPlan {

@@ -10,6 +10,47 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/service"
 )
 
+func TestParseAdminOrderID(t *testing.T) {
+	tests := []struct {
+		value      string
+		sourceKind string
+		id         int64
+		ok         bool
+	}{
+		{value: "payment:12", sourceKind: service.AdminOrderSourcePayment, id: 12, ok: true},
+		{value: "lottery:34", sourceKind: service.AdminOrderSourceLottery, id: 34, ok: true},
+		{value: "12", ok: false},
+		{value: "lottery:0", ok: false},
+		{value: "other:12", ok: false},
+	}
+	for _, tt := range tests {
+		sourceKind, id, ok := parseAdminOrderID(tt.value)
+		if sourceKind != tt.sourceKind || id != tt.id || ok != tt.ok {
+			t.Errorf("parseAdminOrderID(%q) = (%q, %d, %t), want (%q, %d, %t)", tt.value, sourceKind, id, ok, tt.sourceKind, tt.id, tt.ok)
+		}
+	}
+}
+
+func TestSanitizeAdminLotteryOrderForResponse(t *testing.T) {
+	now := time.Now()
+	before, after := 50.0, 20.0
+	got := sanitizeAdminOrderForResponse(service.AdminOrder{
+		ID: "lottery:3", SourceKind: service.AdminOrderSourceLottery, UserID: 2,
+		Amount: 30, PayAmount: 30, Currency: "USD", OutTradeNo: "lottery-purchase-ref",
+		PaymentType: "balance", OrderType: service.AdminOrderTypeLottery, Status: service.OrderStatusCompleted,
+		TicketCount: 1, BalanceBefore: &before, BalanceAfter: &after, CreatedAt: now, UpdatedAt: now,
+	})
+	if got.ID != "lottery:3" || got.SourceKind != service.AdminOrderSourceLottery || got.OrderType != service.AdminOrderTypeLottery {
+		t.Fatalf("unexpected lottery response: %#v", got)
+	}
+	if got.PaymentType != "balance" || got.Amount != 30 || got.PayAmount != 30 || got.TicketCount != 1 {
+		t.Fatalf("unexpected lottery payment fields: %#v", got)
+	}
+	if got.PayURL != nil || got.ProviderKey != nil || got.RefundReason != nil {
+		t.Fatalf("lottery order exposed payment-only fields: %#v", got)
+	}
+}
+
 func TestSanitizeAdminPaymentOrderForResponseAddsCurrency(t *testing.T) {
 	now := time.Now()
 	order := &dbent.PaymentOrder{

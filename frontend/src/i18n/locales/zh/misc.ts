@@ -334,6 +334,7 @@ export default {
       link: 'Link',
       alipay_direct: '支付宝（直连）',
       wxpay_direct: '微信支付（直连）',
+      balance: '账户余额',
     },
     status: {
       pending: '待支付',
@@ -539,6 +540,10 @@ export default {
       orders: '订单',
       balanceOrder: '余额充值',
       subscriptionOrder: '订阅',
+      lotteryOrder: '幸运抽奖',
+      lotteryChances: '{count} 次抽奖机会',
+      lotteryChancesLabel: '抽奖次数',
+      purchaseReference: '购买参考号',
       paidAt: '支付时间',
       completedAt: '完成时间',
       expiresAt: '过期时间',

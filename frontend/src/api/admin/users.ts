@@ -196,6 +196,29 @@ export async function updateBalance(
  * @param concurrency - New concurrency limit
  * @returns Updated user
  */
+export interface LotteryTicketAdjustmentResult {
+  available_tickets: number
+}
+
+export async function adjustLotteryTickets(
+  id: number,
+  count: number,
+  operation: 'add' | 'subtract',
+  reason: string,
+  idempotencyKey?: string,
+): Promise<LotteryTicketAdjustmentResult> {
+  const requestID =
+    idempotencyKey ||
+    globalThis.crypto?.randomUUID?.() ||
+    `${Date.now()}-${Math.random().toString(36).slice(2)}`
+  const { data } = await apiClient.post<LotteryTicketAdjustmentResult>(
+    `/admin/users/${id}/lottery-tickets`,
+    { count, operation, reason },
+    { headers: { 'Idempotency-Key': `admin-lottery-tickets-${id}-${requestID}` } },
+  )
+  return data
+}
+
 export async function updateConcurrency(id: number, concurrency: number): Promise<AdminUser> {
   return update(id, { concurrency })
 }
@@ -411,6 +434,7 @@ export const usersAPI = {
   update,
   delete: deleteUser,
   updateBalance,
+  adjustLotteryTickets,
   updateConcurrency,
   batchUpdateLimits,
   toggleStatus,

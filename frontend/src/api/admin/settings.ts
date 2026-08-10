@@ -130,6 +130,7 @@ export interface LotteryPrizePoolSettings {
   prizes: LotteryPrizeSetting[];
   invitation_first_payment_amount: number;
   invitation_consumption_amount: number;
+  purchase_price: number;
 }
 
 export interface WeChatConnectModeOption {

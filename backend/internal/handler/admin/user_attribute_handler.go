@@ -74,6 +74,10 @@ type BatchUserAttributesResponse struct {
 
 var userAttributesBatchCache = newSnapshotCache(30 * time.Second)
 
+func InvalidateUserAttributesBatchCache() {
+	userAttributesBatchCache.Clear()
+}
+
 // AttributeDefinitionResponse represents attribute definition response
 type AttributeDefinitionResponse struct {
 	ID           int64                           `json:"id"`

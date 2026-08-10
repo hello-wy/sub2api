@@ -43,6 +43,7 @@ export interface LotteryPrizePoolConfig {
   prizes: LotteryPrizeConfig[]
   invitation_first_payment_amount: number
   invitation_consumption_amount: number
+  purchase_price: number
 }
 
 export interface LotteryBalanceTransaction {

@@ -73,6 +73,7 @@ const {
     ],
     invitation_first_payment_amount: 20,
     invitation_consumption_amount: 100,
+    purchase_price: 30,
   }),
   updateLotteryPrizePoolSettings: vi.fn().mockImplementation(async (payload) => payload),
   getGroups: vi.fn(),
@@ -667,6 +668,7 @@ describe("admin SettingsView lottery cooldown", () => {
 
     expect(updateLotteryPrizePoolSettings).toHaveBeenCalledWith(expect.objectContaining({
       prizes: expect.arrayContaining([expect.objectContaining({ id: "quota-10", cooldown_seconds: 300 })]),
+      purchase_price: 30,
     }));
   });
 });

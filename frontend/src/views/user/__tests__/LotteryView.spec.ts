@@ -51,6 +51,7 @@ const currentPrizePool = {
   ],
   invitation_first_payment_amount: 20,
   invitation_consumption_amount: 100,
+  purchase_price: 12.5,
 }
 
 const mountLottery = () => mount(LotteryView, {
@@ -87,9 +88,11 @@ describe('LotteryView', () => {
     const wrapper = mountLottery()
     await flushPromises()
 
-    const openButton = wrapper.findAll('button').find((button) => button.text().includes('$30 购买次数'))
+    const openButton = wrapper.findAll('button').find((button) => button.text().includes('$12.5 购买次数'))
     expect(openButton).toBeDefined()
     await openButton!.trigger('click')
+    expect(wrapper.text()).toContain('支付金额$12.5')
+    expect(wrapper.text()).toContain('支付后余额$87.50')
     await wrapper.findAll('button').find((button) => button.text() === '确认付款')!.trigger('click')
     await flushPromises()
 

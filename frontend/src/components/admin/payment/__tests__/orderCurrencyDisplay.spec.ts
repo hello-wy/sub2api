@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
-import type { PaymentOrder } from '@/types/payment'
+import type { AdminOrder, PaymentOrder } from '@/types/payment'
 import AdminOrderDetail from '../AdminOrderDetail.vue'
 import AdminOrderTable from '../AdminOrderTable.vue'
 import AdminRefundDialog from '../AdminRefundDialog.vue'
@@ -141,6 +141,27 @@ describe('admin order currency display', () => {
     expect(wrapper.text()).toContain('$108.00')
     expect(wrapper.text()).toContain('专业版套餐')
     expect(wrapper.text()).not.toContain('¥108.00')
+  })
+
+  it('shows lucky lottery purchases as a positive balance payment', () => {
+    const lotteryOrder: AdminOrder = {
+      ...orderFactory(),
+      id: 'lottery:1',
+      source_kind: 'lottery_ticket_purchase',
+      order_type: 'lottery',
+      payment_type: 'balance',
+      amount: 30,
+      pay_amount: 30,
+      ticket_count: 1,
+    }
+    const wrapper = mount(OrderTable, {
+      props: { orders: [lotteryOrder], loading: false },
+      global: { stubs: { DataTable: DataTableStub, OrderStatusBadge: true } },
+    })
+    const text = wrapper.text()
+    expect(text).toContain('$30.00')
+    expect(text).toContain('payment.admin.lotteryOrder')
+    expect(text).toContain('payment.admin.lotteryChances')
   })
 
   it('renders payment currency consistently in the admin order table', () => {

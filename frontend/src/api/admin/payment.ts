@@ -6,7 +6,8 @@
 import { apiClient } from '../client'
 import type {
   DashboardStats,
-  PaymentOrder,
+  AdminOrder,
+  AdminOrderDetail,
   PaymentChannel,
   SubscriptionPlan,
   ProviderInstance
@@ -100,31 +101,31 @@ export const adminPaymentAPI = {
     end_date?: string
     order_type?: string
   }) {
-    return apiClient.get<BasePaginationResponse<PaymentOrder>>('/admin/payment/orders', { params })
+    return apiClient.get<BasePaginationResponse<AdminOrder>>('/admin/payment/orders', { params })
   },
 
-  /** Get a specific order by ID */
-  getOrder(id: number) {
-    return apiClient.get<PaymentOrder>(`/admin/payment/orders/${id}`)
+  /** Get a specific order by source-qualified ID */
+  getOrder(id: string) {
+    return apiClient.get<AdminOrderDetail>(`/admin/payment/orders/${id}`)
   },
 
   /** Cancel an order (admin) */
-  cancelOrder(id: number) {
+  cancelOrder(id: string) {
     return apiClient.post(`/admin/payment/orders/${id}/cancel`)
   },
 
   /** Retry recharge for a failed order */
-  retryRecharge(id: number) {
+  retryRecharge(id: string) {
     return apiClient.post(`/admin/payment/orders/${id}/retry`)
   },
 
   /** Process a refund */
-  refundOrder(id: number, data: { amount: number; reason: string; deduct_balance?: boolean; force?: boolean }) {
+  refundOrder(id: string, data: { amount: number; reason: string; deduct_balance?: boolean; force?: boolean }) {
     return apiClient.post<RefundResult>(`/admin/payment/orders/${id}/refund`, data)
   },
 
   /** Query and finalize a pending refund */
-  queryRefund(id: number) {
+  queryRefund(id: string) {
     return apiClient.post<RefundResult>(`/admin/payment/orders/${id}/refund/query`)
   },
 

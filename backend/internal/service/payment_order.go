@@ -2,11 +2,13 @@ package service
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
 	"math"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -920,36 +922,212 @@ func (s *PaymentService) GetUserOrders(ctx context.Context, userID int64, p Orde
 	return orders, total, nil
 }
 
-// AdminListOrders returns a paginated list of orders. If userID > 0, filters by user.
-func (s *PaymentService) AdminListOrders(ctx context.Context, userID int64, p OrderListParams) ([]*dbent.PaymentOrder, int, error) {
-	q := s.entClient.PaymentOrder.Query()
+const (
+	AdminOrderSourcePayment = "payment_order"
+	AdminOrderSourceLottery = "lottery_ticket_purchase"
+	AdminOrderTypeLottery   = "lottery"
+)
+
+type AdminOrder struct {
+	ID                  string
+	SourceKind          string
+	UserID              int64
+	UserEmail           string
+	UserName            string
+	UserNotes           *string
+	Amount              float64
+	PayAmount           float64
+	FeeRate             float64
+	Currency            string
+	RechargeCode        string
+	OutTradeNo          string
+	PaymentType         string
+	PaymentTradeNo      string
+	PayURL              *string
+	QRCode              *string
+	QRCodeImg           *string
+	OrderType           string
+	PlanID              *int64
+	SubscriptionGroupID *int64
+	SubscriptionDays    *int
+	ProviderInstanceID  *string
+	ProviderKey         *string
+	Status              string
+	RefundAmount        float64
+	RefundReason        *string
+	RefundAt            *time.Time
+	ForceRefund         bool
+	RefundRequestedAt   *time.Time
+	RefundRequestReason *string
+	RefundRequestedBy   *string
+	ExpiresAt           time.Time
+	PaidAt              *time.Time
+	CompletedAt         *time.Time
+	FailedAt            *time.Time
+	FailedReason        *string
+	ClientIP            string
+	SrcHost             string
+	SrcURL              *string
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
+	TicketCount         int
+	BalanceBefore       *float64
+	BalanceAfter        *float64
+}
+
+func adminPaymentOrder(order *dbent.PaymentOrder) AdminOrder {
+	return AdminOrder{
+		ID: "payment:" + strconv.FormatInt(int64(order.ID), 10), SourceKind: AdminOrderSourcePayment,
+		UserID: order.UserID, UserEmail: order.UserEmail, UserName: order.UserName, UserNotes: order.UserNotes,
+		Amount: order.Amount, PayAmount: order.PayAmount, FeeRate: order.FeeRate, Currency: PaymentOrderCurrency(order),
+		RechargeCode: order.RechargeCode, OutTradeNo: order.OutTradeNo, PaymentType: order.PaymentType, PaymentTradeNo: order.PaymentTradeNo,
+		PayURL: order.PayURL, QRCode: order.QrCode, QRCodeImg: order.QrCodeImg, OrderType: order.OrderType,
+		PlanID: order.PlanID, SubscriptionGroupID: order.SubscriptionGroupID, SubscriptionDays: order.SubscriptionDays,
+		ProviderInstanceID: order.ProviderInstanceID, ProviderKey: order.ProviderKey, Status: order.Status,
+		RefundAmount: order.RefundAmount, RefundReason: order.RefundReason, RefundAt: order.RefundAt, ForceRefund: order.ForceRefund,
+		RefundRequestedAt: order.RefundRequestedAt, RefundRequestReason: order.RefundRequestReason, RefundRequestedBy: order.RefundRequestedBy,
+		ExpiresAt: order.ExpiresAt, PaidAt: order.PaidAt, CompletedAt: order.CompletedAt, FailedAt: order.FailedAt,
+		FailedReason: order.FailedReason, ClientIP: order.ClientIP, SrcHost: order.SrcHost, SrcURL: order.SrcURL,
+		CreatedAt: order.CreatedAt, UpdatedAt: order.UpdatedAt,
+	}
+}
+
+func (s *PaymentService) adminLotteryOrders(ctx context.Context, userID int64, p OrderListParams) ([]AdminOrder, int, error) {
+	if (p.OrderType != "" && p.OrderType != AdminOrderTypeLottery) ||
+		(p.PaymentType != "" && p.PaymentType != "balance") ||
+		(p.Status != "" && p.Status != OrderStatusCompleted) {
+		return nil, 0, nil
+	}
+	filters := []string{"bt.transaction_type = 'lottery_ticket_purchase'", "bt.source_type = 'lottery_purchase'"}
+	args := make([]any, 0, 2)
 	if userID > 0 {
-		q = q.Where(paymentorder.UserIDEQ(userID))
-	}
-	if p.Status != "" {
-		q = q.Where(paymentorder.StatusEQ(p.Status))
-	}
-	if p.OrderType != "" {
-		q = q.Where(paymentorder.OrderTypeEQ(p.OrderType))
-	}
-	if p.PaymentType != "" {
-		q = q.Where(paymentorder.PaymentTypeEQ(p.PaymentType))
+		args = append(args, userID)
+		filters = append(filters, fmt.Sprintf("bt.user_id = $%d", len(args)))
 	}
 	if p.Keyword != "" {
-		q = q.Where(paymentorder.Or(
-			paymentorder.OutTradeNoContainsFold(p.Keyword),
-			paymentorder.UserEmailContainsFold(p.Keyword),
-			paymentorder.UserNameContainsFold(p.Keyword),
-		))
+		args = append(args, p.Keyword)
+		filters = append(filters, fmt.Sprintf("(bt.source_id ILIKE '%%' || $%d || '%%' OR u.email ILIKE '%%' || $%d || '%%' OR u.username ILIKE '%%' || $%d || '%%')", len(args), len(args), len(args)))
 	}
-	total, err := q.Clone().Count(ctx)
-	if err != nil {
-		return nil, 0, fmt.Errorf("count admin orders: %w", err)
+	where := strings.Join(filters, " AND ")
+	var total int
+	if err := scanOne(ctx, s.entClient, "SELECT COUNT(*) FROM balance_transactions bt JOIN users u ON u.id = bt.user_id WHERE "+where, args, &total); err != nil {
+		return nil, 0, fmt.Errorf("count lottery admin orders: %w", err)
 	}
-	ps, pg := applyPagination(p.PageSize, p.Page)
-	orders, err := q.Order(dbent.Desc(paymentorder.FieldCreatedAt)).Limit(ps).Offset((pg - 1) * ps).All(ctx)
+	rows, err := s.entClient.QueryContext(ctx, `
+SELECT bt.id, bt.user_id, u.email, u.username, NULLIF(u.notes, ''),
+       (-bt.amount)::double precision, bt.source_id, bt.created_at,
+       COALESCE(ledger.delta, 1), bt.balance_before::double precision, bt.balance_after::double precision
+FROM balance_transactions bt
+JOIN users u ON u.id = bt.user_id
+LEFT JOIN lottery_ticket_ledger ledger
+  ON ledger.user_id = bt.user_id AND ledger.source_type = 'purchase' AND ledger.source_ref = bt.source_id
+WHERE `+where+`
+ORDER BY bt.created_at DESC, bt.id DESC`, args...)
 	if err != nil {
-		return nil, 0, fmt.Errorf("query admin orders: %w", err)
+		return nil, 0, fmt.Errorf("query lottery admin orders: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	orders := make([]AdminOrder, 0, total)
+	for rows.Next() {
+		var id int64
+		var order AdminOrder
+		var notes sql.NullString
+		var before, after sql.NullFloat64
+		if err := rows.Scan(&id, &order.UserID, &order.UserEmail, &order.UserName, &notes, &order.PayAmount, &order.OutTradeNo, &order.CreatedAt, &order.TicketCount, &before, &after); err != nil {
+			return nil, 0, fmt.Errorf("scan lottery admin order: %w", err)
+		}
+		order.ID = "lottery:" + strconv.FormatInt(id, 10)
+		order.SourceKind = AdminOrderSourceLottery
+		order.OrderType = AdminOrderTypeLottery
+		order.PaymentType = "balance"
+		order.Status = OrderStatusCompleted
+		order.Amount = order.PayAmount
+		order.Currency = "USD"
+		order.CompletedAt = &order.CreatedAt
+		order.UpdatedAt = order.CreatedAt
+		if notes.Valid {
+			order.UserNotes = &notes.String
+		}
+		if before.Valid {
+			value := before.Float64
+			order.BalanceBefore = &value
+		}
+		if after.Valid {
+			value := after.Float64
+			order.BalanceAfter = &value
+		}
+		orders = append(orders, order)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("iterate lottery admin orders: %w", err)
 	}
 	return orders, total, nil
+}
+
+// AdminListOrders returns payment orders and read-only lottery ticket purchases.
+func (s *PaymentService) AdminListOrders(ctx context.Context, userID int64, p OrderListParams) ([]AdminOrder, int, error) {
+	paymentOrders := make([]AdminOrder, 0)
+	paymentTotal := 0
+	if p.OrderType != AdminOrderTypeLottery {
+		q := s.entClient.PaymentOrder.Query()
+		if userID > 0 {
+			q = q.Where(paymentorder.UserIDEQ(userID))
+		}
+		if p.Status != "" {
+			q = q.Where(paymentorder.StatusEQ(p.Status))
+		}
+		if p.OrderType != "" {
+			q = q.Where(paymentorder.OrderTypeEQ(p.OrderType))
+		}
+		if p.PaymentType != "" {
+			q = q.Where(paymentorder.PaymentTypeEQ(p.PaymentType))
+		}
+		if p.Keyword != "" {
+			q = q.Where(paymentorder.Or(paymentorder.OutTradeNoContainsFold(p.Keyword), paymentorder.UserEmailContainsFold(p.Keyword), paymentorder.UserNameContainsFold(p.Keyword)))
+		}
+		var err error
+		paymentTotal, err = q.Clone().Count(ctx)
+		if err != nil {
+			return nil, 0, fmt.Errorf("count admin orders: %w", err)
+		}
+		orders, err := q.Order(dbent.Desc(paymentorder.FieldCreatedAt), dbent.Desc(paymentorder.FieldID)).All(ctx)
+		if err != nil {
+			return nil, 0, fmt.Errorf("query admin orders: %w", err)
+		}
+		for _, order := range orders {
+			paymentOrders = append(paymentOrders, adminPaymentOrder(order))
+		}
+	}
+	lotteryOrders, lotteryTotal, err := s.adminLotteryOrders(ctx, userID, p)
+	if err != nil {
+		return nil, 0, err
+	}
+	orders := append(paymentOrders, lotteryOrders...)
+	sort.SliceStable(orders, func(i, j int) bool {
+		if orders[i].CreatedAt.Equal(orders[j].CreatedAt) {
+			return orders[i].ID > orders[j].ID
+		}
+		return orders[i].CreatedAt.After(orders[j].CreatedAt)
+	})
+	ps, pg := applyPagination(p.PageSize, p.Page)
+	start := (pg - 1) * ps
+	if start >= len(orders) {
+		return []AdminOrder{}, paymentTotal + lotteryTotal, nil
+	}
+	end := min(start+ps, len(orders))
+	return orders[start:end], paymentTotal + lotteryTotal, nil
+}
+
+func (s *PaymentService) GetAdminLotteryOrder(ctx context.Context, id int64) (*AdminOrder, error) {
+	orders, _, err := s.adminLotteryOrders(ctx, 0, OrderListParams{})
+	if err != nil {
+		return nil, err
+	}
+	wanted := "lottery:" + strconv.FormatInt(id, 10)
+	for i := range orders {
+		if orders[i].ID == wanted {
+			return &orders[i], nil
+		}
+	}
+	return nil, infraerrors.NotFound("NOT_FOUND", "order not found")
 }

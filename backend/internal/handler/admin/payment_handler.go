@@ -2,6 +2,7 @@ package admin
 
 import (
 	"strconv"
+	"strings"
 	"time"
 
 	dbent "github.com/Wei-Shaw/sub2api/ent"
@@ -68,14 +69,24 @@ func (h *PaymentHandler) ListOrders(c *gin.Context) {
 		response.ErrorFrom(c, err)
 		return
 	}
-	response.Paginated(c, sanitizeAdminPaymentOrdersForResponse(orders), int64(total), page, pageSize)
+	response.Paginated(c, sanitizeAdminOrdersForResponse(orders), int64(total), page, pageSize)
 }
 
 // GetOrderDetail returns detailed information about a single order.
 // GET /api/v1/admin/payment/orders/:id
 func (h *PaymentHandler) GetOrderDetail(c *gin.Context) {
-	orderID, ok := parseIDParam(c, "id")
+	sourceKind, orderID, ok := parseAdminOrderID(c.Param("id"))
 	if !ok {
+		response.BadRequest(c, "invalid order id")
+		return
+	}
+	if sourceKind == service.AdminOrderSourceLottery {
+		order, err := h.paymentService.GetAdminLotteryOrder(c.Request.Context(), orderID)
+		if err != nil {
+			response.ErrorFrom(c, err)
+			return
+		}
+		response.Success(c, gin.H{"order": sanitizeAdminOrderForResponse(*order), "auditLogs": []any{}})
 		return
 	}
 	order, err := h.paymentService.GetOrderByID(c.Request.Context(), orderID)
@@ -87,10 +98,34 @@ func (h *PaymentHandler) GetOrderDetail(c *gin.Context) {
 	response.Success(c, gin.H{"order": sanitizeAdminPaymentOrderForResponse(order), "auditLogs": auditLogs})
 }
 
+func parseAdminOrderID(value string) (string, int64, bool) {
+	parts := strings.SplitN(value, ":", 2)
+	if len(parts) != 2 || (parts[0] != "payment" && parts[0] != "lottery") {
+		return "", 0, false
+	}
+	id, err := strconv.ParseInt(parts[1], 10, 64)
+	if err != nil || id <= 0 {
+		return "", 0, false
+	}
+	if parts[0] == "payment" {
+		return service.AdminOrderSourcePayment, id, true
+	}
+	return service.AdminOrderSourceLottery, id, true
+}
+
+func parsePaymentOrderID(c *gin.Context) (int64, bool) {
+	sourceKind, orderID, ok := parseAdminOrderID(c.Param("id"))
+	if !ok || sourceKind != service.AdminOrderSourcePayment {
+		response.BadRequest(c, "invalid payment order id")
+		return 0, false
+	}
+	return orderID, true
+}
+
 // CancelOrder cancels a pending order (admin).
 // POST /api/v1/admin/payment/orders/:id/cancel
 func (h *PaymentHandler) CancelOrder(c *gin.Context) {
-	orderID, ok := parseIDParam(c, "id")
+	orderID, ok := parsePaymentOrderID(c)
 	if !ok {
 		return
 	}
@@ -105,7 +140,7 @@ func (h *PaymentHandler) CancelOrder(c *gin.Context) {
 // RetryFulfillment retries fulfillment for a paid order.
 // POST /api/v1/admin/payment/orders/:id/retry
 func (h *PaymentHandler) RetryFulfillment(c *gin.Context) {
-	orderID, ok := parseIDParam(c, "id")
+	orderID, ok := parsePaymentOrderID(c)
 	if !ok {
 		return
 	}
@@ -117,7 +152,8 @@ func (h *PaymentHandler) RetryFulfillment(c *gin.Context) {
 }
 
 type AdminPaymentOrderResult struct {
-	ID                  int64      `json:"id"`
+	ID                  string     `json:"id"`
+	SourceKind          string     `json:"source_kind"`
 	UserID              int64      `json:"user_id"`
 	UserEmail           string     `json:"user_email,omitempty"`
 	UserName            string     `json:"user_name,omitempty"`
@@ -157,14 +193,15 @@ type AdminPaymentOrderResult struct {
 	SrcURL              *string    `json:"src_url,omitempty"`
 	CreatedAt           time.Time  `json:"created_at"`
 	UpdatedAt           time.Time  `json:"updated_at"`
+	TicketCount         int        `json:"ticket_count,omitempty"`
+	BalanceBefore       *float64   `json:"balance_before,omitempty"`
+	BalanceAfter        *float64   `json:"balance_after,omitempty"`
 }
 
-func sanitizeAdminPaymentOrdersForResponse(orders []*dbent.PaymentOrder) []*AdminPaymentOrderResult {
+func sanitizeAdminOrdersForResponse(orders []service.AdminOrder) []*AdminPaymentOrderResult {
 	out := make([]*AdminPaymentOrderResult, 0, len(orders))
 	for _, order := range orders {
-		if item := sanitizeAdminPaymentOrderForResponse(order); item != nil {
-			out = append(out, item)
-		}
+		out = append(out, sanitizeAdminOrderForResponse(order))
 	}
 	return out
 }
@@ -173,8 +210,26 @@ func sanitizeAdminPaymentOrderForResponse(order *dbent.PaymentOrder) *AdminPayme
 	if order == nil {
 		return nil
 	}
+	return sanitizeAdminOrderForResponse(service.AdminOrder{
+		ID: "payment:" + strconv.FormatInt(int64(order.ID), 10), SourceKind: service.AdminOrderSourcePayment,
+		UserID: order.UserID, UserEmail: order.UserEmail, UserName: order.UserName, UserNotes: order.UserNotes,
+		Amount: order.Amount, PayAmount: order.PayAmount, FeeRate: order.FeeRate, Currency: service.PaymentOrderCurrency(order),
+		RechargeCode: order.RechargeCode, OutTradeNo: order.OutTradeNo, PaymentType: order.PaymentType, PaymentTradeNo: order.PaymentTradeNo,
+		PayURL: order.PayURL, QRCode: order.QrCode, QRCodeImg: order.QrCodeImg, OrderType: order.OrderType,
+		PlanID: order.PlanID, SubscriptionGroupID: order.SubscriptionGroupID, SubscriptionDays: order.SubscriptionDays,
+		ProviderInstanceID: order.ProviderInstanceID, ProviderKey: order.ProviderKey, Status: order.Status,
+		RefundAmount: order.RefundAmount, RefundReason: order.RefundReason, RefundAt: order.RefundAt, ForceRefund: order.ForceRefund,
+		RefundRequestedAt: order.RefundRequestedAt, RefundRequestReason: order.RefundRequestReason, RefundRequestedBy: order.RefundRequestedBy,
+		ExpiresAt: order.ExpiresAt, PaidAt: order.PaidAt, CompletedAt: order.CompletedAt, FailedAt: order.FailedAt,
+		FailedReason: order.FailedReason, ClientIP: order.ClientIP, SrcHost: order.SrcHost, SrcURL: order.SrcURL,
+		CreatedAt: order.CreatedAt, UpdatedAt: order.UpdatedAt,
+	})
+}
+
+func sanitizeAdminOrderForResponse(order service.AdminOrder) *AdminPaymentOrderResult {
 	return &AdminPaymentOrderResult{
 		ID:                  order.ID,
+		SourceKind:          order.SourceKind,
 		UserID:              order.UserID,
 		UserEmail:           order.UserEmail,
 		UserName:            order.UserName,
@@ -182,14 +237,14 @@ func sanitizeAdminPaymentOrderForResponse(order *dbent.PaymentOrder) *AdminPayme
 		Amount:              order.Amount,
 		PayAmount:           order.PayAmount,
 		FeeRate:             order.FeeRate,
-		Currency:            service.PaymentOrderCurrency(order),
+		Currency:            order.Currency,
 		RechargeCode:        order.RechargeCode,
 		OutTradeNo:          order.OutTradeNo,
 		PaymentType:         order.PaymentType,
 		PaymentTradeNo:      order.PaymentTradeNo,
 		PayURL:              order.PayURL,
-		QRCode:              order.QrCode,
-		QRCodeImg:           order.QrCodeImg,
+		QRCode:              order.QRCode,
+		QRCodeImg:           order.QRCodeImg,
 		OrderType:           order.OrderType,
 		PlanID:              order.PlanID,
 		SubscriptionGroupID: order.SubscriptionGroupID,
@@ -214,6 +269,9 @@ func sanitizeAdminPaymentOrderForResponse(order *dbent.PaymentOrder) *AdminPayme
 		SrcURL:              order.SrcURL,
 		CreatedAt:           order.CreatedAt,
 		UpdatedAt:           order.UpdatedAt,
+		TicketCount:         order.TicketCount,
+		BalanceBefore:       order.BalanceBefore,
+		BalanceAfter:        order.BalanceAfter,
 	}
 }
 
@@ -228,7 +286,7 @@ type AdminProcessRefundRequest struct {
 // ProcessRefund processes a refund for an order (admin).
 // POST /api/v1/admin/payment/orders/:id/refund
 func (h *PaymentHandler) ProcessRefund(c *gin.Context) {
-	orderID, ok := parseIDParam(c, "id")
+	orderID, ok := parsePaymentOrderID(c)
 	if !ok {
 		return
 	}
@@ -260,7 +318,7 @@ func (h *PaymentHandler) ProcessRefund(c *gin.Context) {
 // QueryAndFinalizeRefund queries the provider refund status and finalizes a pending refund.
 // POST /api/v1/admin/payment/orders/:id/refund/query
 func (h *PaymentHandler) QueryAndFinalizeRefund(c *gin.Context) {
-	orderID, ok := parseIDParam(c, "id")
+	orderID, ok := parsePaymentOrderID(c)
 	if !ok {
 		return
 	}

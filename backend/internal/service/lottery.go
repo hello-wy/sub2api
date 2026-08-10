@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	dbent "github.com/Wei-Shaw/sub2api/ent"
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
@@ -21,9 +22,9 @@ import (
 )
 
 const (
-	lotteryPurchasePrice      = 30.0
-	lotteryPurchaseDailyLimit = 5
-	lotteryFreeTicketValidity = 30 * 24 * time.Hour
+	defaultLotteryPurchasePrice = 30.0
+	lotteryPurchaseDailyLimit   = 5
+	lotteryFreeTicketValidity   = 30 * 24 * time.Hour
 	// Lottery probabilities are stored as decimals with at most six decimal
 	// places, then converted to integers only for the secure random draw.
 	lotteryProbabilityScale                = int64(1_000_000)
@@ -33,6 +34,7 @@ const (
 	lotteryEnabledKey                      = "lottery_enabled"
 	lotteryInvitationFirstPaymentAmountKey = "lottery_invitation_first_payment_amount"
 	lotteryInvitationConsumptionAmountKey  = "lottery_invitation_consumption_amount"
+	lotteryPurchasePriceKey                = "lottery_purchase_price"
 	lotteryPrizeIDLength                   = 32
 	lotteryTicketSourceRefMaxLength        = 128
 	lotteryPrizeCooldownMaxSeconds         = 365 * 24 * 60 * 60
@@ -48,6 +50,17 @@ type LotteryStatus struct {
 	InvitationTicketsToday int  `json:"invitation_tickets_today"`
 	PurchasedTicketsToday  int  `json:"purchased_tickets_today"`
 	TicketDebt             int  `json:"ticket_debt"`
+}
+
+type LotteryTicketAdjustment struct {
+	Operation string `json:"operation"`
+	Count     int    `json:"count"`
+	Reference string `json:"reference"`
+	Reason    string `json:"reason"`
+}
+
+type LotteryTicketAdjustmentResult struct {
+	AvailableTickets int `json:"available_tickets"`
 }
 
 type LotteryDrawResult struct {
@@ -85,6 +98,7 @@ type LotteryPrizePoolConfig struct {
 	Prizes                       []LotteryPrizeConfig `json:"prizes"`
 	InvitationFirstPaymentAmount float64              `json:"invitation_first_payment_amount"`
 	InvitationConsumptionAmount  float64              `json:"invitation_consumption_amount"`
+	PurchasePrice                float64              `json:"purchase_price"`
 }
 
 // LotteryBalanceTransaction is an auditable wallet movement caused by the
@@ -144,6 +158,7 @@ func defaultLotteryPrizePoolConfig() LotteryPrizePoolConfig {
 		Enabled:                      lotteryEnabledPointer(true),
 		InvitationFirstPaymentAmount: 20,
 		InvitationConsumptionAmount:  100,
+		PurchasePrice:                defaultLotteryPurchasePrice,
 		Prizes: []LotteryPrizeConfig{
 			{ID: "none", Label: "谢谢参与", Type: "none", Probability: 0.529},
 			{ID: "quota-10", Label: "$10", Type: "balance", Amount: 10, Probability: 0.31, EligibleForPity: true},
@@ -241,6 +256,11 @@ func (s *LotteryService) GetPrizePoolConfig(ctx context.Context) (*LotteryPrizeP
 	}
 	config.InvitationFirstPaymentAmount = invitationRule.FirstPaymentAmount
 	config.InvitationConsumptionAmount = invitationRule.ConsumptionAmount
+	purchasePrice, err := s.getLotteryPurchasePrice(ctx, s.entClient)
+	if err != nil {
+		return nil, err
+	}
+	config.PurchasePrice = purchasePrice
 	var groupRaw string
 	groupErr := scanOne(ctx, s.entClient, `SELECT value FROM settings WHERE key = $1`, []any{lotterySubscriptionGroupKey}, &groupRaw)
 	if groupErr != nil && groupErr != sql.ErrNoRows {
@@ -299,6 +319,13 @@ func (s *LotteryService) UpdatePrizePoolConfig(ctx context.Context, config Lotte
 			config.InvitationConsumptionAmount = rule.ConsumptionAmount
 		}
 	}
+	if config.PurchasePrice == 0 {
+		purchasePrice, err := s.getLotteryPurchasePrice(ctx, s.entClient)
+		if err != nil {
+			return nil, err
+		}
+		config.PurchasePrice = purchasePrice
+	}
 	if config.Enabled == nil {
 		enabled, err := s.lotteryEnabled(ctx)
 		if err != nil {
@@ -351,6 +378,7 @@ func (s *LotteryService) UpdatePrizePoolConfig(ctx context.Context, config Lotte
 	for key, amount := range map[string]float64{
 		lotteryInvitationFirstPaymentAmountKey: config.InvitationFirstPaymentAmount,
 		lotteryInvitationConsumptionAmountKey:  config.InvitationConsumptionAmount,
+		lotteryPurchasePriceKey:                config.PurchasePrice,
 	} {
 		if _, err := client.ExecContext(ctx, `INSERT INTO settings (key, value, updated_at) VALUES ($1, $2, NOW()) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`, key, strconv.FormatFloat(amount, 'f', -1, 64)); err != nil {
 			return nil, fmt.Errorf("save lottery invitation rule: %w", err)
@@ -438,6 +466,9 @@ func newLotteryPrizeID() string {
 }
 
 func validateLotteryPrizePoolConfig(config LotteryPrizePoolConfig) error {
+	if err := validateLotteryPurchasePrice(config.PurchasePrice); err != nil {
+		return err
+	}
 	if err := validateLotteryInvitationRule(lotteryInvitationRule{
 		FirstPaymentAmount: config.InvitationFirstPaymentAmount,
 		ConsumptionAmount:  config.InvitationConsumptionAmount,
@@ -540,6 +571,35 @@ func (s *LotteryService) getLotteryInvitationRule(ctx context.Context) (lotteryI
 		return lotteryInvitationRule{}, err
 	}
 	return rule, nil
+}
+
+func validateLotteryPurchasePrice(price float64) error {
+	if math.IsNaN(price) || math.IsInf(price, 0) || price <= 0 || price > 1_000_000 || math.Abs(price*100-math.Round(price*100)) > 1e-8 {
+		return infraerrors.BadRequest("LOTTERY_PURCHASE_PRICE_INVALID", "lottery purchase price must be between 0 and 1000000 with at most two decimal places")
+	}
+	return nil
+}
+
+func (s *LotteryService) getLotteryPurchasePrice(ctx context.Context, client interface {
+	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
+}) (float64, error) {
+	price := defaultLotteryPurchasePrice
+	var raw string
+	err := scanOne(ctx, client, `SELECT value FROM settings WHERE key = $1`, []any{lotteryPurchasePriceKey}, &raw)
+	if err == sql.ErrNoRows {
+		return price, nil
+	}
+	if err != nil {
+		return 0, fmt.Errorf("get lottery purchase price: %w", err)
+	}
+	price, err = strconv.ParseFloat(strings.TrimSpace(raw), 64)
+	if err != nil {
+		return 0, infraerrors.ServiceUnavailable("LOTTERY_PURCHASE_PRICE_INVALID", "lottery purchase price is invalid")
+	}
+	if err := validateLotteryPurchasePrice(price); err != nil {
+		return 0, infraerrors.ServiceUnavailable("LOTTERY_PURCHASE_PRICE_INVALID", "lottery purchase price is invalid")
+	}
+	return price, nil
 }
 
 func validateLotteryInvitationRule(rule lotteryInvitationRule) error {
@@ -769,13 +829,17 @@ func (s *LotteryService) PurchaseTicket(ctx context.Context, userID int64, reque
 	if state.PurchaseCount >= lotteryPurchaseDailyLimit {
 		return nil, infraerrors.TooManyRequests("LOTTERY_PURCHASE_LIMIT", "daily lottery ticket purchase limit reached")
 	}
+	purchasePrice, err := s.getLotteryPurchasePrice(txCtx, client)
+	if err != nil {
+		return nil, err
+	}
 
 	var before, after float64
 	err = scanOne(txCtx, client, `
 UPDATE users
 SET balance = balance - $1, updated_at = NOW()
 WHERE id = $2 AND deleted_at IS NULL AND status = 'active' AND balance >= $1
-RETURNING balance + $1, balance`, []any{lotteryPurchasePrice, userID}, &before, &after)
+RETURNING balance + $1, balance`, []any{purchasePrice, userID}, &before, &after)
 	if err == sql.ErrNoRows {
 		return nil, infraerrors.BadRequest("INSUFFICIENT_BALANCE", "insufficient balance to purchase lottery ticket")
 	}
@@ -784,7 +848,7 @@ RETURNING balance + $1, balance`, []any{lotteryPurchasePrice, userID}, &before, 
 	}
 	if _, err := client.ExecContext(txCtx, `
 INSERT INTO balance_transactions (user_id, transaction_type, amount, balance_before, balance_after, source_type, source_id, description)
-VALUES ($1, 'lottery_ticket_purchase', $2, $3, $4, 'lottery_purchase', $5, '购买抽奖次数')`, userID, -lotteryPurchasePrice, before, after, ref); err != nil {
+VALUES ($1, 'lottery_ticket_purchase', $2, $3, $4, 'lottery_purchase', $5, '购买抽奖次数')`, userID, -purchasePrice, before, after, ref); err != nil {
 		return nil, fmt.Errorf("record lottery purchase balance transaction: %w", err)
 	}
 	if _, err := s.addTicketsLocked(txCtx, client, userID, &state, 1, "purchase", ref, nil, nil, nil, nil); err != nil {
@@ -1216,6 +1280,99 @@ LIMIT 1`, []any{groupID}, &price)
 	return price * 10, nil
 }
 
+func (s *LotteryService) AdjustTickets(ctx context.Context, userID int64, adjustment LotteryTicketAdjustment) (*LotteryTicketAdjustmentResult, error) {
+	if err := validateLotteryTicketAdjustment(userID, &adjustment); err != nil {
+		return nil, err
+	}
+
+	tx, err := s.entClient.Tx(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("begin lottery ticket adjustment transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	txCtx := dbent.NewTxContext(ctx, tx)
+	client := tx.Client()
+	state, err := s.lockState(txCtx, client, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	if adjustment.Operation == "add" {
+		created, err := s.addAdminAdjustmentTicketsLocked(txCtx, client, userID, &state, adjustment.Count, adjustment.Reference, adjustment.Reason)
+		if err != nil {
+			return nil, err
+		}
+		if !created {
+			available, err := s.countAvailableTickets(txCtx, client, userID)
+			if err != nil {
+				return nil, err
+			}
+			if err := tx.Commit(); err != nil {
+				return nil, fmt.Errorf("commit lottery ticket adjustment replay: %w", err)
+			}
+			return &LotteryTicketAdjustmentResult{AvailableTickets: available}, nil
+		}
+	} else {
+		marker, err := client.ExecContext(txCtx, `
+			INSERT INTO lottery_ticket_ledger (user_id, delta, remaining, source_type, source_ref, adjustment_reason)
+			VALUES ($1, $2, 0, 'admin_adjustment', $3, $4)
+			ON CONFLICT (source_type, source_ref) DO NOTHING`, userID, -adjustment.Count, adjustment.Reference, adjustment.Reason)
+		if err != nil {
+			return nil, fmt.Errorf("create lottery ticket adjustment ledger marker: %w", err)
+		}
+		created, err := marker.RowsAffected()
+		if err != nil {
+			return nil, err
+		}
+		if created == 0 {
+			available, err := s.countAvailableTickets(txCtx, client, userID)
+			if err != nil {
+				return nil, err
+			}
+			if err := tx.Commit(); err != nil {
+				return nil, fmt.Errorf("commit lottery ticket adjustment replay: %w", err)
+			}
+			return &LotteryTicketAdjustmentResult{AvailableTickets: available}, nil
+		}
+		if err := s.consumeTicketsLocked(txCtx, client, userID, adjustment.Count); err != nil {
+			return nil, err
+		}
+		available, err := s.countAvailableTickets(txCtx, client, userID)
+		if err != nil {
+			return nil, err
+		}
+		if _, err := client.ExecContext(txCtx, `UPDATE lottery_user_states SET available_tickets = $2, updated_at = NOW(), version = version + 1 WHERE user_id = $1`, userID, available); err != nil {
+			return nil, err
+		}
+		state.AvailableTickets = available
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("commit lottery ticket adjustment: %w", err)
+	}
+	return &LotteryTicketAdjustmentResult{AvailableTickets: state.AvailableTickets}, nil
+}
+
+func validateLotteryTicketAdjustment(userID int64, adjustment *LotteryTicketAdjustment) error {
+	if userID <= 0 {
+		return infraerrors.BadRequest("LOTTERY_INVALID_USER", "invalid lottery user")
+	}
+	if adjustment == nil || adjustment.Count <= 0 {
+		return infraerrors.BadRequest("LOTTERY_INVALID_ADJUSTMENT", "ticket count must be positive")
+	}
+	if adjustment.Operation != "add" && adjustment.Operation != "subtract" {
+		return infraerrors.BadRequest("LOTTERY_INVALID_ADJUSTMENT", "ticket operation must be add or subtract")
+	}
+	adjustment.Reference = strings.TrimSpace(adjustment.Reference)
+	adjustment.Reason = strings.TrimSpace(adjustment.Reason)
+	if adjustment.Reference == "" || adjustment.Reason == "" {
+		return infraerrors.BadRequest("LOTTERY_INVALID_ADJUSTMENT", "ticket adjustment reference and reason are required")
+	}
+	if len(adjustment.Reference) > lotteryTicketSourceRefMaxLength || utf8.RuneCountInString(adjustment.Reason) > 500 {
+		return infraerrors.BadRequest("LOTTERY_INVALID_ADJUSTMENT", "ticket adjustment reference or reason is too long")
+	}
+	return nil
+}
+
 func (s *LotteryService) consumeTicketLocked(ctx context.Context, client interface {
 	ExecContext(context.Context, string, ...any) (sql.Result, error)
 	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
@@ -1237,6 +1394,100 @@ ORDER BY expires_at NULLS LAST, id FOR UPDATE LIMIT 1`, []any{userID}, &id, &rem
 	}
 	_, err = client.ExecContext(ctx, `UPDATE lottery_ticket_ledger SET remaining = $2 WHERE id = $1`, id, remaining-1)
 	return err
+}
+
+func (s *LotteryService) consumeTicketsLocked(ctx context.Context, client interface {
+	ExecContext(context.Context, string, ...any) (sql.Result, error)
+	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
+}, userID int64, count int) error {
+	if count <= 0 {
+		return infraerrors.BadRequest("LOTTERY_INVALID_ADJUSTMENT", "ticket count must be positive")
+	}
+	if _, err := client.ExecContext(ctx, `UPDATE lottery_ticket_ledger SET remaining = 0 WHERE user_id = $1 AND remaining > 0 AND expires_at IS NOT NULL AND expires_at <= NOW()`, userID); err != nil {
+		return err
+	}
+	rows, err := client.QueryContext(ctx, `
+		SELECT id, remaining
+		FROM lottery_ticket_ledger
+		WHERE user_id = $1 AND remaining > 0 AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at > NOW())
+		ORDER BY expires_at NULLS LAST, id
+		FOR UPDATE`, userID)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = rows.Close() }()
+
+	type ticket struct {
+		id        int64
+		remaining int
+	}
+	tickets := make([]ticket, 0)
+	available := 0
+	for rows.Next() {
+		var item ticket
+		if err := rows.Scan(&item.id, &item.remaining); err != nil {
+			return err
+		}
+		tickets = append(tickets, item)
+		available += item.remaining
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	if available < count {
+		return infraerrors.BadRequest("LOTTERY_INSUFFICIENT_TICKETS", "insufficient lottery tickets available")
+	}
+
+	remainingToConsume := count
+	for _, item := range tickets {
+		if remainingToConsume == 0 {
+			break
+		}
+		consumed := lotteryMin(item.remaining, remainingToConsume)
+		if _, err := client.ExecContext(ctx, `UPDATE lottery_ticket_ledger SET remaining = $2 WHERE id = $1`, item.id, item.remaining-consumed); err != nil {
+			return err
+		}
+		remainingToConsume -= consumed
+	}
+	return nil
+}
+
+func (s *LotteryService) addAdminAdjustmentTicketsLocked(ctx context.Context, client interface {
+	ExecContext(context.Context, string, ...any) (sql.Result, error)
+	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
+}, userID int64, state *lotteryUserState, count int, sourceRef, reason string) (bool, error) {
+	if count <= 0 {
+		return false, nil
+	}
+	remaining := count
+	if state.TicketDebt > 0 {
+		offset := lotteryMin(state.TicketDebt, remaining)
+		state.TicketDebt -= offset
+		remaining -= offset
+	}
+	result, err := client.ExecContext(ctx, `
+		INSERT INTO lottery_ticket_ledger (user_id, delta, remaining, source_type, source_ref, adjustment_reason)
+		VALUES ($1, $2, $3, 'admin_adjustment', $4, $5)
+		ON CONFLICT (source_type, source_ref) DO NOTHING`, userID, count, remaining, sourceRef, reason)
+	if err != nil {
+		return false, fmt.Errorf("create lottery ticket adjustment ledger: %w", err)
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return false, err
+	}
+	if affected == 0 {
+		return false, nil
+	}
+	available, err := s.countAvailableTickets(ctx, client, userID)
+	if err != nil {
+		return false, err
+	}
+	state.AvailableTickets = available
+	if _, err := client.ExecContext(ctx, `UPDATE lottery_user_states SET available_tickets = $2, ticket_debt = $3, updated_at = NOW(), version = version + 1 WHERE user_id = $1`, userID, available, state.TicketDebt); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 func (s *LotteryService) addTicketsLocked(ctx context.Context, client interface {

@@ -72,8 +72,8 @@
               </article>
               <article class="lottery-action-card">
                 <div class="lottery-action-heading"><div class="lottery-action-icon lottery-action-icon--amber"><Icon name="sparkles" size="md" /></div><h3>购买抽奖</h3></div>
-                <p>今日已获 <span class="font-semibold" :class="dailyTicketProgressClass(purchasedTicketsToday, 5)">{{ purchasedTicketsToday }} / 5</span> 次<br>$30 / 次</p>
-                <button type="button" :disabled="!canPurchaseTicket || drawing || purchasing" @click="openPurchaseDialog">{{ remainingPurchases === 0 ? '今日已达上限' : '$30 购买次数' }} <Icon v-if="remainingPurchases > 0" name="chevronRight" size="xs" /></button>
+                <p>今日已获 <span class="font-semibold" :class="dailyTicketProgressClass(purchasedTicketsToday, 5)">{{ purchasedTicketsToday }} / 5</span> 次<br>{{ formattedPurchasePrice }} / 次</p>
+                <button type="button" :disabled="!canPurchaseTicket || drawing || purchasing" @click="openPurchaseDialog">{{ remainingPurchases === 0 ? '今日已达上限' : `${formattedPurchasePrice} 购买次数` }} <Icon v-if="remainingPurchases > 0" name="chevronRight" size="xs" /></button>
               </article>
             </div>
           </div>
@@ -82,10 +82,10 @@
             <div class="flex items-center justify-between gap-3">
               <h2 class="text-lg font-bold text-slate-950 dark:text-white">获取次数</h2>
             </div>
-            <p class="mt-3 text-sm leading-6 text-slate-500 dark:text-dark-300">每次扣除 $30 账户余额，购买后立即增加 1 次抽奖机会。</p>
+            <p class="mt-3 text-sm leading-6 text-slate-500 dark:text-dark-300">每次扣除 {{ formattedPurchasePrice }} 账户余额，购买后立即增加 1 次抽奖机会。</p>
             <p v-if="ticketDebt > 0" class="mt-2 text-xs leading-5 text-amber-600 dark:text-amber-300">存在 {{ ticketDebt }} 次待抵扣次数，获得新次数后会优先抵扣。</p>
             <button class="lottery-primary-button mt-5" type="button" @click="router.push('/wallet')"><Icon name="creditCard" size="sm" /><span>充值获取次数</span></button>
-            <button class="lottery-secondary-button mt-3" type="button" :disabled="!canPurchaseTicket || drawing || purchasing" @click="openPurchaseDialog"><Icon name="sparkles" size="sm" /><span>$30 购买次数</span><small class="lottery-purchase-remaining">剩余 {{ remainingPurchases }} 次</small></button>
+            <button class="lottery-secondary-button mt-3" type="button" :disabled="!canPurchaseTicket || drawing || purchasing" @click="openPurchaseDialog"><Icon name="sparkles" size="sm" /><span>{{ formattedPurchasePrice }} 购买次数</span><small class="lottery-purchase-remaining">剩余 {{ remainingPurchases }} 次</small></button>
           </aside>
         </section>
 
@@ -146,11 +146,11 @@
 
       <BaseDialog :show="showPurchaseDialog" title="确认购买抽奖次数" width="narrow" @close="closePurchaseDialog">
         <div class="lottery-purchase-summary">
-          <div><span>支付金额</span><strong>$30</strong></div>
+          <div><span>支付金额</span><strong>{{ formattedPurchasePrice }}</strong></div>
           <div><span>支付后余额</span><strong>${{ balanceAfterPurchase.toFixed(2) }}</strong></div>
           <div><span>到账内容</span><strong>抽奖次数 +1</strong></div>
         </div>
-        <p class="mt-4 text-sm leading-6 text-slate-500 dark:text-dark-300">付款后将从可用额度中扣除 $30，并立即增加 1 次抽奖机会。</p>
+        <p class="mt-4 text-sm leading-6 text-slate-500 dark:text-dark-300">付款后将从可用额度中扣除 {{ formattedPurchasePrice }}，并立即增加 1 次抽奖机会。</p>
         <template #footer>
           <button class="btn btn-secondary" type="button" :disabled="purchasing" @click="closePurchaseDialog">取消</button>
           <button class="btn btn-primary" type="button" :disabled="purchasing" @click="confirmPurchase">{{ purchasing ? '处理中' : '确认付款' }}</button>
@@ -198,6 +198,7 @@ const showInviteRequirement = ref(false)
 const inviteRequirementElement = ref<HTMLElement | null>(null)
 const invitationFirstPaymentAmount = ref(20)
 const invitationConsumptionAmount = ref(100)
+const purchasePrice = ref(30)
 const lastResult = ref<DisplayResult | null>(null)
 const history = ref<DrawHistoryItem[]>([])
 const pendingHistoryItem = ref<DrawHistoryItem | null>(null)
@@ -257,8 +258,9 @@ const wheelJackpotGlowStyle = computed<Record<string, string> | null>(() => {
 })
 const resultTitle = computed(() => lastResult.value?.prize.kind === 'none' ? '再接再厉' : '恭喜中奖')
 const availableBalance = computed(() => Number(authStore.user?.balance || 0))
-const balanceAfterPurchase = computed(() => Math.max(availableBalance.value - 30, 0))
-const canPurchaseTicket = computed(() => remainingPurchases.value > 0 && availableBalance.value >= 30)
+const formattedPurchasePrice = computed(() => formatLotteryPurchasePrice(purchasePrice.value))
+const balanceAfterPurchase = computed(() => Math.max(availableBalance.value - purchasePrice.value, 0))
+const canPurchaseTicket = computed(() => remainingPurchases.value > 0 && availableBalance.value >= purchasePrice.value)
 
 function wheelLabelPositionStyle(index: number): Record<string, string> {
   const angle = index * (360 / Math.max(wheelPrizes.value.length, 1))
@@ -319,6 +321,10 @@ function mapPrizeConfig(config: LotteryPrizeConfig[]): LotteryPrize[] {
 function formatInvitationAmount(amount: number): string {
   const normalized = Math.max(0, Number(amount) || 0)
   return Number.isInteger(normalized) ? String(normalized) : normalized.toFixed(2).replace(/0+$/, '').replace(/\.$/, '')
+}
+
+function formatLotteryPurchasePrice(amount: number): string {
+  return `$${formatInvitationAmount(amount)}`
 }
 
 function redeemStatusLabel(status?: LotteryDraw['redeem_status']): string {
@@ -395,6 +401,7 @@ async function refreshLottery(): Promise<void> {
   prizePool.value = mapPrizeConfig(prizeResponse.data.prizes)
   invitationFirstPaymentAmount.value = Number(prizeResponse.data.invitation_first_payment_amount) || 20
   invitationConsumptionAmount.value = Number(prizeResponse.data.invitation_consumption_amount) || 100
+  purchasePrice.value = Number(prizeResponse.data.purchase_price) || 30
 }
 
 async function refreshPrizePool(): Promise<void> {
@@ -402,6 +409,7 @@ async function refreshPrizePool(): Promise<void> {
   prizePool.value = mapPrizeConfig(response.data.prizes)
   invitationFirstPaymentAmount.value = Number(response.data.invitation_first_payment_amount) || 20
   invitationConsumptionAmount.value = Number(response.data.invitation_consumption_amount) || 100
+  purchasePrice.value = Number(response.data.purchase_price) || 30
 }
 
 function closeResultDialog(): void {
@@ -419,7 +427,7 @@ function openPurchaseDialog(): void {
     appStore.showError('今日购买抽奖次数已达上限')
     return
   }
-  if (availableBalance.value < 30) {
+  if (availableBalance.value < purchasePrice.value) {
     appStore.showError('账户余额不足，无法购买抽奖次数')
     return
   }
@@ -458,7 +466,7 @@ async function confirmPurchase(): Promise<void> {
 async function draw(): Promise<void> {
   if (drawing.value) return
   if (freeTickets.value <= 0) {
-    appStore.showInfo('暂无剩余抽奖次数，可使用 $30 购买 1 次')
+    appStore.showInfo(`暂无剩余抽奖次数，可使用 ${formattedPurchasePrice.value} 购买 1 次`)
     return
   }
   drawing.value = true

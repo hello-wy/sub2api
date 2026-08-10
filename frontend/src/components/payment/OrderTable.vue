@@ -21,6 +21,9 @@
         <div v-if="subscriptionPlanName(row)" class="text-xs text-gray-500">
           {{ subscriptionPlanName(row) }}
         </div>
+        <div v-else-if="row.order_type === 'lottery'" class="text-xs text-gray-500">
+          {{ t('payment.admin.lotteryOrder') }} · {{ t('payment.admin.lotteryChances', { count: row.ticket_count || 1 }) }}
+        </div>
         <div v-else-if="row.amount !== row.pay_amount" class="text-xs text-gray-500">
           {{ t('payment.orders.creditedAmount') }}: {{ creditedAmountSymbol }}{{ row.amount.toFixed(2) }}
         </div>
@@ -44,7 +47,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import type { PaymentOrder } from '@/types/payment'
+import type { AdminOrder, PaymentOrder } from '@/types/payment'
 import type { Column } from '@/components/common/types'
 import DataTable from '@/components/common/DataTable.vue'
 import OrderStatusBadge from '@/components/payment/OrderStatusBadge.vue'
@@ -53,7 +56,7 @@ import { currencySymbol } from '@/components/payment/currency'
 const { t } = useI18n()
 
 const props = defineProps<{
-  orders: PaymentOrder[]
+  orders: Array<PaymentOrder | AdminOrder>
   loading: boolean
   showUser?: boolean
   subscriptionPlanNames?: Record<number, string>
@@ -63,12 +66,12 @@ function formatDate(dateStr: string) { return new Date(dateStr).toLocaleString()
 
 const creditedAmountSymbol = currencySymbol('USD')
 
-function paymentAmountSymbol(order: PaymentOrder): string {
+function paymentAmountSymbol(order: PaymentOrder | AdminOrder): string {
   if (order.payment_type === 'balance') return creditedAmountSymbol
   return currencySymbol(order.currency)
 }
 
-function subscriptionPlanName(order: PaymentOrder): string | undefined {
+function subscriptionPlanName(order: PaymentOrder | AdminOrder): string | undefined {
   if (order.order_type !== 'subscription' || !order.plan_id) return undefined
   return props.subscriptionPlanNames?.[order.plan_id]
 }

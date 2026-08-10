@@ -92,6 +92,21 @@ func ProvideAdminHandlers(
 
 // ProvideDashboardHandler attaches optional operational analytics without
 // changing NewDashboardHandler's long-standing test-facing constructor.
+func ProvideAdminUserHandler(
+	adminService service.AdminService,
+	concurrencyService *service.ConcurrencyService,
+	userPlatformQuotaRepo service.UserPlatformQuotaRepository,
+	billingCache service.BillingCache,
+	totpService *service.TotpService,
+	userService *service.UserService,
+	settingService *service.SettingService,
+	lotteryService *service.LotteryService,
+) *admin.UserHandler {
+	h := admin.NewUserHandler(adminService, concurrencyService, userPlatformQuotaRepo, billingCache, totpService, userService, settingService)
+	h.SetLotteryService(lotteryService)
+	return h
+}
+
 func ProvideDashboardHandler(
 	dashboardService *service.DashboardService,
 	aggregationService *service.DashboardAggregationService,
@@ -269,7 +284,7 @@ var ProviderSet = wire.NewSet(
 
 	// Admin handlers
 	ProvideDashboardHandler,
-	admin.NewUserHandler,
+	ProvideAdminUserHandler,
 	admin.NewGroupHandler,
 	admin.ProvideAccountHandler,
 	admin.NewAnnouncementHandler,

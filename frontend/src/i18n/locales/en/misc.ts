@@ -310,6 +310,7 @@ export default {
       link: 'Link',
       alipay_direct: 'Alipay (Direct)',
       wxpay_direct: 'WeChat Pay (Direct)',
+      balance: 'Account Balance',
     },
     status: {
       pending: 'Pending',
@@ -515,6 +516,10 @@ export default {
       orders: 'Orders',
       balanceOrder: 'Balance Top-Up',
       subscriptionOrder: 'Subscription',
+      lotteryOrder: 'Lucky Lottery',
+      lotteryChances: '{count} lottery chance(s)',
+      lotteryChancesLabel: 'Lottery Chances',
+      purchaseReference: 'Purchase Reference',
       paidAt: 'Paid At',
       completedAt: 'Completed At',
       expiresAt: 'Expires At',

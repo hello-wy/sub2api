@@ -2,10 +2,13 @@ package admin
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"log/slog"
 	"math"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -35,9 +38,14 @@ type UserHandler struct {
 	totpService           *service.TotpService                // 角色提升为管理员的 step-up 门控
 	userService           *service.UserService
 	settingService        *service.SettingService // step-up 功能开关
+	lotteryService        *service.LotteryService
 }
 
 // NewUserHandler creates a new admin user handler
+func (h *UserHandler) SetLotteryService(lotteryService *service.LotteryService) {
+	h.lotteryService = lotteryService
+}
+
 func NewUserHandler(
 	adminService service.AdminService,
 	concurrencyService *service.ConcurrencyService,
@@ -100,6 +108,12 @@ type UpdateBalanceRequest struct {
 	Balance   float64 `json:"balance" binding:"required,gt=0"`
 	Operation string  `json:"operation" binding:"required,oneof=set add subtract"`
 	Notes     string  `json:"notes"`
+}
+
+type AdjustLotteryTicketsRequest struct {
+	Count     int    `json:"count" binding:"required,gt=0"`
+	Operation string `json:"operation" binding:"required,oneof=add subtract"`
+	Reason    string `json:"reason" binding:"required,max=500"`
 }
 
 type BindUserAuthIdentityRequest struct {
@@ -447,6 +461,52 @@ func (h *UserHandler) UpdateBalance(c *gin.Context) {
 		}
 		return dto.UserFromServiceAdmin(user), nil
 	})
+}
+
+// AdjustLotteryTickets handles an auditable lottery-ticket inventory adjustment.
+// POST /api/v1/admin/users/:id/lottery-tickets
+func (h *UserHandler) AdjustLotteryTickets(c *gin.Context) {
+	if h.lotteryService == nil {
+		response.Error(c, http.StatusServiceUnavailable, "Lottery service is unavailable")
+		return
+	}
+	userID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.BadRequest(c, "Invalid user ID")
+		return
+	}
+	var req AdjustLotteryTicketsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+	req.Reason = strings.TrimSpace(req.Reason)
+	if req.Reason == "" {
+		response.BadRequest(c, "Reason is required")
+		return
+	}
+
+	idempotencyPayload := struct {
+		UserID int64                       `json:"user_id"`
+		Body   AdjustLotteryTicketsRequest `json:"body"`
+	}{UserID: userID, Body: req}
+	executeAdminIdempotentJSON(c, "admin.users.lottery_tickets.adjust", idempotencyPayload, service.DefaultWriteIdempotencyTTL(), func(ctx context.Context) (any, error) {
+		result, execErr := h.lotteryService.AdjustTickets(ctx, userID, service.LotteryTicketAdjustment{
+			Operation: req.Operation,
+			Count:     req.Count,
+			Reference: lotteryTicketAdjustmentReference(adminActorScope(c), c.GetHeader("Idempotency-Key")),
+			Reason:    req.Reason,
+		})
+		if execErr == nil {
+			InvalidateUserAttributesBatchCache()
+		}
+		return result, execErr
+	})
+}
+
+func lotteryTicketAdjustmentReference(actorScope, idempotencyKey string) string {
+	sum := sha256.Sum256([]byte(actorScope + "\x00" + idempotencyKey))
+	return "admin-adjustment:" + hex.EncodeToString(sum[:])
 }
 
 // GetUserAPIKeys handles getting user's API keys

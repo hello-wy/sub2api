@@ -167,7 +167,7 @@
 import { reactive, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseDialog from '@/components/common/BaseDialog.vue'
-import type { PaymentOrder } from '@/types/payment'
+import type { AdminOrder, PaymentOrder } from '@/types/payment'
 import { formatOrderDateTime } from '@/components/payment/orderUtils'
 import { currencySymbol } from '@/components/payment/currency'
 
@@ -175,7 +175,7 @@ const { t } = useI18n()
 
 const props = defineProps<{
   show: boolean
-  order: PaymentOrder | null
+  order: PaymentOrder | AdminOrder | null
   submitting?: boolean
   userBalance?: number | null
   requireForce?: boolean

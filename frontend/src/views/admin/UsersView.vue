@@ -720,6 +720,14 @@
                 {{ t('admin.users.withdraw') }}
               </button>
 
+              <button
+                @click="handleLotteryTickets(user); closeActionMenu()"
+                class="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-dark-700"
+              >
+                <Icon name="gift" size="sm" class="text-violet-500" :stroke-width="2" />
+                {{ t('admin.users.adjustLotteryTickets') }}
+              </button>
+
               <!-- Platform Quotas -->
               <button
                 @click="handlePlatformQuota(user); closeActionMenu()"
@@ -773,6 +781,13 @@
     <UserApiKeysModal :show="showApiKeysModal" :user="viewingUser" @close="closeApiKeysModal" />
     <UserAllowedGroupsModal :show="showAllowedGroupsModal" :user="allowedGroupsUser" @close="closeAllowedGroupsModal" @success="loadUsers" />
     <UserBalanceModal :show="showBalanceModal" :user="balanceUser" :operation="balanceOperation" @close="closeBalanceModal" @success="loadUsers" />
+    <UserLotteryTicketsModal
+      :show="showLotteryTicketsModal"
+      :user="lotteryTicketsUser"
+      :available-tickets="getLotteryAvailableTickets(lotteryTicketsUser?.id)"
+      @close="closeLotteryTicketsModal"
+      @success="loadUsers"
+    />
     <UserBalanceHistoryModal :show="showBalanceHistoryModal" :user="balanceHistoryUser" @close="closeBalanceHistoryModal" @deposit="handleDepositFromHistory" @withdraw="handleWithdrawFromHistory" />
     <GroupReplaceModal :show="showGroupReplaceModal" :user="groupReplaceUser" :old-group="groupReplaceOldGroup" :all-groups="allGroups" @close="closeGroupReplaceModal" @success="loadUsers" />
     <UserAttributesConfigModal :show="showAttributesModal" @close="handleAttributesModalClose" />
@@ -816,6 +831,7 @@ import UserPlatformQuotaModal from '@/components/admin/user/UserPlatformQuotaMod
 import UserApiKeysModal from '@/components/admin/user/UserApiKeysModal.vue'
 import UserAllowedGroupsModal from '@/components/admin/user/UserAllowedGroupsModal.vue'
 import UserBalanceModal from '@/components/admin/user/UserBalanceModal.vue'
+import UserLotteryTicketsModal from '@/components/admin/user/UserLotteryTicketsModal.vue'
 import UserBalanceHistoryModal from '@/components/admin/user/UserBalanceHistoryModal.vue'
 import GroupReplaceModal from '@/components/admin/user/GroupReplaceModal.vue'
 
@@ -1321,6 +1337,13 @@ const getUserSelectionLabel = (user: AdminUser) =>
 // User attribute definitions and values
 const attributeDefinitions = ref<UserAttributeDefinition[]>([])
 const userAttributeValues = ref<Record<number, Record<number, string>>>({})
+const lotteryTicketsAttribute = computed(() =>
+  attributeDefinitions.value.find((definition) => definition.key === 'lottery_available_tickets'),
+)
+const getLotteryAvailableTickets = (userID?: number) => {
+  if (!userID || !lotteryTicketsAttribute.value) return 0
+  return Number(userAttributeValues.value[userID]?.[lotteryTicketsAttribute.value.id] ?? 0) || 0
+}
 const pagination = reactive({
   page: 1,
   page_size: getPersistedPageSize(),
@@ -1377,7 +1400,7 @@ const loadUsersSecondaryData = async (
     )
   }
 
-  if (attributeDefinitions.value.length > 0 && hasVisibleAttributeColumns.value) {
+  if (attributeDefinitions.value.length > 0 && (hasVisibleAttributeColumns.value || lotteryTicketsAttribute.value)) {
     tasks.push(
       (async () => {
         try {
@@ -1541,6 +1564,9 @@ const groupReplaceOldGroup = ref<{ id: number; name: string } | null>(null)
 const showBalanceModal = ref(false)
 const balanceUser = ref<AdminUser | null>(null)
 const balanceOperation = ref<'add' | 'subtract'>('add')
+
+const showLotteryTicketsModal = ref(false)
+const lotteryTicketsUser = ref<AdminUser | null>(null)
 
 // Balance History modal state
 const showBalanceHistoryModal = ref(false)
@@ -1810,6 +1836,16 @@ const handleWithdraw = (user: AdminUser) => {
 const closeBalanceModal = () => {
   showBalanceModal.value = false
   balanceUser.value = null
+}
+
+const handleLotteryTickets = (user: AdminUser) => {
+  lotteryTicketsUser.value = user
+  showLotteryTicketsModal.value = true
+}
+
+const closeLotteryTicketsModal = () => {
+  showLotteryTicketsModal.value = false
+  lotteryTicketsUser.value = null
 }
 
 const handleBalanceHistory = (user: AdminUser) => {

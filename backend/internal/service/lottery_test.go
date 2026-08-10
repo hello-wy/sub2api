@@ -5,6 +5,7 @@ import (
 	"math"
 	"strings"
 	"testing"
+	"unicode/utf8"
 )
 
 type lotteryBillingCacheInvalidatorStub struct {
@@ -49,6 +50,9 @@ func TestDefaultLotteryPrizePoolProbabilitiesTotalOne(t *testing.T) {
 	if pool.InvitationFirstPaymentAmount != 20 || pool.InvitationConsumptionAmount != 100 {
 		t.Fatalf("default invitation rule = (%v, %v), want (20, 100)", pool.InvitationFirstPaymentAmount, pool.InvitationConsumptionAmount)
 	}
+	if pool.PurchasePrice != defaultLotteryPurchasePrice {
+		t.Fatalf("default purchase price = %v, want %v", pool.PurchasePrice, defaultLotteryPurchasePrice)
+	}
 	var total int64
 	for _, prize := range pool.Prizes {
 		units, ok := lotteryProbabilityUnits(prize.Probability)
@@ -59,6 +63,19 @@ func TestDefaultLotteryPrizePoolProbabilitiesTotalOne(t *testing.T) {
 	}
 	if total != lotteryProbabilityScale {
 		t.Fatalf("probability units = %d, want %d", total, lotteryProbabilityScale)
+	}
+}
+
+func TestValidateLotteryPurchasePrice(t *testing.T) {
+	for _, price := range []float64{0.01, 12.5, 30, 1_000_000} {
+		if err := validateLotteryPurchasePrice(price); err != nil {
+			t.Fatalf("valid purchase price %v rejected: %v", price, err)
+		}
+	}
+	for _, price := range []float64{0, -1, math.NaN(), math.Inf(1), 1_000_000.01, 12.345} {
+		if err := validateLotteryPurchasePrice(price); err == nil {
+			t.Fatalf("invalid purchase price %v accepted", price)
+		}
 	}
 }
 
@@ -80,6 +97,28 @@ func TestValidateLotteryRequestID(t *testing.T) {
 	}
 	if err := validateLotteryRequestID("lottery-request-123"); err != nil {
 		t.Fatalf("valid idempotency key rejected: %v", err)
+	}
+}
+
+func TestValidateLotteryTicketAdjustment(t *testing.T) {
+	validReference := strings.Repeat("a", lotteryTicketSourceRefMaxLength)
+	validReason := strings.Repeat("原", 500)
+	adjustment := LotteryTicketAdjustment{Operation: "add", Count: 1, Reference: validReference, Reason: validReason}
+	if err := validateLotteryTicketAdjustment(42, &adjustment); err != nil {
+		t.Fatalf("valid ticket adjustment rejected: %v", err)
+	}
+	if utf8.RuneCountInString(adjustment.Reason) != 500 {
+		t.Fatal("reason should preserve its rune length")
+	}
+	for _, adjustment := range []*LotteryTicketAdjustment{
+		{Operation: "add", Count: 0, Reference: "ref", Reason: "reason"},
+		{Operation: "set", Count: 1, Reference: "ref", Reason: "reason"},
+		{Operation: "subtract", Count: 1, Reference: strings.Repeat("a", lotteryTicketSourceRefMaxLength+1), Reason: "reason"},
+		{Operation: "subtract", Count: 1, Reference: "ref", Reason: strings.Repeat("原", 501)},
+	} {
+		if err := validateLotteryTicketAdjustment(42, adjustment); err == nil {
+			t.Fatalf("invalid ticket adjustment accepted: %+v", adjustment)
+		}
 	}
 }
 
@@ -121,6 +160,12 @@ func TestValidateLotteryPrizePoolConfig(t *testing.T) {
 	}}
 	if err := validateLotteryPrizePoolConfig(invalidSubscription); err == nil {
 		t.Fatal("subscription prize without a group must be rejected")
+	}
+
+	invalidPurchasePrice := defaultLotteryPrizePoolConfig()
+	invalidPurchasePrice.PurchasePrice = 12.345
+	if err := validateLotteryPrizePoolConfig(invalidPurchasePrice); err == nil {
+		t.Fatal("pool with invalid purchase price must be rejected")
 	}
 
 	invalidTotal := defaultLotteryPrizePoolConfig()

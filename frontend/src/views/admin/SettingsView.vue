@@ -8293,6 +8293,15 @@
               </section>
               <section class="rounded-lg border border-gray-100 bg-gray-50/60 p-4 dark:border-dark-700 dark:bg-dark-800/50">
                 <div>
+                  <h3 class="text-sm font-semibold text-gray-900 dark:text-white">{{ localText("购买抽奖次数", "Ticket purchase") }}</h3>
+                  <p class="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">{{ localText("每购买 1 次抽奖机会从用户可用额度扣除的金额。", "Amount deducted from a user's available balance for each ticket.") }}</p>
+                </div>
+                <div class="mt-4 max-w-sm">
+                  <label class="block"><span class="mb-1.5 block text-xs font-medium text-gray-700 dark:text-dark-200">{{ localText("购买价格", "Purchase price") }}</span><div class="relative"><span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span><input v-model.number="lotteryPrizePoolSettings.purchase_price" type="number" min="0.01" max="1000000" step="0.01" class="input pl-7 tabular-nums" /></div></label>
+                </div>
+              </section>
+              <section class="rounded-lg border border-gray-100 bg-gray-50/60 p-4 dark:border-dark-700 dark:bg-dark-800/50">
+                <div>
                   <h3 class="text-sm font-semibold text-gray-900 dark:text-white">{{ localText("邀请奖励条件", "Invitation reward conditions") }}</h3>
                   <p class="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">{{ localText("受邀用户的首笔成功人民币余额充值或订阅套餐订单达到首充金额，且累计实际消费达到设定值后，邀请人才会获得 2 次抽奖机会。", "The inviter receives two tickets only after the invitee's first completed CNY balance recharge or subscription order reaches the first-payment amount and cumulative actual usage reaches the threshold.") }}</p>
                 </div>
@@ -8974,6 +8983,7 @@ const lotteryPrizePoolSettings = reactive<LotteryPrizePoolSettings>({
   prizes: [],
   invitation_first_payment_amount: 20,
   invitation_consumption_amount: 100,
+  purchase_price: 30,
 });
 
 const operationsSubTabs = [
@@ -9251,6 +9261,7 @@ async function loadLotteryPrizePoolSettings(): Promise<void> {
     lotteryPrizePoolSettings.enabled = data.enabled !== false;
     lotteryPrizePoolSettings.invitation_first_payment_amount = Math.max(0.01, Number(data.invitation_first_payment_amount) || 20);
     lotteryPrizePoolSettings.invitation_consumption_amount = Math.max(0.01, Number(data.invitation_consumption_amount) || 100);
+    lotteryPrizePoolSettings.purchase_price = Math.max(0.01, Math.min(1_000_000, Number(data.purchase_price) || 30));
   } catch (error) {
     appStore.showError(extractApiErrorMessage(error, localText("加载抽奖设置失败", "Failed to load lottery settings")));
   } finally {
@@ -9269,6 +9280,11 @@ async function saveLotteryPrizePoolSettings(): Promise<void> {
     appStore.showError(localText("每个订阅奖项都需要选择一个有效订阅套餐。", "Select an active subscription plan for every subscription prize."));
     return;
   }
+  const purchasePrice = Number(lotteryPrizePoolSettings.purchase_price);
+  if (!Number.isFinite(purchasePrice) || purchasePrice < 0.01 || purchasePrice > 1_000_000 || Math.abs(purchasePrice * 100 - Math.round(purchasePrice * 100)) > 1e-8) {
+    appStore.showError(localText("购买价格必须在 0.01 至 1000000 之间，且最多保留两位小数。", "Purchase price must be between 0.01 and 1000000 with at most two decimal places."));
+    return;
+  }
   lotterySettingsSaving.value = true;
   try {
     const data = await adminAPI.settings.updateLotteryPrizePoolSettings({
@@ -9276,11 +9292,13 @@ async function saveLotteryPrizePoolSettings(): Promise<void> {
       prizes,
       invitation_first_payment_amount: Math.max(0.01, Number(lotteryPrizePoolSettings.invitation_first_payment_amount) || 0),
       invitation_consumption_amount: Math.max(0.01, Number(lotteryPrizePoolSettings.invitation_consumption_amount) || 0),
+      purchase_price: purchasePrice,
     });
     lotteryPrizePoolSettings.prizes = data.prizes.map(normalizeLotteryPrize);
     lotteryPrizePoolSettings.enabled = data.enabled !== false;
     lotteryPrizePoolSettings.invitation_first_payment_amount = data.invitation_first_payment_amount;
     lotteryPrizePoolSettings.invitation_consumption_amount = data.invitation_consumption_amount;
+    lotteryPrizePoolSettings.purchase_price = data.purchase_price;
     appStore.showSuccess(localText("抽奖设置已保存", "Lottery settings saved"));
     window.dispatchEvent(new CustomEvent("lottery-settings-updated", { detail: { enabled: lotteryPrizePoolSettings.enabled } }));
   } catch (error) {
