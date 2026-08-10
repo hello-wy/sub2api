@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { defineComponent, h } from "vue";
 import { flushPromises, mount } from "@vue/test-utils";
 
@@ -557,8 +557,14 @@ const baseSettingsResponse = {
   },
 };
 
+const mountedWrappers: Array<{ unmount: () => void }> = [];
+
+afterEach(() => {
+  mountedWrappers.splice(0).forEach((wrapper) => wrapper.unmount());
+});
+
 function mountView() {
-  return mount(SettingsView, {
+  const wrapper = mount(SettingsView, {
     global: {
       stubs: {
         AppLayout: AppLayoutStub,
@@ -576,6 +582,8 @@ function mountView() {
       },
     },
   });
+  mountedWrappers.push(wrapper);
+  return wrapper;
 }
 
 async function openPaymentTab(wrapper: ReturnType<typeof mountView>) {
@@ -1292,6 +1300,7 @@ describe("admin SettingsView payment visible method controls", () => {
         },
       },
     });
+    mountedWrappers.push(wrapper);
 
     await flushPromises();
     await openPaymentTab(wrapper);
@@ -1506,16 +1515,18 @@ describe("admin SettingsView payment visible method controls", () => {
         },
       },
     });
+    mountedWrappers.push(wrapper);
 
     await flushPromises();
     await openPaymentTab(wrapper);
-    await vi.waitFor(() => expect(receivedProviders).toHaveLength(1));
+    await vi.waitFor(() => {
+      expect(receivedProviders).toHaveLength(1);
+      expect(receivedProviders[0].id).toBe(providerWithNullTypes.id);
+      expect(receivedProviders[0].supported_types).toEqual([]);
+    });
 
-    // The provider should still be in the list
-    expect(receivedProviders.length).toBe(1);
     // supported_types should be normalized to an empty array, not null
     expect(Array.isArray(receivedProviders[0].supported_types)).toBe(true);
-    expect(receivedProviders[0].supported_types).toEqual([]);
   });
 
   it("normalizes welfare rank limit before saving operations settings", async () => {
