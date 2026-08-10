@@ -121,6 +121,8 @@ export interface LotteryPrizeSetting {
   probability: number;
   subscription_group_id?: number;
   eligible_for_pity: boolean;
+  cooldown_seconds: number;
+  cooldown_until?: string;
 }
 
 export interface LotteryPrizePoolSettings {

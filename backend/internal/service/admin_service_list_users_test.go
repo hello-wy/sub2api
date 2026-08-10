@@ -19,6 +19,8 @@ type userRepoStubForListUsers struct {
 	listWithFiltersParams pagination.PaginationParams
 	lastUsedByUserID      map[int64]*time.Time
 	lastUsedErr           error
+	lotteryStatsByUserID  map[int64]LotteryUserStats
+	lotteryStatsErr       error
 }
 
 func (s *userRepoStubForListUsers) ListWithFilters(_ context.Context, params pagination.PaginationParams, _ UserListFilters) ([]User, *pagination.PaginationResult, error) {
@@ -53,6 +55,13 @@ func (s *userRepoStubForListUsers) GetLatestUsedAtByUserID(_ context.Context, us
 		return nil, s.lastUsedErr
 	}
 	return s.lastUsedByUserID[userID], nil
+}
+
+func (s *userRepoStubForListUsers) GetLotteryStatsByUserIDs(_ context.Context, _ []int64) (map[int64]LotteryUserStats, error) {
+	if s.lotteryStatsErr != nil {
+		return nil, s.lotteryStatsErr
+	}
+	return s.lotteryStatsByUserID, nil
 }
 
 type userGroupRateRepoStubForListUsers struct {
@@ -164,6 +173,23 @@ func TestAdminService_ListUsers_PassesSortParams(t *testing.T) {
 		SortBy:    "email",
 		SortOrder: "ASC",
 	}, userRepo.listWithFiltersParams)
+}
+
+func TestAdminService_ListUsers_PopulatesLotteryStatistics(t *testing.T) {
+	userRepo := &userRepoStubForListUsers{
+		users: []User{{ID: 101, Email: "u@example.com"}, {ID: 202, Email: "none@example.com"}},
+		lotteryStatsByUserID: map[int64]LotteryUserStats{
+			101: {TotalDrawAttempts: 12, TotalWins: 3},
+		},
+	}
+	svc := &adminServiceImpl{userRepo: userRepo}
+
+	users, _, err := svc.ListUsers(context.Background(), 1, 20, UserListFilters{}, "", "")
+	require.NoError(t, err)
+	require.EqualValues(t, 12, users[0].TotalDrawAttempts)
+	require.EqualValues(t, 3, users[0].TotalWins)
+	require.Zero(t, users[1].TotalDrawAttempts)
+	require.Zero(t, users[1].TotalWins)
 }
 
 func TestAdminService_ListUsers_PopulatesLastUsedAt(t *testing.T) {

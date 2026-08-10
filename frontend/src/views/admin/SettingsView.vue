@@ -8304,7 +8304,7 @@
               <div class="overflow-x-auto rounded-lg border border-gray-100 dark:border-dark-700">
                 <table class="min-w-[860px] w-full text-sm">
                   <thead class="bg-gray-50 text-left text-xs text-gray-500 dark:bg-dark-800 dark:text-dark-400">
-                    <tr><th class="px-3 py-2.5">{{ localText("奖项", "Prize") }}</th><th class="px-3 py-2.5">{{ localText("类型", "Type") }}</th><th class="px-3 py-2.5">{{ localText("奖励内容", "Reward") }}</th><th class="px-3 py-2.5">{{ localText("概率", "Probability") }}</th><th class="px-3 py-2.5">{{ localText("保底候选", "Pity eligible") }}</th><th class="px-3 py-2.5"></th></tr>
+                    <tr><th class="px-3 py-2.5">{{ localText("奖项", "Prize") }}</th><th class="px-3 py-2.5">{{ localText("类型", "Type") }}</th><th class="px-3 py-2.5">{{ localText("奖励内容", "Reward") }}</th><th class="px-3 py-2.5">{{ localText("概率", "Probability") }}</th><th class="px-3 py-2.5">{{ localText("中奖冷却（分钟）", "Win cooldown (minutes)") }}</th><th class="px-3 py-2.5">{{ localText("冷却状态", "Cooldown status") }}</th><th class="px-3 py-2.5">{{ localText("保底候选", "Pity eligible") }}</th><th class="px-3 py-2.5"></th></tr>
                   </thead>
                   <tbody>
                     <tr v-for="(prize, index) in lotteryPrizePoolSettings.prizes" :key="prize.id || index" class="border-t border-gray-100 dark:border-dark-700">
@@ -8312,6 +8312,8 @@
                       <td class="p-2"><span v-if="prize.type === 'none'" class="text-xs text-gray-400">{{ localText("未中奖", "No prize") }}</span><select v-else v-model="prize.type" class="input" @change="onLotteryPrizeTypeChange(prize)"><option value="balance">{{ localText("余额", "Balance") }}</option><option value="subscription">{{ localText("订阅", "Subscription") }}</option></select></td>
                       <td class="p-2"><div v-if="prize.type === 'balance'" class="relative max-w-[180px]"><span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span><input v-model.number="prize.amount" type="number" min="0" step="1" class="input pl-7" @input="onLotteryBalanceAmountChange(prize)" /></div><select v-else-if="prize.type === 'subscription'" v-model.number="prize.subscription_group_id" class="input max-w-[240px]" @change="onLotterySubscriptionGroupChange(prize)"><option :value="0">{{ localText("选择订阅套餐", "Select subscription plan") }}</option><option v-for="group in subscriptionGroups" :key="group.id" :value="group.id">{{ group.name }}</option></select><span v-else class="text-xs text-gray-400">-</span></td>
                       <td class="p-2"><input v-model.number="prize.probability" type="number" min="0.000001" max="1" step="0.000001" class="input max-w-[150px] tabular-nums" /></td>
+                      <td class="p-2"><input :value="lotteryCooldownMinutes(prize)" type="number" min="0" max="525600" step="1" :disabled="prize.type === 'none'" class="input max-w-[150px] tabular-nums" @input="onLotteryCooldownMinutesChange(prize, $event)" /></td>
+                      <td class="p-2 text-xs text-gray-500 dark:text-dark-300">{{ lotteryCooldownStatus(prize) }}</td>
                       <td class="p-2"><label class="inline-flex items-center gap-2 text-xs text-gray-600 dark:text-dark-300"><input v-model="prize.eligible_for_pity" type="checkbox" :disabled="prize.type === 'none'" class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" />{{ prize.eligible_for_pity ? localText("参与", "Included") : localText("不参与", "Excluded") }}</label></td>
                       <td class="p-2 text-right"><button type="button" class="btn btn-ghost btn-sm text-red-600" :disabled="prize.type === 'none' || lotteryPrizePoolSettings.prizes.length <= 2" @click="removeLotteryPrize(index)"><Icon name="trash" size="sm" /></button></td>
                     </tr>
@@ -8835,7 +8837,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, watch } from "vue";
+import { ref, reactive, computed, onMounted, onUnmounted, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { adminAPI } from "@/api";
 import {
@@ -9156,6 +9158,29 @@ function removeLoyaltyRule(scope: "weekly" | "permanent", index: number): void {
 const lotteryTotalProbability = computed(() =>
   Number(lotteryPrizePoolSettings.prizes.reduce((total, prize) => total + (Number(prize.probability) || 0), 0).toFixed(6)),
 );
+const lotteryCooldownNow = ref(Date.now());
+let lotteryCooldownTimer: ReturnType<typeof setInterval> | undefined;
+
+function lotteryCooldownMinutes(prize: LotteryPrizeSetting): number {
+  return Math.floor((Number(prize.cooldown_seconds) || 0) / 60);
+}
+
+function onLotteryCooldownMinutesChange(prize: LotteryPrizeSetting, event: Event): void {
+  const minutes = Math.max(0, Math.min(525600, Math.floor(Number((event.target as HTMLInputElement).value) || 0)));
+  prize.cooldown_seconds = prize.type === "none" ? 0 : minutes * 60;
+}
+
+function lotteryCooldownStatus(prize: LotteryPrizeSetting): string {
+  if (!prize.cooldown_seconds) return localText("未启用", "Disabled");
+  const until = prize.cooldown_until ? new Date(prize.cooldown_until).getTime() : 0;
+  const remaining = Math.max(0, Math.ceil((until - lotteryCooldownNow.value) / 1000));
+  if (!remaining) return localText("可抽取", "Available");
+  const hours = Math.floor(remaining / 3600);
+  const minutes = Math.floor((remaining % 3600) / 60);
+  const seconds = remaining % 60;
+  const display = hours > 0 ? `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}` : `${minutes}:${String(seconds).padStart(2, "0")}`;
+  return localText(`冷却中，剩余 ${display}`, `Cooling down, ${display} remaining`);
+}
 
 function normalizeLotteryPrize(prize: LotteryPrizeSetting): LotteryPrizeSetting {
   const type = ["none", "balance", "subscription"].includes(prize.type) ? prize.type : "none";
@@ -9167,6 +9192,8 @@ function normalizeLotteryPrize(prize: LotteryPrizeSetting): LotteryPrizeSetting 
     probability: Math.max(0, Number(Number(prize.probability || 0).toFixed(6))),
     subscription_group_id: type === "subscription" ? Math.max(0, Math.floor(Number(prize.subscription_group_id) || 0)) : 0,
     eligible_for_pity: type === "none" ? false : prize.eligible_for_pity === true,
+    cooldown_seconds: type === "none" ? 0 : Math.max(0, Math.min(525600 * 60, Math.floor(Number(prize.cooldown_seconds) || 0))),
+    cooldown_until: prize.cooldown_until,
   };
 }
 
@@ -9179,6 +9206,7 @@ function addLotteryPrize(): void {
     probability: 0.01,
     subscription_group_id: 0,
     eligible_for_pity: false,
+    cooldown_seconds: 0,
   });
 }
 
@@ -12945,7 +12973,14 @@ onMounted(() => {
   loadRectifierSettings();
   loadBetaPolicySettings();
   loadLotteryPrizePoolSettings();
+  lotteryCooldownTimer = setInterval(() => {
+    lotteryCooldownNow.value = Date.now();
+  }, 1000);
   loadProviders();
+});
+
+onUnmounted(() => {
+  if (lotteryCooldownTimer) clearInterval(lotteryCooldownTimer);
 });
 
 // =========================

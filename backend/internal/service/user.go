@@ -31,6 +31,8 @@ type User struct {
 	LastLoginAt          *time.Time
 	LastActiveAt         *time.Time
 	LastUsedAt           *time.Time
+	TotalDrawAttempts    int64
+	TotalWins            int64
 	CreatedAt            time.Time
 	UpdatedAt            time.Time
 	DeletedAt            *time.Time // 非 nil 表示用户已软删除

@@ -562,6 +562,14 @@
             <PlatformCostCell :usage="getPlatformUsage(row.id, 'antigravity')" />
           </template>
 
+          <template #cell-lottery_draw_attempts="{ value }">
+            <span class="text-sm text-gray-700 dark:text-gray-300">{{ value ?? 0 }}</span>
+          </template>
+
+          <template #cell-lottery_wins="{ value }">
+            <span class="text-sm text-gray-700 dark:text-gray-300">{{ value ?? 0 }}</span>
+          </template>
+
           <template #cell-concurrency="{ row }">
             <UserConcurrencyCell
               :current="row.current_concurrency ?? 0"
@@ -877,6 +885,8 @@ const allColumns = computed<Column[]>(() => [
   { key: 'usage_openai', label: t('admin.users.columns.usageOpenAI'), sortable: false },
   { key: 'usage_gemini', label: t('admin.users.columns.usageGemini'), sortable: false },
   { key: 'usage_antigravity', label: t('admin.users.columns.usageAntigravity'), sortable: false },
+  { key: 'lottery_draw_attempts', label: t('admin.users.columns.lotteryDrawAttempts'), sortable: false },
+  { key: 'lottery_wins', label: t('admin.users.columns.lotteryWins'), sortable: false },
   { key: 'concurrency', label: t('admin.users.columns.concurrency'), sortable: true },
   { key: 'status', label: t('admin.users.columns.status'), sortable: true },
   { key: 'last_active_at', label: t('admin.users.columns.lastActive'), sortable: true },

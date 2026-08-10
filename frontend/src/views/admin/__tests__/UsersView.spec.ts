@@ -73,6 +73,8 @@ const createAdminUser = (overrides: Partial<AdminUser> = {}): AdminUser => ({
   last_active_at: '2026-04-16T02:00:00Z',
   last_used_at: '2026-04-17T02:00:00Z',
   current_concurrency: 0,
+  total_draw_attempts: 12,
+  total_wins: 3,
   ...overrides
 })
 
@@ -145,6 +147,24 @@ describe('admin UsersView', () => {
 
   afterEach(() => {
     vi.useRealTimers()
+  })
+
+  it('includes lottery statistic columns as non-sortable fields', async () => {
+    const wrapper = mount(UsersView, {
+      global: {
+        stubs: {
+          AppLayout: { template: '<div><slot /></div>' },
+          TablePageLayout: { template: '<div><slot name="filters" /><slot name="table" /><slot name="pagination" /></div>' },
+          DataTable: DataTableStub,
+          Pagination: true,
+          ConfirmDialog: true,
+          Icon: true
+        }
+      }
+    })
+    await flushPromises()
+
+    expect(wrapper.get('[data-test="columns"]').text()).toContain('lottery_draw_attempts,lottery_wins')
   })
 
   it('shows active, used, and created activity columns in order and requests last_used_at sort', async () => {

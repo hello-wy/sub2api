@@ -126,6 +126,15 @@ func (f UserUpdateFields) IsEmpty() bool {
 	return f == UserUpdateFields{}
 }
 
+type LotteryUserStats struct {
+	TotalDrawAttempts int64
+	TotalWins         int64
+}
+
+type LotteryUserStatsReader interface {
+	GetLotteryStatsByUserIDs(ctx context.Context, userIDs []int64) (map[int64]LotteryUserStats, error)
+}
+
 type UserRepository interface {
 	Create(ctx context.Context, user *User) error
 	// CreateWithEmailAliasGuard 创建用户，并在邮箱唯一性锁内复查"收件箱身份"是否已被占用

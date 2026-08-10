@@ -38,6 +38,17 @@ func (s *adminServiceImpl) ListUsers(ctx context.Context, page, pageSize int, fi
 				users[i].LastUsedAt = lastUsedByUserID[users[i].ID]
 			}
 		}
+		if lotteryStatsReader, ok := s.userRepo.(LotteryUserStatsReader); ok {
+			lotteryStatsByUserID, err := lotteryStatsReader.GetLotteryStatsByUserIDs(ctx, userIDs)
+			if err != nil {
+				return nil, 0, fmt.Errorf("load user lottery statistics: %w", err)
+			}
+			for i := range users {
+				stats := lotteryStatsByUserID[users[i].ID]
+				users[i].TotalDrawAttempts = stats.TotalDrawAttempts
+				users[i].TotalWins = stats.TotalWins
+			}
+		}
 	}
 	// 批量加载用户专属分组倍率
 	if s.userGroupRateRepo != nil && len(users) > 0 {
@@ -89,6 +100,14 @@ func (s *adminServiceImpl) GetUser(ctx context.Context, id int64) (*User, error)
 	} else {
 		user.LastUsedAt = lastUsedAt
 	}
+	if lotteryStatsReader, ok := s.userRepo.(LotteryUserStatsReader); ok {
+		lotteryStatsByUserID, err := lotteryStatsReader.GetLotteryStatsByUserIDs(ctx, []int64{id})
+		if err != nil {
+			return nil, fmt.Errorf("load user lottery statistics: %w", err)
+		}
+		user.TotalDrawAttempts = lotteryStatsByUserID[id].TotalDrawAttempts
+		user.TotalWins = lotteryStatsByUserID[id].TotalWins
+	}
 	// 加载用户专属分组倍率
 	if s.userGroupRateRepo != nil {
 		rates, err := s.userGroupRateRepo.GetByUserID(ctx, id)
@@ -102,7 +121,19 @@ func (s *adminServiceImpl) GetUser(ctx context.Context, id int64) (*User, error)
 }
 
 func (s *adminServiceImpl) GetUserIncludeDeleted(ctx context.Context, id int64) (*User, error) {
-	return s.userRepo.GetByIDIncludeDeleted(ctx, id)
+	user, err := s.userRepo.GetByIDIncludeDeleted(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if lotteryStatsReader, ok := s.userRepo.(LotteryUserStatsReader); ok {
+		lotteryStatsByUserID, err := lotteryStatsReader.GetLotteryStatsByUserIDs(ctx, []int64{id})
+		if err != nil {
+			return nil, fmt.Errorf("load user lottery statistics: %w", err)
+		}
+		user.TotalDrawAttempts = lotteryStatsByUserID[id].TotalDrawAttempts
+		user.TotalWins = lotteryStatsByUserID[id].TotalWins
+	}
+	return user, nil
 }
 
 // normalizeUserRole 校验并归一化角色输入。

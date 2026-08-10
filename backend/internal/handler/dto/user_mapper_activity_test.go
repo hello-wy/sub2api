@@ -16,13 +16,15 @@ func TestUserFromServiceAdmin_MapsActivityTimestamps(t *testing.T) {
 	lastUsedAt := lastLoginAt.Add(45 * time.Minute)
 
 	out := UserFromServiceAdmin(&service.User{
-		ID:           42,
-		Email:        "admin@example.com",
-		Username:     "admin",
-		Role:         service.RoleAdmin,
-		Status:       service.StatusActive,
-		LastActiveAt: &lastActiveAt,
-		LastUsedAt:   &lastUsedAt,
+		ID:                42,
+		Email:             "admin@example.com",
+		Username:          "admin",
+		Role:              service.RoleAdmin,
+		Status:            service.StatusActive,
+		LastActiveAt:      &lastActiveAt,
+		LastUsedAt:        &lastUsedAt,
+		TotalDrawAttempts: 12,
+		TotalWins:         3,
 	})
 
 	require.NotNil(t, out)
@@ -30,4 +32,6 @@ func TestUserFromServiceAdmin_MapsActivityTimestamps(t *testing.T) {
 	require.NotNil(t, out.LastUsedAt)
 	require.WithinDuration(t, lastActiveAt, *out.LastActiveAt, time.Second)
 	require.WithinDuration(t, lastUsedAt, *out.LastUsedAt, time.Second)
+	require.EqualValues(t, 12, out.TotalDrawAttempts)
+	require.EqualValues(t, 3, out.TotalWins)
 }

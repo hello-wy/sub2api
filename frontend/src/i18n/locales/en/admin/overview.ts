@@ -527,6 +527,8 @@ export default {
         usageOpenAI: 'Usage (OpenAI)',
         usageGemini: 'Usage (Gemini)',
         usageAntigravity: 'Usage (Antigravity)',
+        lotteryDrawAttempts: 'Lottery Draws',
+        lotteryWins: 'Lottery Wins',
         concurrency: 'Concurrency',
         status: 'Status',
         lastActive: 'Last Active',

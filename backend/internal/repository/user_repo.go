@@ -735,6 +735,41 @@ func (r *userRepository) GetLatestUsedAtByUserIDs(ctx context.Context, userIDs [
 	return result, nil
 }
 
+func (r *userRepository) GetLotteryStatsByUserIDs(ctx context.Context, userIDs []int64) (map[int64]service.LotteryUserStats, error) {
+	result := make(map[int64]service.LotteryUserStats, len(userIDs))
+	if len(userIDs) == 0 {
+		return result, nil
+	}
+	if r.sql == nil {
+		return nil, fmt.Errorf("sql executor is not configured")
+	}
+
+	rows, err := r.sql.QueryContext(ctx, `
+		SELECT user_id, total_draw_attempts, total_wins
+		FROM lottery_user_states
+		WHERE user_id = ANY($1)
+	`, pq.Array(userIDs))
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	for rows.Next() {
+		var (
+			userID int64
+			stats  service.LotteryUserStats
+		)
+		if err := rows.Scan(&userID, &stats.TotalDrawAttempts, &stats.TotalWins); err != nil {
+			return nil, err
+		}
+		result[userID] = stats
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
 func (r *userRepository) GetLatestUsedAtByUserID(ctx context.Context, userID int64) (*time.Time, error) {
 	latestByUserID, err := r.GetLatestUsedAtByUserIDs(ctx, []int64{userID})
 	if err != nil {

@@ -22,6 +22,8 @@ const {
   updateUpstreamBillingProbeSettings,
   getOllamaCloudUsageSettings,
   updateOllamaCloudUsageSettings,
+  getLotteryPrizePoolSettings,
+  updateLotteryPrizePoolSettings,
   getGroups,
   listProxies,
   getProviders,
@@ -63,6 +65,16 @@ const {
     debounce_minutes: 1,
   }),
   updateOllamaCloudUsageSettings: vi.fn().mockImplementation(async (payload) => payload),
+  getLotteryPrizePoolSettings: vi.fn().mockResolvedValue({
+    enabled: true,
+    prizes: [
+      { id: "none", label: "谢谢参与", type: "none", probability: 0.5, eligible_for_pity: false, cooldown_seconds: 0 },
+      { id: "quota-10", label: "$10", type: "balance", amount: 10, probability: 0.5, eligible_for_pity: true, cooldown_seconds: 60 },
+    ],
+    invitation_first_payment_amount: 20,
+    invitation_consumption_amount: 100,
+  }),
+  updateLotteryPrizePoolSettings: vi.fn().mockImplementation(async (payload) => payload),
   getGroups: vi.fn(),
   listProxies: vi.fn(),
   getProviders: vi.fn(),
@@ -93,6 +105,8 @@ vi.mock("@/api", () => ({
       getStreamTimeoutSettings,
       getRectifierSettings,
       getBetaPolicySettings,
+      getLotteryPrizePoolSettings,
+      updateLotteryPrizePoolSettings,
     },
     accounts: {
       getUpstreamBillingProbeSettings,
@@ -139,6 +153,7 @@ vi.mock("@/composables/useClipboard", () => ({
 
 vi.mock("@/utils/apiError", () => ({
   extractApiErrorMessage: () => "error",
+  extractI18nErrorMessage: () => "error",
 }));
 
 vi.mock("vue-i18n", async () => {
@@ -616,6 +631,45 @@ async function openOperationsMembershipSubtab(wrapper: ReturnType<typeof mountVi
   await wrapper.get('[data-testid="operations-subtab-membership"]').trigger("click");
   await flushPromises();
 }
+
+async function openOperationsLotterySubtab(wrapper: ReturnType<typeof mountView>) {
+  await wrapper.get('[data-testid="operations-subtab-lottery"]').trigger("click");
+  await flushPromises();
+}
+
+describe("admin SettingsView lottery cooldown", () => {
+  beforeEach(() => {
+    getSettings.mockResolvedValue({ ...baseSettingsResponse });
+    getLotteryPrizePoolSettings.mockResolvedValue({
+      enabled: true,
+      prizes: [
+        { id: "none", label: "谢谢参与", type: "none", probability: 0.5, eligible_for_pity: false, cooldown_seconds: 0 },
+        { id: "quota-10", label: "$10", type: "balance", amount: 10, probability: 0.5, eligible_for_pity: true, cooldown_seconds: 60 },
+      ],
+      invitation_first_payment_amount: 20,
+      invitation_consumption_amount: 100,
+    });
+    updateLotteryPrizePoolSettings.mockImplementation(async (payload) => payload);
+  });
+
+  it("saves per-prize cooldowns in seconds", async () => {
+    const wrapper = mountView();
+    await flushPromises();
+    await openOperationsTab(wrapper);
+    await openOperationsLotterySubtab(wrapper);
+
+    const inputs = wrapper.findAll('input[type="number"]');
+    const cooldownInput = inputs.find((input) => input.attributes("max") === "525600" && input.attributes("disabled") === undefined);
+    expect(cooldownInput).toBeDefined();
+    await cooldownInput?.setValue(5);
+    await wrapper.find("form").trigger("submit.prevent");
+    await flushPromises();
+
+    expect(updateLotteryPrizePoolSettings).toHaveBeenCalledWith(expect.objectContaining({
+      prizes: expect.arrayContaining([expect.objectContaining({ id: "quota-10", cooldown_seconds: 300 })]),
+    }));
+  });
+});
 
 describe("admin SettingsView payment visible method controls", () => {
   beforeEach(() => {

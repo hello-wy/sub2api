@@ -35,6 +35,7 @@ const (
 	lotteryInvitationConsumptionAmountKey  = "lottery_invitation_consumption_amount"
 	lotteryPrizeIDLength                   = 32
 	lotteryTicketSourceRefMaxLength        = 128
+	lotteryPrizeCooldownMaxSeconds         = 365 * 24 * 60 * 60
 )
 
 type LotteryStatus struct {
@@ -68,13 +69,15 @@ type LotteryDrawResult struct {
 // LotteryPrizeConfig is the operator-managed source of truth for both the
 // displayed odds and the server-side lottery draw.
 type LotteryPrizeConfig struct {
-	ID                  string  `json:"id"`
-	Label               string  `json:"label"`
-	Type                string  `json:"type"`
-	Amount              float64 `json:"amount,omitempty"`
-	Probability         float64 `json:"probability"`
-	SubscriptionGroupID int64   `json:"subscription_group_id,omitempty"`
-	EligibleForPity     bool    `json:"eligible_for_pity"`
+	ID                  string     `json:"id"`
+	Label               string     `json:"label"`
+	Type                string     `json:"type"`
+	Amount              float64    `json:"amount,omitempty"`
+	Probability         float64    `json:"probability"`
+	SubscriptionGroupID int64      `json:"subscription_group_id,omitempty"`
+	EligibleForPity     bool       `json:"eligible_for_pity"`
+	CooldownSeconds     int        `json:"cooldown_seconds"`
+	CooldownUntil       *time.Time `json:"cooldown_until,omitempty"`
 }
 
 type LotteryPrizePoolConfig struct {
@@ -96,13 +99,14 @@ type LotteryBalanceTransaction struct {
 }
 
 type lotteryPrize struct {
-	ID      string
-	Label   string
-	Type    string
-	Amount  float64
-	Weight  int64
-	Days    int
-	GroupID int64
+	ID              string
+	Label           string
+	Type            string
+	Amount          float64
+	Weight          int64
+	Days            int
+	GroupID         int64
+	CooldownSeconds int
 }
 
 var lotteryPrizeIDPattern = regexp.MustCompile(`^[a-z][a-z0-9-]{1,63}$`)
@@ -161,6 +165,7 @@ type legacyLotteryPrizeConfig struct {
 	Weight              int64   `json:"weight"`
 	SubscriptionGroupID int64   `json:"subscription_group_id,omitempty"`
 	EligibleForPity     bool    `json:"eligible_for_pity"`
+	CooldownSeconds     int     `json:"cooldown_seconds"`
 }
 
 func decodeLotteryPrizePool(raw string) ([]LotteryPrizeConfig, error) {
@@ -200,6 +205,7 @@ func decodeLotteryPrizePool(raw string) ([]LotteryPrizeConfig, error) {
 			ID: prize.ID, Label: prize.Label, Type: prize.Type, Amount: prize.Amount,
 			Probability:         float64(probability) / float64(lotteryProbabilityScale),
 			SubscriptionGroupID: prize.SubscriptionGroupID, EligibleForPity: prize.EligibleForPity,
+			CooldownSeconds: prize.CooldownSeconds,
 		})
 	}
 	return prizes, nil
@@ -266,6 +272,9 @@ func (s *LotteryService) GetPrizePoolConfig(ctx context.Context) (*LotteryPrizeP
 		prizes = append(prizes, prize)
 	}
 	config.Prizes = prizes
+	if err := s.applyLotteryPrizeCooldowns(ctx, config.Prizes); err != nil {
+		return nil, err
+	}
 	if err := validateLotteryPrizePoolConfig(config); err != nil {
 		return nil, err
 	}
@@ -322,7 +331,11 @@ func (s *LotteryService) UpdatePrizePoolConfig(ctx context.Context, config Lotte
 		}
 		prize.Label = groupName
 	}
-	raw, err := json.Marshal(config.Prizes)
+	prizesForStorage := append([]LotteryPrizeConfig(nil), config.Prizes...)
+	for index := range prizesForStorage {
+		prizesForStorage[index].CooldownUntil = nil
+	}
+	raw, err := json.Marshal(prizesForStorage)
 	if err != nil {
 		return nil, err
 	}
@@ -349,7 +362,7 @@ func (s *LotteryService) UpdatePrizePoolConfig(ctx context.Context, config Lotte
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
-	return &config, nil
+	return s.GetPrizePoolConfig(ctx)
 }
 
 func (s *LotteryService) lotteryEnabled(ctx context.Context) (bool, error) {
@@ -436,6 +449,7 @@ func validateLotteryPrizePoolConfig(config LotteryPrizePoolConfig) error {
 	}
 	seen := make(map[string]struct{}, len(config.Prizes))
 	var normalProbability, pityProbability int64
+	hasNonePrize := false
 	for _, prize := range config.Prizes {
 		prize.ID = strings.TrimSpace(prize.ID)
 		prize.Label = strings.TrimSpace(prize.Label)
@@ -446,15 +460,19 @@ func validateLotteryPrizePoolConfig(config LotteryPrizePoolConfig) error {
 			return infraerrors.BadRequest("LOTTERY_PRIZE_DUPLICATE", "lottery prize ids must be unique")
 		}
 		seen[prize.ID] = struct{}{}
+		if prize.CooldownSeconds < 0 || prize.CooldownSeconds > lotteryPrizeCooldownMaxSeconds {
+			return infraerrors.BadRequest("LOTTERY_PRIZE_COOLDOWN_INVALID", "lottery prize cooldown must be between 0 and one year")
+		}
 		probability, ok := lotteryProbabilityUnits(prize.Probability)
 		if !ok {
 			return infraerrors.BadRequest("LOTTERY_PRIZE_PROBABILITY_INVALID", "lottery prize probability must be a decimal between 0 and 1 with at most six places")
 		}
 		switch prize.Type {
 		case "none":
-			if prize.Amount != 0 || prize.SubscriptionGroupID != 0 || prize.EligibleForPity {
-				return infraerrors.BadRequest("LOTTERY_PRIZE_INVALID", "non-winning prize cannot have a reward or pity eligibility")
+			if prize.Amount != 0 || prize.SubscriptionGroupID != 0 || prize.EligibleForPity || prize.CooldownSeconds != 0 {
+				return infraerrors.BadRequest("LOTTERY_PRIZE_INVALID", "non-winning prize cannot have a reward, cooldown, or pity eligibility")
 			}
+			hasNonePrize = true
 		case "balance":
 			if prize.Amount <= 0 || prize.Amount > 1_000_000 || prize.SubscriptionGroupID != 0 {
 				return infraerrors.BadRequest("LOTTERY_PRIZE_INVALID", "balance prize amount is invalid")
@@ -473,6 +491,9 @@ func validateLotteryPrizePoolConfig(config LotteryPrizePoolConfig) error {
 	}
 	if normalProbability != lotteryProbabilityScale {
 		return infraerrors.BadRequest("LOTTERY_PRIZE_PROBABILITY_TOTAL_INVALID", "lottery prize probabilities must total 1")
+	}
+	if !hasNonePrize {
+		return infraerrors.BadRequest("LOTTERY_PRIZE_POOL_INVALID", "lottery prize pool requires a non-winning prize")
 	}
 	if pityProbability <= 0 {
 		return infraerrors.BadRequest("LOTTERY_PRIZE_POOL_INVALID", "lottery prize pool requires at least one pity reward")
@@ -553,13 +574,78 @@ func (s *LotteryService) configuredPrizes(ctx context.Context, client interface 
 		if !ok {
 			return nil, nil, fmt.Errorf("invalid lottery prize probability")
 		}
-		prize := lotteryPrize{ID: item.ID, Label: item.Label, Type: item.Type, Amount: item.Amount, Weight: weight, GroupID: item.SubscriptionGroupID}
+		prize := lotteryPrize{ID: item.ID, Label: item.Label, Type: item.Type, Amount: item.Amount, Weight: weight, GroupID: item.SubscriptionGroupID, CooldownSeconds: item.CooldownSeconds}
 		normal = append(normal, prize)
 		if item.EligibleForPity {
 			pity = append(pity, prize)
 		}
 	}
 	return normal, pity, nil
+}
+
+func (s *LotteryService) applyLotteryPrizeCooldowns(ctx context.Context, prizes []LotteryPrizeConfig) error {
+	for index := range prizes {
+		prizes[index].CooldownUntil = nil
+		if prizes[index].Type == "none" || prizes[index].CooldownSeconds == 0 {
+			continue
+		}
+		var until time.Time
+		err := scanOne(ctx, s.entClient, `SELECT cooldown_until FROM lottery_prize_cooldowns WHERE prize_id = $1 AND cooldown_until > NOW()`, []any{prizes[index].ID}, &until)
+		if err == sql.ErrNoRows {
+			continue
+		}
+		if err != nil {
+			return fmt.Errorf("get lottery prize cooldown: %w", err)
+		}
+		prizes[index].CooldownUntil = &until
+	}
+	return nil
+}
+
+func lockLotteryPrizeCooldowns(ctx context.Context, client interface {
+	ExecContext(context.Context, string, ...any) (sql.Result, error)
+	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
+}, prizes []lotteryPrize) (map[string]bool, error) {
+	active := make(map[string]bool)
+	for _, prize := range prizes {
+		if prize.Type == "none" || prize.CooldownSeconds == 0 {
+			continue
+		}
+		if _, err := client.ExecContext(ctx, `INSERT INTO lottery_prize_cooldowns (prize_id, cooldown_until) VALUES ($1, '-infinity') ON CONFLICT (prize_id) DO NOTHING`, prize.ID); err != nil {
+			return nil, fmt.Errorf("ensure lottery prize cooldown: %w", err)
+		}
+		var isActive bool
+		if err := scanOne(ctx, client, `SELECT cooldown_until > NOW() FROM lottery_prize_cooldowns WHERE prize_id = $1 FOR UPDATE`, []any{prize.ID}, &isActive); err != nil {
+			return nil, fmt.Errorf("lock lottery prize cooldown: %w", err)
+		}
+		active[prize.ID] = isActive
+	}
+	return active, nil
+}
+
+func filterLotteryPrizeCooldowns(normal, pity []lotteryPrize, active map[string]bool) ([]lotteryPrize, []lotteryPrize) {
+	filteredNormal := make([]lotteryPrize, 0, len(normal))
+	none := make([]lotteryPrize, 0, len(normal))
+	for _, prize := range normal {
+		if prize.Type == "none" {
+			filteredNormal = append(filteredNormal, prize)
+			none = append(none, prize)
+			continue
+		}
+		if !active[prize.ID] {
+			filteredNormal = append(filteredNormal, prize)
+		}
+	}
+	filteredPity := make([]lotteryPrize, 0, len(pity))
+	for _, prize := range pity {
+		if !active[prize.ID] {
+			filteredPity = append(filteredPity, prize)
+		}
+	}
+	if len(filteredPity) == 0 {
+		filteredPity = none
+	}
+	return filteredNormal, filteredPity
 }
 
 func (s *LotteryService) GetStatus(ctx context.Context, userID int64) (*LotteryStatus, error) {
@@ -769,6 +855,15 @@ func (s *LotteryService) Draw(ctx context.Context, userID int64, requestID strin
 	if state.TicketDebt > 0 {
 		return nil, infraerrors.Forbidden("LOTTERY_TICKET_DEBT", "lottery ticket debt must be settled before drawing")
 	}
+	normalPrizes, guaranteedPrizes, err := s.configuredPrizes(txCtx, client)
+	if err != nil {
+		return nil, err
+	}
+	activeCooldowns, err := lockLotteryPrizeCooldowns(txCtx, client, normalPrizes)
+	if err != nil {
+		return nil, err
+	}
+	normalPrizes, guaranteedPrizes = filterLotteryPrizeCooldowns(normalPrizes, guaranteedPrizes, activeCooldowns)
 	var email string
 	if err := scanOne(txCtx, client, `SELECT email FROM users WHERE id = $1 AND deleted_at IS NULL AND status = 'active' FOR UPDATE`, []any{userID}, &email); err != nil {
 		if err == sql.ErrNoRows {
@@ -780,10 +875,6 @@ func (s *LotteryService) Draw(ctx context.Context, userID int64, requestID strin
 		return nil, err
 	}
 	guaranteed := state.PityMisses >= 4
-	normalPrizes, guaranteedPrizes, err := s.configuredPrizes(txCtx, client)
-	if err != nil {
-		return nil, err
-	}
 	prize, err := pickServerPrize(guaranteed, normalPrizes, guaranteedPrizes)
 	if err != nil {
 		return nil, err
@@ -792,6 +883,11 @@ func (s *LotteryService) Draw(ctx context.Context, userID int64, requestID strin
 		state.PityMisses = min(4, state.PityMisses+1)
 	} else {
 		state.PityMisses = 0
+		if prize.CooldownSeconds > 0 {
+			if _, err := client.ExecContext(txCtx, `UPDATE lottery_prize_cooldowns SET cooldown_until = NOW() + ($2 * INTERVAL '1 second'), updated_at = NOW() WHERE prize_id = $1`, prize.ID, prize.CooldownSeconds); err != nil {
+				return nil, fmt.Errorf("start lottery prize cooldown: %w", err)
+			}
+		}
 	}
 	var drawID int64
 	if err := scanOne(txCtx, client, `
@@ -823,8 +919,13 @@ RETURNING id`, []any{userID, requestID, prize.ID, prize.Label, prize.Type, prize
 	}
 	if _, err := client.ExecContext(txCtx, `
 UPDATE lottery_user_states
-SET available_tickets = $2, pity_misses = $3, updated_at = NOW(), version = version + 1
-WHERE user_id = $1`, userID, available, state.PityMisses); err != nil {
+SET available_tickets = $2,
+    pity_misses = $3,
+    total_draw_attempts = total_draw_attempts + 1,
+    total_wins = total_wins + CASE WHEN $4 THEN 1 ELSE 0 END,
+    updated_at = NOW(),
+    version = version + 1
+WHERE user_id = $1`, userID, available, state.PityMisses, prize.Type != "none"); err != nil {
 		return nil, err
 	}
 	if err := tx.Commit(); err != nil {

@@ -143,6 +143,50 @@ func TestDecodeLegacyLotteryPrizePool(t *testing.T) {
 	}
 }
 
+func TestValidateLotteryPrizeCooldown(t *testing.T) {
+	valid := defaultLotteryPrizePoolConfig()
+	valid.Prizes[1].CooldownSeconds = 60
+	if err := validateLotteryPrizePoolConfig(valid); err != nil {
+		t.Fatalf("valid cooldown rejected: %v", err)
+	}
+
+	invalid := defaultLotteryPrizePoolConfig()
+	invalid.Prizes[1].CooldownSeconds = lotteryPrizeCooldownMaxSeconds + 1
+	if err := validateLotteryPrizePoolConfig(invalid); err == nil {
+		t.Fatal("cooldown exceeding maximum must be rejected")
+	}
+
+	nonePrize := defaultLotteryPrizePoolConfig()
+	nonePrize.Prizes[0].CooldownSeconds = 60
+	if err := validateLotteryPrizePoolConfig(nonePrize); err == nil {
+		t.Fatal("non-winning prize cooldown must be rejected")
+	}
+
+	withoutNone := defaultLotteryPrizePoolConfig()
+	withoutNone.Prizes[0] = LotteryPrizeConfig{ID: "quota-1", Label: "$1", Type: "balance", Amount: 1, Probability: 0.529, EligibleForPity: true}
+	if err := validateLotteryPrizePoolConfig(withoutNone); err == nil {
+		t.Fatal("pool without a non-winning prize must be rejected")
+	}
+}
+
+func TestFilterLotteryPrizeCooldowns(t *testing.T) {
+	none := lotteryPrize{ID: "none", Type: "none", Weight: 1}
+	first := lotteryPrize{ID: "first", Type: "balance", Weight: 1}
+	second := lotteryPrize{ID: "second", Type: "balance", Weight: 1}
+	normal, pity := filterLotteryPrizeCooldowns([]lotteryPrize{none, first, second}, []lotteryPrize{first, second}, map[string]bool{"first": true})
+	if len(normal) != 2 || normal[0].ID != "none" || normal[1].ID != "second" {
+		t.Fatalf("normal prizes = %#v", normal)
+	}
+	if len(pity) != 1 || pity[0].ID != "second" {
+		t.Fatalf("pity prizes = %#v", pity)
+	}
+
+	normal, pity = filterLotteryPrizeCooldowns([]lotteryPrize{none, first, second}, []lotteryPrize{first, second}, map[string]bool{"first": true, "second": true})
+	if len(normal) != 1 || normal[0].ID != "none" || len(pity) != 1 || pity[0].ID != "none" {
+		t.Fatalf("fully cooled pools = normal %#v, pity %#v", normal, pity)
+	}
+}
+
 func TestLotteryBalancePrizeLabel(t *testing.T) {
 	if got := lotteryBalancePrizeLabel(10); got != "$10" {
 		t.Fatalf("label = %q, want $10", got)
