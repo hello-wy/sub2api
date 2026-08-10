@@ -651,6 +651,8 @@ export default {
       subtractLotteryTickets: 'Subtract Tickets',
       lotteryTicketCount: 'Ticket Count',
       lotteryTicketCountRequired: 'Enter a positive whole number of tickets',
+      targetLotteryTickets: 'Target Available Tickets',
+      lotteryTicketTargetRequired: 'Enter a non-negative whole-number target',
       lotteryTicketReason: 'Reason',
       lotteryTicketReasonRequired: 'Enter an adjustment reason',
       newLotteryTickets: 'Available Tickets After Adjustment',

@@ -652,6 +652,8 @@ export default {
       subtractLotteryTickets: '扣减次数',
       lotteryTicketCount: '调整数量',
       lotteryTicketCountRequired: '请输入正整数数量',
+      targetLotteryTickets: '目标可用抽奖次数',
+      lotteryTicketTargetRequired: '请输入非负整数目标次数',
       lotteryTicketReason: '调整原因',
       lotteryTicketReasonRequired: '请输入调整原因',
       newLotteryTickets: '调整后可用次数',
