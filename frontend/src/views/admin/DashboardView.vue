@@ -14,8 +14,8 @@
           </div>
           <div class="dashboard-actions">
             <DashboardRangeSelect v-model="timeRange" :options="rangeOptions" @change="applyTimeRange" />
-            <button type="button" class="refresh-button" :disabled="chartsLoading || dailyTrendLoading" @click="loadDashboard">
-              <Icon name="refresh" size="sm" :class="chartsLoading || dailyTrendLoading ? 'animate-spin' : ''" />
+            <button type="button" class="refresh-button" :disabled="chartsLoading || dailyTrendLoading || paymentStatsLoading" @click="loadDashboard">
+              <Icon name="refresh" size="sm" :class="chartsLoading || dailyTrendLoading || paymentStatsLoading ? 'animate-spin' : ''" />
               刷新
             </button>
           </div>
@@ -43,9 +43,9 @@
           </article>
 
           <article class="hero-card">
-            <span>今日消耗</span>
-            <strong>${{ formatCost(stats.today_actual_cost) }}</strong>
-            <small>标准成本 ${{ formatCost(stats.today_cost) }}</small>
+            <span>今日收入</span>
+            <strong>{{ paymentStats ? formatPaymentRevenue(paymentStats) : '—' }}</strong>
+            <small>{{ paymentStats ? `今日订单 ${formatNumber(paymentStats.today_count)}` : '支付数据暂时无法加载' }}</small>
           </article>
         </section>
 
@@ -148,6 +148,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { adminAPI } from '@/api/admin'
+import { adminPaymentAPI } from '@/api/admin/payment'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import ScrollablePageLayout from '@/components/layout/ScrollablePageLayout.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
@@ -157,6 +158,7 @@ import TokenUsageTrend from '@/components/charts/TokenUsageTrend.vue'
 import UserUsageTrend from '@/components/charts/UserUsageTrend.vue'
 import { useAuthStore } from '@/stores/auth'
 import type { DashboardStats, ModelStat, TrendDataPoint, UserSpendingRankingItem, UserUsageTrendPoint } from '@/types'
+import type { DashboardStats as PaymentDashboardStats } from '@/types/payment'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -165,11 +167,13 @@ const loading = ref(false)
 const chartsLoading = ref(false)
 const dailyTrendLoading = ref(false)
 const rankingLoading = ref(false)
+const paymentStatsLoading = ref(false)
 const trendData = ref<TrendDataPoint[]>([])
 const dailyTrendData = ref<TrendDataPoint[]>([])
 const modelStats = ref<ModelStat[]>([])
 const userTrend = ref<UserUsageTrendPoint[]>([])
 const rankingItems = ref<UserSpendingRankingItem[]>([])
+const paymentStats = ref<PaymentDashboardStats | null>(null)
 
 const formatLocalDate = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 const timeRange = ref<DashboardTimeRange>('24h')
@@ -193,6 +197,11 @@ const formatNumber = (value: number) => Number(value || 0).toLocaleString()
 const formatTokens = (value: number) => value >= 1_000_000_000 ? `${(value / 1_000_000_000).toFixed(2)}B` : value >= 1_000_000 ? `${(value / 1_000_000).toFixed(2)}M` : value >= 1_000 ? `${(value / 1_000).toFixed(1)}K` : formatNumber(value)
 const formatCost = (value: number) => Number(value || 0).toFixed(2)
 const formatDuration = (value: number) => value >= 1000 ? `${(value / 1000).toFixed(2)}s` : `${Math.round(value || 0)}ms`
+const formatPaymentRevenue = (paymentDashboard: PaymentDashboardStats) => {
+  const amounts = Object.entries(paymentDashboard.today_amount).sort(([left], [right]) => left.localeCompare(right))
+  if (amounts.length === 0) return new Intl.NumberFormat(undefined, { style: 'currency', currency: paymentDashboard.currency || 'CNY' }).format(0)
+  return amounts.map(([currency, amount]) => new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(amount)).join(' / ')
+}
 
 function updatePrimaryCardSpotlight(event: PointerEvent) {
   const card = event.currentTarget as HTMLElement
@@ -269,7 +278,19 @@ const loadDailyTrend = async () => {
     dailyTrendLoading.value = false
   }
 }
-const loadDashboard = () => { void loadSnapshot(); void loadRanking(); void loadDailyTrend() }
+const loadPaymentStats = async () => {
+  paymentStatsLoading.value = true
+  try {
+    const response = await adminPaymentAPI.getDashboard()
+    paymentStats.value = response.data
+  } catch (error) {
+    paymentStats.value = null
+    console.error('Failed to load payment dashboard stats:', error)
+  } finally {
+    paymentStatsLoading.value = false
+  }
+}
+const loadDashboard = () => { void loadSnapshot(); void loadRanking(); void loadDailyTrend(); void loadPaymentStats() }
 const applyTimeRange = () => { updateDateRange(); loadDashboard() }
 
 onMounted(() => { updateDateRange(); loadDashboard() })

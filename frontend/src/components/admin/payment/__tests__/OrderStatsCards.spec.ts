@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { shallowMount } from '@vue/test-utils'
 import OrderStatsCards from '../OrderStatsCards.vue'
-import { formatPaymentAmount } from '@/components/payment/currency'
 import type { DashboardStats } from '@/types/payment'
 
 vi.mock('vue-i18n', async () => {
@@ -14,14 +13,14 @@ vi.mock('vue-i18n', async () => {
 
 function dashboardStats(currency: string): DashboardStats {
   return {
-    today_amount: 12.5,
-    total_amount: 45.75,
+    today_amount: { [currency]: 12.5 },
+    total_amount: { [currency]: 45.75 },
     today_count: 1,
     total_count: 2,
-    avg_amount: 22.875,
-    pending_orders: 0,
+    avg_amount: { [currency]: 22.875 },
     currency,
     available_currencies: [currency],
+    subscription_plans: [],
     daily_series: [],
     payment_methods: [],
     top_users: [],
@@ -36,8 +35,7 @@ describe('OrderStatsCards currency display', () => {
       global: { stubs: { Icon: true } },
     })
 
-    expect(wrapper.text()).toContain(formatPaymentAmount(stats.today_amount, 'USD'))
-    expect(wrapper.text()).toContain(formatPaymentAmount(stats.total_amount, 'USD'))
-    expect(wrapper.text()).not.toContain(formatPaymentAmount(stats.total_amount, 'CNY'))
+    expect(wrapper.text()).toContain('$12.50')
+    expect(wrapper.text()).toContain('$45.75')
   })
 })

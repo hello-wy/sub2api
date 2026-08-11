@@ -31,6 +31,7 @@
       <template v-else-if="stats">
         <OrderStatsCards :stats="stats" />
         <DailyRevenueChart :data="stats.daily_series || []" :loading="loading" />
+        <SubscriptionPlanDistribution :plans="stats.subscription_plans || []" />
         <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div class="card p-4">
             <h3 class="mb-4 text-sm font-semibold text-gray-900 dark:text-white">{{ t('payment.admin.paymentDistribution') }}</h3>
@@ -82,6 +83,7 @@ import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import Icon from '@/components/icons/Icon.vue'
 import OrderStatsCards from '@/components/admin/payment/OrderStatsCards.vue'
 import DailyRevenueChart from '@/components/admin/payment/DailyRevenueChart.vue'
+import SubscriptionPlanDistribution from '@/components/admin/payment/SubscriptionPlanDistribution.vue'
 
 const { t } = useI18n()
 const appStore = useAppStore()

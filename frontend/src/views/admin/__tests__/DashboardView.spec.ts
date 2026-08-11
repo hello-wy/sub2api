@@ -5,10 +5,11 @@ import { createPinia, setActivePinia } from 'pinia'
 import type { DashboardStats, ModelStat, TrendDataPoint, UserSpendingRankingItem, UserUsageTrendPoint } from '@/types'
 import DashboardView from '../DashboardView.vue'
 
-const { getSnapshotV2, getUsageTrend, getUserSpendingRanking, push } = vi.hoisted(() => ({
+const { getSnapshotV2, getUsageTrend, getUserSpendingRanking, getPaymentDashboard, push } = vi.hoisted(() => ({
   getSnapshotV2: vi.fn(),
   getUsageTrend: vi.fn(),
   getUserSpendingRanking: vi.fn(),
+  getPaymentDashboard: vi.fn(),
   push: vi.fn()
 }))
 
@@ -20,6 +21,10 @@ vi.mock('@/api/admin', () => ({
       getUserSpendingRanking
     }
   }
+}))
+
+vi.mock('@/api/admin/payment', () => ({
+  adminPaymentAPI: { getDashboard: getPaymentDashboard }
 }))
 
 vi.mock('@/stores/auth', () => ({
@@ -101,6 +106,7 @@ describe('admin DashboardView', () => {
     getSnapshotV2.mockReset()
     getUsageTrend.mockReset()
     getUserSpendingRanking.mockReset()
+    getPaymentDashboard.mockReset()
     push.mockReset()
 
     getSnapshotV2.mockResolvedValue({
@@ -121,6 +127,21 @@ describe('admin DashboardView', () => {
       total_tokens: 0,
       start_date: '',
       end_date: ''
+    })
+    getPaymentDashboard.mockResolvedValue({
+      data: {
+        today_amount: { CNY: 0 },
+        total_amount: { CNY: 0 },
+        today_count: 0,
+        total_count: 0,
+        avg_amount: { CNY: 0 },
+        currency: 'CNY',
+        available_currencies: ['CNY'],
+        subscription_plans: [],
+        daily_series: [],
+        payment_methods: [],
+        top_users: {}
+      }
     })
   })
 
@@ -157,7 +178,9 @@ describe('admin DashboardView', () => {
     expect(wrapper.findAll('.metric-sparkline')).toHaveLength(0)
     expect(wrapper.findAll('.hero-card')[0].text()).toContain('今日 Token 消耗')
     expect(wrapper.findAll('.hero-card')[1].text()).toContain('今日 API 调用')
-    expect(wrapper.findAll('.hero-card')[2].text()).toContain('今日消耗')
+    expect(wrapper.findAll('.hero-card')[2].text()).toContain('今日收入')
+    expect(wrapper.findAll('.hero-card')[2].text()).toContain('今日订单 0')
+    expect(getPaymentDashboard).toHaveBeenCalledWith()
     expect(wrapper.findAll('[data-testid="token-usage-trend"]')).toHaveLength(2)
     expect(wrapper.findAll('[data-testid="token-usage-trend"]')[1].attributes('data-total-only')).toBe('true')
     expect(wrapper.find('[data-testid="user-usage-trend"]').exists()).toBe(true)

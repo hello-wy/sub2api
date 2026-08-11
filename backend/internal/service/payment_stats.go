@@ -13,6 +13,7 @@ import (
 	dbent "github.com/Wei-Shaw/sub2api/ent"
 	"github.com/Wei-Shaw/sub2api/ent/paymentauditlog"
 	"github.com/Wei-Shaw/sub2api/ent/paymentorder"
+	"github.com/Wei-Shaw/sub2api/ent/subscriptionplan"
 	"github.com/Wei-Shaw/sub2api/internal/payment"
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 )
@@ -71,8 +72,48 @@ func (s *PaymentService) GetDashboardStats(ctx context.Context, days int, reques
 	st.DailySeries = buildDailySeries(selectedOrders, since, days)
 	st.PaymentMethods = buildMethodDistribution(selectedOrders)
 	st.TopUsers = buildTopUsers(selectedOrders)
+	subscriptionOrders, err := s.entClient.PaymentOrder.Query().
+		Where(
+			paymentorder.StatusIn(paidStatuses...),
+			paymentorder.PaidAtGTE(since),
+			paymentorder.OrderTypeEQ(payment.OrderTypeSubscription),
+		).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	planNames, err := s.subscriptionPlanNames(ctx, subscriptionOrders)
+	if err != nil {
+		return nil, err
+	}
+	st.SubscriptionPlans = buildSubscriptionPlanDistribution(subscriptionOrders, planNames)
 
 	return st, nil
+}
+
+func (s *PaymentService) subscriptionPlanNames(ctx context.Context, orders []*dbent.PaymentOrder) (map[int64]string, error) {
+	planIDs := make(map[int64]struct{})
+	for _, order := range orders {
+		if order != nil && order.OrderType == payment.OrderTypeSubscription && order.PlanID != nil {
+			planIDs[*order.PlanID] = struct{}{}
+		}
+	}
+	if len(planIDs) == 0 {
+		return map[int64]string{}, nil
+	}
+	ids := make([]int64, 0, len(planIDs))
+	for id := range planIDs {
+		ids = append(ids, id)
+	}
+	plans, err := s.entClient.SubscriptionPlan.Query().Where(subscriptionplan.IDIn(ids...)).All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	names := make(map[int64]string, len(plans))
+	for _, plan := range plans {
+		names[plan.ID] = plan.Name
+	}
+	return names, nil
 }
 
 func paymentOrderCurrencies(orders []*dbent.PaymentOrder) []string {
@@ -149,6 +190,27 @@ func computeBasicStats(st *DashboardStats, orders []*dbent.PaymentOrder, todaySt
 	}
 	roundCurrencyAmounts(st.TotalAmount)
 	roundCurrencyAmounts(st.TodayAmount)
+}
+
+func buildSubscriptionPlanDistribution(orders []*dbent.PaymentOrder, planNames map[int64]string) []SubscriptionPlanPurchaseStat {
+	counts := make(map[int64]int)
+	for _, order := range orders {
+		if order == nil || order.OrderType != payment.OrderTypeSubscription || order.PlanID == nil {
+			continue
+		}
+		counts[*order.PlanID]++
+	}
+	plans := make([]SubscriptionPlanPurchaseStat, 0, len(counts))
+	for planID, count := range counts {
+		plans = append(plans, SubscriptionPlanPurchaseStat{PlanID: planID, PlanName: planNames[planID], Count: count})
+	}
+	sort.Slice(plans, func(i, j int) bool {
+		if plans[i].Count != plans[j].Count {
+			return plans[i].Count > plans[j].Count
+		}
+		return plans[i].PlanID < plans[j].PlanID
+	})
+	return plans
 }
 
 func buildDailySeries(orders []*dbent.PaymentOrder, since time.Time, days int) []DailyStats {
