@@ -295,6 +295,12 @@ export interface PaymentMethodStats {
   count: number
 }
 
+export interface SubscriptionPlanPurchaseStats {
+  plan_id: number
+  plan_name: string
+  count: number
+}
+
 export interface TopUserPaymentStats {
   user_id: number
   email: string
@@ -307,6 +313,9 @@ export interface DashboardStats {
   today_count: number
   total_count: number
   avg_amount: CurrencyAmounts
+  currency: string
+  available_currencies: string[]
+  subscription_plans: SubscriptionPlanPurchaseStats[]
   daily_series: DailyPaymentStats[]
   payment_methods: PaymentMethodStats[]
   top_users: Record<string, TopUserPaymentStats[]>

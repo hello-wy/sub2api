@@ -148,14 +148,15 @@ type RefundResult struct {
 }
 
 type DashboardStats struct {
-	TodayAmount   CurrencyAmounts `json:"today_amount"`
-	TotalAmount   CurrencyAmounts `json:"total_amount"`
-	TodayCount    int             `json:"today_count"`
-	TotalCount    int             `json:"total_count"`
-	AvgAmount     CurrencyAmounts `json:"avg_amount"`
-	PendingOrders int             `json:"pending_orders"`
-	Currency      string          `json:"currency"`
-	Currencies    []string        `json:"available_currencies"`
+	TodayAmount       CurrencyAmounts                `json:"today_amount"`
+	TotalAmount       CurrencyAmounts                `json:"total_amount"`
+	TodayCount        int                            `json:"today_count"`
+	TotalCount        int                            `json:"total_count"`
+	AvgAmount         CurrencyAmounts                `json:"avg_amount"`
+	PendingOrders     int                            `json:"pending_orders"`
+	Currency          string                         `json:"currency"`
+	Currencies        []string                       `json:"available_currencies"`
+	SubscriptionPlans []SubscriptionPlanPurchaseStat `json:"subscription_plans"`
 
 	DailySeries    []DailyStats        `json:"daily_series"`
 	PaymentMethods []PaymentMethodStat `json:"payment_methods"`
@@ -176,6 +177,12 @@ type PaymentMethodStat struct {
 	Type   string          `json:"type"`
 	Amount CurrencyAmounts `json:"amount"`
 	Count  int             `json:"count"`
+}
+
+type SubscriptionPlanPurchaseStat struct {
+	PlanID   int64  `json:"plan_id"`
+	PlanName string `json:"plan_name"`
+	Count    int    `json:"count"`
 }
 
 type TopUserStat struct {

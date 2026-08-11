@@ -7,6 +7,7 @@ import (
 	"time"
 
 	dbent "github.com/Wei-Shaw/sub2api/ent"
+	"github.com/Wei-Shaw/sub2api/internal/payment"
 	"github.com/stretchr/testify/require"
 )
 
@@ -71,6 +72,27 @@ func TestPaymentDashboardBreakdownsGroupAmountsAndRankingsByCurrency(t *testing.
 			{UserID: 2, Email: "bob@example.com", Amount: 10},
 		},
 	}, users)
+}
+
+func TestBuildSubscriptionPlanDistribution(t *testing.T) {
+	t.Parallel()
+
+	firstPlanID := int64(11)
+	secondPlanID := int64(22)
+	orders := []*dbent.PaymentOrder{
+		{PaymentType: "balance", OrderType: payment.OrderTypeSubscription, PlanID: &firstPlanID},
+		{OrderType: payment.OrderTypeSubscription, PlanID: &secondPlanID},
+		{OrderType: payment.OrderTypeSubscription, PlanID: &firstPlanID},
+		{OrderType: payment.OrderTypeSubscription},
+		{OrderType: "balance", PlanID: &firstPlanID},
+	}
+
+	stats := buildSubscriptionPlanDistribution(orders, map[int64]string{firstPlanID: "专业版"})
+
+	require.Equal(t, []SubscriptionPlanPurchaseStat{
+		{PlanID: firstPlanID, PlanName: "专业版", Count: 2},
+		{PlanID: secondPlanID, Count: 1},
+	}, stats)
 }
 
 func paymentStatsTestOrder(userID int64, email, currency string, amount float64, paidAt *time.Time) *dbent.PaymentOrder {
