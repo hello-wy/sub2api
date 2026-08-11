@@ -25,6 +25,7 @@ export interface LotteryDraw {
   redeem_code?: string
   redeem_status?: 'unused' | 'used' | 'expired'
   redeem_expires_at?: string
+  subscription_validity_days?: number
   created_at: string
 }
 
@@ -35,6 +36,7 @@ export interface LotteryPrizeConfig {
   amount?: number
   probability: number
   subscription_group_id?: number
+  subscription_plan_id?: number
   eligible_for_pity: boolean
 }
 

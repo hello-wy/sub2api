@@ -101,7 +101,7 @@ const props = withDefaults(defineProps<{
   max?: number
   formatAmount: (value: number) => string
 }>(), {
-  credits: () => [10, 50, 100, 200, 500],
+  credits: () => [50, 100, 200, 500, 1000],
   min: 0,
   max: 0,
 })

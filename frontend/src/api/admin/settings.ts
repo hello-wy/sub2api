@@ -120,6 +120,7 @@ export interface LotteryPrizeSetting {
   amount?: number;
   probability: number;
   subscription_group_id?: number;
+  subscription_plan_id?: number;
   eligible_for_pity: boolean;
   cooldown_seconds: number;
   cooldown_until?: string;

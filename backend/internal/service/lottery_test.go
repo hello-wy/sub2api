@@ -140,6 +140,26 @@ func TestLotteryPurchaseSourceRefFitsLedgerColumn(t *testing.T) {
 	}
 }
 
+func TestComputeLotterySubscriptionPlanValidity(t *testing.T) {
+	tests := []struct {
+		name string
+		days int
+		unit string
+		want int
+	}{
+		{name: "day card", days: 1, unit: "day", want: 1},
+		{name: "week card", days: 1, unit: "week", want: 7},
+		{name: "month card", days: 1, unit: "month", want: 30},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := psComputeValidityDays(tt.days, tt.unit); got != tt.want {
+				t.Fatalf("psComputeValidityDays(%d, %q) = %d, want %d", tt.days, tt.unit, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestValidateLotteryPrizePoolConfig(t *testing.T) {
 	valid := defaultLotteryPrizePoolConfig()
 	if err := validateLotteryPrizePoolConfig(valid); err != nil {
@@ -159,7 +179,20 @@ func TestValidateLotteryPrizePoolConfig(t *testing.T) {
 		{ID: "sub-card", Label: "订阅", Type: "subscription", Probability: 0.5, EligibleForPity: true},
 	}}
 	if err := validateLotteryPrizePoolConfig(invalidSubscription); err == nil {
-		t.Fatal("subscription prize without a group must be rejected")
+		t.Fatal("subscription prize without a plan must be rejected")
+	}
+
+	validSubscription := LotteryPrizePoolConfig{
+		InvitationFirstPaymentAmount: 20,
+		InvitationConsumptionAmount:  100,
+		PurchasePrice:                defaultLotteryPurchasePrice,
+		Prizes: []LotteryPrizeConfig{
+			{ID: "none", Label: "谢谢参与", Type: "none", Probability: 0.5},
+			{ID: "sub-card", Label: "日卡", Type: "subscription", SubscriptionPlanID: 1, Probability: 0.5, EligibleForPity: true},
+		},
+	}
+	if err := validateLotteryPrizePoolConfig(validSubscription); err != nil {
+		t.Fatalf("subscription prize with a plan rejected: %v", err)
 	}
 
 	invalidPurchasePrice := defaultLotteryPrizePoolConfig()

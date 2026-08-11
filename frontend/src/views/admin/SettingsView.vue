@@ -8319,7 +8319,7 @@
                     <tr v-for="(prize, index) in lotteryPrizePoolSettings.prizes" :key="prize.id || index" class="border-t border-gray-100 dark:border-dark-700">
                       <td class="p-2"><input :value="prize.type === 'balance' ? formatLotteryBalanceLabel(prize.amount) : prize.label" class="input min-w-[180px]" disabled /></td>
                       <td class="p-2"><span v-if="prize.type === 'none'" class="text-xs text-gray-400">{{ localText("未中奖", "No prize") }}</span><select v-else v-model="prize.type" class="input" @change="onLotteryPrizeTypeChange(prize)"><option value="balance">{{ localText("余额", "Balance") }}</option><option value="subscription">{{ localText("订阅", "Subscription") }}</option></select></td>
-                      <td class="p-2"><div v-if="prize.type === 'balance'" class="relative max-w-[180px]"><span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span><input v-model.number="prize.amount" type="number" min="0" step="1" class="input pl-7" @input="onLotteryBalanceAmountChange(prize)" /></div><select v-else-if="prize.type === 'subscription'" v-model.number="prize.subscription_group_id" class="input max-w-[240px]" @change="onLotterySubscriptionGroupChange(prize)"><option :value="0">{{ localText("选择订阅套餐", "Select subscription plan") }}</option><option v-for="group in subscriptionGroups" :key="group.id" :value="group.id">{{ group.name }}</option></select><span v-else class="text-xs text-gray-400">-</span></td>
+                      <td class="p-2"><div v-if="prize.type === 'balance'" class="relative max-w-[180px]"><span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span><input v-model.number="prize.amount" type="number" min="0" step="1" class="input pl-7" @input="onLotteryBalanceAmountChange(prize)" /></div><div v-else-if="prize.type === 'subscription'" class="space-y-1"><select v-model.number="prize.subscription_plan_id" class="input max-w-[240px]" @change="onLotterySubscriptionPlanChange(prize)"><option :value="0">{{ localText("选择订阅套餐", "Select subscription plan") }}</option><option v-for="plan in lotterySubscriptionPlans" :key="plan.id" :value="plan.id">{{ plan.name }} · {{ lotteryPlanValidityLabel(plan) }}</option></select><p v-if="lotteryPlanByID(prize.subscription_plan_id)" class="text-[11px] text-gray-500 dark:text-dark-400">{{ localText(`兑换后使用 ${lotteryPlanValidityLabel(lotteryPlanByID(prize.subscription_plan_id)! )}`, `Usable for ${lotteryPlanValidityLabel(lotteryPlanByID(prize.subscription_plan_id)! )} after redemption`) }}</p></div><span v-else class="text-xs text-gray-400">-</span></td>
                       <td class="p-2"><input v-model.number="prize.probability" type="number" min="0.000001" max="1" step="0.000001" class="input max-w-[150px] tabular-nums" /></td>
                       <td class="p-2"><input :value="lotteryCooldownMinutes(prize)" type="number" min="0" max="525600" step="1" :disabled="prize.type === 'none'" class="input max-w-[150px] tabular-nums" @input="onLotteryCooldownMinutesChange(prize, $event)" /></td>
                       <td class="p-2 text-xs text-gray-500 dark:text-dark-300">{{ lotteryCooldownStatus(prize) }}</td>
@@ -8849,6 +8849,7 @@
 import { ref, reactive, computed, onMounted, onUnmounted, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { adminAPI } from "@/api";
+import type { SubscriptionPlan } from "@/types/payment";
 import {
   appendAuthSourceDefaultsToUpdateRequest,
   buildAuthSourceDefaultsState,
@@ -9200,7 +9201,8 @@ function normalizeLotteryPrize(prize: LotteryPrizeSetting): LotteryPrizeSetting 
     type,
     amount: type === "balance" ? Math.max(0, Number(prize.amount) || 0) : 0,
     probability: Math.max(0, Number(Number(prize.probability || 0).toFixed(6))),
-    subscription_group_id: type === "subscription" ? Math.max(0, Math.floor(Number(prize.subscription_group_id) || 0)) : 0,
+    subscription_group_id: 0,
+    subscription_plan_id: type === "subscription" ? Math.max(0, Math.floor(Number(prize.subscription_plan_id) || 0)) : 0,
     eligible_for_pity: type === "none" ? false : prize.eligible_for_pity === true,
     cooldown_seconds: type === "none" ? 0 : Math.max(0, Math.min(525600 * 60, Math.floor(Number(prize.cooldown_seconds) || 0))),
     cooldown_until: prize.cooldown_until,
@@ -9215,6 +9217,7 @@ function addLotteryPrize(): void {
     amount: 10,
     probability: 0.01,
     subscription_group_id: 0,
+    subscription_plan_id: 0,
     eligible_for_pity: false,
     cooldown_seconds: 0,
   });
@@ -9228,12 +9231,15 @@ function onLotteryPrizeTypeChange(prize: LotteryPrizeSetting): void {
   if (prize.type === "none") {
     prize.amount = 0;
     prize.subscription_group_id = 0;
+    prize.subscription_plan_id = 0;
     prize.eligible_for_pity = false;
   } else if (prize.type === "subscription") {
     prize.amount = 0;
-    prize.subscription_group_id = Math.max(0, Number(prize.subscription_group_id) || 0);
+    prize.subscription_group_id = 0;
+    prize.subscription_plan_id = Math.max(0, Number(prize.subscription_plan_id) || 0);
   } else {
     prize.subscription_group_id = 0;
+    prize.subscription_plan_id = 0;
     prize.amount = Math.max(1, Number(prize.amount) || 1);
     prize.label = formatLotteryBalanceLabel(prize.amount);
   }
@@ -9248,9 +9254,21 @@ function onLotteryBalanceAmountChange(prize: LotteryPrizeSetting): void {
   prize.label = formatLotteryBalanceLabel(prize.amount);
 }
 
-function onLotterySubscriptionGroupChange(prize: LotteryPrizeSetting): void {
-  const group = subscriptionGroups.value.find((item) => item.id === prize.subscription_group_id);
-  if (group) prize.label = group.name;
+function lotteryPlanByID(planID?: number): SubscriptionPlan | undefined {
+  return lotterySubscriptionPlans.value.find((plan) => plan.id === planID);
+}
+
+function lotteryPlanValidityLabel(plan: SubscriptionPlan): string {
+  const days = Number(plan.validity_days) || 0;
+  const unit = plan.validity_unit || "day";
+  if (unit === "week" || unit === "weeks") return `${days * 7} ${localText("天", "days")}`;
+  if (unit === "month" || unit === "months") return `${days * 30} ${localText("天", "days")}`;
+  return `${days} ${localText("天", "days")}`;
+}
+
+function onLotterySubscriptionPlanChange(prize: LotteryPrizeSetting): void {
+  const plan = lotteryPlanByID(prize.subscription_plan_id);
+  if (plan) prize.label = plan.name;
 }
 
 async function loadLotteryPrizePoolSettings(): Promise<void> {
@@ -9276,7 +9294,7 @@ async function saveLotteryPrizePoolSettings(): Promise<void> {
     appStore.showError(localText("请至少保留两个奖项，设置保底奖项，并使全部概率相加为 1。", "Keep at least two prizes, configure a pity prize, and make all probabilities total 1."));
     return;
   }
-  if (prizes.some((prize) => prize.type === "subscription" && !prize.subscription_group_id)) {
+  if (prizes.some((prize) => prize.type === "subscription" && !prize.subscription_plan_id)) {
     appStore.showError(localText("每个订阅奖项都需要选择一个有效订阅套餐。", "Select an active subscription plan for every subscription prize."));
     return;
   }
@@ -9392,6 +9410,7 @@ const adminApiKeyMasked = ref("");
 const adminApiKeyOperating = ref(false);
 const newAdminApiKey = ref("");
 const subscriptionGroups = ref<AdminGroup[]>([]);
+const lotterySubscriptionPlans = ref<SubscriptionPlan[]>([]);
 
 // Upstream billing probe state
 const upstreamBillingProbeLoading = ref(true);
@@ -11381,6 +11400,15 @@ async function loadSubscriptionGroups() {
   }
 }
 
+async function loadLotterySubscriptionPlans() {
+  try {
+    const { data } = await adminAPI.payment.getPlans();
+    lotterySubscriptionPlans.value = data.filter((plan) => plan.for_sale);
+  } catch (_error: unknown) {
+    lotterySubscriptionPlans.value = [];
+  }
+}
+
 function findNextAvailableSubscriptionGroup(
   existingGroupIDs: number[],
 ): AdminGroup | undefined {
@@ -12981,6 +13009,7 @@ async function handleDeleteProvider() {
 onMounted(() => {
   loadSettings();
   loadSubscriptionGroups();
+  loadLotterySubscriptionPlans();
   loadAdminApiKey();
   loadUpstreamBillingProbeSettings();
   loadOllamaCloudUsageSettings();

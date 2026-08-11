@@ -64,19 +64,20 @@ type LotteryTicketAdjustmentResult struct {
 }
 
 type LotteryDrawResult struct {
-	ID              int64      `json:"id"`
-	RequestID       string     `json:"request_id"`
-	PrizeID         string     `json:"prize_id"`
-	PrizeLabel      string     `json:"prize_label"`
-	PrizeType       string     `json:"prize_type"`
-	Amount          float64    `json:"amount"`
-	BalanceBefore   *float64   `json:"balance_before,omitempty"`
-	BalanceAfter    *float64   `json:"balance_after,omitempty"`
-	Guaranteed      bool       `json:"guaranteed"`
-	RedeemCode      string     `json:"redeem_code,omitempty"`
-	RedeemStatus    string     `json:"redeem_status,omitempty"`
-	RedeemExpiresAt *time.Time `json:"redeem_expires_at,omitempty"`
-	CreatedAt       time.Time  `json:"created_at"`
+	ID                       int64      `json:"id"`
+	RequestID                string     `json:"request_id"`
+	PrizeID                  string     `json:"prize_id"`
+	PrizeLabel               string     `json:"prize_label"`
+	PrizeType                string     `json:"prize_type"`
+	Amount                   float64    `json:"amount"`
+	BalanceBefore            *float64   `json:"balance_before,omitempty"`
+	BalanceAfter             *float64   `json:"balance_after,omitempty"`
+	Guaranteed               bool       `json:"guaranteed"`
+	RedeemCode               string     `json:"redeem_code,omitempty"`
+	RedeemStatus             string     `json:"redeem_status,omitempty"`
+	RedeemExpiresAt          *time.Time `json:"redeem_expires_at,omitempty"`
+	SubscriptionValidityDays *int       `json:"subscription_validity_days,omitempty"`
+	CreatedAt                time.Time  `json:"created_at"`
 }
 
 // LotteryPrizeConfig is the operator-managed source of truth for both the
@@ -88,6 +89,7 @@ type LotteryPrizeConfig struct {
 	Amount              float64    `json:"amount,omitempty"`
 	Probability         float64    `json:"probability"`
 	SubscriptionGroupID int64      `json:"subscription_group_id,omitempty"`
+	SubscriptionPlanID  int64      `json:"subscription_plan_id,omitempty"`
 	EligibleForPity     bool       `json:"eligible_for_pity"`
 	CooldownSeconds     int        `json:"cooldown_seconds"`
 	CooldownUntil       *time.Time `json:"cooldown_until,omitempty"`
@@ -113,14 +115,15 @@ type LotteryBalanceTransaction struct {
 }
 
 type lotteryPrize struct {
-	ID              string
-	Label           string
-	Type            string
-	Amount          float64
-	Weight          int64
-	Days            int
-	GroupID         int64
-	CooldownSeconds int
+	ID                 string
+	Label              string
+	Type               string
+	Amount             float64
+	Weight             int64
+	GroupID            int64
+	SubscriptionPlanID int64
+	Days               int
+	CooldownSeconds    int
 }
 
 var lotteryPrizeIDPattern = regexp.MustCompile(`^[a-z][a-z0-9-]{1,63}$`)
@@ -269,7 +272,7 @@ func (s *LotteryService) GetPrizePoolConfig(ctx context.Context) (*LotteryPrizeP
 	if groupErr == nil {
 		legacyGroupID, _ := strconv.ParseInt(strings.TrimSpace(groupRaw), 10, 64)
 		for index := range config.Prizes {
-			if config.Prizes[index].Type == "subscription" && config.Prizes[index].SubscriptionGroupID == 0 {
+			if config.Prizes[index].Type == "subscription" && config.Prizes[index].SubscriptionGroupID == 0 && config.Prizes[index].SubscriptionPlanID == 0 {
 				config.Prizes[index].SubscriptionGroupID = legacyGroupID
 			}
 		}
@@ -283,11 +286,20 @@ func (s *LotteryService) GetPrizePoolConfig(ctx context.Context) (*LotteryPrizeP
 			prize.Label = lotteryBalancePrizeLabel(prize.Amount)
 		}
 		if prize.Type == "subscription" {
-			name, _, err := s.lotterySubscriptionGroup(ctx, s.entClient, prize.SubscriptionGroupID)
-			if err != nil {
-				continue
+			if prize.SubscriptionPlanID > 0 {
+				name, groupID, _, err := s.lotterySubscriptionPlan(ctx, s.entClient, prize.SubscriptionPlanID)
+				if err != nil {
+					continue
+				}
+				prize.SubscriptionGroupID = groupID
+				prize.Label = name
+			} else {
+				name, _, err := s.lotterySubscriptionGroup(ctx, s.entClient, prize.SubscriptionGroupID)
+				if err != nil {
+					continue
+				}
+				prize.Label = name
 			}
-			prize.Label = name
 		}
 		prizes = append(prizes, prize)
 	}
@@ -349,14 +361,15 @@ func (s *LotteryService) UpdatePrizePoolConfig(ctx context.Context, config Lotte
 		if prize.Type != "subscription" {
 			continue
 		}
-		groupName, _, err := s.lotterySubscriptionGroup(ctx, s.entClient, prize.SubscriptionGroupID)
+		planName, groupID, _, err := s.lotterySubscriptionPlan(ctx, s.entClient, prize.SubscriptionPlanID)
 		if err != nil {
 			return nil, err
 		}
-		if _, err := s.lotterySubscriptionWelfareAmount(ctx, s.entClient, prize.SubscriptionGroupID); err != nil {
+		if _, err := s.lotterySubscriptionWelfareAmount(ctx, s.entClient, groupID); err != nil {
 			return nil, err
 		}
-		prize.Label = groupName
+		prize.SubscriptionGroupID = groupID
+		prize.Label = planName
 	}
 	prizesForStorage := append([]LotteryPrizeConfig(nil), config.Prizes...)
 	for index := range prizesForStorage {
@@ -500,17 +513,17 @@ func validateLotteryPrizePoolConfig(config LotteryPrizePoolConfig) error {
 		}
 		switch prize.Type {
 		case "none":
-			if prize.Amount != 0 || prize.SubscriptionGroupID != 0 || prize.EligibleForPity || prize.CooldownSeconds != 0 {
+			if prize.Amount != 0 || prize.SubscriptionGroupID != 0 || prize.SubscriptionPlanID != 0 || prize.EligibleForPity || prize.CooldownSeconds != 0 {
 				return infraerrors.BadRequest("LOTTERY_PRIZE_INVALID", "non-winning prize cannot have a reward, cooldown, or pity eligibility")
 			}
 			hasNonePrize = true
 		case "balance":
-			if prize.Amount <= 0 || prize.Amount > 1_000_000 || prize.SubscriptionGroupID != 0 {
+			if prize.Amount <= 0 || prize.Amount > 1_000_000 || prize.SubscriptionGroupID != 0 || prize.SubscriptionPlanID != 0 {
 				return infraerrors.BadRequest("LOTTERY_PRIZE_INVALID", "balance prize amount is invalid")
 			}
 		case "subscription":
-			if prize.Amount != 0 || prize.SubscriptionGroupID <= 0 {
-				return infraerrors.BadRequest("LOTTERY_PRIZE_INVALID", "subscription prize group is invalid")
+			if prize.Amount != 0 || (prize.SubscriptionPlanID <= 0 && prize.SubscriptionGroupID <= 0) {
+				return infraerrors.BadRequest("LOTTERY_PRIZE_INVALID", "subscription prize plan is invalid")
 			}
 		default:
 			return infraerrors.BadRequest("LOTTERY_PRIZE_TYPE_INVALID", "lottery prize type is invalid")
@@ -634,7 +647,23 @@ func (s *LotteryService) configuredPrizes(ctx context.Context, client interface 
 		if !ok {
 			return nil, nil, fmt.Errorf("invalid lottery prize probability")
 		}
-		prize := lotteryPrize{ID: item.ID, Label: item.Label, Type: item.Type, Amount: item.Amount, Weight: weight, GroupID: item.SubscriptionGroupID, CooldownSeconds: item.CooldownSeconds}
+		prize := lotteryPrize{ID: item.ID, Label: item.Label, Type: item.Type, Amount: item.Amount, Weight: weight, GroupID: item.SubscriptionGroupID, SubscriptionPlanID: item.SubscriptionPlanID, CooldownSeconds: item.CooldownSeconds}
+		if item.Type == "subscription" {
+			if item.SubscriptionPlanID > 0 {
+				_, groupID, validityDays, err := s.lotterySubscriptionPlan(ctx, client, item.SubscriptionPlanID)
+				if err != nil {
+					return nil, nil, err
+				}
+				prize.GroupID = groupID
+				prize.Days = validityDays
+			} else {
+				_, validityDays, err := s.lotterySubscriptionGroup(ctx, client, item.SubscriptionGroupID)
+				if err != nil {
+					return nil, nil, err
+				}
+				prize.Days = validityDays
+			}
+		}
 		normal = append(normal, prize)
 		if item.EligibleForPity {
 			pity = append(pity, prize)
@@ -970,12 +999,16 @@ RETURNING id`, []any{userID, requestID, prize.ID, prize.Label, prize.Type, prize
 		}
 	}
 	var redeemExpiresAt *time.Time
+	var subscriptionValidityDays *int
 	if rewardRef != "" {
 		var expiresAt time.Time
 		if err := scanOne(txCtx, client, `SELECT expires_at FROM redeem_codes WHERE code = $1 AND owner_user_id = $2`, []any{rewardRef, userID}, &expiresAt); err != nil {
 			return nil, fmt.Errorf("read lottery redeem expiry: %w", err)
 		}
 		redeemExpiresAt = &expiresAt
+		if prize.Type == "subscription" {
+			subscriptionValidityDays = &prize.Days
+		}
 	}
 	available, err := s.countAvailableTickets(txCtx, client, userID)
 	if err != nil {
@@ -1002,7 +1035,7 @@ WHERE user_id = $1`, userID, available, state.PityMisses, prize.Type != "none");
 	if prize.Type == "subscription" {
 		redeemStatus = StatusUnused
 	}
-	return &LotteryDrawResult{ID: drawID, RequestID: requestID, PrizeID: prize.ID, PrizeLabel: prize.Label, PrizeType: prize.Type, Amount: prize.Amount, BalanceBefore: balanceBefore, BalanceAfter: balanceAfter, Guaranteed: guaranteed, RedeemCode: rewardRef, RedeemStatus: redeemStatus, RedeemExpiresAt: redeemExpiresAt, CreatedAt: timezone.Now()}, nil
+	return &LotteryDrawResult{ID: drawID, RequestID: requestID, PrizeID: prize.ID, PrizeLabel: prize.Label, PrizeType: prize.Type, Amount: prize.Amount, BalanceBefore: balanceBefore, BalanceAfter: balanceAfter, Guaranteed: guaranteed, RedeemCode: rewardRef, RedeemStatus: redeemStatus, RedeemExpiresAt: redeemExpiresAt, SubscriptionValidityDays: subscriptionValidityDays, CreatedAt: timezone.Now()}, nil
 }
 
 func (s *LotteryService) ListDraws(ctx context.Context, userID int64, limit int) ([]LotteryDrawResult, error) {
@@ -1013,7 +1046,7 @@ func (s *LotteryService) ListDraws(ctx context.Context, userID int64, limit int)
 		SELECT d.id, d.request_id, d.prize_id, d.prize_label, d.prize_type, d.reward_amount::double precision, d.is_guaranteed,
 	       COALESCE(d.reward_ref, ''),
 	       COALESCE(CASE WHEN r.status = 'used' THEN 'used' WHEN r.expires_at IS NOT NULL AND r.expires_at <= NOW() THEN 'expired' ELSE r.status END, ''),
-	       r.expires_at, d.created_at, bt.balance_before::double precision, bt.balance_after::double precision
+	       r.expires_at, r.validity_days, d.created_at, bt.balance_before::double precision, bt.balance_after::double precision
 FROM lottery_draws d
 LEFT JOIN redeem_codes r ON r.code = d.reward_ref AND r.owner_user_id = d.user_id
 LEFT JOIN balance_transactions bt ON bt.user_id = d.user_id AND bt.source_type = 'lottery_draw' AND bt.source_id = d.id::text
@@ -1027,13 +1060,18 @@ WHERE d.user_id = $1 ORDER BY d.created_at DESC, d.id DESC LIMIT $2`, userID, li
 		var item LotteryDrawResult
 		var balanceBefore, balanceAfter sql.NullFloat64
 		var redeemExpiresAt sql.NullTime
-		if err := rows.Scan(&item.ID, &item.RequestID, &item.PrizeID, &item.PrizeLabel, &item.PrizeType, &item.Amount, &item.Guaranteed, &item.RedeemCode, &item.RedeemStatus, &redeemExpiresAt, &item.CreatedAt, &balanceBefore, &balanceAfter); err != nil {
+		var subscriptionValidityDays sql.NullInt64
+		if err := rows.Scan(&item.ID, &item.RequestID, &item.PrizeID, &item.PrizeLabel, &item.PrizeType, &item.Amount, &item.Guaranteed, &item.RedeemCode, &item.RedeemStatus, &redeemExpiresAt, &subscriptionValidityDays, &item.CreatedAt, &balanceBefore, &balanceAfter); err != nil {
 			return nil, err
 		}
 		item.BalanceBefore = nullableFloat64Pointer(balanceBefore)
 		item.BalanceAfter = nullableFloat64Pointer(balanceAfter)
 		if redeemExpiresAt.Valid {
 			item.RedeemExpiresAt = &redeemExpiresAt.Time
+		}
+		if subscriptionValidityDays.Valid {
+			validityDays := int(subscriptionValidityDays.Int64)
+			item.SubscriptionValidityDays = &validityDays
 		}
 		items = append(items, item)
 	}
@@ -1200,10 +1238,10 @@ func (s *LotteryService) grantDrawReward(ctx context.Context, client interface {
 		}
 		return "", &before, &after, nil
 	case "subscription":
-		_, validityDays, err := s.lotterySubscriptionGroup(ctx, client, prize.GroupID)
-		if err != nil {
-			return "", nil, nil, err
+		if prize.GroupID <= 0 || prize.Days <= 0 {
+			return "", nil, nil, infraerrors.ServiceUnavailable("LOTTERY_SUBSCRIPTION_NOT_CONFIGURED", "lottery subscription plan is unavailable")
 		}
+		validityDays := prize.Days
 		welfareAmount, err := s.lotterySubscriptionWelfareAmount(ctx, client, prize.GroupID)
 		if err != nil {
 			return "", nil, nil, err
@@ -1212,7 +1250,7 @@ func (s *LotteryService) grantDrawReward(ctx context.Context, client interface {
 		if err != nil {
 			return "", nil, nil, err
 		}
-		expiresAt := timezone.Now().Add(lotteryFreeTicketValidity)
+		expiresAt := timezone.Now().AddDate(0, 0, 30)
 		if _, err := client.ExecContext(ctx, `
 INSERT INTO redeem_codes (code, type, value, status, notes, expires_at, group_id, validity_days, owner_user_id)
 VALUES ($1, 'subscription', 1, 'unused', $2, $3, $4, $5, $6)`, code, fmt.Sprintf("抽奖记录 #%d", drawID), expiresAt, prize.GroupID, validityDays, userID); err != nil {
@@ -1235,6 +1273,34 @@ INSERT INTO welfare_records (user_id, user_email, amount, remarks, status, sourc
 VALUES ($1, $2, $3, $4, 'success', 'lottery_draw', $5, $6, $7)
 ON CONFLICT (source_type, source_id) WHERE source_type IS NOT NULL AND source_id IS NOT NULL DO NOTHING`, userID, email, amount, "抽奖奖励 #"+sourceID+" · "+prizeLabel, sourceID, rewardType, nullableString(rewardRef))
 	return err
+}
+
+func (s *LotteryService) lotterySubscriptionPlan(ctx context.Context, client interface {
+	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
+}, planID int64) (string, int64, int, error) {
+	if planID <= 0 {
+		return "", 0, 0, infraerrors.ServiceUnavailable("LOTTERY_SUBSCRIPTION_NOT_CONFIGURED", "lottery subscription plan is not configured")
+	}
+	var name, unit string
+	var groupID int64
+	var validityDays int
+	err := scanOne(ctx, client, `
+		SELECT p.name, p.group_id, p.validity_days, p.validity_unit
+		FROM subscription_plans p
+		JOIN groups g ON g.id = p.group_id
+		WHERE p.id = $1 AND p.for_sale = true AND g.status = 'active'
+			AND g.subscription_type = 'subscription' AND g.deleted_at IS NULL`, []any{planID}, &name, &groupID, &validityDays, &unit)
+	if err == sql.ErrNoRows {
+		return "", 0, 0, infraerrors.ServiceUnavailable("LOTTERY_SUBSCRIPTION_NOT_CONFIGURED", "lottery subscription plan is unavailable")
+	}
+	if err != nil {
+		return "", 0, 0, err
+	}
+	validityDays = psComputeValidityDays(validityDays, unit)
+	if validityDays <= 0 || validityDays > MaxValidityDays {
+		return "", 0, 0, infraerrors.ServiceUnavailable("LOTTERY_SUBSCRIPTION_VALIDITY_INVALID", "lottery subscription plan validity is invalid")
+	}
+	return name, groupID, validityDays, nil
 }
 
 func (s *LotteryService) lotterySubscriptionGroup(ctx context.Context, client interface {
@@ -1564,15 +1630,16 @@ func (s *LotteryService) findDraw(ctx context.Context, client interface {
 	var item LotteryDrawResult
 	var balanceBefore, balanceAfter sql.NullFloat64
 	var redeemExpiresAt sql.NullTime
+	var subscriptionValidityDays sql.NullInt64
 	err := scanOne(ctx, client, `
 		SELECT d.id, d.request_id, d.prize_id, d.prize_label, d.prize_type, d.reward_amount::double precision, d.is_guaranteed,
 	       COALESCE(d.reward_ref, ''),
 	       COALESCE(CASE WHEN r.status = 'used' THEN 'used' WHEN r.expires_at IS NOT NULL AND r.expires_at <= NOW() THEN 'expired' ELSE r.status END, ''),
-	       r.expires_at, d.created_at, bt.balance_before::double precision, bt.balance_after::double precision
+	       r.expires_at, r.validity_days, d.created_at, bt.balance_before::double precision, bt.balance_after::double precision
 FROM lottery_draws d
 LEFT JOIN redeem_codes r ON r.code = d.reward_ref AND r.owner_user_id = d.user_id
 LEFT JOIN balance_transactions bt ON bt.user_id = d.user_id AND bt.source_type = 'lottery_draw' AND bt.source_id = d.id::text
-	WHERE d.user_id = $1 AND d.request_id = $2`, []any{userID, requestID}, &item.ID, &item.RequestID, &item.PrizeID, &item.PrizeLabel, &item.PrizeType, &item.Amount, &item.Guaranteed, &item.RedeemCode, &item.RedeemStatus, &redeemExpiresAt, &item.CreatedAt, &balanceBefore, &balanceAfter)
+	WHERE d.user_id = $1 AND d.request_id = $2`, []any{userID, requestID}, &item.ID, &item.RequestID, &item.PrizeID, &item.PrizeLabel, &item.PrizeType, &item.Amount, &item.Guaranteed, &item.RedeemCode, &item.RedeemStatus, &redeemExpiresAt, &subscriptionValidityDays, &item.CreatedAt, &balanceBefore, &balanceAfter)
 	if err != nil {
 		return nil, err
 	}
@@ -1580,6 +1647,10 @@ LEFT JOIN balance_transactions bt ON bt.user_id = d.user_id AND bt.source_type =
 	item.BalanceAfter = nullableFloat64Pointer(balanceAfter)
 	if redeemExpiresAt.Valid {
 		item.RedeemExpiresAt = &redeemExpiresAt.Time
+	}
+	if subscriptionValidityDays.Valid {
+		validityDays := int(subscriptionValidityDays.Int64)
+		item.SubscriptionValidityDays = &validityDays
 	}
 	return &item, nil
 }

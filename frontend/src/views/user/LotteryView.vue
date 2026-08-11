@@ -101,7 +101,7 @@
               <div class="lottery-probability-notes">
                 <p>活动规则</p>
                 <ul>
-                  <li>订阅套餐以兑换券形式发放，有效期 30 天。</li>
+                  <li>订阅兑换码可在 30 天内兑换；兑换后按奖项标注的时长生效。</li>
                   <li>有效邀请须完成注册、绑定唯一 QQ，首笔人民币余额充值或订阅套餐订单满 ¥{{ formatInvitationAmount(invitationFirstPaymentAmount) }}，且实际消费满 ${{ formatInvitationAmount(invitationConsumptionAmount) }}。</li>
                   <li>异常账号将进入风控审核。</li>
                 </ul>
@@ -117,7 +117,7 @@
             <div v-if="history.length" class="lottery-recent-list mt-5">
               <div v-for="item in history.slice(0, 5)" :key="item.id" class="lottery-recent-item">
                 <div class="lottery-history-icon" :class="prizeToneClass(item.prize)"><Icon :name="item.prize.kind === 'none' ? 'refresh' : 'gift'" size="sm" /></div>
-                <div class="min-w-0 flex-1"><p class="font-semibold" :class="prizeToneClass(item.prize)">{{ item.prize.label }}</p><p v-if="item.isGuaranteed || item.redeemCode" class="mt-0.5 text-xs text-slate-500 dark:text-dark-400"><template v-if="item.isGuaranteed">触发保底</template><template v-if="item.isGuaranteed && item.redeemCode"> · </template><template v-if="item.redeemCode"><span :class="redeemStatusClass(item.redeemStatus)">{{ redeemStatusLabel(item.redeemStatus) }}</span><span v-if="redeemExpiryRemainingLabel(item.redeemStatus, item.redeemExpiresAt)" class="text-slate-400 dark:text-dark-400"> · {{ redeemExpiryRemainingLabel(item.redeemStatus, item.redeemExpiresAt) }}</span></template></p><p v-if="item.redeemCode" class="mt-1 truncate font-mono text-[11px] text-violet-600 dark:text-violet-300">兑换码：{{ item.redeemCode }}</p></div>
+                <div class="min-w-0 flex-1"><p class="font-semibold" :class="prizeToneClass(item.prize)">{{ item.prize.label }}</p><p v-if="item.isGuaranteed || item.redeemCode" class="mt-0.5 text-xs text-slate-500 dark:text-dark-400"><template v-if="item.isGuaranteed">触发保底</template><template v-if="item.isGuaranteed && item.redeemCode"> · </template><template v-if="item.redeemCode"><span :class="redeemStatusClass(item.redeemStatus)">{{ redeemStatusLabel(item.redeemStatus) }}</span><span v-if="redeemExpiryRemainingLabel(item.redeemStatus, item.redeemExpiresAt)" class="text-slate-400 dark:text-dark-400"> · 兑换截止 {{ redeemExpiryRemainingLabel(item.redeemStatus, item.redeemExpiresAt) }}</span><span v-if="subscriptionValidityLabel(item.subscriptionValidityDays)" class="text-slate-400 dark:text-dark-400"> · {{ subscriptionValidityLabel(item.subscriptionValidityDays) }}</span></template></p><p v-if="item.redeemCode" class="mt-1 truncate font-mono text-[11px] text-violet-600 dark:text-violet-300">兑换码：{{ item.redeemCode }}</p></div>
                 <time class="shrink-0 text-right text-[11px] leading-4 tabular-nums text-slate-400 dark:text-dark-400"><span class="block">{{ item.date }}</span><span>{{ item.time }}</span></time>
               </div>
             </div>
@@ -131,7 +131,7 @@
         <div v-if="history.length" class="-mx-6 -my-5 divide-y divide-slate-100 dark:divide-dark-700">
           <div v-for="item in history" :key="item.id" class="flex items-center gap-4 px-6 py-4">
             <div class="lottery-history-icon" :class="prizeToneClass(item.prize)"><Icon :name="item.prize.kind === 'none' ? 'refresh' : 'gift'" size="sm" /></div>
-            <div class="min-w-0 flex-1"><p class="font-semibold" :class="prizeToneClass(item.prize)">{{ item.prize.label }}</p><p v-if="item.isGuaranteed" class="mt-0.5 text-xs text-slate-500 dark:text-dark-400">触发保底</p><p v-if="item.redeemCode" class="mt-1 font-mono text-[11px] text-violet-600 dark:text-violet-300">兑换码：{{ item.redeemCode }}<span class="ml-2 font-sans font-semibold" :class="redeemStatusClass(item.redeemStatus)">{{ redeemStatusLabel(item.redeemStatus) }}</span><span v-if="redeemExpiryRemainingLabel(item.redeemStatus, item.redeemExpiresAt)" class="ml-2 font-sans text-slate-400 dark:text-dark-400">{{ redeemExpiryRemainingLabel(item.redeemStatus, item.redeemExpiresAt) }}</span></p></div>
+            <div class="min-w-0 flex-1"><p class="font-semibold" :class="prizeToneClass(item.prize)">{{ item.prize.label }}</p><p v-if="item.isGuaranteed" class="mt-0.5 text-xs text-slate-500 dark:text-dark-400">触发保底</p><p v-if="item.redeemCode" class="mt-1 font-mono text-[11px] text-violet-600 dark:text-violet-300">兑换码：{{ item.redeemCode }}<span class="ml-2 font-sans font-semibold" :class="redeemStatusClass(item.redeemStatus)">{{ redeemStatusLabel(item.redeemStatus) }}</span><span v-if="redeemExpiryRemainingLabel(item.redeemStatus, item.redeemExpiresAt)" class="ml-2 font-sans text-slate-400 dark:text-dark-400">兑换截止 {{ redeemExpiryRemainingLabel(item.redeemStatus, item.redeemExpiresAt) }}</span><span v-if="subscriptionValidityLabel(item.subscriptionValidityDays)" class="ml-2 font-sans text-slate-400 dark:text-dark-400">{{ subscriptionValidityLabel(item.subscriptionValidityDays) }}</span></p></div>
             <time class="shrink-0 text-right text-[11px] leading-4 tabular-nums text-slate-400 dark:text-dark-400"><span class="block">{{ item.date }}</span><span>{{ item.time }}</span></time>
           </div>
         </div>
@@ -140,7 +140,7 @@
       </BaseDialog>
 
       <BaseDialog :show="showResult" :title="resultTitle" width="narrow" @close="closeResultDialog">
-        <div v-if="lastResult" class="text-center"><div class="lottery-result-mark" :class="prizeToneClass(lastResult.prize)"><Icon :name="lastResult.prize.kind === 'none' ? 'refresh' : 'gift'" size="xl" /></div><p class="mt-5 text-2xl font-bold" :class="prizeToneClass(lastResult.prize)">{{ lastResult.prize.label }}</p><p class="mt-2 text-sm leading-6 text-slate-500 dark:text-dark-300">{{ lastResult.prize.detail }}</p><div v-if="lastResult.prize.kind === 'quota' && lastResult.balanceBefore !== undefined && lastResult.balanceAfter !== undefined" class="lottery-result-balance-change"><div><span>抽奖前余额</span><strong>{{ formatLotteryBalance(lastResult.balanceBefore) }}</strong></div><div class="is-reward"><span>中奖金额</span><strong>+{{ formatLotteryBalance(lastResult.prize.amount ?? 0) }}</strong></div><div><span>抽奖后余额</span><strong>{{ formatLotteryBalance(lastResult.balanceAfter) }}</strong></div></div><div v-if="lastResult.redeemCode" class="mt-5 rounded-lg border border-violet-200 bg-violet-50 px-4 py-3 text-left dark:border-violet-500/30 dark:bg-violet-950/20"><p class="text-xs font-semibold text-violet-700 dark:text-violet-200">订阅兑换码 <span class="ml-2" :class="redeemStatusClass(lastResult.redeemStatus)">{{ redeemStatusLabel(lastResult.redeemStatus) }}</span></p><div class="mt-2 flex items-center gap-2"><code class="min-w-0 flex-1 break-all text-sm font-semibold text-violet-800 dark:text-violet-100">{{ lastResult.redeemCode }}</code><button class="btn btn-secondary h-8 w-8 shrink-0 p-0" type="button" title="复制兑换码" @click="copyRedeemCode(lastResult.redeemCode)"><Icon name="copy" size="sm" /></button></div><p class="mt-2 text-[11px] text-violet-600 dark:text-violet-300">有效期至 {{ formatRedeemExpiry(lastResult.redeemExpiresAt) }}<span v-if="redeemExpiryRemainingLabel(lastResult.redeemStatus, lastResult.redeemExpiresAt)"> · {{ redeemExpiryRemainingLabel(lastResult.redeemStatus, lastResult.redeemExpiresAt) }}</span></p><p class="mt-2 text-xs text-slate-600 dark:text-dark-200">请前往 <RouterLink :to="{ path: '/wallet', query: { tab: 'redeem' } }" class="font-semibold text-primary-600 hover:text-primary-700 dark:text-primary-300">我的钱包</RouterLink> 进行兑换</p></div><p v-if="lastResult.isGuaranteed" class="mt-3 text-xs font-semibold text-primary-600 dark:text-primary-300">本次已触发 5 抽保底</p></div>
+        <div v-if="lastResult" class="text-center"><div class="lottery-result-mark" :class="prizeToneClass(lastResult.prize)"><Icon :name="lastResult.prize.kind === 'none' ? 'refresh' : 'gift'" size="xl" /></div><p class="mt-5 text-2xl font-bold" :class="prizeToneClass(lastResult.prize)">{{ lastResult.prize.label }}</p><p class="mt-2 text-sm leading-6 text-slate-500 dark:text-dark-300">{{ lastResult.prize.detail }}</p><div v-if="lastResult.prize.kind === 'quota' && lastResult.balanceBefore !== undefined && lastResult.balanceAfter !== undefined" class="lottery-result-balance-change"><div><span>抽奖前余额</span><strong>{{ formatLotteryBalance(lastResult.balanceBefore) }}</strong></div><div class="is-reward"><span>中奖金额</span><strong>+{{ formatLotteryBalance(lastResult.prize.amount ?? 0) }}</strong></div><div><span>抽奖后余额</span><strong>{{ formatLotteryBalance(lastResult.balanceAfter) }}</strong></div></div><div v-if="lastResult.redeemCode" class="mt-5 rounded-lg border border-violet-200 bg-violet-50 px-4 py-3 text-left dark:border-violet-500/30 dark:bg-violet-950/20"><p class="text-xs font-semibold text-violet-700 dark:text-violet-200">订阅兑换码 <span class="ml-2" :class="redeemStatusClass(lastResult.redeemStatus)">{{ redeemStatusLabel(lastResult.redeemStatus) }}</span></p><div class="mt-2 flex items-center gap-2"><code class="min-w-0 flex-1 break-all text-sm font-semibold text-violet-800 dark:text-violet-100">{{ lastResult.redeemCode }}</code><button class="btn btn-secondary h-8 w-8 shrink-0 p-0" type="button" title="复制兑换码" @click="copyRedeemCode(lastResult.redeemCode)"><Icon name="copy" size="sm" /></button></div><p class="mt-2 text-[11px] text-violet-600 dark:text-violet-300">兑换截止 {{ formatRedeemExpiry(lastResult.redeemExpiresAt) }}<span v-if="redeemExpiryRemainingLabel(lastResult.redeemStatus, lastResult.redeemExpiresAt)"> · {{ redeemExpiryRemainingLabel(lastResult.redeemStatus, lastResult.redeemExpiresAt) }}</span></p><p v-if="subscriptionValidityLabel(lastResult.subscriptionValidityDays)" class="mt-1 text-[11px] text-violet-600 dark:text-violet-300">{{ subscriptionValidityLabel(lastResult.subscriptionValidityDays) }}</p><p class="mt-2 text-xs text-slate-600 dark:text-dark-200">请前往 <RouterLink :to="{ path: '/wallet', query: { tab: 'redeem' } }" class="font-semibold text-primary-600 hover:text-primary-700 dark:text-primary-300">我的钱包</RouterLink> 进行兑换</p></div><p v-if="lastResult.isGuaranteed" class="mt-3 text-xs font-semibold text-primary-600 dark:text-primary-300">本次已触发 5 抽保底</p></div>
         <template #footer><button class="btn btn-primary" type="button" @click="closeResultDialog">完成</button></template>
       </BaseDialog>
 
@@ -181,8 +181,8 @@ import { useAppStore, useAuthStore } from '@/stores'
 import { useLotteryState } from '@/composables/useLotteryState'
 import { lotteryAPI, type LotteryDraw, type LotteryPrizeConfig } from '@/api/lottery'
 
-type DrawHistoryItem = { id: number; prize: LotteryPrize; isGuaranteed: boolean; date: string; time: string; redeemCode?: string; redeemStatus?: LotteryDraw['redeem_status']; redeemExpiresAt?: string }
-type DisplayResult = { prize: LotteryPrize; isGuaranteed: boolean; balanceBefore?: number; balanceAfter?: number; redeemCode?: string; redeemStatus?: LotteryDraw['redeem_status']; redeemExpiresAt?: string }
+type DrawHistoryItem = { id: number; prize: LotteryPrize; isGuaranteed: boolean; date: string; time: string; redeemCode?: string; redeemStatus?: LotteryDraw['redeem_status']; redeemExpiresAt?: string; subscriptionValidityDays?: number }
+type DisplayResult = { prize: LotteryPrize; isGuaranteed: boolean; balanceBefore?: number; balanceAfter?: number; redeemCode?: string; redeemStatus?: LotteryDraw['redeem_status']; redeemExpiresAt?: string; subscriptionValidityDays?: number }
 
 const router = useRouter()
 const appStore = useAppStore()
@@ -297,12 +297,16 @@ function redeemExpiryRemainingLabel(status: LotteryDraw['redeem_status'] | undef
   return `剩余 ${Math.ceil(remainingMs / 86_400_000)} 天`
 }
 
+function subscriptionValidityLabel(days?: number): string {
+  return days && days > 0 ? `兑换后使用 ${days} 天` : ''
+}
+
 function displayPrize(draw: LotteryDraw): LotteryPrize {
 	return lotteryPrizeFromSnapshot(draw)
 }
 
 function displayHistory(draw: LotteryDraw): DrawHistoryItem {
-  return { id: draw.id, prize: displayPrize(draw), isGuaranteed: draw.guaranteed, redeemCode: draw.redeem_code, redeemStatus: draw.redeem_status, redeemExpiresAt: draw.redeem_expires_at, ...formatDrawTimestamp(draw.created_at) }
+  return { id: draw.id, prize: displayPrize(draw), isGuaranteed: draw.guaranteed, redeemCode: draw.redeem_code, redeemStatus: draw.redeem_status, redeemExpiresAt: draw.redeem_expires_at, subscriptionValidityDays: draw.subscription_validity_days, ...formatDrawTimestamp(draw.created_at) }
 }
 
 function mapPrizeConfig(config: LotteryPrizeConfig[]): LotteryPrize[] {
@@ -487,6 +491,7 @@ async function draw(): Promise<void> {
       redeemCode: result.redeem_code,
       redeemStatus: result.redeem_status,
       redeemExpiresAt: result.redeem_expires_at,
+      subscriptionValidityDays: result.subscription_validity_days,
     }
     pendingHistoryItem.value = displayHistory(result)
     await new Promise<void>((resolve) => window.setTimeout(resolve, 1600))

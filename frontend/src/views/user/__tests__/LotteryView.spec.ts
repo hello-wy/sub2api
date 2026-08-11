@@ -124,6 +124,31 @@ describe('LotteryView', () => {
     wrapper.unmount()
   })
 
+  it('订阅奖励分别展示兑换期限与使用期限', async () => {
+    lotteryAPI.listDraws.mockResolvedValueOnce({
+      data: [{
+        id: 2,
+        request_id: 'lottery-history-subscription',
+        prize_id: 'plus-week',
+        prize_label: 'Plus 周卡',
+        prize_type: 'subscription',
+        amount: 0,
+        guaranteed: false,
+        redeem_code: 'WEEK-CODE',
+        redeem_status: 'unused',
+        redeem_expires_at: '2026-09-08T00:00:00Z',
+        subscription_validity_days: 7,
+        created_at: '2026-08-09T00:00:00Z',
+      }],
+    })
+    const wrapper = mountLottery()
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('兑换后使用 7 天')
+    expect(wrapper.text()).toContain('兑换截止')
+    wrapper.unmount()
+  })
+
   it('历史记录使用开奖快照而不是当前奖池金额', async () => {
     lotteryAPI.listDraws.mockResolvedValueOnce({
       data: [{
