@@ -301,6 +301,17 @@ export interface SubscriptionPlanPurchaseStats {
   count: number
 }
 
+export interface GroupRevenueEfficiencyStats {
+  group_id: number
+  group_name: string
+  rate_multiplier: number
+  revenue: number
+  expected_quota: number | null
+  user_usage: number
+  base_usage: number
+  unit_revenue: number | null
+}
+
 export interface TopUserPaymentStats {
   user_id: number
   email: string
@@ -316,6 +327,7 @@ export interface DashboardStats {
   currency: string
   available_currencies: string[]
   subscription_plans: SubscriptionPlanPurchaseStats[]
+  group_revenue_efficiency: GroupRevenueEfficiencyStats[]
   daily_series: DailyPaymentStats[]
   payment_methods: PaymentMethodStats[]
   top_users: Record<string, TopUserPaymentStats[]>

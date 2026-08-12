@@ -1,6 +1,7 @@
 <template>
   <AppLayout>
-    <div class="space-y-6">
+    <ScrollablePageLayout>
+      <div class="space-y-6">
       <!-- Header with Day Switcher -->
       <div class="flex items-center justify-end">
         <div class="flex items-center gap-2">
@@ -31,7 +32,13 @@
       <template v-else-if="stats">
         <OrderStatsCards :stats="stats" />
         <DailyRevenueChart :data="stats.daily_series || []" :loading="loading" />
-        <SubscriptionPlanDistribution :plans="stats.subscription_plans || []" />
+        <div class="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,0.7fr)_minmax(0,1.3fr)]">
+          <SubscriptionPlanDistribution :plans="stats.subscription_plans || []" />
+          <GroupRevenueEfficiency
+            :groups="stats.group_revenue_efficiency || []"
+            :currency="stats.currency"
+          />
+        </div>
         <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div class="card p-4">
             <h3 class="mb-4 text-sm font-semibold text-gray-900 dark:text-white">{{ t('payment.admin.paymentDistribution') }}</h3>
@@ -67,7 +74,8 @@
           </div>
         </div>
       </template>
-    </div>
+      </div>
+    </ScrollablePageLayout>
   </AppLayout>
 </template>
 
@@ -79,11 +87,13 @@ import { adminPaymentAPI } from '@/api/admin/payment'
 import { extractI18nErrorMessage } from '@/utils/apiError'
 import type { CurrencyAmounts, DashboardStats, TopUserPaymentStats } from '@/types/payment'
 import AppLayout from '@/components/layout/AppLayout.vue'
+import ScrollablePageLayout from '@/components/layout/ScrollablePageLayout.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import Icon from '@/components/icons/Icon.vue'
 import OrderStatsCards from '@/components/admin/payment/OrderStatsCards.vue'
 import DailyRevenueChart from '@/components/admin/payment/DailyRevenueChart.vue'
 import SubscriptionPlanDistribution from '@/components/admin/payment/SubscriptionPlanDistribution.vue'
+import GroupRevenueEfficiency from '@/components/admin/payment/GroupRevenueEfficiency.vue'
 
 const { t } = useI18n()
 const appStore = useAppStore()
