@@ -145,3 +145,5 @@ aicodex
 output/
 
 .agents
+# Vitest / Vite cache at repo root
+.vite/
