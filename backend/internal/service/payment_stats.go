@@ -11,12 +11,9 @@ import (
 	"time"
 
 	dbent "github.com/Wei-Shaw/sub2api/ent"
-	"github.com/Wei-Shaw/sub2api/ent/group"
 	"github.com/Wei-Shaw/sub2api/ent/paymentauditlog"
 	"github.com/Wei-Shaw/sub2api/ent/paymentorder"
-	"github.com/Wei-Shaw/sub2api/ent/schema/mixins"
 	"github.com/Wei-Shaw/sub2api/ent/subscriptionplan"
-	"github.com/Wei-Shaw/sub2api/ent/usagelog"
 	"github.com/Wei-Shaw/sub2api/internal/payment"
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 )
@@ -90,109 +87,8 @@ func (s *PaymentService) GetDashboardStats(ctx context.Context, days int, reques
 		return nil, err
 	}
 	st.SubscriptionPlans = buildSubscriptionPlanDistribution(subscriptionOrders, planNames)
-	selectedSubscriptionOrders := filterPaymentOrdersByCurrency(subscriptionOrders, selectedCurrency)
-	usageByGroup, groupMetadata, err := s.groupRevenueUsage(ctx, since, subscriptionGroupIDs(selectedSubscriptionOrders))
-	if err != nil {
-		return nil, err
-	}
-	st.GroupRevenueEfficiency = buildGroupRevenueEfficiency(
-		selectedSubscriptionOrders,
-		usageByGroup,
-		groupMetadata,
-	)
 
 	return st, nil
-}
-
-type groupRevenueUsage struct {
-	UserUsage float64
-	BaseUsage float64
-}
-
-type groupRevenueMetadata struct {
-	Name                     string
-	RateMultiplier           float64
-	ExpectedQuotaPerPurchase *float64
-}
-
-func (s *PaymentService) groupRevenueUsage(ctx context.Context, since time.Time, extraGroupIDs []int64) (map[int64]groupRevenueUsage, map[int64]groupRevenueMetadata, error) {
-	type usageRow struct {
-		GroupID   int64   `json:"group_id"`
-		UserUsage float64 `json:"user_usage"`
-		BaseUsage float64 `json:"base_usage"`
-	}
-
-	var rows []usageRow
-	err := s.entClient.UsageLog.Query().
-		Where(
-			usagelog.CreatedAtGTE(since),
-			usagelog.GroupIDNotNil(),
-			usagelog.SubscriptionIDNotNil(),
-			usagelog.ActualCostGT(0),
-		).
-		GroupBy(usagelog.FieldGroupID).
-		Aggregate(
-			dbent.As(dbent.Sum(usagelog.FieldActualCost), "user_usage"),
-			dbent.As(dbent.Sum(usagelog.FieldTotalCost), "base_usage"),
-		).
-		Scan(ctx, &rows)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	usageByGroup := make(map[int64]groupRevenueUsage, len(rows))
-	groupIDSet := make(map[int64]struct{}, len(rows)+len(extraGroupIDs))
-	for _, row := range rows {
-		usageByGroup[row.GroupID] = groupRevenueUsage{UserUsage: row.UserUsage, BaseUsage: row.BaseUsage}
-		groupIDSet[row.GroupID] = struct{}{}
-	}
-	for _, groupID := range extraGroupIDs {
-		groupIDSet[groupID] = struct{}{}
-	}
-	groupIDs := make([]int64, 0, len(groupIDSet))
-	for groupID := range groupIDSet {
-		groupIDs = append(groupIDs, groupID)
-	}
-	if len(groupIDs) == 0 {
-		return usageByGroup, map[int64]groupRevenueMetadata{}, nil
-	}
-
-	// 订阅订单会保留当时的分组 ID。即使分组后来被软删除，历史支付报表
-	// 仍应展示其名称和倍率，避免将可识别的历史数据降级为“未知分组”。
-	groups, err := s.entClient.Group.Query().Where(group.IDIn(groupIDs...)).All(mixins.SkipSoftDelete(ctx))
-	if err != nil {
-		return nil, nil, err
-	}
-	groupMetadata := make(map[int64]groupRevenueMetadata, len(groups))
-	for _, item := range groups {
-		expectedQuotaPerPurchase := (*float64)(nil)
-		if item.SubscriptionQuotaResetMode == SubscriptionQuotaResetModeUntilSubscriptionExpires {
-			expectedQuotaPerPurchase = item.SubscriptionTotalLimitUsd
-		}
-		groupMetadata[item.ID] = groupRevenueMetadata{
-			Name:                     item.Name,
-			RateMultiplier:           item.RateMultiplier,
-			ExpectedQuotaPerPurchase: expectedQuotaPerPurchase,
-		}
-	}
-	return usageByGroup, groupMetadata, nil
-}
-
-func subscriptionGroupIDs(orders []*dbent.PaymentOrder) []int64 {
-	ids := make([]int64, 0, len(orders))
-	seen := make(map[int64]struct{}, len(orders))
-	for _, order := range orders {
-		if order == nil || order.OrderType != payment.OrderTypeSubscription || order.SubscriptionGroupID == nil {
-			continue
-		}
-		groupID := *order.SubscriptionGroupID
-		if _, ok := seen[groupID]; ok {
-			continue
-		}
-		seen[groupID] = struct{}{}
-		ids = append(ids, groupID)
-	}
-	return ids
 }
 
 func (s *PaymentService) subscriptionPlanNames(ctx context.Context, orders []*dbent.PaymentOrder) (map[int64]string, error) {
@@ -315,59 +211,6 @@ func buildSubscriptionPlanDistribution(orders []*dbent.PaymentOrder, planNames m
 		return plans[i].PlanID < plans[j].PlanID
 	})
 	return plans
-}
-
-func buildGroupRevenueEfficiency(orders []*dbent.PaymentOrder, usageByGroup map[int64]groupRevenueUsage, groupMetadata map[int64]groupRevenueMetadata) []GroupRevenueEfficiencyStat {
-	revenueByGroup := make(map[int64]float64)
-	expectedQuotaByGroup := make(map[int64]float64)
-	hasExpectedQuotaByGroup := make(map[int64]bool)
-	groupIDs := make(map[int64]struct{}, len(usageByGroup))
-	for groupID := range usageByGroup {
-		groupIDs[groupID] = struct{}{}
-	}
-	for _, order := range orders {
-		if order == nil || order.OrderType != payment.OrderTypeSubscription || order.SubscriptionGroupID == nil {
-			continue
-		}
-		groupID := *order.SubscriptionGroupID
-		revenueByGroup[groupID] += order.PayAmount
-		if quota := groupMetadata[groupID].ExpectedQuotaPerPurchase; quota != nil {
-			expectedQuotaByGroup[groupID] += *quota
-			hasExpectedQuotaByGroup[groupID] = true
-		}
-		groupIDs[groupID] = struct{}{}
-	}
-
-	stats := make([]GroupRevenueEfficiencyStat, 0, len(groupIDs))
-	for groupID := range groupIDs {
-		revenue := roundAmount(revenueByGroup[groupID])
-		usage := usageByGroup[groupID]
-		stat := GroupRevenueEfficiencyStat{
-			GroupID:        groupID,
-			GroupName:      groupMetadata[groupID].Name,
-			RateMultiplier: groupMetadata[groupID].RateMultiplier,
-			Revenue:        revenue,
-			UserUsage:      usage.UserUsage,
-			BaseUsage:      usage.BaseUsage,
-		}
-		if hasExpectedQuotaByGroup[groupID] {
-			expectedQuota := expectedQuotaByGroup[groupID]
-			stat.ExpectedQuota = &expectedQuota
-		}
-		if usage.UserUsage > 0 && stat.RateMultiplier > 0 {
-			baseUsageForRecovery := usage.UserUsage / stat.RateMultiplier
-			unitRevenue := revenue / baseUsageForRecovery
-			stat.UnitRevenue = &unitRevenue
-		}
-		stats = append(stats, stat)
-	}
-	sort.Slice(stats, func(i, j int) bool {
-		if stats[i].Revenue != stats[j].Revenue {
-			return stats[i].Revenue > stats[j].Revenue
-		}
-		return stats[i].GroupID < stats[j].GroupID
-	})
-	return stats
 }
 
 func buildDailySeries(orders []*dbent.PaymentOrder, since time.Time, days int) []DailyStats {
