@@ -642,6 +642,11 @@ async function openOperationsTab(wrapper: ReturnType<typeof mountView>) {
   await flushPromises();
 }
 
+async function openOperationsMembershipSubtab(wrapper: ReturnType<typeof mountView>) {
+  await wrapper.get('[data-testid="operations-subtab-membership"]').trigger("click");
+  await flushPromises();
+}
+
 async function openOperationsLotterySubtab(wrapper: ReturnType<typeof mountView>) {
   await wrapper.get('[data-testid="operations-subtab-lottery"]').trigger("click");
   await flushPromises();
