@@ -148,15 +148,16 @@ type RefundResult struct {
 }
 
 type DashboardStats struct {
-	TodayAmount       CurrencyAmounts                `json:"today_amount"`
-	TotalAmount       CurrencyAmounts                `json:"total_amount"`
-	TodayCount        int                            `json:"today_count"`
-	TotalCount        int                            `json:"total_count"`
-	AvgAmount         CurrencyAmounts                `json:"avg_amount"`
-	PendingOrders     int                            `json:"pending_orders"`
-	Currency          string                         `json:"currency"`
-	Currencies        []string                       `json:"available_currencies"`
-	SubscriptionPlans []SubscriptionPlanPurchaseStat `json:"subscription_plans"`
+	TodayAmount            CurrencyAmounts                `json:"today_amount"`
+	TotalAmount            CurrencyAmounts                `json:"total_amount"`
+	TodayCount             int                            `json:"today_count"`
+	TotalCount             int                            `json:"total_count"`
+	AvgAmount              CurrencyAmounts                `json:"avg_amount"`
+	PendingOrders          int                            `json:"pending_orders"`
+	Currency               string                         `json:"currency"`
+	Currencies             []string                       `json:"available_currencies"`
+	SubscriptionPlans      []SubscriptionPlanPurchaseStat `json:"subscription_plans"`
+	GroupRevenueEfficiency []GroupRevenueEfficiencyStat   `json:"group_revenue_efficiency"`
 
 	DailySeries    []DailyStats        `json:"daily_series"`
 	PaymentMethods []PaymentMethodStat `json:"payment_methods"`
@@ -183,6 +184,20 @@ type SubscriptionPlanPurchaseStat struct {
 	PlanID   int64  `json:"plan_id"`
 	PlanName string `json:"plan_name"`
 	Count    int    `json:"count"`
+}
+
+// GroupRevenueEfficiencyStat describes a subscription group's revenue and usage.
+// UserUsage is the quota deducted from subscribers. BaseUsage is the matching
+// underlying usage cost before the historical user multiplier was applied.
+type GroupRevenueEfficiencyStat struct {
+	GroupID        int64    `json:"group_id"`
+	GroupName      string   `json:"group_name"`
+	RateMultiplier float64  `json:"rate_multiplier"`
+	Revenue        float64  `json:"revenue"`
+	ExpectedQuota  *float64 `json:"expected_quota"`
+	UserUsage      float64  `json:"user_usage"`
+	BaseUsage      float64  `json:"base_usage"`
+	UnitRevenue    *float64 `json:"unit_revenue"`
 }
 
 type TopUserStat struct {
