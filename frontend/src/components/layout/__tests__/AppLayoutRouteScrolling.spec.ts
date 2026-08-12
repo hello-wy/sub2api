@@ -12,7 +12,6 @@ const scrollableRoutes = [
   'src/views/admin/orders/AdminPaymentDashboardView.vue',
   'src/views/admin/orders/AdminPaymentPlansView.vue',
   'src/features/prompt-audit/PromptAuditView.vue',
-  'src/views/ModelPlazaView.vue',
   'src/views/user/UsageView.vue',
   'src/views/user/DashboardView.vue',
   'src/views/user/PaymentView.vue',
