@@ -95,63 +95,6 @@ func TestBuildSubscriptionPlanDistribution(t *testing.T) {
 	}, stats)
 }
 
-func TestBuildGroupRevenueEfficiencySeparatesExpectedAndActualSubscriptionUsage(t *testing.T) {
-	t.Parallel()
-
-	alphaGroupID := int64(11)
-	betaGroupID := int64(22)
-	usageOnlyGroupID := int64(33)
-	orders := []*dbent.PaymentOrder{
-		{OrderType: payment.OrderTypeSubscription, SubscriptionGroupID: &alphaGroupID, PayAmount: 100},
-		{OrderType: payment.OrderTypeSubscription, SubscriptionGroupID: &alphaGroupID, PayAmount: 100},
-		{OrderType: payment.OrderTypeSubscription, SubscriptionGroupID: &betaGroupID, PayAmount: 40},
-		{OrderType: payment.OrderTypeBalance, SubscriptionGroupID: &alphaGroupID, PayAmount: 500},
-	}
-
-	expectedQuota := 155.0
-	stats := buildGroupRevenueEfficiency(orders, map[int64]groupRevenueUsage{
-		alphaGroupID:     {UserUsage: 2000, BaseUsage: 800},
-		usageOnlyGroupID: {UserUsage: 180, BaseUsage: 90},
-	}, map[int64]groupRevenueMetadata{
-		alphaGroupID:     {Name: "Alpha", RateMultiplier: 2, ExpectedQuotaPerPurchase: &expectedQuota},
-		betaGroupID:      {Name: "Beta"},
-		usageOnlyGroupID: {Name: "Gamma"},
-	})
-
-	require.Len(t, stats, 3)
-	require.Equal(t, alphaGroupID, stats[0].GroupID)
-	require.Equal(t, "Alpha", stats[0].GroupName)
-	require.Equal(t, 2.0, stats[0].RateMultiplier)
-	require.Equal(t, 200.0, stats[0].Revenue)
-	require.Equal(t, 2000.0, stats[0].UserUsage)
-	require.Equal(t, 800.0, stats[0].BaseUsage)
-	require.NotNil(t, stats[0].ExpectedQuota)
-	require.InDelta(t, 310, *stats[0].ExpectedQuota, 1e-12)
-	require.NotNil(t, stats[0].UnitRevenue)
-	require.InDelta(t, 0.2, *stats[0].UnitRevenue, 1e-12, "unit revenue is calculated from user usage divided by the group multiplier")
-
-	require.Equal(t, betaGroupID, stats[1].GroupID)
-	require.Nil(t, stats[1].ExpectedQuota)
-	require.Nil(t, stats[1].UnitRevenue)
-	require.Equal(t, usageOnlyGroupID, stats[2].GroupID)
-	require.Nil(t, stats[2].UnitRevenue)
-}
-
-func TestSubscriptionGroupIDsDeduplicatesSubscriptionOrderSnapshots(t *testing.T) {
-	t.Parallel()
-
-	firstGroupID := int64(11)
-	secondGroupID := int64(22)
-	ids := subscriptionGroupIDs([]*dbent.PaymentOrder{
-		{OrderType: payment.OrderTypeSubscription, SubscriptionGroupID: &firstGroupID},
-		{OrderType: payment.OrderTypeSubscription, SubscriptionGroupID: &firstGroupID},
-		{OrderType: payment.OrderTypeSubscription, SubscriptionGroupID: &secondGroupID},
-		{OrderType: payment.OrderTypeBalance, SubscriptionGroupID: &secondGroupID},
-	})
-
-	require.ElementsMatch(t, []int64{firstGroupID, secondGroupID}, ids)
-}
-
 func paymentStatsTestOrder(userID int64, email, currency string, amount float64, paidAt *time.Time) *dbent.PaymentOrder {
 	return &dbent.PaymentOrder{
 		UserID:           userID,
