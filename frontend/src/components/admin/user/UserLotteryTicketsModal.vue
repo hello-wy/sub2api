@@ -56,7 +56,8 @@ watch([() => form.targetTickets, () => form.reason], () => {
 })
 
 const submit = async () => {
-  if (!props.user || !isValidTarget.value) {
+  const targetTickets = form.targetTickets
+  if (!props.user || targetTickets === null || !Number.isInteger(targetTickets) || targetTickets < 0) {
     appStore.showError(t('admin.users.lotteryTicketTargetRequired'))
     return
   }
@@ -74,7 +75,7 @@ const submit = async () => {
     if (!operationIdempotencyKey.value) {
       operationIdempotencyKey.value = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`
     }
-    await adminAPI.users.adjustLotteryTickets(props.user.id, form.targetTickets, 'set', form.reason.trim(), operationIdempotencyKey.value)
+    await adminAPI.users.adjustLotteryTickets(props.user.id, targetTickets, 'set', form.reason.trim(), operationIdempotencyKey.value)
     appStore.showSuccess(t('common.success'))
     emit('success')
     emit('close')

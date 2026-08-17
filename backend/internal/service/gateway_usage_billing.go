@@ -987,7 +987,7 @@ func (s *GatewayService) calculateRecordUsageCost(
 				RateMultiplier: multiplier, Resolver: s.resolver, Resolved: resolved,
 			})
 			if err == nil {
-				return cost
+				return cost, nil
 			}
 		}
 		cfg := groupAudioPriceConfigFromAPIKey(apiKey)
@@ -1114,7 +1114,7 @@ func (s *GatewayService) calculateImageCost(
 			RateMultiplier: multiplier, Resolver: s.resolver, Resolved: resolved,
 		})
 		if err == nil {
-			return cost
+			return cost, nil
 		}
 	}
 	groupConfig := imagePriceConfigFromAPIKey(apiKey)
