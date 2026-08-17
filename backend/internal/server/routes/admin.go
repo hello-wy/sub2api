@@ -304,6 +304,9 @@ func registerUserManagementRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 	users := admin.Group("/users")
 	{
 		users.GET("", h.Admin.User.List)
+		// Bot confirmation has a narrow API-key-only contract. It must stay ahead
+		// of /:id routes so the literal path is never treated as a user ID.
+		users.POST("/qq-bindings/confirm", middleware.RequireAdminAPIKeyAuth(), h.Admin.User.ConfirmQQBinding)
 		users.GET("/:id", h.Admin.User.GetByID)
 		users.POST("/:id/checkin", middleware.RequireAdminAPIKeyAuth(), h.Admin.User.CheckInUser)
 		users.POST("/:id/auth-identities", h.Admin.User.BindAuthIdentity)

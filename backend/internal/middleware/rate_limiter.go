@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 
 	ippkg "github.com/Wei-Shaw/sub2api/internal/pkg/ip"
@@ -62,15 +63,24 @@ var rateLimitRun = func(ctx context.Context, client *redis.Client, key string, w
 
 // RateLimiter Redis 速率限制器
 type RateLimiter struct {
-	redis  *redis.Client
-	prefix string
+	redis             *redis.Client
+	prefix            string
+	fallback          map[string]memoryRateLimit
+	fallbackMu        sync.Mutex
+	fallbackCleanupAt time.Time
+}
+
+type memoryRateLimit struct {
+	count     int64
+	expiresAt time.Time
 }
 
 // NewRateLimiter 创建速率限制器实例
 func NewRateLimiter(redisClient *redis.Client) *RateLimiter {
 	return &RateLimiter{
-		redis:  redisClient,
-		prefix: "rate_limit:",
+		redis:    redisClient,
+		prefix:   "rate_limit:",
+		fallback: make(map[string]memoryRateLimit),
 	}
 }
 
@@ -108,6 +118,39 @@ func (r *RateLimiter) Allow(ctx context.Context, key string, limit int, window t
 	return result, nil
 }
 
+// AllowFallback applies the same fixed-window policy in this process when Redis
+// is unavailable. It prevents an infrastructure outage from denying all
+// security-sensitive requests while retaining a per-process protection layer.
+func (r *RateLimiter) AllowFallback(key string, limit int, window time.Duration) AllowResult {
+	now := time.Now()
+	r.fallbackMu.Lock()
+	defer r.fallbackMu.Unlock()
+	if !r.fallbackCleanupAt.After(now) {
+		for expiredKey, candidate := range r.fallback {
+			if !candidate.expiresAt.After(now) {
+				delete(r.fallback, expiredKey)
+			}
+		}
+		r.fallbackCleanupAt = now.Add(time.Minute)
+	}
+
+	entry := r.fallback[key]
+	if entry.expiresAt.IsZero() || !entry.expiresAt.After(now) {
+		entry = memoryRateLimit{expiresAt: now.Add(window)}
+	}
+	entry.count++
+	r.fallback[key] = entry
+
+	result := AllowResult{Allowed: entry.count <= int64(limit), Count: entry.count}
+	if !result.Allowed {
+		result.RetryAfter = time.Until(entry.expiresAt)
+		if result.RetryAfter < 0 {
+			result.RetryAfter = 0
+		}
+	}
+	return result
+}
+
 // clientIPForRateLimit 返回 IP 维度限流使用的客户端地址。
 // 与审计日志/会话绑定/API Key IP ACL 共用同一套安全客户端 IP 解析
 // （SessionBindingContext 快照：兼容开关开启时信任反代转发头，关闭时走
@@ -136,11 +179,17 @@ func (r *RateLimiter) LimitWithOptions(key string, limit int, window time.Durati
 	}
 
 	return func(c *gin.Context) {
-		result, err := r.Allow(c.Request.Context(), key+":"+clientIPForRateLimit(c), limit, window)
+		limitKey := key + ":" + clientIPForRateLimit(c)
+		result, err := r.Allow(c.Request.Context(), limitKey, limit, window)
 		if err != nil {
 			log.Printf("[RateLimit] redis error: key=%s mode=%s err=%v", r.prefix+key, failureModeLabel(failureMode), err)
 			if failureMode == RateLimitFailClose {
-				abortRateLimit(c, window)
+				result = r.AllowFallback(limitKey, limit, window)
+				if !result.Allowed {
+					abortRateLimit(c, result.RetryAfter)
+					return
+				}
+				c.Next()
 				return
 			}
 			// Redis 错误时放行，避免影响正常服务

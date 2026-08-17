@@ -46,7 +46,7 @@
             <div class="mt-5 grid gap-3 sm:grid-cols-3">
               <article class="lottery-action-card">
                 <div class="lottery-action-heading"><div class="lottery-action-icon lottery-action-icon--blue"><Icon name="creditCard" size="md" /></div><h3>每日充值</h3></div>
-                <p>今日已获 <span class="font-semibold" :class="dailyTicketProgressClass(rechargeTicketsToday, 2)">{{ rechargeTicketsToday }} / 2</span> 次<br>累计 ¥20 +1 次，¥100 再 +1 次</p>
+                <p>今日已获 <span class="font-semibold" :class="dailyTicketProgressClass(rechargeTicketsToday, 2)">{{ rechargeTicketsToday }} / 2</span> 次<br>人民币余额充值或订阅套餐累计 ¥20 +1 次，¥100 再 +1 次</p>
                 <button type="button" @click="router.push('/wallet')">去充值 <Icon name="chevronRight" size="xs" /></button>
               </article>
               <article class="lottery-action-card">

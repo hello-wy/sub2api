@@ -158,9 +158,12 @@ func TestValidateLotteryTicketAdjustment(t *testing.T) {
 	if utf8.RuneCountInString(adjustment.Reason) != 500 {
 		t.Fatal("reason should preserve its rune length")
 	}
+	if err := validateLotteryTicketAdjustment(42, &LotteryTicketAdjustment{Operation: "set", Count: 0, Reference: "ref", Reason: "reason"}); err != nil {
+		t.Fatalf("zero target ticket count rejected: %v", err)
+	}
 	for _, adjustment := range []*LotteryTicketAdjustment{
 		{Operation: "add", Count: 0, Reference: "ref", Reason: "reason"},
-		{Operation: "set", Count: 1, Reference: "ref", Reason: "reason"},
+		{Operation: "set", Count: -1, Reference: "ref", Reason: "reason"},
 		{Operation: "subtract", Count: 1, Reference: strings.Repeat("a", lotteryTicketSourceRefMaxLength+1), Reason: "reason"},
 		{Operation: "subtract", Count: 1, Reference: "ref", Reason: strings.Repeat("原", 501)},
 	} {

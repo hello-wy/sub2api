@@ -59,6 +59,12 @@ func TestRateLimiterFailureModes(t *testing.T) {
 	req.RemoteAddr = "127.0.0.1:1234"
 	recorder = httptest.NewRecorder()
 	failCloseRouter.ServeHTTP(recorder, req)
+	require.Equal(t, http.StatusOK, recorder.Code)
+
+	req = httptest.NewRequest(http.MethodGet, "/test", nil)
+	req.RemoteAddr = "127.0.0.1:1234"
+	recorder = httptest.NewRecorder()
+	failCloseRouter.ServeHTTP(recorder, req)
 	require.Equal(t, http.StatusTooManyRequests, recorder.Code)
 }
 
