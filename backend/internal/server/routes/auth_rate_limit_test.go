@@ -39,7 +39,7 @@ func newAuthRoutesTestRouter(redisClient *redis.Client) *gin.Engine {
 	return router
 }
 
-func TestAuthRoutesRateLimitFailCloseWhenRedisUnavailable(t *testing.T) {
+func TestAuthRoutesRateLimitFallsBackToLocalLimiterWhenRedisUnavailable(t *testing.T) {
 	rdb := redis.NewClient(&redis.Options{
 		Addr:         "127.0.0.1:1",
 		DialTimeout:  50 * time.Millisecond,
@@ -67,7 +67,7 @@ func TestAuthRoutesRateLimitFailCloseWhenRedisUnavailable(t *testing.T) {
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
 
-		require.Equal(t, http.StatusTooManyRequests, w.Code, "path=%s", path)
-		require.Contains(t, w.Body.String(), "rate limit exceeded", "path=%s", path)
+		require.Equal(t, http.StatusBadRequest, w.Code, "path=%s", path)
+		require.NotContains(t, w.Body.String(), "rate limit exceeded", "path=%s", path)
 	}
 }

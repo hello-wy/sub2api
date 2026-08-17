@@ -39,11 +39,16 @@ type UserHandler struct {
 	userService           *service.UserService
 	settingService        *service.SettingService // step-up 功能开关
 	lotteryService        *service.LotteryService
+	qqBindingService      *service.QQBindingService
 }
 
 // NewUserHandler creates a new admin user handler
 func (h *UserHandler) SetLotteryService(lotteryService *service.LotteryService) {
 	h.lotteryService = lotteryService
+}
+
+func (h *UserHandler) SetQQBindingService(qqBindingService *service.QQBindingService) {
+	h.qqBindingService = qqBindingService
 }
 
 func NewUserHandler(
@@ -111,9 +116,17 @@ type UpdateBalanceRequest struct {
 }
 
 type AdjustLotteryTicketsRequest struct {
-	Count     int    `json:"count" binding:"required,gt=0"`
-	Operation string `json:"operation" binding:"required,oneof=add subtract"`
+	Count     int    `json:"count" binding:"gte=0"`
+	Operation string `json:"operation" binding:"required,oneof=set add subtract"`
 	Reason    string `json:"reason" binding:"required,max=500"`
+}
+
+// ConfirmQQBindingRequest is submitted only after the bot has verified its
+// short-lived email code. The server does not receive or retain that code.
+type ConfirmQQBindingRequest struct {
+	Email               string `json:"email" binding:"required,email"`
+	QQ                  string `json:"qq" binding:"required,max=32"`
+	VerificationSession string `json:"verification_session" binding:"required,max=128"`
 }
 
 type BindUserAuthIdentityRequest struct {
@@ -460,6 +473,46 @@ func (h *UserHandler) UpdateBalance(c *gin.Context) {
 			return nil, execErr
 		}
 		return dto.UserFromServiceAdmin(user), nil
+	})
+}
+
+// ConfirmQQBinding atomically persists a bot-verified QQ binding and, for a
+// newly created binding, grants the one-time welcome bonus.
+// POST /api/v1/admin/users/qq-bindings/confirm
+func (h *UserHandler) ConfirmQQBinding(c *gin.Context) {
+	if h.qqBindingService == nil {
+		response.Error(c, http.StatusServiceUnavailable, "QQ binding service is unavailable")
+		return
+	}
+	var req ConfirmQQBindingRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+	req.VerificationSession = strings.TrimSpace(req.VerificationSession)
+	if req.VerificationSession == "" {
+		response.BadRequest(c, "verification_session is required")
+		return
+	}
+
+	idempotencyPayload := struct {
+		Email               string `json:"email"`
+		QQ                  string `json:"qq"`
+		VerificationSession string `json:"verification_session"`
+	}{
+		Email:               req.Email,
+		QQ:                  req.QQ,
+		VerificationSession: req.VerificationSession,
+	}
+	executeAdminIdempotentJSON(c, "admin.users.qq_binding.confirm", idempotencyPayload, service.DefaultWriteIdempotencyTTL(), func(ctx context.Context) (any, error) {
+		result, err := h.qqBindingService.Confirm(ctx, service.QQBindingConfirmInput{
+			Email: req.Email,
+			QQ:    req.QQ,
+		})
+		if err == nil {
+			InvalidateUserAttributesBatchCache()
+		}
+		return result, err
 	})
 }
 

@@ -1409,6 +1409,25 @@ func (s *LotteryService) AdjustTickets(ctx context.Context, userID int64, adjust
 	if err != nil {
 		return nil, err
 	}
+	if adjustment.Operation == "set" {
+		available, err := s.countAvailableTickets(txCtx, client, userID)
+		if err != nil {
+			return nil, err
+		}
+		switch {
+		case adjustment.Count > available:
+			adjustment.Operation = "add"
+			adjustment.Count -= available
+		case adjustment.Count < available:
+			adjustment.Operation = "subtract"
+			adjustment.Count = available - adjustment.Count
+		default:
+			if err := tx.Commit(); err != nil {
+				return nil, fmt.Errorf("commit unchanged lottery ticket target: %w", err)
+			}
+			return &LotteryTicketAdjustmentResult{AvailableTickets: available}, nil
+		}
+	}
 
 	if adjustment.Operation == "add" {
 		created, err := s.addAdminAdjustmentTicketsLocked(txCtx, client, userID, &state, adjustment.Count, adjustment.Reference, adjustment.Reason)
@@ -1469,11 +1488,14 @@ func validateLotteryTicketAdjustment(userID int64, adjustment *LotteryTicketAdju
 	if userID <= 0 {
 		return infraerrors.BadRequest("LOTTERY_INVALID_USER", "invalid lottery user")
 	}
-	if adjustment == nil || adjustment.Count <= 0 {
-		return infraerrors.BadRequest("LOTTERY_INVALID_ADJUSTMENT", "ticket count must be positive")
+	if adjustment == nil || adjustment.Count < 0 {
+		return infraerrors.BadRequest("LOTTERY_INVALID_ADJUSTMENT", "ticket count must not be negative")
 	}
-	if adjustment.Operation != "add" && adjustment.Operation != "subtract" {
-		return infraerrors.BadRequest("LOTTERY_INVALID_ADJUSTMENT", "ticket operation must be add or subtract")
+	if adjustment.Operation != "add" && adjustment.Operation != "subtract" && adjustment.Operation != "set" {
+		return infraerrors.BadRequest("LOTTERY_INVALID_ADJUSTMENT", "ticket operation must be set, add, or subtract")
+	}
+	if adjustment.Operation != "set" && adjustment.Count == 0 {
+		return infraerrors.BadRequest("LOTTERY_INVALID_ADJUSTMENT", "ticket count must be positive for add or subtract")
 	}
 	adjustment.Reference = strings.TrimSpace(adjustment.Reference)
 	adjustment.Reason = strings.TrimSpace(adjustment.Reason)

@@ -31,7 +31,7 @@ func RegisterAuthRoutes(
 	// 认证事件（登录/注册/2FA/token 刷新失败）入审计
 	auth.Use(gin.HandlerFunc(auditLog))
 	{
-		// 注册/登录/2FA/验证码发送均属于高风险入口，增加服务端兜底限流（Redis 故障时 fail-close）
+		// 注册/登录/2FA/验证码发送均属于高风险入口；Redis 故障时切换为本机限流。
 		auth.POST("/register", rateLimiter.LimitWithOptions("auth-register", 5, time.Minute, middleware.RateLimitOptions{
 			FailureMode: middleware.RateLimitFailClose,
 		}), h.Auth.Register)
@@ -50,25 +50,25 @@ func RegisterAuthRoutes(
 		auth.POST("/send-verify-code", rateLimiter.LimitWithOptions("auth-send-verify-code", 5, time.Minute, middleware.RateLimitOptions{
 			FailureMode: middleware.RateLimitFailClose,
 		}), h.Auth.SendVerifyCode)
-		// Token刷新接口添加速率限制：每分钟最多 30 次（Redis 故障时 fail-close）
+		// Token 刷新接口添加速率限制：每分钟最多 30 次（Redis 故障时切换为本机限流）
 		auth.POST("/refresh", rateLimiter.LimitWithOptions("refresh-token", 30, time.Minute, middleware.RateLimitOptions{
 			FailureMode: middleware.RateLimitFailClose,
 		}), h.Auth.RefreshToken)
 		// 登出接口（公开，允许未认证用户调用以撤销Refresh Token）
 		auth.POST("/logout", h.Auth.Logout)
-		// 优惠码验证接口添加速率限制：每分钟最多 10 次（Redis 故障时 fail-close）
+		// 优惠码验证接口添加速率限制：每分钟最多 10 次（Redis 故障时切换为本机限流）
 		auth.POST("/validate-promo-code", rateLimiter.LimitWithOptions("validate-promo", 10, time.Minute, middleware.RateLimitOptions{
 			FailureMode: middleware.RateLimitFailClose,
 		}), h.Auth.ValidatePromoCode)
-		// 邀请码验证接口添加速率限制：每分钟最多 10 次（Redis 故障时 fail-close）
+		// 邀请码验证接口添加速率限制：每分钟最多 10 次（Redis 故障时切换为本机限流）
 		auth.POST("/validate-invitation-code", rateLimiter.LimitWithOptions("validate-invitation", 10, time.Minute, middleware.RateLimitOptions{
 			FailureMode: middleware.RateLimitFailClose,
 		}), h.Auth.ValidateInvitationCode)
-		// 忘记密码接口添加速率限制：每分钟最多 5 次（Redis 故障时 fail-close）
+		// 忘记密码接口添加速率限制：每分钟最多 5 次（Redis 故障时切换为本机限流）
 		auth.POST("/forgot-password", rateLimiter.LimitWithOptions("forgot-password", 5, time.Minute, middleware.RateLimitOptions{
 			FailureMode: middleware.RateLimitFailClose,
 		}), h.Auth.ForgotPassword)
-		// 重置密码接口添加速率限制：每分钟最多 10 次（Redis 故障时 fail-close）
+		// 重置密码接口添加速率限制：每分钟最多 10 次（Redis 故障时切换为本机限流）
 		auth.POST("/reset-password", rateLimiter.LimitWithOptions("reset-password", 10, time.Minute, middleware.RateLimitOptions{
 			FailureMode: middleware.RateLimitFailClose,
 		}), h.Auth.ResetPassword)

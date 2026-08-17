@@ -203,7 +203,7 @@ export interface LotteryTicketAdjustmentResult {
 export async function adjustLotteryTickets(
   id: number,
   count: number,
-  operation: 'add' | 'subtract',
+  operation: 'set' | 'add' | 'subtract',
   reason: string,
   idempotencyKey?: string,
 ): Promise<LotteryTicketAdjustmentResult> {

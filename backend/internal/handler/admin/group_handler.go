@@ -9,11 +9,11 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/handler/dto"
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
-	"github.com/Wei-Shaw/sub2api/internal/pkg/timezone"
 	"github.com/Wei-Shaw/sub2api/internal/platform/liveattestation"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 
@@ -103,17 +103,19 @@ func NewGroupHandler(adminService service.AdminService, dashboardService *servic
 
 // CreateGroupRequest represents create group request
 type CreateGroupRequest struct {
-	Name                       string             `json:"name" binding:"required"`
-	Description                string             `json:"description"`
-	Platform                   string             `json:"platform" binding:"omitempty,oneof=anthropic openai gemini antigravity grok composite"`
-	RateMultiplier             float64            `json:"rate_multiplier"`
-	IsExclusive                bool               `json:"is_exclusive"`
-	SubscriptionType           string             `json:"subscription_type" binding:"omitempty,oneof=standard subscription"`
-	SubscriptionQuotaResetMode string             `json:"subscription_quota_reset_mode" binding:"omitempty,oneof=rolling until_subscription_expires"`
-	SubscriptionTotalLimitUSD  optionalLimitField `json:"subscription_total_limit_usd"`
-	DailyLimitUSD              optionalLimitField `json:"daily_limit_usd"`
-	WeeklyLimitUSD             optionalLimitField `json:"weekly_limit_usd"`
-	MonthlyLimitUSD            optionalLimitField `json:"monthly_limit_usd"`
+	Name                       string                        `json:"name" binding:"required"`
+	Description                string                        `json:"description"`
+	Platform                   string                        `json:"platform" binding:"omitempty,oneof=anthropic openai gemini antigravity grok composite"`
+	RateMultiplier             float64                       `json:"rate_multiplier"`
+	IsExclusive                bool                          `json:"is_exclusive"`
+	SubscriptionType           string                        `json:"subscription_type" binding:"omitempty,oneof=standard subscription"`
+	SubscriptionQuotaResetMode string                        `json:"subscription_quota_reset_mode" binding:"omitempty,oneof=rolling until_subscription_expires"`
+	SubscriptionTotalLimitUSD  optionalLimitField            `json:"subscription_total_limit_usd"`
+	DailyLimitUSD              optionalLimitField            `json:"daily_limit_usd"`
+	WeeklyLimitUSD             optionalLimitField            `json:"weekly_limit_usd"`
+	MonthlyLimitUSD            optionalLimitField            `json:"monthly_limit_usd"`
+	LongContextPricingEnabled  bool                          `json:"long_context_pricing_enabled"`
+	ModelPricing               []service.ChannelModelPricing `json:"model_pricing"`
 	// 图片生成计费配置（antigravity 和 gemini 平台使用，负数表示清除配置）
 	AllowImageGeneration            bool                          `json:"allow_image_generation"`
 	AllowBatchImageGeneration       bool                          `json:"allow_batch_image_generation"`
@@ -171,18 +173,20 @@ type CreateGroupRequest struct {
 
 // UpdateGroupRequest represents update group request
 type UpdateGroupRequest struct {
-	Name                       string             `json:"name"`
-	Description                *string            `json:"description"`
-	Platform                   string             `json:"platform" binding:"omitempty,oneof=anthropic openai gemini antigravity grok composite"`
-	RateMultiplier             *float64           `json:"rate_multiplier"`
-	IsExclusive                *bool              `json:"is_exclusive"`
-	Status                     string             `json:"status" binding:"omitempty,oneof=active inactive"`
-	SubscriptionType           string             `json:"subscription_type" binding:"omitempty,oneof=standard subscription"`
-	SubscriptionQuotaResetMode string             `json:"subscription_quota_reset_mode" binding:"omitempty,oneof=rolling until_subscription_expires"`
-	SubscriptionTotalLimitUSD  optionalLimitField `json:"subscription_total_limit_usd"`
-	DailyLimitUSD              optionalLimitField `json:"daily_limit_usd"`
-	WeeklyLimitUSD             optionalLimitField `json:"weekly_limit_usd"`
-	MonthlyLimitUSD            optionalLimitField `json:"monthly_limit_usd"`
+	Name                       string                         `json:"name"`
+	Description                *string                        `json:"description"`
+	Platform                   string                         `json:"platform" binding:"omitempty,oneof=anthropic openai gemini antigravity grok composite"`
+	RateMultiplier             *float64                       `json:"rate_multiplier"`
+	IsExclusive                *bool                          `json:"is_exclusive"`
+	Status                     string                         `json:"status" binding:"omitempty,oneof=active inactive"`
+	SubscriptionType           string                         `json:"subscription_type" binding:"omitempty,oneof=standard subscription"`
+	SubscriptionQuotaResetMode string                         `json:"subscription_quota_reset_mode" binding:"omitempty,oneof=rolling until_subscription_expires"`
+	SubscriptionTotalLimitUSD  optionalLimitField             `json:"subscription_total_limit_usd"`
+	DailyLimitUSD              optionalLimitField             `json:"daily_limit_usd"`
+	WeeklyLimitUSD             optionalLimitField             `json:"weekly_limit_usd"`
+	MonthlyLimitUSD            optionalLimitField             `json:"monthly_limit_usd"`
+	LongContextPricingEnabled  *bool                          `json:"long_context_pricing_enabled"`
+	ModelPricing               *[]service.ChannelModelPricing `json:"model_pricing"`
 	// 图片生成计费配置（antigravity 和 gemini 平台使用，负数表示清除配置）
 	AllowImageGeneration            *bool                         `json:"allow_image_generation"`
 	AllowBatchImageGeneration       *bool                         `json:"allow_batch_image_generation"`
@@ -521,6 +525,8 @@ func (h *GroupHandler) Create(c *gin.Context) {
 		DailyLimitUSD:                   req.DailyLimitUSD.ToServiceInput(),
 		WeeklyLimitUSD:                  req.WeeklyLimitUSD.ToServiceInput(),
 		MonthlyLimitUSD:                 req.MonthlyLimitUSD.ToServiceInput(),
+		LongContextPricingEnabled:       req.LongContextPricingEnabled,
+		ModelPricing:                    req.ModelPricing,
 		AllowImageGeneration:            req.AllowImageGeneration,
 		AllowBatchImageGeneration:       req.AllowBatchImageGeneration,
 		ImageRateIndependent:            req.ImageRateIndependent,
@@ -654,6 +660,8 @@ func (h *GroupHandler) Update(c *gin.Context) {
 		WeeklyLimitUSDSet:               req.WeeklyLimitUSD.IsSet(),
 		MonthlyLimitUSD:                 req.MonthlyLimitUSD.ToServiceInput(),
 		MonthlyLimitUSDSet:              req.MonthlyLimitUSD.IsSet(),
+		LongContextPricingEnabled:       req.LongContextPricingEnabled,
+		ModelPricing:                    req.ModelPricing,
 		AllowImageGeneration:            req.AllowImageGeneration,
 		AllowBatchImageGeneration:       req.AllowBatchImageGeneration,
 		ImageRateIndependent:            req.ImageRateIndependent,
@@ -745,12 +753,10 @@ func (h *GroupHandler) GetStats(c *gin.Context) {
 	_ = groupID // TODO: implement actual stats
 }
 
-// GetUsageSummary returns today's and cumulative cost for all groups.
-// GET /api/v1/admin/groups/usage-summary?timezone=Asia/Shanghai
+// GetUsageSummary returns today's, yesterday's, and cumulative cost for all groups.
+// GET /api/v1/admin/groups/usage-summary
 func (h *GroupHandler) GetUsageSummary(c *gin.Context) {
-	userTZ := c.Query("timezone")
-	now := timezone.NowInUserLocation(userTZ)
-	todayStart := timezone.StartOfDayInUserLocation(now, userTZ)
+	todayStart := service.GroupUsageTodayStart(time.Now())
 
 	results, err := h.dashboardService.GetGroupUsageSummary(c.Request.Context(), todayStart)
 	if err != nil {

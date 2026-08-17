@@ -101,9 +101,11 @@ func ProvideAdminUserHandler(
 	userService *service.UserService,
 	settingService *service.SettingService,
 	lotteryService *service.LotteryService,
+	qqBindingService *service.QQBindingService,
 ) *admin.UserHandler {
 	h := admin.NewUserHandler(adminService, concurrencyService, userPlatformQuotaRepo, billingCache, totpService, userService, settingService)
 	h.SetLotteryService(lotteryService)
+	h.SetQQBindingService(qqBindingService)
 	return h
 }
 
