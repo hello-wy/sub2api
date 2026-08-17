@@ -6,6 +6,9 @@ import (
 	"strings"
 	"testing"
 	"unicode/utf8"
+
+	dbent "github.com/Wei-Shaw/sub2api/ent"
+	"github.com/Wei-Shaw/sub2api/internal/payment"
 )
 
 type lotteryBillingCacheInvalidatorStub struct {
@@ -25,6 +28,51 @@ func (s *lotteryAuthCacheInvalidatorStub) InvalidateAuthCacheByKey(context.Conte
 func (s *lotteryAuthCacheInvalidatorStub) InvalidateAuthCacheByGroupID(context.Context, int64) {}
 func (s *lotteryAuthCacheInvalidatorStub) InvalidateAuthCacheByUserID(_ context.Context, userID int64) {
 	s.userIDs = append(s.userIDs, userID)
+}
+
+func TestIsLotteryRechargePayment(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		order *dbent.PaymentOrder
+		want  bool
+	}{
+		{
+			name:  "third-party balance recharge qualifies",
+			order: &dbent.PaymentOrder{PaymentType: payment.TypeAlipay, OrderType: payment.OrderTypeBalance},
+			want:  true,
+		},
+		{
+			name:  "third-party subscription purchase qualifies",
+			order: &dbent.PaymentOrder{PaymentType: payment.TypeEasyPay, OrderType: payment.OrderTypeSubscription},
+			want:  true,
+		},
+		{
+			name:  "balance-funded subscription is excluded",
+			order: &dbent.PaymentOrder{PaymentType: payment.OrderTypeBalance, OrderType: payment.OrderTypeSubscription},
+			want:  false,
+		},
+		{
+			name: "non-CNY payment is excluded",
+			order: &dbent.PaymentOrder{
+				PaymentType: payment.TypeStripe,
+				OrderType:   payment.OrderTypeSubscription,
+				ProviderSnapshot: map[string]any{
+					"currency": "USD",
+				},
+			},
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := isLotteryRechargePayment(tt.order); got != tt.want {
+				t.Fatalf("isLotteryRechargePayment() = %v, want %v", got, tt.want)
+			}
+		})
+	}
 }
 
 func TestLotteryBalanceChangesInvalidateBillingAndAuthCaches(t *testing.T) {

@@ -933,11 +933,13 @@ func TestExecuteSubscriptionFulfillmentAppliesAffiliateRebate(t *testing.T) {
 			CreatedAt: time.Now().Add(-48 * time.Hour),
 		},
 	}
-	settingSvc := NewSettingService(&paymentFulfillmentSettingRepoStub{values: map[string]string{
+	settingsRepo := &paymentFulfillmentSettingRepoStub{values: map[string]string{
 		SettingKeyAffiliateEnabled:           "true",
 		SettingKeyAffiliateRebateRate:        "15",
 		SettingKeyAffiliateRebateFreezeHours: "0",
-	}}, nil)
+		SettingBalanceRechargeMult:           "10",
+	}}
+	settingSvc := NewSettingService(settingsRepo, nil)
 	subRepo := newSubscriptionUserSubRepoStub()
 	subscriptionSvc := NewSubscriptionService(&subscriptionGroupRepoStub{
 		group: &Group{ID: 7, Status: payment.EntityStatusActive, SubscriptionType: SubscriptionTypeSubscription},
@@ -947,6 +949,7 @@ func TestExecuteSubscriptionFulfillmentAppliesAffiliateRebate(t *testing.T) {
 		groupRepo:        &subscriptionGroupRepoStub{group: &Group{ID: 7, Status: payment.EntityStatusActive, SubscriptionType: SubscriptionTypeSubscription}},
 		subscriptionSvc:  subscriptionSvc,
 		affiliateService: NewAffiliateService(affiliateRepo, settingSvc, nil, nil),
+		configService:    NewPaymentConfigService(client, settingsRepo, nil),
 	}
 
 	err = svc.ExecuteSubscriptionFulfillment(ctx, order.ID)
@@ -958,7 +961,7 @@ func TestExecuteSubscriptionFulfillmentAppliesAffiliateRebate(t *testing.T) {
 	require.Len(t, affiliateRepo.accrueCalls, 1)
 	require.Equal(t, inviterID, affiliateRepo.accrueCalls[0].inviterID)
 	require.Equal(t, user.ID, affiliateRepo.accrueCalls[0].inviteeUserID)
-	require.InDelta(t, 1.4985, affiliateRepo.accrueCalls[0].amount, 0.00000001)
+	require.InDelta(t, 107.04, affiliateRepo.accrueCalls[0].amount, 0.00000001)
 	require.NotNil(t, affiliateRepo.accrueCalls[0].sourceOrderID)
 	require.Equal(t, order.ID, *affiliateRepo.accrueCalls[0].sourceOrderID)
 	require.Equal(t, 1, subRepo.createCalls)
@@ -967,8 +970,8 @@ func TestExecuteSubscriptionFulfillmentAppliesAffiliateRebate(t *testing.T) {
 		Where(paymentauditlog.OrderIDEQ(strconv.FormatInt(order.ID, 10)), paymentauditlog.ActionEQ("AFFILIATE_REBATE_APPLIED")).
 		Only(ctx)
 	require.NoError(t, err)
-	require.Contains(t, applied.Detail, `"baseAmount":9.99`)
-	require.Contains(t, applied.Detail, `"rebateAmount":1.4985`)
+	require.Contains(t, applied.Detail, `"baseAmount":713.6`)
+	require.Contains(t, applied.Detail, `"rebateAmount":107.04`)
 }
 
 func TestExecuteSubscriptionFulfillmentAppliesLoyaltyPoints(t *testing.T) {
@@ -1101,12 +1104,40 @@ func TestExecuteSubscriptionFulfillmentDoesNotDuplicateWorkAfterLegacySuccessAud
 var _ AffiliateRepository = (*paymentFulfillmentAffiliateRepoStub)(nil)
 var _ SettingRepository = (*paymentFulfillmentSettingRepoStub)(nil)
 
-func TestAffiliateRebateBaseAmountSkipsBalanceFundedSubscription(t *testing.T) {
-	order := &dbent.PaymentOrder{
-		Amount:      25,
-		PaymentType: "balance",
+func TestAffiliateRebateBaseAmountUsesRechargeUnits(t *testing.T) {
+	ctx := context.Background()
+	client := newPaymentConfigServiceTestClient(t)
+	settings := &paymentFulfillmentSettingRepoStub{values: map[string]string{
+		SettingBalanceRechargeMult: "10",
+	}}
+	svc := &PaymentService{configService: NewPaymentConfigService(client, settings, nil)}
+
+	balanceOrder := &dbent.PaymentOrder{
+		Amount:      1_000,
+		PayAmount:   100,
+		PaymentType: payment.TypeAlipay,
+		OrderType:   payment.OrderTypeBalance,
+	}
+	subscriptionOrder := &dbent.PaymentOrder{
+		Amount:      10,
+		PayAmount:   100,
+		PaymentType: payment.TypeAlipay,
+		OrderType:   payment.OrderTypeSubscription,
+	}
+	balanceFundedOrder := &dbent.PaymentOrder{
+		PaymentType: payment.OrderTypeBalance,
 		OrderType:   payment.OrderTypeSubscription,
 	}
 
-	require.Zero(t, affiliateRebateBaseAmount(order))
+	balanceAmount, err := svc.affiliateRebateBaseAmount(ctx, balanceOrder)
+	require.NoError(t, err)
+	require.Equal(t, 1_000.0, balanceAmount)
+
+	subscriptionAmount, err := svc.affiliateRebateBaseAmount(ctx, subscriptionOrder)
+	require.NoError(t, err)
+	require.Equal(t, 1_000.0, subscriptionAmount)
+
+	balanceFundedAmount, err := svc.affiliateRebateBaseAmount(ctx, balanceFundedOrder)
+	require.NoError(t, err)
+	require.Zero(t, balanceFundedAmount)
 }

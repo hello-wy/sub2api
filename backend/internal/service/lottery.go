@@ -16,6 +16,7 @@ import (
 	"unicode/utf8"
 
 	dbent "github.com/Wei-Shaw/sub2api/ent"
+	"github.com/Wei-Shaw/sub2api/internal/payment"
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/timezone"
 	"github.com/google/uuid"
@@ -38,6 +39,9 @@ const (
 	lotteryPrizeIDLength                   = 32
 	lotteryTicketSourceRefMaxLength        = 128
 	lotteryPrizeCooldownMaxSeconds         = 365 * 24 * 60 * 60
+	lotteryInternalBalancePaymentType      = "balance"
+	lotteryRechargeRewardTierFirst         = 20
+	lotteryRechargeRewardTierSecond        = 100
 )
 
 type LotteryStatus struct {
@@ -1104,10 +1108,53 @@ ORDER BY created_at DESC, id DESC LIMIT $2`, userID, limit)
 	return items, rows.Err()
 }
 
-// ApplyRechargeReward is called from payment fulfillment after balance credit.
+func isLotteryRechargePayment(order *dbent.PaymentOrder) bool {
+	if order == nil || PaymentOrderCurrency(order) != payment.DefaultPaymentCurrency {
+		return false
+	}
+	if strings.EqualFold(strings.TrimSpace(order.PaymentType), lotteryInternalBalancePaymentType) {
+		return false
+	}
+	return order.OrderType == payment.OrderTypeBalance || order.OrderType == payment.OrderTypeSubscription
+}
+
+func lotteryRechargeTotal(ctx context.Context, client *dbent.Client, userID int64, day time.Time, netOfRefunds bool) (float64, error) {
+	query := lotteryRechargePaidTotalQuery
+	if netOfRefunds {
+		query = lotteryRechargeNetTotalQuery
+	}
+	var total float64
+	err := scanOne(ctx, client, query, []any{userID, day, day.AddDate(0, 0, 1), lotteryInternalBalancePaymentType}, &total)
+	if err != nil {
+		return 0, fmt.Errorf("sum daily CNY recharge: %w", err)
+	}
+	return total, nil
+}
+
+const lotteryRechargePaidTotalQuery = `
+SELECT COALESCE(SUM(pay_amount), 0)::double precision
+FROM payment_orders
+WHERE user_id = $1
+  AND order_type IN ('balance', 'subscription')
+  AND LOWER(payment_type) <> $4
+  AND status IN ('PAID', 'RECHARGING', 'COMPLETED')
+  AND paid_at >= $2 AND paid_at < $3
+  AND UPPER(COALESCE(provider_snapshot->>'currency', 'CNY')) = 'CNY'`
+
+const lotteryRechargeNetTotalQuery = `
+SELECT COALESCE(SUM(CASE WHEN status = 'REFUNDED' THEN 0 ELSE GREATEST(pay_amount - refund_amount, 0) END), 0)::double precision
+FROM payment_orders
+WHERE user_id = $1
+  AND order_type IN ('balance', 'subscription')
+  AND LOWER(payment_type) <> $4
+  AND status IN ('COMPLETED', 'PARTIALLY_REFUNDED', 'REFUNDED')
+  AND paid_at >= $2 AND paid_at < $3
+  AND UPPER(COALESCE(provider_snapshot->>'currency', 'CNY')) = 'CNY'`
+
+// ApplyRechargeReward is called from third-party payment fulfillment.
 // The partial unique index makes repeated callbacks and concurrent orders safe.
 func (s *LotteryService) ApplyRechargeReward(ctx context.Context, order *dbent.PaymentOrder) error {
-	if s == nil || order == nil || order.OrderType != "balance" || PaymentOrderCurrency(order) != "CNY" {
+	if s == nil || !isLotteryRechargePayment(order) {
 		return nil
 	}
 	enabled, err := s.lotteryEnabled(ctx)
@@ -1129,17 +1176,11 @@ func (s *LotteryService) ApplyRechargeReward(ctx context.Context, order *dbent.P
 		return err
 	}
 	day := paymentOrderBusinessDay(order)
-	var total float64
-	if err := scanOne(txCtx, client, `
-SELECT COALESCE(SUM(pay_amount), 0)::double precision
-FROM payment_orders
-WHERE user_id = $1 AND order_type = 'balance'
-  AND status IN ('PAID', 'RECHARGING', 'COMPLETED')
-  AND paid_at >= $2 AND paid_at < $3
-  AND UPPER(COALESCE(provider_snapshot->>'currency', 'CNY')) = 'CNY'`, []any{order.UserID, day, day.AddDate(0, 0, 1)}, &total); err != nil {
-		return fmt.Errorf("sum daily CNY recharge: %w", err)
+	total, err := lotteryRechargeTotal(txCtx, client, order.UserID, day, false)
+	if err != nil {
+		return err
 	}
-	for _, tier := range []int{20, 100} {
+	for _, tier := range []int{lotteryRechargeRewardTierFirst, lotteryRechargeRewardTierSecond} {
 		if total < float64(tier) {
 			continue
 		}
@@ -1158,7 +1199,7 @@ WHERE user_id = $1 AND order_type = 'balance'
 // ReconcileRechargeRefund revokes unspent recharge tickets after a completed
 // refund. A spent ticket becomes debt, which blocks future draws until offset.
 func (s *LotteryService) ReconcileRechargeRefund(ctx context.Context, order *dbent.PaymentOrder) error {
-	if s == nil || order == nil || order.OrderType != "balance" || PaymentOrderCurrency(order) != "CNY" {
+	if s == nil || !isLotteryRechargePayment(order) {
 		return nil
 	}
 	tx, err := s.entClient.Tx(ctx)
@@ -1173,48 +1214,54 @@ func (s *LotteryService) ReconcileRechargeRefund(ctx context.Context, order *dbe
 		return err
 	}
 	day := paymentOrderBusinessDay(order)
-	var total float64
-	if err := scanOne(txCtx, client, `
-SELECT COALESCE(SUM(CASE WHEN status = 'REFUNDED' THEN 0 ELSE GREATEST(pay_amount - refund_amount, 0) END), 0)::double precision
-FROM payment_orders
-WHERE user_id = $1 AND order_type = 'balance'
-  AND status IN ('COMPLETED', 'PARTIALLY_REFUNDED', 'REFUNDED')
-  AND paid_at >= $2 AND paid_at < $3
-  AND UPPER(COALESCE(provider_snapshot->>'currency', 'CNY')) = 'CNY'`, []any{order.UserID, day, day.AddDate(0, 0, 1)}, &total); err != nil {
-		return err
-	}
-	for _, tier := range []int{100, 20} {
-		if total >= float64(tier) {
-			continue
-		}
-		var ledgerID int64
-		var remaining int
-		err := scanOne(txCtx, client, `
-SELECT id, remaining FROM lottery_ticket_ledger
-WHERE user_id = $1 AND source_type = 'recharge' AND business_date = $2 AND reward_tier = $3
-	  AND revoked_at IS NULL
-FOR UPDATE`, []any{order.UserID, day, tier}, &ledgerID, &remaining)
-		if err == sql.ErrNoRows {
-			continue
-		}
-		if err != nil {
-			return err
-		}
-		if _, err := client.ExecContext(txCtx, `UPDATE lottery_ticket_ledger SET remaining = 0, revoked_at = NOW() WHERE id = $1`, ledgerID); err != nil {
-			return err
-		}
-		if remaining == 0 {
-			state.TicketDebt++
-		}
-	}
-	available, err := s.countAvailableTickets(txCtx, client, order.UserID)
+	total, err := lotteryRechargeTotal(txCtx, client, order.UserID, day, true)
 	if err != nil {
 		return err
 	}
-	if _, err := client.ExecContext(txCtx, `UPDATE lottery_user_states SET available_tickets = $2, ticket_debt = $3, updated_at = NOW(), version = version + 1 WHERE user_id = $1`, order.UserID, available, state.TicketDebt); err != nil {
+	for _, tier := range []int{lotteryRechargeRewardTierSecond, lotteryRechargeRewardTierFirst} {
+		if total >= float64(tier) {
+			continue
+		}
+		if err := s.revokeRechargeTicketTier(txCtx, client, order.UserID, day, tier, &state); err != nil {
+			return err
+		}
+	}
+	if err := s.syncLotteryStateTicketBalance(txCtx, client, order.UserID, &state); err != nil {
 		return err
 	}
 	return tx.Commit()
+}
+
+func (s *LotteryService) revokeRechargeTicketTier(ctx context.Context, client *dbent.Client, userID int64, day time.Time, tier int, state *lotteryUserState) error {
+	var ledgerID int64
+	var remaining int
+	err := scanOne(ctx, client, `
+SELECT id, remaining FROM lottery_ticket_ledger
+WHERE user_id = $1 AND source_type = 'recharge' AND business_date = $2 AND reward_tier = $3
+	  AND revoked_at IS NULL
+FOR UPDATE`, []any{userID, day, tier}, &ledgerID, &remaining)
+	if err == sql.ErrNoRows {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if _, err := client.ExecContext(ctx, `UPDATE lottery_ticket_ledger SET remaining = 0, revoked_at = NOW() WHERE id = $1`, ledgerID); err != nil {
+		return err
+	}
+	if remaining == 0 {
+		state.TicketDebt++
+	}
+	return nil
+}
+
+func (s *LotteryService) syncLotteryStateTicketBalance(ctx context.Context, client *dbent.Client, userID int64, state *lotteryUserState) error {
+	available, err := s.countAvailableTickets(ctx, client, userID)
+	if err != nil {
+		return err
+	}
+	_, err = client.ExecContext(ctx, `UPDATE lottery_user_states SET available_tickets = $2, ticket_debt = $3, updated_at = NOW(), version = version + 1 WHERE user_id = $1`, userID, available, state.TicketDebt)
+	return err
 }
 
 func (s *LotteryService) grantDrawReward(ctx context.Context, client interface {
