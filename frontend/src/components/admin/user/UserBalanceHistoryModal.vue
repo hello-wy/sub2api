@@ -205,6 +205,7 @@ const typeOptions = computed(() => [
   { value: 'usage_rebate', label: t('admin.users.typeUsageRebate') },
   { value: 'lottery_reward', label: t('admin.users.typeLotteryReward') },
   { value: 'lottery_ticket_purchase', label: t('admin.users.typeLotteryTicketPurchase') },
+  { value: 'qq_bind_welcome_bonus', label: t('admin.users.typeQQBindingWelcome') },
   { value: 'concurrency', label: t('admin.users.typeConcurrency') },
   { value: 'admin_concurrency', label: t('admin.users.typeAdminConcurrency') },
   { value: 'subscription', label: t('admin.users.typeSubscription') }
@@ -242,12 +243,12 @@ const loadHistory = async (page: number) => {
 // Helper: check if admin type
 const isAdminType = (type: string) => type === 'admin_balance' || type === 'admin_concurrency'
 
-const isRewardType = (type: string) => ['daily_checkin', 'usage_rebate', 'lottery_reward', 'lottery_ticket_purchase'].includes(type)
+const isRewardType = (type: string) => ['daily_checkin', 'usage_rebate', 'lottery_reward', 'lottery_ticket_purchase', 'qq_bind_welcome_bonus'].includes(type)
 
 const isLotteryType = (type: string) => type === 'lottery_reward' || type === 'lottery_ticket_purchase'
 
 // Helper: check if balance type (includes admin_balance)
-const isBalanceType = (type: string) => ['balance', 'admin_balance', 'affiliate_balance', 'daily_checkin', 'usage_rebate', 'lottery_reward', 'lottery_ticket_purchase'].includes(type)
+const isBalanceType = (type: string) => ['balance', 'admin_balance', 'affiliate_balance', 'daily_checkin', 'usage_rebate', 'lottery_reward', 'lottery_ticket_purchase', 'qq_bind_welcome_bonus'].includes(type)
 
 // Helper: check if subscription type
 const isSubscriptionType = (type: string) => type === 'subscription'
@@ -312,6 +313,8 @@ const getItemTitle = (item: BalanceHistoryItem) => {
       return t('redeem.balanceAddedLottery')
     case 'lottery_ticket_purchase':
       return t('redeem.balanceDeductedLotteryTicket')
+    case 'qq_bind_welcome_bonus':
+      return t('redeem.balanceAddedQQBindingWelcome')
     case 'balance':
       return t('redeem.balanceAddedRedeem')
     case 'affiliate_balance':

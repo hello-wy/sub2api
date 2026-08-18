@@ -680,6 +680,7 @@ export default {
       typeAdminBalance: '余额（管理员调整）',
       typeLotteryReward: '抽奖奖励',
       typeLotteryTicketPurchase: '购买抽奖次数',
+      typeQQBindingWelcome: 'QQ 绑定新人礼金',
       typeConcurrency: '并发（兑换码）',
       typeAdminConcurrency: '并发（管理员调整）',
       typeSubscription: '订阅',

@@ -863,7 +863,7 @@ func (s *adminServiceImpl) listLotteryBalanceHistory(ctx context.Context, userID
 SELECT id, transaction_type, amount::double precision, description, created_at
 FROM balance_transactions
 WHERE user_id = $1
-  AND transaction_type IN ('lottery_reward', 'lottery_ticket_purchase')
+  AND transaction_type IN ('lottery_reward', 'lottery_ticket_purchase', 'qq_bind_welcome_bonus')
   AND ($2 = '' OR transaction_type = $2)
 ORDER BY created_at DESC, id DESC
 OFFSET $3 LIMIT $4`, userID, transactionType, params.Offset(), params.Limit())
@@ -905,7 +905,7 @@ OFFSET $3 LIMIT $4`, userID, transactionType, params.Offset(), params.Limit())
 SELECT COUNT(*)
 FROM balance_transactions
 WHERE user_id = $1
-  AND transaction_type IN ('lottery_reward', 'lottery_ticket_purchase')
+  AND transaction_type IN ('lottery_reward', 'lottery_ticket_purchase', 'qq_bind_welcome_bonus')
   AND ($2 = '' OR transaction_type = $2)`, []any{userID, transactionType}, &total); err != nil {
 		return nil, 0, err
 	}

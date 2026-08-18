@@ -1082,8 +1082,9 @@ WHERE d.user_id = $1 ORDER BY d.created_at DESC, d.id DESC LIMIT $2`, userID, li
 	return items, rows.Err()
 }
 
-// ListBalanceTransactions exposes lottery-related wallet changes so users can
-// reconcile prizes and ticket purchases from their wallet history.
+// ListBalanceTransactions exposes auditable wallet changes that are surfaced in
+// the user's balance history, including lottery movements and the QQ binding
+// welcome bonus.
 func (s *LotteryService) ListBalanceTransactions(ctx context.Context, userID int64, limit int) ([]LotteryBalanceTransaction, error) {
 	if limit <= 0 || limit > 200 {
 		limit = 25
@@ -1091,7 +1092,7 @@ func (s *LotteryService) ListBalanceTransactions(ctx context.Context, userID int
 	rows, err := s.entClient.QueryContext(ctx, `
 SELECT id, transaction_type, amount::double precision, description, created_at
 FROM balance_transactions
-WHERE user_id = $1 AND transaction_type IN ('lottery_reward', 'lottery_ticket_purchase')
+WHERE user_id = $1 AND transaction_type IN ('lottery_reward', 'lottery_ticket_purchase', 'qq_bind_welcome_bonus')
 ORDER BY created_at DESC, id DESC LIMIT $2`, userID, limit)
 	if err != nil {
 		return nil, err

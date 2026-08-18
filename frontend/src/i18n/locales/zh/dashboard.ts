@@ -728,6 +728,7 @@ export default {
     balanceDeductedAdmin: '余额扣除（管理员）',
     balanceAddedLottery: '抽奖奖励',
     balanceDeductedLotteryTicket: '购买抽奖次数',
+    balanceAddedQQBindingWelcome: 'QQ 绑定新人礼金',
     balanceAddedDailyCheckin: '每日签到',
     balanceAddedUsageRebate: '用量返利',
     balanceDeductedSubscription: '订阅套餐（余额支付）',
