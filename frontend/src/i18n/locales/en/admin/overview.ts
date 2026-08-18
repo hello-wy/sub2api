@@ -679,6 +679,7 @@ export default {
       typeAdminBalance: 'Balance (Admin)',
       typeLotteryReward: 'Lottery Reward',
       typeLotteryTicketPurchase: 'Lottery Ticket Purchase',
+      typeQQBindingWelcome: 'QQ Binding Welcome Bonus',
       typeConcurrency: 'Concurrency (Redeem)',
       typeAdminConcurrency: 'Concurrency (Admin)',
       typeSubscription: 'Subscription',

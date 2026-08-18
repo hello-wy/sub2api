@@ -723,6 +723,7 @@ export default {
     balanceDeductedAdmin: 'Balance Deducted (Admin)',
     balanceAddedLottery: 'Lottery Reward',
     balanceDeductedLotteryTicket: 'Lottery Ticket Purchase',
+    balanceAddedQQBindingWelcome: 'QQ Binding Welcome Bonus',
     balanceAddedDailyCheckin: 'Daily Check-in',
     balanceAddedUsageRebate: 'Usage Rebate',
     balanceDeductedSubscription: 'Subscription Plan (Balance Payment)',

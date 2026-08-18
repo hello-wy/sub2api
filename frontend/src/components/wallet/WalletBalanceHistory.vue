@@ -65,12 +65,13 @@ const history = ref<WalletHistoryItem[]>([])
 const loading = ref(true)
 
 const balanceHistory = computed(() => history.value.filter((item) =>
-  ['balance', 'admin_balance', 'daily_checkin', 'usage_rebate', 'subscription_payment', 'lottery_reward', 'lottery_ticket_purchase'].includes(item.type)))
+  ['balance', 'admin_balance', 'daily_checkin', 'usage_rebate', 'subscription_payment', 'lottery_reward', 'lottery_ticket_purchase', 'qq_bind_welcome_bonus'].includes(item.type)))
 const displayedHistory = computed(() => balanceHistory.value)
 
 function itemTitle(item: WalletHistoryItem): string {
   if (item.type === 'lottery_reward') return t('redeem.balanceAddedLottery')
   if (item.type === 'lottery_ticket_purchase') return t('redeem.balanceDeductedLotteryTicket')
+  if (item.type === 'qq_bind_welcome_bonus') return t('redeem.balanceAddedQQBindingWelcome')
   if (item.type === 'balance') return t('redeem.balanceAddedRedeem')
   if (item.type === 'daily_checkin') return t('redeem.balanceAddedDailyCheckin')
   if (item.type === 'usage_rebate') return t('redeem.balanceAddedUsageRebate')

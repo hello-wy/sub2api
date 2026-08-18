@@ -768,10 +768,18 @@ func (r *userRepository) GetLotteryStatsByUserIDs(ctx context.Context, userIDs [
 		return nil, fmt.Errorf("sql executor is not configured")
 	}
 
+	// lottery_draws is the source of truth for historical statistics. The
+	// counters in lottery_user_states are a runtime aggregate and can be zero
+	// for legacy users when the backfill migration was not applied (or after a
+	// state row was recreated). Reading the draw ledger keeps the admin view
+	// correct without relying on that aggregate being present and synchronized.
 	rows, err := r.sql.QueryContext(ctx, `
-		SELECT user_id, total_draw_attempts, total_wins
-		FROM lottery_user_states
+		SELECT user_id,
+		       COUNT(*)::BIGINT AS total_draw_attempts,
+		       COUNT(*) FILTER (WHERE prize_type <> 'none')::BIGINT AS total_wins
+		FROM lottery_draws
 		WHERE user_id = ANY($1)
+		GROUP BY user_id
 	`, pq.Array(userIDs))
 	if err != nil {
 		return nil, err
