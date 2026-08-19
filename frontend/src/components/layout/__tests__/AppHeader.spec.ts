@@ -19,4 +19,10 @@ describe('AppHeader mobile layout', () => {
     expect(styleSource).toMatch(/\.header-version-control,[\s\S]*?\.header-checkin-button\s*\{\s*display:\s*none;/)
     expect(styleSource).toMatch(/\.header-user-balance\s*\{\s*display:\s*none;/)
   })
+
+  it('does not render the user name or role in the header trigger', () => {
+    expect(componentSource).not.toContain('hidden text-left md:block')
+    expect(componentSource).not.toContain("t('admin.users.roles.' + user.role)")
+    expect(componentSource).not.toContain('hidden text-gray-400 md:block')
+  })
 })
