@@ -559,9 +559,10 @@ describe('admin UsageView errors tab filter forwarding', () => {
     vm.filters.group_id = 3
     await flushPromises()
 
-    // 切换到「错误请求」标签（第二个 tab 按钮）触发 loadAdminErrors
-    const tabs = wrapper.findAll('[data-testid="usage-detail-tab"]')
-    await tabs[1].trigger('click')
+    const errorsTab = wrapper.findAll('[data-testid="usage-detail-tab"]')
+      .find((tab) => tab.text().includes('usage.tabs.errors'))
+    expect(errorsTab).toBeDefined()
+    await errorsTab!.trigger('click')
     await flushPromises()
 
     expect(listErrorLogs).toHaveBeenCalledWith(expect.objectContaining({
@@ -612,8 +613,10 @@ describe('admin UsageView ranking tab', () => {
     expect(wrapper.find('[data-test="ranking"]').exists()).toBe(false)
 
     const tabs = wrapper.findAll('[data-testid="usage-detail-tab"]')
-    expect(tabs).toHaveLength(3)
-    await tabs[2].trigger('click')
+    expect(tabs).toHaveLength(4)
+    const rankingTab = tabs.find((tab) => tab.text().includes('usage.tabs.ranking'))
+    expect(rankingTab).toBeDefined()
+    await rankingTab!.trigger('click')
     await flushPromises()
     expect(wrapper.find('[data-test="ranking"]').exists()).toBe(true)
 

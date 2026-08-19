@@ -128,6 +128,15 @@
               <strong>{{ formatHeaderMoney(availableBalance) }}</strong>
             </span>
             <Icon name="chevronDown" size="xs" class="text-gray-500 dark:text-dark-300" />
+            <div class="hidden text-left md:block">
+              <div class="text-sm font-medium text-gray-900 dark:text-white">
+                {{ displayName }}
+              </div>
+              <div class="text-xs text-gray-500 dark:text-dark-400">
+                {{ t('admin.users.roles.' + user.role) }}
+              </div>
+            </div>
+            <Icon name="chevronDown" size="sm" class="hidden text-gray-400 md:block" />
           </button>
 
           <!-- Dropdown Menu -->

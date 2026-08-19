@@ -461,6 +461,8 @@ const shellCommands = computed(() => {
   const baseRoot = withoutV1(baseUrl)
   const shellType = activeShellType.value
 
+  if (props.platform === 'grok' && activeClientTab.value === 'codex') return []
+
   if (activeClientTab.value === 'opencode') {
     switch (props.platform) {
       case 'anthropic':

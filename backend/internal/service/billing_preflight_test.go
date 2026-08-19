@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/stretchr/testify/require"
@@ -43,6 +44,7 @@ func TestGatewayCalculateRecordUsageCostFailsClosed(t *testing.T) {
 		"unpriced-attacker-model",
 		1,
 		1,
+		time.Time{},
 		&recordUsageOpts{},
 	)
 	require.Nil(t, cost)

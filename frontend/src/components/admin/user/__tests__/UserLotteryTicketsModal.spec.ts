@@ -59,7 +59,7 @@ beforeEach(() => {
 })
 
 describe('UserLotteryTicketsModal', () => {
-  it('maps a higher target to an add adjustment', async () => {
+  it('maps a higher target to an absolute set adjustment', async () => {
     const wrapper = await mountModal()
     await setTarget(wrapper, 13)
     await wrapper.find('textarea').setValue('manual correction')
@@ -68,8 +68,8 @@ describe('UserLotteryTicketsModal', () => {
 
     expect(apiMocks.adjustLotteryTickets).toHaveBeenCalledWith(
       99,
-      3,
-      'add',
+      13,
+      'set',
       'manual correction',
       expect.any(String),
     )
@@ -77,7 +77,7 @@ describe('UserLotteryTicketsModal', () => {
     expect(wrapper.emitted('close')).toHaveLength(1)
   })
 
-  it('maps a lower target to a subtract adjustment', async () => {
+  it('maps a lower target to an absolute set adjustment', async () => {
     const wrapper = await mountModal()
     await setTarget(wrapper, 4)
     await wrapper.find('textarea').setValue('manual correction')
@@ -86,8 +86,8 @@ describe('UserLotteryTicketsModal', () => {
 
     expect(apiMocks.adjustLotteryTickets).toHaveBeenCalledWith(
       99,
-      6,
-      'subtract',
+      4,
+      'set',
       'manual correction',
       expect.any(String),
     )
