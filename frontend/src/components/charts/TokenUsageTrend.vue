@@ -36,6 +36,7 @@ import {
 import { Line } from 'vue-chartjs'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import type { TrendDataPoint } from '@/types'
+import type { DailyPaymentStats } from '@/types/payment'
 
 ChartJS.register(
   CategoryScale,
@@ -55,6 +56,8 @@ const props = defineProps<{
   loading?: boolean
   embedded?: boolean
   totalOnly?: boolean
+  rechargeSeries?: DailyPaymentStats[]
+  rechargeCurrency?: string
 }>()
 
 const isDarkMode = ref(document.documentElement.classList.contains('dark'))
@@ -76,8 +79,21 @@ const chartColors = computed(() => ({
   output: '#10b981',
   cacheCreation: '#f59e0b',
   cacheRead: '#06b6d4',
-  cacheHitRate: '#8b5cf6'
+  cacheHitRate: '#8b5cf6',
+  recharge: '#ef6c4d'
 }))
+
+const rechargeCurrency = computed(() => props.rechargeCurrency?.trim().toUpperCase() || '')
+const rechargeByDate = computed(() => {
+  const values = new Map<string, number>()
+  for (const day of props.rechargeSeries || []) {
+    const amount = rechargeCurrency.value ? day.amount[rechargeCurrency.value] : 0
+    values.set(String(day.date).slice(0, 10), Number.isFinite(amount) ? amount : 0)
+  }
+  return values
+})
+const hasRechargeSeries = computed(() => props.totalOnly && rechargeCurrency.value !== '' && (props.rechargeSeries?.length || 0) > 0)
+const rechargeLabel = computed(() => `Recharge (${rechargeCurrency.value})`)
 
 const chartData = computed(() => {
   if (!props.trendData?.length) return null
@@ -96,7 +112,19 @@ const chartData = computed(() => {
           borderWidth: 2,
           pointRadius: 0,
           pointHoverRadius: 3
-        }
+        },
+        ...(hasRechargeSeries.value ? [{
+          label: rechargeLabel.value,
+          data: props.trendData.map((d) => rechargeByDate.value.get(String(d.date).slice(0, 10)) || 0),
+          borderColor: chartColors.value.recharge,
+          backgroundColor: `${chartColors.value.recharge}20`,
+          fill: false,
+          tension: 0.38,
+          borderWidth: 2,
+          pointRadius: 0,
+          pointHoverRadius: 3,
+          yAxisID: 'yRecharge'
+        }] : [])
       ]
     }
   }
@@ -198,6 +226,9 @@ const lineOptions = computed(() => ({
           if (context.dataset.yAxisID === 'yPercent') {
             return `${context.dataset.label}: ${context.raw.toFixed(1)}%`
           }
+          if (context.dataset.yAxisID === 'yRecharge') {
+            return `${context.dataset.label}: ${formatRecharge(context.raw)}`
+          }
           return `${context.dataset.label}: ${formatTokens(context.raw)}`
         },
         footer: (tooltipItems: any) => {
@@ -236,7 +267,23 @@ const lineOptions = computed(() => ({
         callback: (value: string | number) => formatTokens(Number(value))
       }
     },
-    ...(props.totalOnly ? {} : {
+    ...(hasRechargeSeries.value ? {
+      yRecharge: {
+        position: 'right' as const,
+        min: 0,
+        grid: {
+          drawOnChartArea: false
+        },
+        ticks: {
+          color: chartColors.value.recharge,
+          font: {
+            size: 10
+          },
+          callback: (value: string | number) => formatRecharge(Number(value))
+        }
+      }
+    } : {}),
+    ...(!props.totalOnly ? {
       yPercent: {
         position: 'right' as const,
         min: 0,
@@ -252,7 +299,7 @@ const lineOptions = computed(() => ({
           callback: (value: string | number) => `${value}%`
         }
       }
-    })
+    } : {})
   }
 }))
 
@@ -277,6 +324,8 @@ const formatCost = (value: number): string => {
   }
   return value.toFixed(4)
 }
+
+const formatRecharge = (value: number): string => `${rechargeCurrency.value} ${formatCost(value)}`
 </script>
 
 <style scoped>

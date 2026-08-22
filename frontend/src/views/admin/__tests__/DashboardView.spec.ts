@@ -88,7 +88,7 @@ const mountDashboard = () => mount(DashboardView, {
     stubs: {
       AppLayout: { template: '<div><slot /></div>' },
       DashboardRangeSelect: { props: ['modelValue', 'options'], emits: ['update:modelValue', 'change'], template: '<select :value="modelValue" @change="$emit(\'update:modelValue\', $event.target.value); $emit(\'change\', $event.target.value)"><option v-for="option in options" :key="option.value" :value="option.value">{{ option.label }}</option></select>' },
-      TokenUsageTrend: { props: ['trendData', 'loading', 'totalOnly'], template: '<div data-testid="token-usage-trend" :data-total-only="totalOnly">{{ trendData.length }}</div>' },
+      TokenUsageTrend: { props: ['trendData', 'loading', 'totalOnly', 'rechargeSeries', 'rechargeCurrency'], template: '<div data-testid="token-usage-trend" :data-total-only="totalOnly" :data-recharge-points="rechargeSeries?.length || 0">{{ trendData.length }}</div>' },
       UserUsageTrend: { props: ['trendData', 'loading'], template: '<div data-testid="user-usage-trend">{{ trendData.length }}</div>' },
       LoadingSpinner: true,
       Icon: true,
@@ -183,6 +183,7 @@ describe('admin DashboardView', () => {
     expect(getPaymentDashboard).toHaveBeenCalledWith()
     expect(wrapper.findAll('[data-testid="token-usage-trend"]')).toHaveLength(2)
     expect(wrapper.findAll('[data-testid="token-usage-trend"]')[1].attributes('data-total-only')).toBe('true')
+    expect(wrapper.findAll('[data-testid="token-usage-trend"]')[1].attributes('data-recharge-points')).toBe('0')
     expect(wrapper.find('[data-testid="user-usage-trend"]').exists()).toBe(true)
     expect(wrapper.find('.dashboard-trends-row').findAll('.dashboard-card')).toHaveLength(2)
     expect(wrapper.text()).toContain('用户使用趋势（Top 10）')
@@ -216,6 +217,12 @@ describe('admin DashboardView', () => {
       end_date: '2026-07-15',
       granularity: 'day'
     })
+    getPaymentDashboard.mockResolvedValueOnce({
+      data: {
+        today_amount: { CNY: 88 }, total_amount: { CNY: 88 }, today_count: 1, total_count: 1, avg_amount: { CNY: 88 }, currency: 'CNY', available_currencies: ['CNY'],
+        subscription_plans: [], daily_series: [{ date: '2026-07-15', amount: { CNY: 88 }, count: 1 }], payment_methods: [], top_users: {}
+      }
+    })
     getUserSpendingRanking.mockResolvedValueOnce({ ranking, total_actual_cost: 12.34, total_requests: 20, total_tokens: 1000, start_date: '', end_date: '' })
 
     const wrapper = mountDashboard()
@@ -223,6 +230,7 @@ describe('admin DashboardView', () => {
 
     expect(wrapper.findAll('[data-testid="token-usage-trend"]')).toHaveLength(2)
     expect(wrapper.findAll('[data-testid="token-usage-trend"]')[1].text()).toBe('2')
+    expect(wrapper.findAll('[data-testid="token-usage-trend"]')[1].attributes('data-recharge-points')).toBe('1')
     expect(wrapper.find('[data-testid="user-usage-trend"]').text()).toBe('1')
     expect(wrapper.text()).toContain('128,420')
     expect(wrapper.findAll('.hero-card')[0].text()).toContain('2.84M')

@@ -150,4 +150,40 @@ describe('TokenUsageTrend', () => {
       data: [1050],
     })
   })
+
+  it('总量模式叠加按日期对齐的每日充值金额序列', () => {
+    const wrapper = mount(TokenUsageTrend, {
+      props: {
+        totalOnly: true,
+        rechargeCurrency: 'CNY',
+        rechargeSeries: [{ date: '2026-05-08', amount: { CNY: 120 }, count: 1 }],
+        trendData: [
+          {
+            date: '2026-05-08',
+            requests: 1,
+            input_tokens: 200,
+            output_tokens: 50,
+            cache_creation_tokens: 300,
+            cache_read_tokens: 500,
+            total_tokens: 1050,
+            cost: 0.02,
+            actual_cost: 0.01,
+          },
+        ],
+      },
+      global: {
+        stubs: {
+          LoadingSpinner: true,
+        },
+      },
+    })
+
+    const chartData = JSON.parse(wrapper.find('.chart-data').text())
+    expect(chartData.datasets).toHaveLength(2)
+    expect(chartData.datasets[1]).toMatchObject({
+      label: 'Recharge (CNY)',
+      data: [120],
+      yAxisID: 'yRecharge',
+    })
+  })
 })

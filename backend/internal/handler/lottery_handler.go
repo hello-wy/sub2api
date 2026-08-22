@@ -94,6 +94,25 @@ func (h *UserHandler) ListLotteryDraws(c *gin.Context) {
 	response.Success(c, items)
 }
 
+// ListRecentLotteryWinners GET /api/v1/lottery/recent-winners
+func (h *UserHandler) ListRecentLotteryWinners(c *gin.Context) {
+	if _, ok := h.lotterySubject(c); !ok {
+		return
+	}
+	limit := 30
+	if raw := c.Query("limit"); raw != "" {
+		if parsed, err := strconv.Atoi(raw); err == nil && parsed > 0 {
+			limit = min(parsed, 100)
+		}
+	}
+	items, err := h.lotteryService.ListRecentWinners(c.Request.Context(), limit)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, items)
+}
+
 // ListLotteryBalanceTransactions GET /api/v1/lottery/balance-transactions
 func (h *UserHandler) ListLotteryBalanceTransactions(c *gin.Context) {
 	userID, ok := h.lotterySubject(c)
