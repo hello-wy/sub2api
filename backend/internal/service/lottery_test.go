@@ -325,6 +325,21 @@ func TestLotteryBalancePrizeLabel(t *testing.T) {
 	}
 }
 
+func TestMaskLotteryWinnerEmail(t *testing.T) {
+	if got := maskLotteryWinnerEmail("alice@example.com"); got != "a***e@e*.com" {
+		t.Fatalf("maskLotteryWinnerEmail() = %q", got)
+	}
+	if got := maskLotteryWinnerEmail("bob@mail.example.co.uk"); got != "b***b@m*.e*.c*.uk" {
+		t.Fatalf("multi-level maskLotteryWinnerEmail() = %q", got)
+	}
+	if got := maskLotteryWinnerEmail("x@domain"); got != "x***@d*" {
+		t.Fatalf("single-character maskLotteryWinnerEmail() = %q", got)
+	}
+	if got := maskLotteryWinnerEmail("匿名用户"); got != "匿名用户" {
+		t.Fatalf("invalid email should be anonymous, got %q", got)
+	}
+}
+
 func TestNewLotteryPrizeIDFitsDrawStorage(t *testing.T) {
 	id := newLotteryPrizeID()
 	if len(id) != lotteryPrizeIDLength {

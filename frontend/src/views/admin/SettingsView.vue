@@ -8326,7 +8326,7 @@
               <div class="grid max-w-xl gap-4 sm:grid-cols-2">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   {{ localText("签到金额最小值", "Minimum reward") }}
-                  <input v-model.number="form.daily_checkin_reward_min" type="number" min="0" step="0.01" class="input mt-2" />
+                  <input v-model.number="form.daily_checkin_reward_min" type="number" min="0.01" step="0.01" class="input mt-2" />
                 </label>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   {{ localText("签到金额最大值", "Maximum reward") }}
@@ -8573,10 +8573,10 @@
               <section class="rounded-lg border border-gray-100 bg-gray-50/60 p-4 dark:border-dark-700 dark:bg-dark-800/50">
                 <div>
                   <h3 class="text-sm font-semibold text-gray-900 dark:text-white">{{ localText("邀请奖励条件", "Invitation reward conditions") }}</h3>
-                  <p class="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">{{ localText("受邀用户的首笔成功人民币余额充值或订阅套餐订单达到首充金额，且累计实际消费达到设定值后，邀请人才会获得 2 次抽奖机会。", "The inviter receives two tickets only after the invitee's first completed CNY balance recharge or subscription order reaches the first-payment amount and cumulative actual usage reaches the threshold.") }}</p>
+                  <p class="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">{{ localText("受邀用户绑定唯一 QQ，累计成功人民币余额充值或订阅套餐订单达到累计充值金额，且累计实际消费达到设定值后，邀请人才会获得 2 次抽奖机会。", "The inviter receives two tickets only after the invitee binds a unique QQ, reaches the cumulative CNY recharge threshold across completed balance or subscription orders, and reaches the cumulative usage threshold.") }}</p>
                 </div>
                 <div class="mt-4 grid gap-4 sm:grid-cols-2">
-                  <label class="block"><span class="mb-1.5 block text-xs font-medium text-gray-700 dark:text-dark-200">{{ localText("首充金额", "First payment amount") }}</span><div class="relative"><span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">¥</span><input v-model.number="lotteryPrizePoolSettings.invitation_first_payment_amount" type="number" min="0.01" max="1000000" step="0.01" class="input pl-7 tabular-nums" /></div></label>
+                  <label class="block"><span class="mb-1.5 block text-xs font-medium text-gray-700 dark:text-dark-200">{{ localText("累计充值金额", "Cumulative recharge amount") }}</span><div class="relative"><span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">¥</span><input v-model.number="lotteryPrizePoolSettings.invitation_first_payment_amount" type="number" min="0.01" max="1000000" step="0.01" class="input pl-7 tabular-nums" /></div></label>
                   <label class="block"><span class="mb-1.5 block text-xs font-medium text-gray-700 dark:text-dark-200">{{ localText("实际消费金额", "Actual usage amount") }}</span><div class="relative"><span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span><input v-model.number="lotteryPrizePoolSettings.invitation_consumption_amount" type="number" min="0.01" max="1000000" step="0.01" class="input pl-7 tabular-nums" /></div></label>
                 </div>
               </section>
@@ -9298,7 +9298,7 @@ function parseWelfareRatios(raw: unknown): number[] {
 }
 
 const defaultDailyCheckinRewardRanges: DailyCheckinRewardRangeSetting[] = [
-  { min: 0, max: 1, probability: 0.5 },
+  { min: 0.01, max: 1, probability: 0.5 },
   { min: 1, max: 2, probability: 0.4 },
   { min: 2, max: 2.5, probability: 0.0999 },
   { min: 2.5, max: 3, probability: 0.0001 },
@@ -9322,7 +9322,7 @@ function parseDailyCheckinSettings<T>(raw: unknown, defaults: T[]): T[] {
 }
 
 function normalizeDailyCheckinSettings(): void {
-  form.daily_checkin_reward_min = Math.max(0, Number(form.daily_checkin_reward_min) || 0);
+  form.daily_checkin_reward_min = Math.max(0.01, Number(form.daily_checkin_reward_min) || 0.01);
   form.daily_checkin_reward_max = Math.max(
     form.daily_checkin_reward_min,
     Number(form.daily_checkin_reward_max) || form.daily_checkin_reward_min,
@@ -9330,7 +9330,7 @@ function normalizeDailyCheckinSettings(): void {
   dailyCheckinRewardRanges.value = dailyCheckinRewardRanges.value.map((range) => {
     const min = Math.min(
       form.daily_checkin_reward_max,
-      Math.max(form.daily_checkin_reward_min, Number(range.min) || 0),
+      Math.max(form.daily_checkin_reward_min, Number(range.min) || form.daily_checkin_reward_min),
     );
     return {
       min,
@@ -10260,7 +10260,7 @@ const form = reactive<SettingsForm>({
   welfare_leaderboard_reward_ratios: "[1.0, 0.5, 0.2]",
   loyalty_weekly_rules: serializeLoyaltyRules("weekly", loyaltyWeeklyRules.value),
   loyalty_permanent_rules: serializeLoyaltyRules("permanent", loyaltyPermanentRules.value),
-  daily_checkin_reward_min: 0,
+  daily_checkin_reward_min: 0.01,
   daily_checkin_reward_max: 3,
   daily_checkin_reward_ranges: JSON.stringify(defaultDailyCheckinRewardRanges),
   daily_checkin_streak_rules: JSON.stringify(defaultDailyCheckinStreakRules),

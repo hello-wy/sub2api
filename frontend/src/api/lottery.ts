@@ -29,6 +29,18 @@ export interface LotteryDraw {
   created_at: string
 }
 
+export interface LotteryRecentWinner {
+  id: number
+  display_name: string
+  prize_id: string
+  prize_label: string
+  prize_type: 'none' | 'balance' | 'subscription'
+  amount: number
+  probability: number
+  guaranteed: boolean
+  created_at: string
+}
+
 export interface LotteryPrizeConfig {
   id: string
   label: string
@@ -81,6 +93,10 @@ export const lotteryAPI = {
 
   listDraws(limit = 20) {
     return apiClient.get<LotteryDraw[]>('/lottery/draws', { params: { limit } })
+  },
+
+  listRecentWinners(limit = 30) {
+    return apiClient.get<LotteryRecentWinner[]>('/lottery/recent-winners', { params: { limit } })
   },
 
   listBalanceTransactions(limit = 25) {

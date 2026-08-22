@@ -118,10 +118,10 @@
             <div class="card-heading">
               <div>
                 <h2 id="daily-token-trend-title">每日 Token 使用趋势</h2>
-                <p>近 30 天的平台 Token 总量，按天汇总</p>
+                <p>近 30 天的平台 Token 总量与充值金额，按天汇总</p>
               </div>
             </div>
-            <TokenUsageTrend :trend-data="dailyTrendData" :loading="dailyTrendLoading" :total-only="true" embedded />
+            <TokenUsageTrend :trend-data="dailyTrendData" :loading="dailyTrendLoading || paymentStatsLoading" :total-only="true" :recharge-series="paymentStats?.daily_series || []" :recharge-currency="paymentStats?.currency" embedded />
           </article>
 
           <article class="dashboard-card user-trend-card" aria-labelledby="user-trend-title">

@@ -2,6 +2,51 @@
   <AppLayout>
     <ScrollablePageLayout content-class="-mx-4 -my-6 px-4 py-8 sm:-mx-6 lg:-mx-8 lg:px-8">
       <div class="lottery-page mx-auto max-w-6xl pb-10">
+        <section v-if="currentBroadcast || currentJackpot" class="lottery-broadcast" aria-live="polite">
+          <article class="lottery-broadcast-panel lottery-broadcast--recent">
+            <div class="lottery-broadcast-heading">
+              <div><span class="lottery-broadcast-label">最近抽奖</span><span class="lottery-broadcast-subtitle">最新中奖动态</span></div>
+            </div>
+            <div v-if="currentBroadcast" class="lottery-broadcast-content" :class="broadcastToneClass(currentBroadcast)">
+                <div class="lottery-broadcast-message">
+                  <span :key="`recent-user-${currentBroadcast.id}`" class="lottery-broadcast-user lottery-broadcast-dynamic">{{ currentBroadcast.display_name }}</span>
+                  <span class="lottery-broadcast-copy">抽中</span>
+                  <strong :key="`recent-prize-${currentBroadcast.id}`" class="lottery-broadcast-prize lottery-broadcast-dynamic" :class="broadcastToneClass(currentBroadcast)">{{ currentBroadcast.prize_label }}</strong>
+                  <span v-if="isBroadcastJackpot(currentBroadcast)" :key="`recent-jackpot-${currentBroadcast.id}`" class="lottery-broadcast-jackpot lottery-broadcast-dynamic"><Icon name="gift" size="xs" />大奖</span>
+                </div>
+                <div class="lottery-broadcast-meta">
+                  <div class="lottery-broadcast-meta-main">
+                    <span class="lottery-broadcast-meta-item"><Icon name="trendingUp" size="xs" /><span class="lottery-broadcast-value-label">价值</span> <strong :key="`recent-value-${currentBroadcast.id}`" class="lottery-broadcast-value lottery-broadcast-dynamic" :class="broadcastToneClass(currentBroadcast)">{{ formatBroadcastValue(currentBroadcast) }}</strong></span>
+                    <span class="lottery-broadcast-meta-item is-probability"><Icon name="chart" size="xs" /><span class="lottery-broadcast-value-label">概率</span> <strong :key="`recent-probability-${currentBroadcast.id}`" class="lottery-broadcast-value lottery-broadcast-dynamic" :class="broadcastToneClass(currentBroadcast)">{{ formatBroadcastProbability(currentBroadcast) }}</strong></span>
+                  </div>
+                  <time class="lottery-broadcast-time"><Icon name="clock" size="xs" /><span>{{ formatBroadcastTime(currentBroadcast.created_at) }}</span></time>
+                </div>
+            </div>
+            <div v-else class="lottery-broadcast-empty">暂无中奖播报</div>
+          </article>
+
+          <span class="lottery-broadcast-divider" aria-hidden="true"></span>
+          <article class="lottery-broadcast-panel lottery-broadcast--jackpot">
+            <div class="lottery-broadcast-heading">
+              <div><span class="lottery-broadcast-label">最近大奖</span><span class="lottery-broadcast-subtitle">概率 ≤ 5%</span></div>
+            </div>
+            <div v-if="currentJackpot" class="lottery-broadcast-content is-jackpot">
+              <div class="lottery-broadcast-message">
+                <span class="lottery-broadcast-user">{{ currentJackpot.display_name }}</span>
+                <span class="lottery-broadcast-copy">抽中</span>
+                <strong class="lottery-broadcast-prize is-jackpot">{{ currentJackpot.prize_label }}</strong>
+              </div>
+              <div class="lottery-broadcast-meta">
+                <div class="lottery-broadcast-meta-main">
+                  <span class="lottery-broadcast-meta-item"><Icon name="trendingUp" size="xs" /><span class="lottery-broadcast-value-label">价值</span> <strong class="lottery-broadcast-value is-jackpot">{{ formatBroadcastValue(currentJackpot) }}</strong></span>
+                  <span class="lottery-broadcast-meta-item is-probability"><Icon name="chart" size="xs" /><span class="lottery-broadcast-value-label">概率</span> <strong class="lottery-broadcast-value is-jackpot">{{ formatBroadcastProbability(currentJackpot) }}</strong></span>
+                </div>
+                <time class="lottery-broadcast-time"><Icon name="clock" size="xs" /><span>{{ formatBroadcastTime(currentJackpot.created_at) }}</span></time>
+              </div>
+            </div>
+            <div v-else class="lottery-broadcast-empty">暂无概率 ≤ 5% 的大奖</div>
+          </article>
+        </section>
         <section class="lottery-hero overflow-hidden">
           <div class="lottery-hero-copy">
             <p class="lottery-hero-kicker">幸运福利活动</p>
@@ -64,7 +109,7 @@
                     <span aria-hidden="true">?</span>
                   </button>
                   <div v-show="showInviteRequirement" id="lottery-invite-requirement" class="lottery-invite-requirement" role="tooltip">
-                    有效邀请需绑定唯一 QQ，首笔人民币余额充值或订阅套餐订单满 ¥{{ formatInvitationAmount(invitationFirstPaymentAmount) }}，且实际消费满 ${{ formatInvitationAmount(invitationConsumptionAmount) }}；达成后发放 2 次抽奖机会。
+                    有效邀请需绑定唯一 QQ，累计人民币余额充值或订阅套餐订单满 ¥{{ formatInvitationAmount(invitationFirstPaymentAmount) }}，且实际消费满 ${{ formatInvitationAmount(invitationConsumptionAmount) }}；达成后发放 2 次抽奖机会。
                   </div>
                 </div>
                 <p>今日已获 <span class="font-semibold text-emerald-600 dark:text-emerald-300">{{ invitationTicketsToday }}</span> 次 · 不限<br>每位有效邀请 +2 次</p>
@@ -102,7 +147,7 @@
                 <p>活动规则</p>
                 <ul>
                   <li>订阅兑换码可在 30 天内兑换；兑换后按奖项标注的时长生效。</li>
-                  <li>有效邀请须完成注册、绑定唯一 QQ，首笔人民币余额充值或订阅套餐订单满 ¥{{ formatInvitationAmount(invitationFirstPaymentAmount) }}，且实际消费满 ${{ formatInvitationAmount(invitationConsumptionAmount) }}。</li>
+                  <li>有效邀请须完成注册、绑定唯一 QQ，累计人民币余额充值或订阅套餐订单满 ¥{{ formatInvitationAmount(invitationFirstPaymentAmount) }}，且实际消费满 ${{ formatInvitationAmount(invitationConsumptionAmount) }}。</li>
                   <li>异常账号将进入风控审核。</li>
                 </ul>
               </div>
@@ -179,7 +224,7 @@ import {
 } from '@/utils/lottery'
 import { useAppStore, useAuthStore } from '@/stores'
 import { useLotteryState } from '@/composables/useLotteryState'
-import { lotteryAPI, type LotteryDraw, type LotteryPrizeConfig } from '@/api/lottery'
+import { lotteryAPI, type LotteryDraw, type LotteryPrizeConfig, type LotteryRecentWinner } from '@/api/lottery'
 
 type DrawHistoryItem = { id: number; prize: LotteryPrize; isGuaranteed: boolean; date: string; time: string; redeemCode?: string; redeemStatus?: LotteryDraw['redeem_status']; redeemExpiresAt?: string; subscriptionValidityDays?: number }
 type DisplayResult = { prize: LotteryPrize; isGuaranteed: boolean; balanceBefore?: number; balanceAfter?: number; redeemCode?: string; redeemStatus?: LotteryDraw['redeem_status']; redeemExpiresAt?: string; subscriptionValidityDays?: number }
@@ -201,9 +246,12 @@ const invitationConsumptionAmount = ref(100)
 const purchasePrice = ref(30)
 const lastResult = ref<DisplayResult | null>(null)
 const history = ref<DrawHistoryItem[]>([])
+const recentWinners = ref<LotteryRecentWinner[]>([])
+const broadcastIndex = ref(0)
 const pendingHistoryItem = ref<DrawHistoryItem | null>(null)
 const prizePool = ref<LotteryPrize[]>(lotteryPrizePool)
 let prizePoolRefreshTimer: number | undefined
+let broadcastTimer: number | undefined
 const purchaseRequestStorageKey = 'lottery:purchase:pending-request-id'
 const drawRequestStorageKey = 'lottery:draw:pending-request-id'
 const requestStorage = getLotteryRequestStorage()
@@ -261,6 +309,14 @@ const availableBalance = computed(() => Number(authStore.user?.balance || 0))
 const formattedPurchasePrice = computed(() => formatLotteryPurchasePrice(purchasePrice.value))
 const balanceAfterPurchase = computed(() => Math.max(availableBalance.value - purchasePrice.value, 0))
 const canPurchaseTicket = computed(() => remainingPurchases.value > 0 && availableBalance.value >= purchasePrice.value)
+const recentBroadcastItems = computed(() => {
+  const winners = recentWinners.value.filter((winner) => winner.prize_type !== 'none')
+  if (!winners.length) return []
+  return winners.slice(0, 10)
+})
+const jackpotItems = computed(() => recentWinners.value.filter((winner) => isBroadcastJackpot(winner)).slice(0, 1))
+const currentBroadcast = computed(() => recentBroadcastItems.value[broadcastIndex.value % Math.max(recentBroadcastItems.value.length, 1)] ?? null)
+const currentJackpot = computed(() => jackpotItems.value[0] ?? null)
 
 function wheelLabelPositionStyle(index: number): Record<string, string> {
   const angle = index * (360 / Math.max(wheelPrizes.value.length, 1))
@@ -275,6 +331,61 @@ function wheelLabelTextStyle(index: number): Record<string, string> {
 function prizeToneClass(prize: LotteryPrize): string {
   if (prize.id === jackpotPrizeID.value) return 'is-jackpot'
   return `is-${prize.kind}`
+}
+
+function broadcastToneClass(winner: LotteryRecentWinner): string {
+  if (isBroadcastJackpot(winner)) return 'is-jackpot'
+  return winner.prize_type === 'subscription' ? 'is-voucher' : 'is-quota'
+}
+
+function isBroadcastJackpot(winner: LotteryRecentWinner): boolean {
+  const probability = Number(winner.probability)
+  return probability > 0 && probability <= 0.05
+}
+
+function broadcastWeight(winner: LotteryRecentWinner): number {
+  return isBroadcastJackpot(winner) ? 5 : 1
+}
+
+function selectRandomBroadcast(excludeCurrent = true): void {
+  const items = recentBroadcastItems.value
+  if (!items.length) return
+  const currentID = excludeCurrent ? currentBroadcast.value?.id : undefined
+  const candidates = items.filter((winner) => winner.id !== currentID)
+  const selectable = candidates.length ? candidates : items
+  const totalWeight = selectable.reduce((total, winner) => total + broadcastWeight(winner), 0)
+  let target = Math.random() * totalWeight
+  let selected = selectable[selectable.length - 1]
+  for (const winner of selectable) {
+    target -= broadcastWeight(winner)
+    if (target <= 0) {
+      selected = winner
+      break
+    }
+  }
+  broadcastIndex.value = items.findIndex((winner) => winner.id === selected.id)
+}
+
+function formatBroadcastTime(value: string): string {
+  const elapsed = Math.max(0, Date.now() - new Date(value).getTime())
+  const minutes = Math.floor(elapsed / 60_000)
+  if (minutes < 1) return '刚刚'
+  if (minutes < 60) return `${minutes} 分钟前`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours} 小时前`
+  return `${Math.floor(hours / 24)} 天前`
+}
+
+function formatBroadcastValue(winner: LotteryRecentWinner): string {
+  const amount = Number(winner.amount)
+  return `¥${Number.isFinite(amount) ? amount.toLocaleString('zh-CN', { maximumFractionDigits: 2 }) : '0'}`
+}
+
+function formatBroadcastProbability(winner: LotteryRecentWinner): string {
+  const probability = Number(winner.probability)
+  if (!Number.isFinite(probability)) return '—'
+  const percentage = probability * 100
+  return `${percentage.toLocaleString('zh-CN', { maximumFractionDigits: 2 })}%`
 }
 
 function formatDrawTimestamp(value: string): { date: string; time: string } {
@@ -391,7 +502,10 @@ function clearDrawRequestID(expectedRequestID?: string): void {
 }
 
 async function refreshLottery(): Promise<void> {
-  const [statusResponse, drawsResponse, prizeResponse] = await Promise.all([lotteryAPI.getStatus(), lotteryAPI.listDraws(50), lotteryAPI.getPrizePool()])
+  const recentWinnersRequest = lotteryAPI.listRecentWinners
+    ? lotteryAPI.listRecentWinners(30).catch(() => ({ data: [] as LotteryRecentWinner[] }))
+    : Promise.resolve({ data: [] as LotteryRecentWinner[] })
+  const [statusResponse, drawsResponse, prizeResponse, recentWinnersResponse] = await Promise.all([lotteryAPI.getStatus(), lotteryAPI.listDraws(50), lotteryAPI.getPrizePool(), recentWinnersRequest])
   applyLotteryStatus(statusResponse.data)
   if (!lotteryEnabled.value) {
     appStore.showWarning('幸运抽奖暂未开启')
@@ -402,6 +516,7 @@ async function refreshLottery(): Promise<void> {
     clearDrawRequestID(drawRequestID.value)
   }
   history.value = drawsResponse.data.map(displayHistory)
+  setRecentWinners(recentWinnersResponse.data)
   prizePool.value = mapPrizeConfig(prizeResponse.data.prizes)
   invitationFirstPaymentAmount.value = Number(prizeResponse.data.invitation_first_payment_amount) || 20
   invitationConsumptionAmount.value = Number(prizeResponse.data.invitation_consumption_amount) || 100
@@ -414,6 +529,29 @@ async function refreshPrizePool(): Promise<void> {
   invitationFirstPaymentAmount.value = Number(response.data.invitation_first_payment_amount) || 20
   invitationConsumptionAmount.value = Number(response.data.invitation_consumption_amount) || 100
   purchasePrice.value = Number(response.data.purchase_price) || 30
+}
+
+async function refreshLotteryStatus(): Promise<void> {
+  const response = await lotteryAPI.getStatus()
+  applyLotteryStatus(response.data)
+}
+
+async function refreshRecentWinners(): Promise<void> {
+  if (!lotteryAPI.listRecentWinners) return
+  const response = await lotteryAPI.listRecentWinners(30)
+  setRecentWinners(response.data)
+}
+
+function setRecentWinners(items: LotteryRecentWinner[]): void {
+  const currentID = currentBroadcast.value?.id
+  recentWinners.value = items
+  const preservedIndex = currentID === undefined ? -1 : recentBroadcastItems.value.findIndex((winner) => winner.id === currentID)
+  if (preservedIndex >= 0) {
+    broadcastIndex.value = preservedIndex
+  } else {
+    broadcastIndex.value = 0
+    selectRandomBroadcast(false)
+  }
 }
 
 function closeResultDialog(): void {
@@ -509,13 +647,23 @@ onMounted(() => {
   document.addEventListener('click', closeInviteRequirementOnOutsideClick)
   refreshLottery().catch((error: any) => appStore.showError(error?.message || '加载抽奖状态失败'))
   prizePoolRefreshTimer = window.setInterval(() => {
-    if (document.visibilityState === 'visible') refreshPrizePool().catch(() => undefined)
+    if (document.visibilityState !== 'visible') return
+    refreshPrizePool().catch(() => undefined)
+    // Invitation rewards are reconciled by the status endpoint. Poll it while
+    // the page is open so newly qualified invitees do not require a reload.
+    refreshLotteryStatus().catch(() => undefined)
+    refreshRecentWinners().catch(() => undefined)
   }, 30000)
+  broadcastTimer = window.setInterval(() => {
+    if (document.visibilityState !== 'visible') return
+    if (recentBroadcastItems.value.length > 1) selectRandomBroadcast()
+  }, 3400)
 })
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', closeInviteRequirementOnOutsideClick)
   if (prizePoolRefreshTimer !== undefined) window.clearInterval(prizePoolRefreshTimer)
+  if (broadcastTimer !== undefined) window.clearInterval(broadcastTimer)
 })
 
 function closeInviteRequirementOnOutsideClick(event: MouseEvent): void {
@@ -528,6 +676,39 @@ function closeInviteRequirementOnOutsideClick(event: MouseEvent): void {
 
 <style scoped>
 .lottery-page { --lottery-blue:#1677ff; --lottery-ink:#17294e; --lottery-line:rgba(205, 221, 239, .9); }
+.lottery-broadcast { display:grid; min-width:0; min-height:72px; grid-template-columns:minmax(0,1fr) 1px minmax(0,1fr); align-items:center; column-gap:14px; margin-bottom:13px; border:1px solid #dce6f2; border-radius:14px; background:linear-gradient(105deg,#fff 0%,#fbfdff 58%,#f7fbff 100%); padding:10px 14px; box-shadow:0 10px 24px rgba(38,91,158,.08); }
+.lottery-broadcast-panel { display:grid; min-width:0; grid-template-columns:max-content minmax(0,1fr); align-items:center; gap:14px; }
+.lottery-broadcast--jackpot .lottery-broadcast-label { color:#9b6400; }
+.lottery-broadcast-label { display:block; color:#344d70; font-size:13px; font-weight:850; letter-spacing:.01em; white-space:nowrap; }
+.lottery-broadcast-subtitle { display:block; margin-top:3px; color:#8494ab; font-size:10px; white-space:nowrap; }
+.lottery-broadcast-divider { width:1px; height:48px; align-self:center; background:#e2eaf4; }
+.lottery-broadcast-content { display:grid; min-width:0; margin-top:0; grid-template-columns:minmax(0,4fr) minmax(126px,1fr); grid-template-areas:'message meta'; align-items:center; gap:4px 10px; overflow:hidden; color:#71819a; font-size:14px; white-space:nowrap; }
+.lottery-broadcast-dynamic { display:inline-block; }
+.lottery-broadcast--recent .lottery-broadcast-dynamic { animation:lottery-broadcast-field-in .26s ease both; }
+.lottery-broadcast-message { display:flex; min-width:0; align-items:center; justify-content:center; gap:8px; overflow:hidden; }
+.lottery-broadcast-content .lottery-broadcast-message { grid-area:message; }
+.lottery-broadcast-meta { display:grid; width:100%; min-width:126px; grid-template-columns:minmax(0,1fr) 40px; align-items:center; gap:8px; grid-area:meta; justify-self:end; padding-left:2px; line-height:1.15; text-align:left; }
+.lottery-broadcast-meta-main { display:grid; min-width:0; justify-items:start; gap:4px; }
+.lottery-broadcast-meta-item { display:inline-flex; min-width:0; align-items:center; justify-content:flex-start; gap:4px; }
+.lottery-broadcast-meta-item svg { width:14px; height:14px; flex:0 0 auto; color:#8fa0b6; }
+.lottery-broadcast-time { display:flex; min-width:0; flex-direction:column; align-items:center; justify-content:center; gap:3px; color:#7f91aa; font-size:10px; white-space:nowrap; }
+.lottery-broadcast-time svg { width:14px; height:14px; color:#8fa0b6; }
+.lottery-broadcast-user { min-width:0; max-width:50%; overflow:hidden; color:#243d60; font-size:13px; font-weight:800; text-overflow:ellipsis; white-space:nowrap; }
+.lottery-broadcast-copy { color:#74849a; font-size:13px; }
+.lottery-broadcast-prize { min-width:0; max-width:48%; overflow:hidden; color:#1260bd; font-size:15px; font-weight:850; text-overflow:ellipsis; white-space:nowrap; }
+.lottery-broadcast-content.is-voucher .lottery-broadcast-prize { color:#7c3aa8; }
+.lottery-broadcast-content.is-jackpot .lottery-broadcast-prize { color:#c27a00; font-size:15px; font-weight:900; text-shadow:0 0 8px rgba(238,177,30,.25); }
+.lottery-broadcast-value-label { font-size:10px; }
+.lottery-broadcast-value { font-size:12px; font-variant-numeric:tabular-nums; font-weight:850; }
+.lottery-broadcast-meta-item:not(.is-probability),.lottery-broadcast-meta-item:not(.is-probability) .lottery-broadcast-value-label,.lottery-broadcast-meta-item:not(.is-probability) .lottery-broadcast-value,.lottery-broadcast-meta-item:not(.is-probability) svg { color:#d84a56; }
+.lottery-broadcast-meta-item.is-probability,.lottery-broadcast-meta-item.is-probability .lottery-broadcast-value-label,.lottery-broadcast-meta-item.is-probability .lottery-broadcast-value,.lottery-broadcast-meta-item.is-probability svg { color:#1260bd; }
+.lottery-broadcast-jackpot { display:inline-flex; align-items:center; gap:4px; border:1px solid #f0c34e; border-radius:999px; background:#fff8df; color:#a86a00; padding:3px 9px; font-size:11px; font-variant-numeric:tabular-nums; font-weight:850; }
+.lottery-broadcast-jackpot svg { width:13px; height:13px; flex:0 0 auto; }
+.lottery-broadcast-probability { color:#a96d00; font-size:10px; font-variant-numeric:tabular-nums; font-weight:800; white-space:nowrap; }
+.lottery-broadcast-empty { color:#9aacca; font-size:10px; }
+.lottery-broadcast-slide-enter-active,.lottery-broadcast-slide-leave-active { transition:opacity .2s ease, transform .2s ease; }
+.lottery-broadcast-slide-enter-from { opacity:0; transform:translateY(6px); }
+.lottery-broadcast-slide-leave-to { opacity:0; transform:translateY(-6px); }
 .lottery-eyebrow { color:#1677ff; font-size:11px; font-weight:750; letter-spacing:.08em; text-transform:uppercase; }
 .lottery-history-button { display:inline-flex; align-items:center; justify-content:center; gap:.5rem; min-height:36px; border:1px solid var(--lottery-line); border-radius:8px; background:#fff; color:#58708f; padding:0 .8rem; font-size:.8125rem; font-weight:650; transition:.2s ease; }
 .lottery-history-button:hover { border-color:#a8cdfc; color:#1677ff; background:#f7fbff; }
@@ -566,13 +747,17 @@ function closeInviteRequirementOnOutsideClick(event: MouseEvent): void {
 @keyframes lottery-action-breathe { 0%,100% { box-shadow:0 9px 18px rgba(22,119,255,.27); transform:scale(1); } 50% { box-shadow:0 12px 25px rgba(255,255,255,.28),0 12px 25px rgba(22,119,255,.35); transform:scale(1.035); } }
 @keyframes lottery-action-3d-breathe { 0%,100% { box-shadow:inset 0 2px 1px rgba(255,255,255,.5),inset 0 -5px 8px rgba(4,62,156,.34),0 6px 0 #074ba8,0 13px 20px rgba(11,78,182,.34); transform:perspective(280px) rotateX(7deg) scale(1); } 50% { box-shadow:inset 0 2px 1px rgba(255,255,255,.58),inset 0 -5px 8px rgba(4,62,156,.3),0 7px 0 #074ba8,0 17px 26px rgba(11,78,182,.42); transform:perspective(280px) rotateX(7deg) scale(1.035); } }
 @keyframes lottery-action-copy { 0%,100% { letter-spacing:0; opacity:1; transform:translateY(0); } 50% { letter-spacing:.06em; opacity:.86; transform:translateY(-1px); } }
+@keyframes lottery-broadcast-message-cycle { 0% { opacity:0; transform:translateY(14px); } 14% { opacity:1; transform:translateY(0); } 72% { opacity:1; transform:translateY(0); } 100% { opacity:0; transform:translateY(-14px); } }
+@keyframes lottery-broadcast-field-in { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:translateY(0); } }
 @media (max-width: 860px) { .lottery-hero { grid-template-columns:1fr; }.lottery-hero-copy { padding:32px 28px 10px; }.lottery-wheel-wrap { min-height:340px; }.wheel-pointer { top:8px; } }
 @media (max-width: 1023px) { .lottery-activity-rules ul { grid-template-columns:repeat(2,minmax(0,1fr)); } }
-@media (max-width: 480px) { .lottery-hero { border-radius:12px; }.lottery-hero-copy { padding:27px 20px 5px; }.lottery-hero h2 { font-size:27px; }.lottery-stat-grid { gap:8px; }.lottery-hero-stat { padding:12px; }.lottery-wheel { width:270px; height:270px; }.wheel-label { font-size:11px; }.lottery-wheel-wrap { min-height:302px; padding:18px; }.lottery-history-button { width:34px; min-height:34px; padding:0; }.lottery-history-button span { display:none; }.lottery-activity-rules ul { grid-template-columns:1fr; gap:5px; } }
+@media (max-width: 480px) { .lottery-hero { border-radius:12px; }.lottery-hero-copy { padding:27px 20px 5px; }.lottery-hero h2 { font-size:27px; }.lottery-stat-grid { gap:8px; }.lottery-hero-stat { padding:12px; }.lottery-wheel { width:270px; height:270px; }.wheel-label { font-size:11px; }.lottery-wheel-wrap { min-height:302px; padding:18px; }.lottery-history-button { width:34px; min-height:34px; padding:0; }.lottery-history-button span { display:none; }.lottery-activity-rules ul { grid-template-columns:1fr; gap:5px; }.lottery-broadcast { grid-template-columns:minmax(0,1fr); grid-template-rows:auto auto; row-gap:6px; padding:9px 10px; }.lottery-broadcast-panel { grid-template-columns:minmax(0,1fr); gap:7px; }.lottery-broadcast-divider { width:100%; height:1px; }.lottery-broadcast-content { grid-template-columns:minmax(0,1fr); grid-template-areas:'message' 'meta'; gap:7px; }.lottery-broadcast-meta { width:100%; min-width:0; grid-template-columns:minmax(0,1fr) 42px; gap:10px; border-top:1px solid #e5ebf3; padding-top:5px; padding-left:0; }.lottery-broadcast-message { flex-wrap:wrap; gap:5px; }.lottery-broadcast-prize { max-width:42vw; }.lottery-broadcast-value-label { font-size:10px; }.lottery-broadcast-value { font-size:12px; } }
 @media (prefers-reduced-motion: reduce) { .wheel-pointer,.lottery-wheel-wrap::before,.wheel-spark,.lottery-wheel-action { animation:none; }.lottery-wheel { transition-duration:.01ms; } }
 @media (prefers-reduced-motion: reduce) { .lottery-wheel-action-label { animation:none; } }
+@media (prefers-reduced-motion: reduce) { .lottery-broadcast-dynamic { animation:none; } }
 </style>
 
 <style>
 .dark .lottery-page { --lottery-ink:#edf4ff; --lottery-line:rgba(76,106,145,.45); }.dark .lottery-history-button,.dark .lottery-panel { border-color:var(--lottery-line); background:#0e192b; }.dark .lottery-history-button { color:#b3c3da; }.dark .lottery-history-button:hover { border-color:#3d82dc; background:#12233d; color:#cfe5ff; }.dark .lottery-ready-panel { background:linear-gradient(145deg,#0f1c30 0%,#122640 100%); }.dark .lottery-purchase-remaining { color:#a9c6e8; }.dark .lottery-action-card { border-color:rgba(76,106,145,.5); background:#101f34; }.dark .lottery-action-card h3 { color:#edf4ff; }.dark .lottery-action-card p,.dark .lottery-panel-description,.dark .lottery-activity-rules li,.dark .lottery-probability-notes li { color:#9aacca; }.dark .lottery-probability-grid { border-color:rgba(76,106,145,.5); background:#101f34; }.dark .lottery-probability-item,.dark .lottery-info-column,.dark .lottery-activity-rules,.dark .lottery-recent-list,.dark .lottery-recent-item,.dark .lottery-recent-footer,.dark .lottery-probability-notes { border-color:rgba(76,106,145,.35); color:#c8d6e9; }.dark .lottery-action-card .lottery-invite-help-button { color:#7fc9a7; }.dark .lottery-action-card .lottery-invite-help-button:hover,.dark .lottery-action-card .lottery-invite-help-button:focus-visible { background:rgba(46,161,112,.18); color:#b7f0d2; }.dark .lottery-invite-requirement { border-color:rgba(78,163,119,.42); background:#122a26; color:#c3e4d3; box-shadow:0 12px 24px rgba(0,0,0,.28); }
+.dark .lottery-broadcast { border-color:rgba(76,106,145,.5); background:#0e192b; }.dark .lottery-broadcast-label,.dark .lottery-broadcast--jackpot .lottery-broadcast-label { color:#f6d477; }.dark .lottery-broadcast-user { color:#edf4ff; }.dark .lottery-broadcast-copy,.dark .lottery-broadcast-subtitle,.dark .lottery-broadcast-time { color:#9aacca; }.dark .lottery-broadcast-probability { color:#f6d477; }
 </style>
