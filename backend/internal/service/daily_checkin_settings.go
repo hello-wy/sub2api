@@ -11,7 +11,7 @@ import (
 
 const (
 	dailyCheckinRewardCents        = 100
-	dailyCheckinRewardMinimum     = 0.01
+	dailyCheckinRewardMinimum      = 0.01
 	dailyCheckinProbabilityScale   = 1_000_000
 	dailyCheckinProbabilityEpsilon = 0.0000001
 )
