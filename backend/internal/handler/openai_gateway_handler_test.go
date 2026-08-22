@@ -1444,6 +1444,8 @@ func TestOpenAIResponsesWebSocket_PassthroughUsageLogLeavesUserAgentNilWhenMissi
 }
 
 func TestOpenAIResponsesWebSocket_PassthroughTracksModelPerTurn(t *testing.T) {
+	solInputPrice, solOutputPrice := 5e-6, 30e-6
+	terraInputPrice, terraOutputPrice := 2e-6, 12e-6
 	got := runOpenAIResponsesWebSocketUsageLogCase(t, openAIResponsesWSUsageLogCase{
 		firstPayload:  `{"type":"response.create","model":"sol","stream":false}`,
 		secondPayload: `{"type":"response.create","model":"terra","stream":false}`,
@@ -1456,6 +1458,22 @@ func TestOpenAIResponsesWebSocket_PassthroughTracksModelPerTurn(t *testing.T) {
 			"terra":         "gpt-5.6-terra",
 			"sol-channel":   "gpt-5.6-sol",
 			"terra-channel": "gpt-5.6-terra",
+		},
+		channelPricing: []service.ChannelModelPricing{
+			{
+				Platform:    service.PlatformOpenAI,
+				Models:      []string{"sol-channel"},
+				BillingMode: service.BillingModeToken,
+				InputPrice:  &solInputPrice,
+				OutputPrice: &solOutputPrice,
+			},
+			{
+				Platform:    service.PlatformOpenAI,
+				Models:      []string{"terra-channel"},
+				BillingMode: service.BillingModeToken,
+				InputPrice:  &terraInputPrice,
+				OutputPrice: &terraOutputPrice,
+			},
 		},
 	})
 
@@ -1841,6 +1859,7 @@ type openAIResponsesWSUsageLogCase struct {
 	userAgent                 *string
 	ingressMode               string
 	channelMapping            map[string]string
+	channelPricing            []service.ChannelModelPricing
 	billingModelSource        string
 	accountModelMapping       map[string]any
 	afterFirstUpstreamRequest func(channelSvc *service.ChannelService) error
@@ -2865,12 +2884,14 @@ func runOpenAIResponsesWebSocketUsageLogCase(t *testing.T, tc openAIResponsesWSU
 				Status:             service.StatusActive,
 				GroupIDs:           []int64{groupID},
 				ModelMapping:       map[string]map[string]string{service.PlatformOpenAI: tc.channelMapping},
+				ModelPricing:       tc.channelPricing,
 				BillingModelSource: tc.billingModelSource,
 			}},
 			groupPlatforms: map[int64]string{groupID: service.PlatformOpenAI},
 		}, nil, nil, nil)
 	}
 
+	billingService := service.NewBillingService(cfg, nil)
 	billingCacheSvc := service.NewBillingCacheService(nil, nil, nil, nil, nil, nil, cfg, nil)
 	gatewaySvc := service.NewOpenAIGatewayService(
 		accountRepo,
@@ -2883,14 +2904,14 @@ func runOpenAIResponsesWebSocketUsageLogCase(t *testing.T, tc openAIResponsesWSU
 		cfg,
 		nil,
 		nil,
-		service.NewBillingService(cfg, nil),
+		billingService,
 		nil,
 		billingCacheSvc,
 		nil,
 		&service.DeferredService{},
 		nil,
 		nil,
-		nil,
+		service.NewModelPricingResolver(channelSvc, billingService),
 		channelSvc,
 		nil,
 		nil,
@@ -2915,6 +2936,7 @@ func runOpenAIResponsesWebSocketUsageLogCase(t *testing.T, tc openAIResponsesWSU
 	apiKey := &service.APIKey{
 		ID:      1801,
 		GroupID: &groupID,
+		Group:   &service.Group{ID: groupID, RateMultiplier: 1},
 		User:    &service.User{ID: 1701, Status: service.StatusActive},
 	}
 	router := gin.New()
