@@ -244,6 +244,7 @@ const inviteRequirementElement = ref<HTMLElement | null>(null)
 const invitationFirstPaymentAmount = ref(20)
 const invitationConsumptionAmount = ref(100)
 const purchasePrice = ref(30)
+const balanceRechargeMultiplier = ref(10)
 const lastResult = ref<DisplayResult | null>(null)
 const history = ref<DrawHistoryItem[]>([])
 const recentWinners = ref<LotteryRecentWinner[]>([])
@@ -378,7 +379,8 @@ function formatBroadcastTime(value: string): string {
 
 function formatBroadcastValue(winner: LotteryRecentWinner): string {
   const amount = Number(winner.amount)
-  return `¥${Number.isFinite(amount) ? amount.toLocaleString('zh-CN', { maximumFractionDigits: 2 }) : '0'}`
+  const value = Number.isFinite(amount) ? amount / balanceRechargeMultiplier.value : 0
+  return `¥${value.toLocaleString('zh-CN', { maximumFractionDigits: 2 })}`
 }
 
 function formatBroadcastProbability(winner: LotteryRecentWinner): string {
@@ -521,6 +523,7 @@ async function refreshLottery(): Promise<void> {
   invitationFirstPaymentAmount.value = Number(prizeResponse.data.invitation_first_payment_amount) || 20
   invitationConsumptionAmount.value = Number(prizeResponse.data.invitation_consumption_amount) || 100
   purchasePrice.value = Number(prizeResponse.data.purchase_price) || 30
+  balanceRechargeMultiplier.value = normalizeBalanceRechargeMultiplier(prizeResponse.data.balance_recharge_multiplier)
 }
 
 async function refreshPrizePool(): Promise<void> {
@@ -529,6 +532,12 @@ async function refreshPrizePool(): Promise<void> {
   invitationFirstPaymentAmount.value = Number(response.data.invitation_first_payment_amount) || 20
   invitationConsumptionAmount.value = Number(response.data.invitation_consumption_amount) || 100
   purchasePrice.value = Number(response.data.purchase_price) || 30
+  balanceRechargeMultiplier.value = normalizeBalanceRechargeMultiplier(response.data.balance_recharge_multiplier)
+}
+
+function normalizeBalanceRechargeMultiplier(value: unknown): number {
+  const multiplier = Number(value)
+  return Number.isFinite(multiplier) && multiplier > 0 ? multiplier : 10
 }
 
 async function refreshLotteryStatus(): Promise<void> {

@@ -101,6 +101,9 @@ func TestDefaultLotteryPrizePoolProbabilitiesTotalOne(t *testing.T) {
 	if pool.PurchasePrice != defaultLotteryPurchasePrice {
 		t.Fatalf("default purchase price = %v, want %v", pool.PurchasePrice, defaultLotteryPurchasePrice)
 	}
+	if pool.BalanceRechargeMultiplier != defaultBalanceRechargeMultiplier {
+		t.Fatalf("default balance recharge multiplier = %v, want %v", pool.BalanceRechargeMultiplier, defaultBalanceRechargeMultiplier)
+	}
 	var total int64
 	for _, prize := range pool.Prizes {
 		units, ok := lotteryProbabilityUnits(prize.Probability)

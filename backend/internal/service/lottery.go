@@ -119,6 +119,7 @@ type LotteryPrizePoolConfig struct {
 	InvitationFirstPaymentAmount float64              `json:"invitation_first_payment_amount"`
 	InvitationConsumptionAmount  float64              `json:"invitation_consumption_amount"`
 	PurchasePrice                float64              `json:"purchase_price"`
+	BalanceRechargeMultiplier    float64              `json:"balance_recharge_multiplier"`
 }
 
 // LotteryBalanceTransaction is an auditable wallet movement caused by the
@@ -180,6 +181,7 @@ func defaultLotteryPrizePoolConfig() LotteryPrizePoolConfig {
 		InvitationFirstPaymentAmount: 20,
 		InvitationConsumptionAmount:  100,
 		PurchasePrice:                defaultLotteryPurchasePrice,
+		BalanceRechargeMultiplier:    defaultBalanceRechargeMultiplier,
 		Prizes: []LotteryPrizeConfig{
 			{ID: "none", Label: "谢谢参与", Type: "none", Probability: 0.529},
 			{ID: "quota-10", Label: "$10", Type: "balance", Amount: 10, Probability: 0.31, EligibleForPity: true},
@@ -282,6 +284,11 @@ func (s *LotteryService) GetPrizePoolConfig(ctx context.Context) (*LotteryPrizeP
 		return nil, err
 	}
 	config.PurchasePrice = purchasePrice
+	rechargeMultiplier, err := s.lotteryBalanceRechargeMultiplier(ctx)
+	if err != nil {
+		return nil, err
+	}
+	config.BalanceRechargeMultiplier = rechargeMultiplier
 	var groupRaw string
 	groupErr := scanOne(ctx, s.entClient, `SELECT value FROM settings WHERE key = $1`, []any{lotterySubscriptionGroupKey}, &groupRaw)
 	if groupErr != nil && groupErr != sql.ErrNoRows {
@@ -438,6 +445,22 @@ func (s *LotteryService) lotteryEnabled(ctx context.Context) (bool, error) {
 		return false, infraerrors.ServiceUnavailable("LOTTERY_ENABLED_SETTING_INVALID", "lottery enabled setting is invalid")
 	}
 	return enabled, nil
+}
+
+func (s *LotteryService) lotteryBalanceRechargeMultiplier(ctx context.Context) (float64, error) {
+	var raw string
+	err := scanOne(ctx, s.entClient, `SELECT value FROM settings WHERE key = $1`, []any{SettingBalanceRechargeMult}, &raw)
+	if err == sql.ErrNoRows {
+		return defaultBalanceRechargeMultiplier, nil
+	}
+	if err != nil {
+		return 0, fmt.Errorf("get balance recharge multiplier: %w", err)
+	}
+	multiplier, parseErr := strconv.ParseFloat(strings.TrimSpace(raw), 64)
+	if parseErr != nil {
+		return defaultBalanceRechargeMultiplier, nil
+	}
+	return normalizeBalanceRechargeMultiplier(multiplier), nil
 }
 
 func (s *LotteryService) requireLotteryEnabled(ctx context.Context) error {
