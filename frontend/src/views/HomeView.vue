@@ -40,6 +40,15 @@
           >
             <Icon name="book" size="md" />
           </a>
+          <router-link
+            v-if="showModelPlazaEntry"
+            to="/model-plaza"
+            class="flex h-10 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-white"
+            :title="t('nav.modelPlaza')"
+          >
+            <Icon name="grid" size="md" />
+            <span class="hidden sm:inline">{{ t('nav.modelPlaza') }}</span>
+          </router-link>
           <button
             class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 dark:text-dark-400 dark:hover:bg-dark-800"
             :title="isDark ? t('home.switchToLight') : t('home.switchToDark')"
@@ -273,6 +282,7 @@ import ProviderLogo from '@/components/home/ProviderLogo.vue'
 import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { sanitizeUrl } from '@/utils/url'
+import { FeatureFlags, isFeatureFlagEnabled } from '@/utils/featureFlags'
 
 type IconName = InstanceType<typeof Icon>['$props']['name']
 
@@ -294,10 +304,19 @@ const homeContent = computed(() => appStore.cachedPublicSettings?.home_content |
 const hasHomeContent = computed(() => homeContent.value.trim().length > 0)
 const compactHomeEnabled = computed(() => appStore.cachedPublicSettings?.compact_home_enabled === true)
 const currentYear = computed(() => new Date().getFullYear())
+const isAuthenticated = computed(() => authStore.isAuthenticated)
+const modelPlazaEnabled = computed(() => isFeatureFlagEnabled(FeatureFlags.modelPlaza))
+const modelPlazaRequiresAuth = computed(
+  () => appStore.cachedPublicSettings?.model_plaza_require_auth === true,
+)
+const showModelPlazaEntry = computed(
+  () => modelPlazaEnabled.value && (isAuthenticated.value || !modelPlazaRequiresAuth.value),
+)
 
 const navItems = computed<Array<{ label: string, href: string, icon: IconName, internal?: boolean, external?: boolean }>>(() => [
   { label: 'API 接入', href: '/available-channels', icon: 'link', internal: true },
   { label: '模型价格', href: '/models', icon: 'creditCard', internal: true },
+  ...(showModelPlazaEntry.value ? [{ label: t('nav.modelPlaza'), href: '/model-plaza', icon: 'grid' as IconName, internal: true }] : []),
   { label: '运行状态', href: '/monitor', icon: 'chart', internal: true },
   { label: '文档', href: docUrl.value || '/docs', icon: 'book', internal: !docUrl.value, external: Boolean(docUrl.value) }
 ])
@@ -361,7 +380,6 @@ const verticalOverlay = computed(() => (
     : 'linear-gradient(180deg, rgba(255,255,255,0.22) 0%, transparent 46%, rgba(235,243,255,0.22) 100%)'
 ))
 
-const isAuthenticated = computed(() => authStore.isAuthenticated)
 const isAdmin = computed(() => authStore.isAdmin)
 const dashboardPath = computed(() => isAdmin.value ? '/admin/dashboard' : '/dashboard')
 
