@@ -7,6 +7,7 @@ import settings from './settings'
 import welfare from './welfare'
 import audit from './audit'
 import promptAudit from './promptAudit'
+import plugins from './plugins'
 
 export default {
   ...overview,
@@ -18,4 +19,5 @@ export default {
   ...welfare,
   ...audit,
   ...promptAudit,
+  ...plugins,
 }
