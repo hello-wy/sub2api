@@ -141,6 +141,7 @@
 
 		  <PricingPreview :entry="entry" :groups="groups" />
 
+          <!-- Tier multipliers -->
           <div v-if="enableTierMultipliers" class="mt-3 grid max-w-md grid-cols-2 gap-2">
             <div>
               <label class="text-xs text-gray-400">{{ t('admin.channels.form.fastMultiplier') }}</label>
@@ -155,7 +156,7 @@
           </div>
 
           <!-- Token intervals (channel-only; group long-context uses official presets) -->
-           <div v-if="!hideTokenIntervals" class="mt-3">
+          <div v-if="!hideTokenIntervals" class="mt-3">
             <div class="flex items-center justify-between">
               <label class="text-xs font-medium text-gray-500 dark:text-gray-400">
                 {{ t('admin.channels.form.intervals') }}
@@ -171,12 +172,12 @@
                 :key="idx"
                 :interval="iv"
                 :mode="entry.billing_mode"
+                :enable-multipliers="enableTierMultipliers"
                 @update="updateInterval(idx, $event)"
                 @remove="removeInterval(idx)"
               />
             </div>
           </div>
-
           <TimePricingSection
             v-if="enableTimePricing"
             :model-value="entry.time_pricing"
