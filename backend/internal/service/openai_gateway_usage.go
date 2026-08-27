@@ -230,6 +230,9 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 		pricingAt,
 	)
 	if err != nil {
+		if !isUsagePricingUnavailableError(err) {
+			return err
+		}
 		logger.L().With(
 			zap.String("component", "service.openai_gateway"),
 			zap.Strings("billing_models", billingModels),
@@ -238,8 +241,8 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 			zap.String("upstream_model", result.UpstreamModel),
 			zap.Int64("api_key_id", apiKey.ID),
 			zap.Int64("account_id", account.ID),
-		).Error("openai_usage.pricing_unavailable", zap.Error(err))
-		return err
+		).Warn("openai_usage.pricing_missing_record_zero_cost", zap.Error(err))
+		cost = &CostBreakdown{BillingMode: string(BillingModeToken)}
 	}
 	// response_model：按上游成功响应自报的模型计费（渠道显式开启才生效）。
 	// 采纳条件见 responseModelBillingDeclaration + hasIdentifiedOpenAIResponsePricing
@@ -631,6 +634,17 @@ func isGrokVideoUsageResult(result *OpenAIForwardResult, billingModels []string)
 		}
 	}
 	return true
+}
+
+func isUsagePricingUnavailableError(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, ErrModelPricingUnavailable) {
+		return true
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "no pricing available") || strings.Contains(msg, "pricing not found")
 }
 
 func (s *OpenAIGatewayService) calculateOpenAIRecordUsageTokenCost(
