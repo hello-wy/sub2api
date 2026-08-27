@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -32,11 +33,11 @@ func TestValidateBillableModelCandidatesAcceptsMappedPricingModel(t *testing.T) 
 	))
 }
 
-func TestGatewayCalculateRecordUsageCostReturnsZeroForUnknownModel(t *testing.T) {
+func TestGatewayCalculateRecordUsageCostFailsClosed(t *testing.T) {
 	billing := NewBillingService(&config.Config{}, nil)
 	svc := &GatewayService{billingService: billing}
 
-	cost := svc.calculateRecordUsageCost(
+	cost, err := svc.calculateRecordUsageCost(
 		context.Background(),
 		&ForwardResult{Model: "unpriced-attacker-model", Usage: ClaudeUsage{InputTokens: 100, OutputTokens: 50}},
 		&APIKey{},
@@ -46,7 +47,6 @@ func TestGatewayCalculateRecordUsageCostReturnsZeroForUnknownModel(t *testing.T)
 		time.Time{},
 		&recordUsageOpts{},
 	)
-	require.NotNil(t, cost)
-	require.Zero(t, cost.TotalCost)
-	require.Zero(t, cost.ActualCost)
+	require.Nil(t, cost)
+	require.True(t, errors.Is(err, ErrModelPricingUnavailable), "unexpected error: %v", err)
 }
