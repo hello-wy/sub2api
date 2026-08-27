@@ -304,10 +304,19 @@ const homeContent = computed(() => appStore.cachedPublicSettings?.home_content |
 const hasHomeContent = computed(() => homeContent.value.trim().length > 0)
 const compactHomeEnabled = computed(() => appStore.cachedPublicSettings?.compact_home_enabled === true)
 const currentYear = computed(() => new Date().getFullYear())
+const isAuthenticated = computed(() => authStore.isAuthenticated)
+const modelPlazaEnabled = computed(() => isFeatureFlagEnabled(FeatureFlags.modelPlaza))
+const modelPlazaRequiresAuth = computed(
+  () => appStore.cachedPublicSettings?.model_plaza_require_auth === true,
+)
+const showModelPlazaEntry = computed(
+  () => modelPlazaEnabled.value && (isAuthenticated.value || !modelPlazaRequiresAuth.value),
+)
 
 const navItems = computed<Array<{ label: string, href: string, icon: IconName, internal?: boolean, external?: boolean }>>(() => [
   { label: 'API 接入', href: '/available-channels', icon: 'link', internal: true },
   { label: '模型价格', href: '/models', icon: 'creditCard', internal: true },
+  ...(showModelPlazaEntry.value ? [{ label: t('nav.modelPlaza'), href: '/model-plaza', icon: 'grid' as IconName, internal: true }] : []),
   { label: '运行状态', href: '/monitor', icon: 'chart', internal: true },
   { label: '文档', href: docUrl.value || '/docs', icon: 'book', internal: !docUrl.value, external: Boolean(docUrl.value) }
 ])
@@ -323,7 +332,6 @@ const providerLogos: LogoItem[] = [
   { node: 'Kimi', title: 'Kimi' },
   { node: 'Qwen', title: 'Qwen' }
 ]
-const modelPlazaEnabled = computed(() => isFeatureFlagEnabled(FeatureFlags.modelPlaza))
 
 const isHomeContentUrl = computed(() => {
   const content = homeContent.value.trim()
@@ -372,13 +380,6 @@ const verticalOverlay = computed(() => (
     : 'linear-gradient(180deg, rgba(255,255,255,0.22) 0%, transparent 46%, rgba(235,243,255,0.22) 100%)'
 ))
 
-const isAuthenticated = computed(() => authStore.isAuthenticated)
-const modelPlazaRequiresAuth = computed(
-  () => appStore.cachedPublicSettings?.model_plaza_require_auth === true,
-)
-const showModelPlazaEntry = computed(
-  () => modelPlazaEnabled.value && (isAuthenticated.value || !modelPlazaRequiresAuth.value),
-)
 const isAdmin = computed(() => authStore.isAdmin)
 const dashboardPath = computed(() => isAdmin.value ? '/admin/dashboard' : '/dashboard')
 

@@ -25,4 +25,10 @@ describe('AppHeader mobile layout', () => {
     expect(componentSource).not.toContain("t('admin.users.roles.' + user.role)")
     expect(componentSource).not.toContain('hidden text-gray-400 md:block')
   })
+
+  it('uses the shared toolbar button styling for the model plaza entry', () => {
+    expect(componentSource).toMatch(
+      /<router-link\s*\n\s*v-if="user && modelPlazaEnabled"[\s\S]*?class="header-tool-button header-tool-optional"[\s\S]*?<Icon name="grid" size="md" \/>[\s\S]*?<span class="header-tool-label">\{\{ t\('nav\.modelPlaza'\) \}\}<\/span>/
+    )
+  })
 })

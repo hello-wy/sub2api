@@ -84,6 +84,20 @@ type LotteryDrawResult struct {
 	CreatedAt                time.Time  `json:"created_at"`
 }
 
+// LotteryRecentWinner is the privacy-safe payload used by the public lottery
+// ticker. It deliberately omits user IDs, emails, and reward references.
+type LotteryRecentWinner struct {
+	ID          int64     `json:"id"`
+	DisplayName string    `json:"display_name"`
+	PrizeID     string    `json:"prize_id"`
+	PrizeLabel  string    `json:"prize_label"`
+	PrizeType   string    `json:"prize_type"`
+	Amount      float64   `json:"amount"`
+	Probability float64   `json:"probability"`
+	Guaranteed  bool      `json:"guaranteed"`
+	CreatedAt   time.Time `json:"created_at"`
+}
+
 // LotteryPrizeConfig is the operator-managed source of truth for both the
 // displayed odds and the server-side lottery draw.
 type LotteryPrizeConfig struct {
@@ -105,6 +119,7 @@ type LotteryPrizePoolConfig struct {
 	InvitationFirstPaymentAmount float64              `json:"invitation_first_payment_amount"`
 	InvitationConsumptionAmount  float64              `json:"invitation_consumption_amount"`
 	PurchasePrice                float64              `json:"purchase_price"`
+	BalanceRechargeMultiplier    float64              `json:"balance_recharge_multiplier"`
 }
 
 // LotteryBalanceTransaction is an auditable wallet movement caused by the
@@ -166,6 +181,7 @@ func defaultLotteryPrizePoolConfig() LotteryPrizePoolConfig {
 		InvitationFirstPaymentAmount: 20,
 		InvitationConsumptionAmount:  100,
 		PurchasePrice:                defaultLotteryPurchasePrice,
+		BalanceRechargeMultiplier:    defaultBalanceRechargeMultiplier,
 		Prizes: []LotteryPrizeConfig{
 			{ID: "none", Label: "谢谢参与", Type: "none", Probability: 0.529},
 			{ID: "quota-10", Label: "$10", Type: "balance", Amount: 10, Probability: 0.31, EligibleForPity: true},
@@ -268,6 +284,11 @@ func (s *LotteryService) GetPrizePoolConfig(ctx context.Context) (*LotteryPrizeP
 		return nil, err
 	}
 	config.PurchasePrice = purchasePrice
+	rechargeMultiplier, err := s.lotteryBalanceRechargeMultiplier(ctx)
+	if err != nil {
+		return nil, err
+	}
+	config.BalanceRechargeMultiplier = rechargeMultiplier
 	var groupRaw string
 	groupErr := scanOne(ctx, s.entClient, `SELECT value FROM settings WHERE key = $1`, []any{lotterySubscriptionGroupKey}, &groupRaw)
 	if groupErr != nil && groupErr != sql.ErrNoRows {
@@ -424,6 +445,22 @@ func (s *LotteryService) lotteryEnabled(ctx context.Context) (bool, error) {
 		return false, infraerrors.ServiceUnavailable("LOTTERY_ENABLED_SETTING_INVALID", "lottery enabled setting is invalid")
 	}
 	return enabled, nil
+}
+
+func (s *LotteryService) lotteryBalanceRechargeMultiplier(ctx context.Context) (float64, error) {
+	var raw string
+	err := scanOne(ctx, s.entClient, `SELECT value FROM settings WHERE key = $1`, []any{SettingBalanceRechargeMult}, &raw)
+	if err == sql.ErrNoRows {
+		return defaultBalanceRechargeMultiplier, nil
+	}
+	if err != nil {
+		return 0, fmt.Errorf("get balance recharge multiplier: %w", err)
+	}
+	multiplier, parseErr := strconv.ParseFloat(strings.TrimSpace(raw), 64)
+	if parseErr != nil {
+		return defaultBalanceRechargeMultiplier, nil
+	}
+	return normalizeBalanceRechargeMultiplier(multiplier), nil
 }
 
 func (s *LotteryService) requireLotteryEnabled(ctx context.Context) error {
@@ -621,7 +658,7 @@ func (s *LotteryService) getLotteryPurchasePrice(ctx context.Context, client int
 
 func validateLotteryInvitationRule(rule lotteryInvitationRule) error {
 	if math.IsNaN(rule.FirstPaymentAmount) || math.IsInf(rule.FirstPaymentAmount, 0) || rule.FirstPaymentAmount <= 0 || rule.FirstPaymentAmount > 1_000_000 {
-		return infraerrors.BadRequest("LOTTERY_INVITATION_FIRST_PAYMENT_INVALID", "lottery invitation first payment amount must be between 0 and 1000000")
+		return infraerrors.BadRequest("LOTTERY_INVITATION_FIRST_PAYMENT_INVALID", "lottery invitation cumulative recharge amount must be between 0 and 1000000")
 	}
 	if math.IsNaN(rule.ConsumptionAmount) || math.IsInf(rule.ConsumptionAmount, 0) || rule.ConsumptionAmount <= 0 || rule.ConsumptionAmount > 1_000_000 {
 		return infraerrors.BadRequest("LOTTERY_INVITATION_CONSUMPTION_INVALID", "lottery invitation consumption amount must be between 0 and 1000000")
@@ -1080,6 +1117,103 @@ WHERE d.user_id = $1 ORDER BY d.created_at DESC, d.id DESC LIMIT $2`, userID, li
 		items = append(items, item)
 	}
 	return items, rows.Err()
+}
+
+// ListRecentWinners returns recent non-empty prizes for the lottery ticker.
+// User identity is masked before it leaves the service boundary.
+func (s *LotteryService) ListRecentWinners(ctx context.Context, limit int) ([]LotteryRecentWinner, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 30
+	}
+	config, err := s.GetPrizePoolConfig(ctx)
+	if err != nil {
+		return nil, err
+	}
+	probabilities := make(map[string]float64, len(config.Prizes))
+	amounts := make(map[string]float64, len(config.Prizes))
+	for _, prize := range config.Prizes {
+		probabilities[prize.ID] = prize.Probability
+		amounts[prize.ID] = prize.Amount
+		if prize.Type == "subscription" && prize.SubscriptionGroupID > 0 {
+			if value, valueErr := s.lotterySubscriptionWelfareAmount(ctx, s.entClient, prize.SubscriptionGroupID); valueErr == nil {
+				amounts[prize.ID] = value
+			}
+		}
+	}
+	rows, err := s.entClient.QueryContext(ctx, `
+		SELECT d.id, COALESCE(u.email, ''), d.prize_id, d.prize_label, d.prize_type,
+		       d.reward_amount::double precision, d.is_guaranteed, d.created_at
+		FROM lottery_draws d
+		JOIN users u ON u.id = d.user_id
+		WHERE d.prize_type <> 'none' AND u.deleted_at IS NULL
+		ORDER BY d.created_at DESC, d.id DESC LIMIT $1`, limit)
+	if err != nil {
+		return nil, fmt.Errorf("list recent lottery winners: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	items := make([]LotteryRecentWinner, 0, limit)
+	for rows.Next() {
+		var item LotteryRecentWinner
+		var email string
+		if err := rows.Scan(&item.ID, &email, &item.PrizeID, &item.PrizeLabel, &item.PrizeType, &item.Amount, &item.Guaranteed, &item.CreatedAt); err != nil {
+			return nil, fmt.Errorf("scan recent lottery winner: %w", err)
+		}
+		item.DisplayName = maskLotteryWinnerEmail(email)
+		item.Probability = probabilities[item.PrizeID]
+		if value, ok := amounts[item.PrizeID]; ok {
+			item.Amount = value
+		}
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate recent lottery winners: %w", err)
+	}
+	return items, nil
+}
+
+func maskLotteryWinnerEmail(email string) string {
+	email = strings.TrimSpace(email)
+	parts := strings.SplitN(email, "@", 2)
+	if len(parts) != 2 {
+		return "匿名用户"
+	}
+	local := strings.TrimSpace(parts[0])
+	domain := strings.TrimSpace(parts[1])
+	if local == "" || domain == "" {
+		return "匿名用户"
+	}
+
+	domainParts := strings.Split(domain, ".")
+	for index, part := range domainParts {
+		if part == "" {
+			return "匿名用户"
+		}
+		// Keep the TLD readable while reducing each remaining label to its
+		// first character and one wildcard.
+		if len(domainParts) == 1 || index < len(domainParts)-1 {
+			domainParts[index] = maskLotteryEmailDomainSegment(part)
+		}
+	}
+	return maskLotteryEmailSegment(local) + "@" + strings.Join(domainParts, ".")
+}
+
+func maskLotteryEmailSegment(value string) string {
+	runes := []rune(value)
+	if len(runes) <= 1 {
+		return string(runes) + "***"
+	}
+	if len(runes) == 2 {
+		return string(runes[0]) + "***" + string(runes[1])
+	}
+	return string(runes[0]) + "***" + string(runes[len(runes)-1])
+}
+
+func maskLotteryEmailDomainSegment(value string) string {
+	runes := []rune(value)
+	if len(runes) == 0 {
+		return ""
+	}
+	return string(runes[0]) + "*"
 }
 
 // ListBalanceTransactions exposes auditable wallet changes that are surfaced in
@@ -1759,7 +1893,7 @@ func (s *LotteryService) maybeGrantInvitationTicket(ctx context.Context, invitee
 SELECT LOWER(BTRIM(v.value))
 FROM user_attribute_values v JOIN user_attribute_definitions d ON d.id = v.attribute_id
 WHERE v.user_id = $1 AND d.deleted_at IS NULL
-  AND (LOWER(d.key) LIKE '%qq%' OR LOWER(d.name) LIKE '%qq%')
+  AND LOWER(d.key) = 'qq'
   AND NULLIF(BTRIM(v.value), '') IS NOT NULL
 ORDER BY v.id LIMIT 1`, []any{inviteeID}, &qq)
 	if err == sql.ErrNoRows {
@@ -1772,21 +1906,20 @@ ORDER BY v.id LIMIT 1`, []any{inviteeID}, &qq)
 	if err := scanOne(ctx, s.entClient, `
 SELECT COUNT(DISTINCT v.user_id)
 FROM user_attribute_values v JOIN user_attribute_definitions d ON d.id = v.attribute_id
-WHERE d.deleted_at IS NULL AND (LOWER(d.key) LIKE '%qq%' OR LOWER(d.name) LIKE '%qq%')
+WHERE d.deleted_at IS NULL AND LOWER(d.key) = 'qq'
   AND LOWER(BTRIM(v.value)) = $1`, []any{qq}, &qqUsers); err != nil || qqUsers != 1 {
 		return err
 	}
-	var firstRecharge float64
+	var rechargeTotal float64
 	err = scanOne(ctx, s.entClient, `
-SELECT pay_amount::double precision FROM payment_orders
+SELECT COALESCE(SUM(pay_amount), 0)::double precision FROM payment_orders
 WHERE user_id = $1 AND order_type IN ('balance', 'subscription') AND status = 'COMPLETED'
-  AND UPPER(COALESCE(provider_snapshot->>'currency', 'CNY')) = 'CNY'
-ORDER BY paid_at, id LIMIT 1`, []any{inviteeID}, &firstRecharge)
-	if err == sql.ErrNoRows || firstRecharge < rule.FirstPaymentAmount {
-		return nil
-	}
+  AND UPPER(COALESCE(provider_snapshot->>'currency', 'CNY')) = 'CNY'`, []any{inviteeID}, &rechargeTotal)
 	if err != nil {
 		return err
+	}
+	if rechargeTotal < rule.FirstPaymentAmount {
+		return nil
 	}
 	var consumed float64
 	if err := scanOne(ctx, s.entClient, `SELECT COALESCE(SUM(actual_cost), 0)::double precision FROM usage_logs WHERE user_id = $1`, []any{inviteeID}, &consumed); err != nil || consumed < rule.ConsumptionAmount {

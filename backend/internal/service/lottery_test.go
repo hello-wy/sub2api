@@ -101,6 +101,9 @@ func TestDefaultLotteryPrizePoolProbabilitiesTotalOne(t *testing.T) {
 	if pool.PurchasePrice != defaultLotteryPurchasePrice {
 		t.Fatalf("default purchase price = %v, want %v", pool.PurchasePrice, defaultLotteryPurchasePrice)
 	}
+	if pool.BalanceRechargeMultiplier != defaultBalanceRechargeMultiplier {
+		t.Fatalf("default balance recharge multiplier = %v, want %v", pool.BalanceRechargeMultiplier, defaultBalanceRechargeMultiplier)
+	}
 	var total int64
 	for _, prize := range pool.Prizes {
 		units, ok := lotteryProbabilityUnits(prize.Probability)
@@ -322,6 +325,21 @@ func TestLotteryBalancePrizeLabel(t *testing.T) {
 	}
 	if got := lotteryBalancePrizeLabel(10.5); got != "$10.5" {
 		t.Fatalf("label = %q, want $10.5", got)
+	}
+}
+
+func TestMaskLotteryWinnerEmail(t *testing.T) {
+	if got := maskLotteryWinnerEmail("alice@example.com"); got != "a***e@e*.com" {
+		t.Fatalf("maskLotteryWinnerEmail() = %q", got)
+	}
+	if got := maskLotteryWinnerEmail("bob@mail.example.co.uk"); got != "b***b@m*.e*.c*.uk" {
+		t.Fatalf("multi-level maskLotteryWinnerEmail() = %q", got)
+	}
+	if got := maskLotteryWinnerEmail("x@domain"); got != "x***@d*" {
+		t.Fatalf("single-character maskLotteryWinnerEmail() = %q", got)
+	}
+	if got := maskLotteryWinnerEmail("匿名用户"); got != "匿名用户" {
+		t.Fatalf("invalid email should be anonymous, got %q", got)
 	}
 }
 

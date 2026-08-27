@@ -6,6 +6,7 @@ const { lotteryAPI, appStore, authStore, push } = vi.hoisted(() => ({
   lotteryAPI: {
     getStatus: vi.fn(),
     listDraws: vi.fn(),
+    listRecentWinners: vi.fn(),
     getPrizePool: vi.fn(),
     purchaseTicket: vi.fn(),
     draw: vi.fn(),
@@ -52,6 +53,7 @@ const currentPrizePool = {
   invitation_first_payment_amount: 20,
   invitation_consumption_amount: 100,
   purchase_price: 12.5,
+  balance_recharge_multiplier: 20,
 }
 
 const mountLottery = () => mount(LotteryView, {
@@ -77,6 +79,7 @@ describe('LotteryView', () => {
     authStore.user.balance = 100
     lotteryAPI.getStatus.mockResolvedValue({ data: status })
     lotteryAPI.listDraws.mockResolvedValue({ data: [] })
+    lotteryAPI.listRecentWinners.mockResolvedValue({ data: [] })
     lotteryAPI.getPrizePool.mockResolvedValue({ data: currentPrizePool })
     authStore.refreshUser.mockResolvedValue(undefined)
   })
@@ -167,6 +170,49 @@ describe('LotteryView', () => {
 
     expect(wrapper.find('.lottery-recent-item').text()).toContain('$10')
     expect(wrapper.find('.lottery-recent-item').text()).not.toContain('$100')
+    wrapper.unmount()
+  })
+
+  it('定时刷新抽奖状态以结算新的邀请奖励', async () => {
+    vi.useFakeTimers()
+    const wrapper = mountLottery()
+    await flushPromises()
+    expect(lotteryAPI.getStatus).toHaveBeenCalledTimes(1)
+
+    await vi.advanceTimersByTimeAsync(30000)
+    expect(lotteryAPI.getStatus).toHaveBeenCalledTimes(2)
+
+    wrapper.unmount()
+    vi.useRealTimers()
+  })
+
+  it('展示脱敏的最近中奖播报并高亮最低概率大奖', async () => {
+    lotteryAPI.listRecentWinners.mockResolvedValueOnce({
+      data: [{
+        id: 8,
+        display_name: 'a***e@e*.com',
+        prize_id: 'plus-week',
+        prize_label: '$100',
+        prize_type: 'subscription',
+        amount: 100,
+        probability: 0.05,
+        guaranteed: false,
+        created_at: new Date().toISOString(),
+      }],
+    })
+    const wrapper = mountLottery()
+    await flushPromises()
+
+    expect(lotteryAPI.listRecentWinners).toHaveBeenCalledWith(30)
+    expect(wrapper.find('.lottery-broadcast').text()).toContain('a***e@e*.com')
+    expect(wrapper.find('.lottery-broadcast-prize').text()).toBe('$100')
+    expect(wrapper.find('.lottery-broadcast-value').text()).toBe('¥5')
+    expect(wrapper.find('.lottery-broadcast').text()).toContain('抽中')
+    expect(wrapper.find('.lottery-broadcast').text()).not.toContain('刚刚抽中')
+    expect(wrapper.find('.lottery-broadcast-prize').classes()).toContain('is-jackpot')
+    expect(wrapper.find('.lottery-broadcast--recent .lottery-broadcast-jackpot').text()).toContain('大奖')
+    expect(wrapper.find('.lottery-broadcast--recent .is-probability').text()).toContain('概率')
+    expect(wrapper.find('.lottery-broadcast--jackpot .is-probability').text()).toContain('5%')
     wrapper.unmount()
   })
 })

@@ -142,8 +142,7 @@
 		  <PricingPreview :entry="entry" :groups="groups" />
 
           <!-- Token intervals (channel-only; group long-context uses official presets) -->
-           <div v-if="!hideTokenIntervals" class="mt-3">
-           <div v-if="enableTierMultipliers" class="mt-3 grid max-w-md grid-cols-2 gap-2">
+          <div v-if="enableTierMultipliers" class="mt-3 grid max-w-md grid-cols-2 gap-2">
             <div>
               <label class="text-xs text-gray-400">{{ t('admin.channels.form.fastMultiplier') }}</label>
               <input :value="entry.fast_multiplier" @input="emitField('fast_multiplier', ($event.target as HTMLInputElement).value)"
@@ -156,7 +155,8 @@
             </div>
           </div>
 
-          <!-- Channel token intervals; the group long-context toggle controls whether tiers apply. -->
+          <!-- Token intervals (channel-only; group long-context uses official presets) -->
+           <div v-if="!hideTokenIntervals" class="mt-3">
             <div class="flex items-center justify-between">
               <label class="text-xs font-medium text-gray-500 dark:text-gray-400">
                 {{ t('admin.channels.form.intervals') }}
@@ -177,6 +177,7 @@
                 @remove="removeInterval(idx)"
               />
             </div>
+          </div>
           <TimePricingSection
             v-if="enableTimePricing"
             :model-value="entry.time_pricing"
@@ -338,8 +339,10 @@ function addMediaTier() {
     cache_write_price: null,
     cache_read_price: null,
     per_request_price: null,
-    input_multiplier: null, output_multiplier: null,
-    cache_write_multiplier: null, cache_read_multiplier: null,
+    input_multiplier: null,
+    output_multiplier: null,
+    cache_write_multiplier: null,
+    cache_read_multiplier: null,
     sort_order: intervals.length,
   })
   emit('update', { ...props.entry, intervals })

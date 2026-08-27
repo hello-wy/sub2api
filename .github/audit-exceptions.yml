@@ -41,6 +41,7 @@ exceptions:
     reason: "CSS build-time usage only; source maps generated only for trusted builds and internal assets"
     mitigation: "Restrict source map output for user-generated content; schedule dependency upgrade in next sprint"
     expires_on: "2026-10-24"
+    owner: "security@your-domain"
   - package: nanoid
     advisory: "GHSA-2v37-7h3g-55p8"
     severity: high

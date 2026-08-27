@@ -563,7 +563,7 @@ func TestParseDailyCheckinSettingsUsesConfiguredRangesAndRules(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	require.Equal(t, 0.0, settings.RewardMin)
+	require.Equal(t, 0.01, settings.RewardMin)
 	require.Equal(t, 3.0, settings.RewardMax)
 	require.Len(t, settings.RewardRanges, 4)
 	require.Equal(t, 1.5, computeDailyCheckinBonus(2, settings.StreakRules))

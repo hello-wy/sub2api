@@ -136,6 +136,7 @@ func RegisterUserRoutes(
 			lottery.GET("/prizes", h.User.GetLotteryPrizePool)
 			lottery.GET("/status", h.User.GetLotteryStatus)
 			lottery.GET("/draws", h.User.ListLotteryDraws)
+			lottery.GET("/recent-winners", h.User.ListRecentLotteryWinners)
 			lottery.GET("/balance-transactions", h.User.ListLotteryBalanceTransactions)
 			lottery.POST("/draw", h.User.DrawLottery)
 			lottery.POST("/tickets/purchase", h.User.PurchaseLotteryTicket)
