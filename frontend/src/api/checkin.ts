@@ -49,6 +49,9 @@ export interface CheckinStatusResponse {
   today_reward_max?: number
   next_reward_day_count?: number | null
   next_reward_extra?: number | null
+  reward_cycle_number?: number
+  reward_cycle_days?: number
+  reward_cycle_day?: number
   reward_rules: CheckinRewardRule[]
   recent_days: CheckinDayStatus[]
   recent_history: CheckinHistoryItem[]
@@ -103,6 +106,9 @@ interface RawCheckinSummary {
   balance?: number
   recent_records?: RawCheckinHistoryItem[]
   reward_rules?: RawCheckinRule[]
+  reward_cycle_number?: number
+  reward_cycle_days?: number
+  reward_cycle_day?: number
 }
 
 interface RawCheckinStatusResponse extends Partial<CheckinStatusResponse> {
@@ -197,6 +203,9 @@ function normalizeStatus(raw: RawCheckinStatusResponse): CheckinStatusResponse {
     today_reward_max: todayRewardMax,
     next_reward_day_count: raw.next_reward_day_count ?? null,
     next_reward_extra: raw.next_reward_extra ?? null,
+    reward_cycle_number: Number(raw.reward_cycle_number ?? summary?.reward_cycle_number ?? 1),
+    reward_cycle_days: Number(raw.reward_cycle_days ?? summary?.reward_cycle_days ?? 30),
+    reward_cycle_day: Number(raw.reward_cycle_day ?? summary?.reward_cycle_day ?? 1),
     reward_rules: normalizeRewardRules(raw.reward_rules ?? summary?.reward_rules),
     recent_days: (raw.recent_days ?? []).map((day) => ({
       ...day,

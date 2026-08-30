@@ -463,6 +463,7 @@ export interface SystemSettings {
   daily_checkin_reward_max: number;
   daily_checkin_reward_ranges: string;
   daily_checkin_streak_rules: string;
+  daily_checkin_cycle_days: number;
   // Default settings
   default_balance: number;
   affiliate_rebate_rate: number;
@@ -812,6 +813,7 @@ export interface UpdateSettingsRequest {
   daily_checkin_reward_max?: number;
   daily_checkin_reward_ranges?: string;
   daily_checkin_streak_rules?: string;
+  daily_checkin_cycle_days?: number;
   default_balance?: number;
   affiliate_rebate_rate?: number;
   affiliate_rebate_freeze_hours?: number;

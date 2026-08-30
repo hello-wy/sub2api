@@ -108,12 +108,12 @@
                   <div>
                     <h3 class="text-lg font-bold tracking-normal text-slate-950 dark:text-white">连续签到奖励规则</h3>
                     <p class="mt-1 text-sm text-slate-500 dark:text-dark-400">
-                      每 30 天为一个周期，达到对应天数时发放额外奖励。
+                      每 {{ rewardCycleDays }} 天为一个周期，达到对应天数时发放额外奖励。
                     </p>
                   </div>
                 </div>
                 <div class="shrink-0 rounded-full bg-slate-100/90 px-3 py-1.5 text-xs font-semibold text-slate-600 ring-1 ring-slate-200 dark:bg-dark-900/70 dark:text-dark-300 dark:ring-dark-700">
-                  每 30 天为一个周期
+                  第 {{ rewardCycleNumber }} 轮 · 第 {{ rewardCycleDay }}/{{ rewardCycleDays }} 天
                 </div>
               </div>
 
@@ -337,7 +337,7 @@ const statCards = computed(() => [
     label: '连续签到',
     value: String(status.value?.current_streak ?? 0),
     unit: '天',
-    hint: `今天：${alreadyCheckedIn.value ? '已签到' : '未签到'}`,
+    hint: `第 ${rewardCycleNumber.value} 轮 · 第 ${rewardCycleDay.value}/${rewardCycleDays.value} 天 · 今天：${alreadyCheckedIn.value ? '已签到' : '未签到'}`,
     valueClass: '',
   },
   {
@@ -358,6 +358,9 @@ const statCards = computed(() => [
 const qqBound = computed(() => status.value?.qq_bound ?? false)
 const alreadyCheckedIn = computed(() => status.value?.already_checked_in ?? false)
 const contactInfo = computed(() => appStore.contactInfo)
+const rewardCycleNumber = computed(() => Math.max(1, status.value?.reward_cycle_number ?? 1))
+const rewardCycleDays = computed(() => Math.max(1, status.value?.reward_cycle_days ?? 30))
+const rewardCycleDay = computed(() => Math.min(rewardCycleDays.value, Math.max(1, status.value?.reward_cycle_day ?? 1)))
 
 type CalendarDay = {
   date: string

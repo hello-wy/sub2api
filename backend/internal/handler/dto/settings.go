@@ -106,6 +106,7 @@ type SystemSettings struct {
 	DailyCheckinRewardMax          float64 `json:"daily_checkin_reward_max"`
 	DailyCheckinRewardRanges       string  `json:"daily_checkin_reward_ranges"`
 	DailyCheckinStreakRules        string  `json:"daily_checkin_streak_rules"`
+	DailyCheckinCycleDays          int     `json:"daily_checkin_cycle_days"`
 
 	WeChatConnectEnabled                   bool   `json:"wechat_connect_enabled"`
 	WeChatConnectAppID                     string `json:"wechat_connect_app_id"`

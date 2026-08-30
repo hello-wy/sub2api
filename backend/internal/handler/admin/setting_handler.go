@@ -156,6 +156,7 @@ func (h *SettingHandler) GetSettings(c *gin.Context) {
 		DailyCheckinRewardMax:                                  settings.DailyCheckinRewardMax,
 		DailyCheckinRewardRanges:                               settings.DailyCheckinRewardRanges,
 		DailyCheckinStreakRules:                                settings.DailyCheckinStreakRules,
+		DailyCheckinCycleDays:                                  settings.DailyCheckinCycleDays,
 		PasskeyEnabled:                                         settings.PasskeyEnabled,
 		PasskeyConfigured:                                      passkeyConfigured,
 		PasskeyRPID:                                            passkeyRPID,

@@ -8347,7 +8347,7 @@
               </p>
             </div>
             <div class="space-y-6 p-6">
-              <div class="grid max-w-xl gap-4 sm:grid-cols-2">
+              <div class="grid max-w-xl gap-4 sm:grid-cols-3">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   {{ localText("签到金额最小值", "Minimum reward") }}
                   <input v-model.number="form.daily_checkin_reward_min" type="number" min="0.01" step="0.01" class="input mt-2" />
@@ -8355,6 +8355,10 @@
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   {{ localText("签到金额最大值", "Maximum reward") }}
                   <input v-model.number="form.daily_checkin_reward_max" type="number" :min="form.daily_checkin_reward_min" step="0.01" class="input mt-2" />
+                </label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {{ localText("奖励周期天数", "Reward cycle days") }}
+                  <input v-model.number="form.daily_checkin_cycle_days" type="number" min="1" step="1" class="input mt-2" />
                 </label>
               </div>
 
@@ -8390,14 +8394,14 @@
                 <div class="mb-3 flex items-center justify-between gap-3">
                   <div>
                     <h3 class="font-semibold text-gray-900 dark:text-white">{{ localText("连续签到额外奖励", "Streak bonuses") }}</h3>
-                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ localText("达到指定连续签到天数时，额外发放一次奖励。", "An extra reward is issued when the specified streak day is reached.") }}</p>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ localText("按奖励周期重复发放；规则天数必须不超过周期天数。", "Bonuses repeat each reward cycle; rule days must not exceed the cycle length.") }}</p>
                   </div>
                   <button type="button" class="btn btn-secondary btn-sm" @click="addDailyCheckinStreakRule">+ {{ localText("添加规则", "Add rule") }}</button>
                 </div>
                 <div class="overflow-x-auto rounded-lg border border-gray-100 dark:border-dark-700">
                   <table class="w-full min-w-[480px] text-sm">
                     <thead class="bg-gray-50 text-left text-gray-500 dark:bg-dark-800 dark:text-dark-400"><tr><th class="px-3 py-2">{{ localText("连续天数", "Streak days") }}</th><th class="px-3 py-2">{{ localText("额外奖励", "Bonus") }}</th><th class="px-3 py-2">{{ localText("操作", "Action") }}</th></tr></thead>
-                    <tbody><tr v-for="(rule, index) in dailyCheckinStreakRules" :key="index" class="border-t border-gray-100 dark:border-dark-700"><td class="p-2"><input v-model.number="rule.threshold" type="number" min="1" step="1" class="input" /></td><td class="p-2"><input v-model.number="rule.bonus" type="number" min="0" step="0.01" class="input" /></td><td class="p-2"><button type="button" class="btn btn-ghost btn-sm text-red-600" @click="removeDailyCheckinStreakRule(index)">{{ localText("删除", "Remove") }}</button></td></tr></tbody>
+                    <tbody><tr v-for="(rule, index) in dailyCheckinStreakRules" :key="index" class="border-t border-gray-100 dark:border-dark-700"><td class="p-2"><input v-model.number="rule.threshold" type="number" min="1" :max="form.daily_checkin_cycle_days" step="1" class="input" /></td><td class="p-2"><input v-model.number="rule.bonus" type="number" min="0" step="0.01" class="input" /></td><td class="p-2"><button type="button" class="btn btn-ghost btn-sm text-red-600" @click="removeDailyCheckinStreakRule(index)">{{ localText("删除", "Remove") }}</button></td></tr></tbody>
                   </table>
                 </div>
               </section>
@@ -9346,6 +9350,7 @@ function parseDailyCheckinSettings<T>(raw: unknown, defaults: T[]): T[] {
 }
 
 function normalizeDailyCheckinSettings(): void {
+	form.daily_checkin_cycle_days = Math.max(1, Math.floor(Number(form.daily_checkin_cycle_days) || 30));
   form.daily_checkin_reward_min = Math.max(0.01, Number(form.daily_checkin_reward_min) || 0.01);
   form.daily_checkin_reward_max = Math.max(
     form.daily_checkin_reward_min,
@@ -9363,7 +9368,7 @@ function normalizeDailyCheckinSettings(): void {
     };
   });
   dailyCheckinStreakRules.value = dailyCheckinStreakRules.value.map((rule) => ({
-    threshold: Math.max(1, Math.floor(Number(rule.threshold) || 1)),
+    threshold: Math.min(form.daily_checkin_cycle_days, Math.max(1, Math.floor(Number(rule.threshold) || 1))),
     bonus: Math.max(0, Number(rule.bonus) || 0),
   }));
 }
@@ -9386,7 +9391,7 @@ function removeDailyCheckinRewardRange(index: number): void {
 
 function addDailyCheckinStreakRule(): void {
   const last = dailyCheckinStreakRules.value.at(-1);
-  dailyCheckinStreakRules.value.push({ threshold: (last?.threshold || 0) + 1, bonus: last?.bonus || 0 });
+  dailyCheckinStreakRules.value.push({ threshold: Math.min(form.daily_checkin_cycle_days, (last?.threshold || 0) + 1), bonus: last?.bonus || 0 });
 }
 
 function removeDailyCheckinStreakRule(index: number): void {
@@ -10288,6 +10293,7 @@ const form = reactive<SettingsForm>({
   daily_checkin_reward_max: 3,
   daily_checkin_reward_ranges: JSON.stringify(defaultDailyCheckinRewardRanges),
   daily_checkin_streak_rules: JSON.stringify(defaultDailyCheckinStreakRules),
+  daily_checkin_cycle_days: 30,
   registration_email_suffix_whitelist: [],
   registration_email_domain_quota_enabled: false,
   promo_code_enabled: true,
@@ -12270,6 +12276,7 @@ async function saveSettings() {
       daily_checkin_reward_max: form.daily_checkin_reward_max,
       daily_checkin_reward_ranges: JSON.stringify(dailyCheckinRewardRanges.value),
       daily_checkin_streak_rules: JSON.stringify(dailyCheckinStreakRules.value),
+      daily_checkin_cycle_days: form.daily_checkin_cycle_days,
     };
 
     // 仅当 openai_fast_policy_settings 已成功从后端加载时才回写，

@@ -50,26 +50,29 @@ type DailyCheckinRule struct {
 }
 
 type DailyCheckinSummary struct {
-	Timezone       string                    `json:"timezone"`
-	Today          string                    `json:"today"`
-	QQBound        bool                      `json:"qq_bound"`
-	WechatBound    bool                      `json:"wechat_bound"`
-	CanCheckIn     bool                      `json:"can_check_in"`
-	CheckedInToday bool                      `json:"checked_in_today"`
-	StreakDays     int                       `json:"streak_days"`
-	ThisMonthCount int                       `json:"this_month_count"`
-	TotalReward    float64                   `json:"total_reward"`
-	BaseReward     float64                   `json:"base_reward"`
-	BaseRewardMin  float64                   `json:"base_reward_min"`
-	BaseRewardMax  float64                   `json:"base_reward_max"`
-	BonusReward    float64                   `json:"bonus_reward"`
-	TodayReward    float64                   `json:"today_reward"`
-	TodayRewardMin float64                   `json:"today_reward_min"`
-	TodayRewardMax float64                   `json:"today_reward_max"`
-	RewardRanges   []DailyCheckinRewardRange `json:"reward_ranges"`
-	RewardRules    []DailyCheckinRule        `json:"reward_rules"`
-	Balance        float64                   `json:"balance"`
-	RecentRecords  []DailyCheckinRecord      `json:"recent_records"`
+	Timezone          string                    `json:"timezone"`
+	Today             string                    `json:"today"`
+	QQBound           bool                      `json:"qq_bound"`
+	WechatBound       bool                      `json:"wechat_bound"`
+	CanCheckIn        bool                      `json:"can_check_in"`
+	CheckedInToday    bool                      `json:"checked_in_today"`
+	StreakDays        int                       `json:"streak_days"`
+	ThisMonthCount    int                       `json:"this_month_count"`
+	TotalReward       float64                   `json:"total_reward"`
+	BaseReward        float64                   `json:"base_reward"`
+	BaseRewardMin     float64                   `json:"base_reward_min"`
+	BaseRewardMax     float64                   `json:"base_reward_max"`
+	BonusReward       float64                   `json:"bonus_reward"`
+	TodayReward       float64                   `json:"today_reward"`
+	TodayRewardMin    float64                   `json:"today_reward_min"`
+	TodayRewardMax    float64                   `json:"today_reward_max"`
+	RewardRanges      []DailyCheckinRewardRange `json:"reward_ranges"`
+	RewardRules       []DailyCheckinRule        `json:"reward_rules"`
+	RewardCycleNumber int                       `json:"reward_cycle_number"`
+	RewardCycleDays   int                       `json:"reward_cycle_days"`
+	RewardCycleDay    int                       `json:"reward_cycle_day"`
+	Balance           float64                   `json:"balance"`
+	RecentRecords     []DailyCheckinRecord      `json:"recent_records"`
 }
 
 type DailyCheckinStatus struct {
@@ -174,7 +177,7 @@ func (s *UserService) checkInDailyInTx(ctx context.Context, repo dailyCheckinRep
 	if err != nil {
 		return nil, err
 	}
-	bonusReward := computeDailyCheckinBonus(streakDays, settings.StreakRules)
+	bonusReward := computeDailyCheckinBonus(streakDays, settings.CycleDays, settings.StreakRules)
 	totalReward := baseReward + bonusReward
 
 	record := &DailyCheckinRecord{
@@ -198,26 +201,29 @@ func (s *UserService) checkInDailyInTx(ctx context.Context, repo dailyCheckinRep
 	}
 
 	summary := DailyCheckinSummary{
-		Timezone:       userTZ,
-		Today:          today,
-		QQBound:        true,
-		WechatBound:    false,
-		CanCheckIn:     false,
-		CheckedInToday: true,
-		StreakDays:     streakDays,
-		ThisMonthCount: countCheckinsThisMonth(recent, today, record),
-		TotalReward:    sumCheckinRewards(recent, record),
-		BaseReward:     baseReward,
-		BaseRewardMin:  settings.RewardMin,
-		BaseRewardMax:  settings.RewardMax,
-		BonusReward:    bonusReward,
-		TodayReward:    totalReward,
-		TodayRewardMin: settings.RewardMin + bonusReward,
-		TodayRewardMax: settings.RewardMax + bonusReward,
-		RewardRanges:   append([]DailyCheckinRewardRange(nil), settings.RewardRanges...),
-		RewardRules:    sortedDailyCheckinRules(settings.StreakRules),
-		Balance:        user.Balance + totalReward,
-		RecentRecords:  prependRecord(recent, record, 7),
+		Timezone:          userTZ,
+		Today:             today,
+		QQBound:           true,
+		WechatBound:       false,
+		CanCheckIn:        false,
+		CheckedInToday:    true,
+		StreakDays:        streakDays,
+		ThisMonthCount:    countCheckinsThisMonth(recent, today, record),
+		TotalReward:       sumCheckinRewards(recent, record),
+		BaseReward:        baseReward,
+		BaseRewardMin:     settings.RewardMin,
+		BaseRewardMax:     settings.RewardMax,
+		BonusReward:       bonusReward,
+		TodayReward:       totalReward,
+		TodayRewardMin:    settings.RewardMin + bonusReward,
+		TodayRewardMax:    settings.RewardMax + bonusReward,
+		RewardRanges:      append([]DailyCheckinRewardRange(nil), settings.RewardRanges...),
+		RewardRules:       sortedDailyCheckinRules(settings.StreakRules),
+		RewardCycleNumber: dailyCheckinCycleNumber(streakDays, settings.CycleDays),
+		RewardCycleDays:   settings.CycleDays,
+		RewardCycleDay:    dailyCheckinCycleDay(streakDays, settings.CycleDays),
+		Balance:           user.Balance + totalReward,
+		RecentRecords:     prependRecord(recent, record, 7),
 	}
 
 	return &DailyCheckinResult{
@@ -266,30 +272,33 @@ func (s *UserService) GetDailyCheckinStatus(ctx context.Context, userID int64, u
 	checkedInToday := len(recent) > 0 && localDateKey(recent[0].CheckinDate, tz) == today
 	streakDays := computeCheckinStreak(recent, today, tz)
 	baseReward := settings.RewardMin
-	bonusReward := computeDailyCheckinBonus(streakDays, settings.StreakRules)
+	bonusReward := computeDailyCheckinBonus(streakDays, settings.CycleDays, settings.StreakRules)
 	totalReward := baseReward + bonusReward
 
 	summary := DailyCheckinSummary{
-		Timezone:       tz,
-		Today:          today,
-		QQBound:        qqBound,
-		WechatBound:    false,
-		CanCheckIn:     qqBound && !checkedInToday,
-		CheckedInToday: checkedInToday,
-		StreakDays:     streakDays,
-		ThisMonthCount: countCheckinsThisMonth(recent, today, nil),
-		TotalReward:    sumCheckinRewards(recent, nil),
-		BaseReward:     baseReward,
-		BaseRewardMin:  settings.RewardMin,
-		BaseRewardMax:  settings.RewardMax,
-		BonusReward:    bonusReward,
-		TodayReward:    totalReward,
-		TodayRewardMin: settings.RewardMin + bonusReward,
-		TodayRewardMax: settings.RewardMax + bonusReward,
-		RewardRanges:   append([]DailyCheckinRewardRange(nil), settings.RewardRanges...),
-		RewardRules:    sortedDailyCheckinRules(settings.StreakRules),
-		Balance:        user.Balance,
-		RecentRecords:  prependRecord(recent, nil, 7),
+		Timezone:          tz,
+		Today:             today,
+		QQBound:           qqBound,
+		WechatBound:       false,
+		CanCheckIn:        qqBound && !checkedInToday,
+		CheckedInToday:    checkedInToday,
+		StreakDays:        streakDays,
+		ThisMonthCount:    countCheckinsThisMonth(recent, today, nil),
+		TotalReward:       sumCheckinRewards(recent, nil),
+		BaseReward:        baseReward,
+		BaseRewardMin:     settings.RewardMin,
+		BaseRewardMax:     settings.RewardMax,
+		BonusReward:       bonusReward,
+		TodayReward:       totalReward,
+		TodayRewardMin:    settings.RewardMin + bonusReward,
+		TodayRewardMax:    settings.RewardMax + bonusReward,
+		RewardRanges:      append([]DailyCheckinRewardRange(nil), settings.RewardRanges...),
+		RewardRules:       sortedDailyCheckinRules(settings.StreakRules),
+		RewardCycleNumber: dailyCheckinCycleNumber(streakDays, settings.CycleDays),
+		RewardCycleDays:   settings.CycleDays,
+		RewardCycleDay:    dailyCheckinCycleDay(streakDays, settings.CycleDays),
+		Balance:           user.Balance,
+		RecentRecords:     prependRecord(recent, nil, 7),
 	}
 
 	return &DailyCheckinStatus{
@@ -369,29 +378,50 @@ func randomDailyCheckinRangeReward(reader io.Reader, rewardRange DailyCheckinRew
 	return float64(min+draw.Int64()) / dailyCheckinRewardCents, nil
 }
 
-func computeDailyCheckinBonus(streakDays int, rules []DailyCheckinRule) float64 {
+func computeDailyCheckinBonus(streakDays, cycleDays int, rules []DailyCheckinRule) float64 {
+	cycleDay := dailyCheckinCycleDay(streakDays, cycleDays)
+	if cycleDay == 0 {
+		return 0
+	}
 	for _, rule := range rules {
-		if streakDays == rule.Threshold {
+		if cycleDay == rule.Threshold {
 			return rule.Bonus
 		}
 	}
 	return 0
 }
 
-func computeCheckinStreak(records []DailyCheckinRecord, today string, userTZ string) int {
-	streak := 0
-	expected := previousDateKey(today)
-	for _, record := range records {
-		if localDateKey(record.CheckinDate, userTZ) != expected {
-			break
-		}
-		streak++
-		expected = previousDateKey(expected)
+func dailyCheckinCycleDay(streakDays, cycleDays int) int {
+	if streakDays < 1 || cycleDays < 1 {
+		return 0
 	}
-	if streak == 0 {
+	return (streakDays-1)%cycleDays + 1
+}
+
+func dailyCheckinCycleNumber(streakDays, cycleDays int) int {
+	if streakDays < 1 || cycleDays < 1 {
+		return 0
+	}
+	return (streakDays-1)/cycleDays + 1
+}
+
+func computeCheckinStreak(records []DailyCheckinRecord, today string, userTZ string) int {
+	if len(records) == 0 {
 		return 1
 	}
-	return streak + 1
+
+	latest := records[0]
+	latestDate := localDateKey(latest.CheckinDate, userTZ)
+	if latest.StreakDays < 1 {
+		latest.StreakDays = 1
+	}
+	if latestDate == today {
+		return latest.StreakDays
+	}
+	if latestDate == previousDateKey(today) {
+		return latest.StreakDays + 1
+	}
+	return 1
 }
 
 func countCheckinsThisMonth(records []DailyCheckinRecord, today string, current *DailyCheckinRecord) int {

@@ -135,6 +135,7 @@ func (s *SettingService) InitializeDefaultSettings(ctx context.Context) error {
 		SettingKeyDailyCheckinRewardMax:                     "3",
 		SettingKeyDailyCheckinRewardRanges:                  `[{"min":0.01,"max":1,"probability":0.5},{"min":1,"max":2,"probability":0.4},{"min":2,"max":2.5,"probability":0.0999},{"min":2.5,"max":3,"probability":0.0001}]`,
 		SettingKeyDailyCheckinStreakRules:                   `[{"threshold":3,"bonus":3},{"threshold":7,"bonus":6},{"threshold":14,"bonus":12},{"threshold":30,"bonus":24}]`,
+		SettingKeyDailyCheckinCycleDays:                     "30",
 		SettingKeyDefaultUserRPMLimit:                       "0",
 		SettingKeyDefaultSubscriptions:                      "[]",
 		SettingKeyAuthSourceDefaultEmailBalance:             "0",
@@ -1004,6 +1005,7 @@ func (s *SettingService) parseSettings(settings map[string]string) *SystemSettin
 	result.DailyCheckinRewardMax = dailyCheckinSettings.RewardMax
 	result.DailyCheckinRewardRanges = formatDailyCheckinJSON(dailyCheckinSettings.RewardRanges)
 	result.DailyCheckinStreakRules = formatDailyCheckinJSON(dailyCheckinSettings.StreakRules)
+	result.DailyCheckinCycleDays = dailyCheckinSettings.CycleDays
 
 	result.AllowUserViewErrorRequests = settings[SettingKeyAllowUserViewErrorRequests] == "true" // default false
 
