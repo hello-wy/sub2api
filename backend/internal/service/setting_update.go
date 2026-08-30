@@ -126,18 +126,23 @@ func (s *SettingService) buildSystemSettingsUpdates(ctx context.Context, setting
 	if err := s.normalizeOpenAIAdvancedSchedulerOverrides(settings); err != nil {
 		return nil, err
 	}
-	if settings.DailyCheckinRewardRanges == "" && settings.DailyCheckinStreakRules == "" && settings.DailyCheckinRewardMin == 0 && settings.DailyCheckinRewardMax == 0 {
+	if settings.DailyCheckinRewardRanges == "" && settings.DailyCheckinStreakRules == "" && settings.DailyCheckinRewardMin == 0 && settings.DailyCheckinRewardMax == 0 && settings.DailyCheckinCycleDays == 0 {
 		defaults := defaultDailyCheckinSettings()
 		settings.DailyCheckinRewardMin = defaults.RewardMin
 		settings.DailyCheckinRewardMax = defaults.RewardMax
 		settings.DailyCheckinRewardRanges = formatDailyCheckinJSON(defaults.RewardRanges)
 		settings.DailyCheckinStreakRules = formatDailyCheckinJSON(defaults.StreakRules)
+		settings.DailyCheckinCycleDays = defaults.CycleDays
+	}
+	if settings.DailyCheckinCycleDays == 0 {
+		settings.DailyCheckinCycleDays = defaultDailyCheckinSettings().CycleDays
 	}
 	dailyCheckinSettings, err := ParseDailyCheckinSettings(map[string]string{
 		SettingKeyDailyCheckinRewardMin:    strconv.FormatFloat(settings.DailyCheckinRewardMin, 'f', -1, 64),
 		SettingKeyDailyCheckinRewardMax:    strconv.FormatFloat(settings.DailyCheckinRewardMax, 'f', -1, 64),
 		SettingKeyDailyCheckinRewardRanges: settings.DailyCheckinRewardRanges,
 		SettingKeyDailyCheckinStreakRules:  settings.DailyCheckinStreakRules,
+		SettingKeyDailyCheckinCycleDays:    strconv.Itoa(settings.DailyCheckinCycleDays),
 	})
 	if err != nil {
 		return nil, infraerrors.BadRequest("INVALID_DAILY_CHECKIN_SETTINGS", err.Error())
@@ -146,6 +151,7 @@ func (s *SettingService) buildSystemSettingsUpdates(ctx context.Context, setting
 	settings.DailyCheckinRewardMax = dailyCheckinSettings.RewardMax
 	settings.DailyCheckinRewardRanges = formatDailyCheckinJSON(dailyCheckinSettings.RewardRanges)
 	settings.DailyCheckinStreakRules = formatDailyCheckinJSON(dailyCheckinSettings.StreakRules)
+	settings.DailyCheckinCycleDays = dailyCheckinSettings.CycleDays
 	settings.PaymentVisibleMethodAlipaySource = alipaySource
 	settings.PaymentVisibleMethodWxpaySource = wxpaySource
 	settings.WeChatConnectAppID = strings.TrimSpace(settings.WeChatConnectAppID)
@@ -211,6 +217,7 @@ func (s *SettingService) buildSystemSettingsUpdates(ctx context.Context, setting
 	updates[SettingKeyDailyCheckinRewardMax] = strconv.FormatFloat(settings.DailyCheckinRewardMax, 'f', -1, 64)
 	updates[SettingKeyDailyCheckinRewardRanges] = settings.DailyCheckinRewardRanges
 	updates[SettingKeyDailyCheckinStreakRules] = settings.DailyCheckinStreakRules
+	updates[SettingKeyDailyCheckinCycleDays] = strconv.Itoa(settings.DailyCheckinCycleDays)
 	updates[SettingKeyPasskeyEnabled] = strconv.FormatBool(settings.PasskeyEnabled)
 	updates[SettingKeySessionBindingEnabled] = strconv.FormatBool(settings.SessionBindingEnabled)
 	updates[SettingKeyStepUpEnabled] = strconv.FormatBool(settings.StepUpEnabled)

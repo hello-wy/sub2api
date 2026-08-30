@@ -188,6 +188,7 @@ type UpdateSettingsRequest struct {
 	DailyCheckinRewardMax                     float64                           `json:"daily_checkin_reward_max"`
 	DailyCheckinRewardRanges                  string                            `json:"daily_checkin_reward_ranges"`
 	DailyCheckinStreakRules                   string                            `json:"daily_checkin_streak_rules"`
+	DailyCheckinCycleDays                     int                               `json:"daily_checkin_cycle_days"`
 	AuthSourceDefaultEmailBalance             *float64                          `json:"auth_source_default_email_balance"`
 	AuthSourceDefaultEmailConcurrency         *int                              `json:"auth_source_default_email_concurrency"`
 	AuthSourceDefaultEmailSubscriptions       *[]dto.DefaultSubscriptionSetting `json:"auth_source_default_email_subscriptions"`
@@ -652,6 +653,7 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		service.SettingKeyDailyCheckinRewardMax:    strconv.FormatFloat(req.DailyCheckinRewardMax, 'f', -1, 64),
 		service.SettingKeyDailyCheckinRewardRanges: req.DailyCheckinRewardRanges,
 		service.SettingKeyDailyCheckinStreakRules:  req.DailyCheckinStreakRules,
+		service.SettingKeyDailyCheckinCycleDays:    strconv.Itoa(req.DailyCheckinCycleDays),
 	}); err != nil {
 		response.BadRequest(c, err.Error())
 		return
@@ -1548,6 +1550,7 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		DailyCheckinRewardMax:               req.DailyCheckinRewardMax,
 		DailyCheckinRewardRanges:            req.DailyCheckinRewardRanges,
 		DailyCheckinStreakRules:             req.DailyCheckinStreakRules,
+		DailyCheckinCycleDays:               req.DailyCheckinCycleDays,
 		PasskeyEnabled:                      passkeyEnabled,
 		SessionBindingEnabled:               sessionBindingEnabled,
 		StepUpEnabled:                       stepUpEnabled,
@@ -2180,6 +2183,7 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		DailyCheckinRewardMax:                                  updatedSettings.DailyCheckinRewardMax,
 		DailyCheckinRewardRanges:                               updatedSettings.DailyCheckinRewardRanges,
 		DailyCheckinStreakRules:                                updatedSettings.DailyCheckinStreakRules,
+		DailyCheckinCycleDays:                                  updatedSettings.DailyCheckinCycleDays,
 		PasskeyEnabled:                                         updatedSettings.PasskeyEnabled,
 		PasskeyConfigured:                                      passkeyConfigured,
 		PasskeyRPID:                                            passkeyRPID,
@@ -2493,11 +2497,15 @@ func normalizeLoyaltyUpdateRequest(req *UpdateSettingsRequest, previous *service
 }
 
 func normalizeDailyCheckinUpdateRequest(req *UpdateSettingsRequest, previous *service.SystemSettings) {
-	if req.DailyCheckinRewardRanges == "" && req.DailyCheckinStreakRules == "" && req.DailyCheckinRewardMin == 0 && req.DailyCheckinRewardMax == 0 {
+	if req.DailyCheckinRewardRanges == "" && req.DailyCheckinStreakRules == "" && req.DailyCheckinRewardMin == 0 && req.DailyCheckinRewardMax == 0 && req.DailyCheckinCycleDays == 0 {
 		req.DailyCheckinRewardMin = previous.DailyCheckinRewardMin
 		req.DailyCheckinRewardMax = previous.DailyCheckinRewardMax
 		req.DailyCheckinRewardRanges = previous.DailyCheckinRewardRanges
 		req.DailyCheckinStreakRules = previous.DailyCheckinStreakRules
+		req.DailyCheckinCycleDays = previous.DailyCheckinCycleDays
+	}
+	if req.DailyCheckinCycleDays == 0 {
+		req.DailyCheckinCycleDays = previous.DailyCheckinCycleDays
 	}
 }
 

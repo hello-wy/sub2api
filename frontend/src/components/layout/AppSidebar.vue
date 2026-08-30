@@ -34,7 +34,6 @@
           />
         </template>
       </router-link>
-      <VersionBadge v-if="!sidebarCollapsed" :version="appStore.siteVersion" />
     </div>
 
     <!-- Navigation -->
@@ -203,7 +202,6 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAdminSettingsStore, useAppStore, useAuthStore, useOnboardingStore } from '@/stores'
 import LiquidGlass from '@/components/common/LiquidGlass.vue'
-import VersionBadge from '@/components/common/VersionBadge.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { sanitizeSvg } from '@/utils/sanitize'
 import { FeatureFlags, makeSidebarFlag } from '@/utils/featureFlags'

@@ -188,6 +188,7 @@ type SystemSettings struct {
 	DailyCheckinRewardMax          float64
 	DailyCheckinRewardRanges       string
 	DailyCheckinStreakRules        string
+	DailyCheckinCycleDays          int
 
 	// Model fallback configuration
 	EnableModelFallback      bool   `json:"enable_model_fallback"`

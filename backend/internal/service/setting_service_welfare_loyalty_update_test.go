@@ -34,4 +34,5 @@ func TestSettingService_UpdateSettings_PersistsWelfareAndLoyaltySettings(t *test
 	require.Equal(t, "3", repo.updates[SettingKeyDailyCheckinRewardMax])
 	require.Equal(t, `[{"min":0.01,"max":1,"probability":0.5},{"min":1,"max":3,"probability":0.5}]`, repo.updates[SettingKeyDailyCheckinRewardRanges])
 	require.Equal(t, `[{"threshold":2,"bonus":1.5}]`, repo.updates[SettingKeyDailyCheckinStreakRules])
+	require.Equal(t, "30", repo.updates[SettingKeyDailyCheckinCycleDays])
 }

@@ -520,7 +520,7 @@ func TestCheckInDailyComputesStreakAndReward(t *testing.T) {
 	require.Equal(t, 1, repo.checkinCreateCalls)
 }
 
-func TestComputeDailyCheckinBonusOnlyRewardsMilestoneDays(t *testing.T) {
+func TestComputeDailyCheckinBonusRewardsMilestoneDaysWithinCycle(t *testing.T) {
 	tests := []struct {
 		name       string
 		streakDays int
@@ -534,13 +534,72 @@ func TestComputeDailyCheckinBonusOnlyRewardsMilestoneDays(t *testing.T) {
 		{name: "day 8 no bonus", streakDays: 8, want: 0},
 		{name: "day 14 bonus", streakDays: 14, want: 12},
 		{name: "day 30 bonus", streakDays: 30, want: 24},
+		{name: "day 31 starts next cycle", streakDays: 31, want: 0},
+		{name: "day 33 repeats day 3 bonus", streakDays: 33, want: 3},
+		{name: "day 37 repeats day 7 bonus", streakDays: 37, want: 6},
+		{name: "day 44 repeats day 14 bonus", streakDays: 44, want: 12},
+		{name: "day 60 repeats day 30 bonus", streakDays: 60, want: 24},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.want, computeDailyCheckinBonus(tt.streakDays, defaultDailyCheckinSettings().StreakRules))
+			settings := defaultDailyCheckinSettings()
+			require.Equal(t, tt.want, computeDailyCheckinBonus(tt.streakDays, settings.CycleDays, settings.StreakRules))
 		})
 	}
+}
+
+func TestComputeCheckinStreakUsesPersistedLatestRecord(t *testing.T) {
+	parseDate := func(value string) time.Time {
+		date, err := time.Parse("2006-01-02", value)
+		require.NoError(t, err)
+		return date
+	}
+
+	today := "2026-08-30"
+	require.Equal(t, 41, computeCheckinStreak([]DailyCheckinRecord{{
+		CheckinDate: parseDate("2026-08-29"),
+		Timezone:    "UTC",
+		StreakDays:  40,
+	}}, today, "UTC"))
+	require.Equal(t, 42, computeCheckinStreak([]DailyCheckinRecord{{
+		CheckinDate: parseDate("2026-08-29"),
+		Timezone:    "UTC",
+		StreakDays:  41,
+	}}, today, "UTC"))
+	require.Equal(t, 41, computeCheckinStreak([]DailyCheckinRecord{{
+		CheckinDate: parseDate(today),
+		Timezone:    "UTC",
+		StreakDays:  41,
+	}}, today, "UTC"))
+	require.Equal(t, 1, computeCheckinStreak([]DailyCheckinRecord{{
+		CheckinDate: parseDate("2026-08-27"),
+		Timezone:    "UTC",
+		StreakDays:  41,
+	}}, today, "UTC"))
+}
+
+func TestGetDailyCheckinStatusKeepsTodaysPersistedStreak(t *testing.T) {
+	today, err := time.Parse("2006-01-02", time.Now().UTC().Format("2006-01-02"))
+	require.NoError(t, err)
+	repo := &mockUserRepo{
+		getByIDUser: &User{ID: 42, Balance: 10},
+		hasQQ:       true,
+		checkinRecords: []DailyCheckinRecord{{
+			UserID:      42,
+			CheckinDate: today,
+			Timezone:    "UTC",
+			StreakDays:  42,
+		}},
+	}
+
+	status, err := NewUserService(repo, nil, nil, nil).GetDailyCheckinStatus(context.Background(), 42, "UTC")
+
+	require.NoError(t, err)
+	require.True(t, status.Summary.CheckedInToday)
+	require.Equal(t, 42, status.Summary.StreakDays)
+	require.Equal(t, 2, status.Summary.RewardCycleNumber)
+	require.Equal(t, 12, status.Summary.RewardCycleDay)
 }
 
 func TestRandomDailyCheckinBaseRewardSupportsCents(t *testing.T) {
@@ -566,7 +625,8 @@ func TestParseDailyCheckinSettingsUsesConfiguredRangesAndRules(t *testing.T) {
 	require.Equal(t, 0.01, settings.RewardMin)
 	require.Equal(t, 3.0, settings.RewardMax)
 	require.Len(t, settings.RewardRanges, 4)
-	require.Equal(t, 1.5, computeDailyCheckinBonus(2, settings.StreakRules))
+	require.Equal(t, 30, settings.CycleDays)
+	require.Equal(t, 1.5, computeDailyCheckinBonus(2, settings.CycleDays, settings.StreakRules))
 }
 
 func TestParseDailyCheckinSettingsRejectsInvalidProbabilityTotal(t *testing.T) {

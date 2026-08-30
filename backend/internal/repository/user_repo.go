@@ -1007,7 +1007,10 @@ func (r *userRepository) ListRecentDailyCheckinRecords(ctx context.Context, user
 		limit = 7
 	}
 	records, err := clientFromContext(ctx, r.client).DailyCheckinRecord.Query().
-		Where(dailycheckinrecord.UserIDEQ(userID)).
+		Where(
+			dailycheckinrecord.UserIDEQ(userID),
+			dailycheckinrecord.StatusEQ(service.WelfareStatusSuccess),
+		).
 		Order(dailycheckinrecord.ByCheckinDate(entsql.OrderDesc()), dailycheckinrecord.ByID(entsql.OrderDesc())).
 		Limit(limit).
 		All(ctx)

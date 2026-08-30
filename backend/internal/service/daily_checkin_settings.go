@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -27,12 +28,14 @@ type DailyCheckinSettings struct {
 	RewardMax    float64                   `json:"reward_max"`
 	RewardRanges []DailyCheckinRewardRange `json:"reward_ranges"`
 	StreakRules  []DailyCheckinRule        `json:"streak_rules"`
+	CycleDays    int                       `json:"cycle_days"`
 }
 
 func defaultDailyCheckinSettings() DailyCheckinSettings {
 	return DailyCheckinSettings{
 		RewardMin: dailyCheckinRewardMinimum,
 		RewardMax: 3,
+		CycleDays: 30,
 		RewardRanges: []DailyCheckinRewardRange{
 			{Min: dailyCheckinRewardMinimum, Max: 1, Probability: 0.5},
 			{Min: 1, Max: 2, Probability: 0.4},
@@ -58,6 +61,7 @@ func (s *UserService) dailyCheckinSettings(ctx context.Context) (DailyCheckinSet
 		SettingKeyDailyCheckinRewardMax,
 		SettingKeyDailyCheckinRewardRanges,
 		SettingKeyDailyCheckinStreakRules,
+		SettingKeyDailyCheckinCycleDays,
 	})
 	if err != nil {
 		return DailyCheckinSettings{}, fmt.Errorf("load daily checkin settings: %w", err)
@@ -71,7 +75,7 @@ func ParseDailyCheckinSettings(values map[string]string) (DailyCheckinSettings, 
 	}
 
 	defaults := defaultDailyCheckinSettings()
-	settings := DailyCheckinSettings{RewardMin: defaults.RewardMin, RewardMax: defaults.RewardMax}
+	settings := DailyCheckinSettings{RewardMin: defaults.RewardMin, RewardMax: defaults.RewardMax, CycleDays: defaults.CycleDays}
 	if raw := strings.TrimSpace(values[SettingKeyDailyCheckinRewardMin]); raw != "" {
 		if _, err := fmt.Sscan(raw, &settings.RewardMin); err != nil {
 			return DailyCheckinSettings{}, fmt.Errorf("parse daily checkin reward minimum: %w", err)
@@ -95,6 +99,13 @@ func ParseDailyCheckinSettings(values map[string]string) (DailyCheckinSettings, 
 		}
 	} else {
 		settings.StreakRules = defaults.StreakRules
+	}
+	if raw := strings.TrimSpace(values[SettingKeyDailyCheckinCycleDays]); raw != "" {
+		cycleDays, err := strconv.Atoi(raw)
+		if err != nil {
+			return DailyCheckinSettings{}, fmt.Errorf("parse daily checkin cycle days: %w", err)
+		}
+		settings.CycleDays = cycleDays
 	}
 	// Older deployments used zero as the minimum. Normalize those persisted
 	// values so they remain valid while no new zero-dollar reward can be drawn.
@@ -125,13 +136,16 @@ func ValidateDailyCheckinSettings(settings DailyCheckinSettings) error {
 	if len(settings.RewardRanges) == 0 {
 		return fmt.Errorf("daily checkin reward ranges must not be empty")
 	}
+	if settings.CycleDays < 1 {
+		return fmt.Errorf("daily checkin cycle days must be positive")
+	}
 	if len(settings.RewardRanges) > 100 || len(settings.StreakRules) > 100 {
 		return fmt.Errorf("daily checkin settings support at most 100 reward ranges and streak rules")
 	}
 	if err := validateDailyCheckinRewardRanges(settings); err != nil {
 		return err
 	}
-	return validateDailyCheckinStreakRules(settings.StreakRules)
+	return validateDailyCheckinStreakRules(settings.StreakRules, settings.CycleDays)
 }
 
 func validateDailyCheckinRewardRanges(settings DailyCheckinSettings) error {
@@ -154,11 +168,11 @@ func validateDailyCheckinRewardRanges(settings DailyCheckinSettings) error {
 	return nil
 }
 
-func validateDailyCheckinStreakRules(rules []DailyCheckinRule) error {
+func validateDailyCheckinStreakRules(rules []DailyCheckinRule, cycleDays int) error {
 	thresholds := make(map[int]struct{}, len(rules))
 	for _, rule := range rules {
-		if rule.Threshold < 1 || !isFiniteNonNegative(rule.Bonus) {
-			return fmt.Errorf("daily checkin streak rules require a positive day count and non-negative reward")
+		if rule.Threshold < 1 || rule.Threshold > cycleDays || !isFiniteNonNegative(rule.Bonus) {
+			return fmt.Errorf("daily checkin streak rules require a day count within the reward cycle and a non-negative reward")
 		}
 		if _, exists := thresholds[rule.Threshold]; exists {
 			return fmt.Errorf("daily checkin streak rules must not repeat a day count")

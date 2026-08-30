@@ -268,6 +268,7 @@ const (
 	SettingKeyDailyCheckinRewardMax          = "daily_checkin_reward_max"          // 每日签到奖励最大金额
 	SettingKeyDailyCheckinRewardRanges       = "daily_checkin_reward_ranges"       // 每日签到分段奖励概率（JSON）
 	SettingKeyDailyCheckinStreakRules        = "daily_checkin_streak_rules"        // 每日签到连续奖励规则（JSON）
+	SettingKeyDailyCheckinCycleDays          = "daily_checkin_cycle_days"          // 每日签到奖励周期天数
 
 	// 会话安全设置
 	SettingKeySessionBindingEnabled = "session_binding_enabled" // 会话 IP/UA 绑定（变更即失效），默认关闭
