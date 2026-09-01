@@ -82,9 +82,6 @@ func (f *optionalLimitField) UnmarshalJSON(data []byte) error {
 }
 
 func (f optionalLimitField) ToServiceInput() *float64 {
-	// JSON null (including an empty input normalized by the frontend) means an
-	// unlimited quota. Keep the nil through to normalizeLimit instead of
-	// turning it into zero, which means no quota is available.
 	return f.value
 }
 

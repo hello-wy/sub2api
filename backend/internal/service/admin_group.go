@@ -724,8 +724,6 @@ func (s *adminServiceImpl) UpdateGroup(ctx context.Context, id int64, input *Upd
 	} else if !group.IsSubscriptionType() {
 		group.SubscriptionQuotaResetMode = SubscriptionQuotaResetModeRolling
 	}
-	// 限额字段使用三态更新：未提供则保留，显式 null/负数表示无限制，
-	// 0 表示不允许用量，正数表示具体限额。指针非 nil 兼容服务层直接调用。
 	if input.SubscriptionTotalLimitUSDSet || input.SubscriptionTotalLimitUSD != nil {
 		group.SubscriptionTotalLimitUSD = normalizeLimit(input.SubscriptionTotalLimitUSD)
 	}

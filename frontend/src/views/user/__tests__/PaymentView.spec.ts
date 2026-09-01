@@ -25,6 +25,7 @@ const getCheckoutInfo = vi.hoisted(() => vi.fn())
 const purchaseSubscriptionWithBalance = vi.hoisted(() => vi.fn())
 const refreshWalletHistory = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
 const bridgeInvoke = vi.hoisted(() => vi.fn())
+const translate = vi.hoisted(() => vi.fn((key: string) => key))
 const activeSubscriptionsState = vi.hoisted(() => ({ items: [] as UserSubscription[] }))
 const authUserState = vi.hoisted(() => ({ user: { username: 'demo-user', balance: 0 } }))
 
@@ -55,9 +56,7 @@ vi.mock('vue-i18n', async () => {
   const actual = await vi.importActual<typeof import('vue-i18n')>('vue-i18n')
   return {
     ...actual,
-    useI18n: () => ({
-      t: (key: string) => key,
-    }),
+    useI18n: () => ({ t: translate }),
   }
 })
 
