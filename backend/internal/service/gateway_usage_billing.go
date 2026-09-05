@@ -1123,15 +1123,16 @@ func (s *GatewayService) calculateTokenCost(
 		resolved = s.resolver.Resolve(ctx, PricingInput{Model: billingModel, GroupID: &gid, Group: apiKey.Group})
 	}
 	cost, err := s.billingService.CalculateTokenCostForRequest(TokenCostRequest{
-		Ctx:            ctx,
-		Model:          billingModel,
-		Group:          apiKey.Group,
-		Tokens:         tokens,
-		RateMultiplier: multiplier,
-		PricingAt:      pricingAt,
-		ServiceTier:    optionalStringValue(result.ServiceTier),
-		Resolver:       s.resolver,
-		Resolved:       resolved,
+		Ctx:             ctx,
+		Model:           billingModel,
+		Group:           apiKey.Group,
+		Tokens:          tokens,
+		RateMultiplier:  multiplier,
+		PricingAt:       pricingAt,
+		ServiceTier:     optionalStringValue(result.ServiceTier),
+		ReasoningEffort: optionalStringValue(result.ReasoningEffort),
+		Resolver:        s.resolver,
+		Resolved:        resolved,
 	})
 	if err != nil {
 		return nil, err
@@ -1173,6 +1174,7 @@ func (s *GatewayService) buildRecordUsageLog(
 		APIKeyID:                 apiKey.ID,
 		AccountID:                account.ID,
 		RequestID:                requestID,
+		UpstreamRequestID:        usageUpstreamRequestIDPtr(account, result.UpstreamHeaders, false),
 		Model:                    result.Model,
 		RequestedModel:           requestedModel,
 		UpstreamModel:            optionalTrimmedStringPtr(result.UpstreamModel),
