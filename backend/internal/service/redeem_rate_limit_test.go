@@ -101,6 +101,7 @@ func TestPublicRedeemCountsOnlyConfiguredDomainFailures(t *testing.T) {
 			cache := &redeemRateLimitCacheStub{}
 			svc := &RedeemService{
 				redeemRepo: &redeemRejectRepo{code: tt.code},
+				entClient:  newPaymentConfigServiceTestClient(t),
 				cache:      cache,
 			}
 

@@ -9,89 +9,6 @@ import (
 	"github.com/google/wire"
 )
 
-// ProvideAdminHandlers creates the AdminHandlers struct
-func ProvideAdminHandlers(
-	dashboardHandler *admin.DashboardHandler,
-	userHandler *admin.UserHandler,
-	groupHandler *admin.GroupHandler,
-	accountHandler *admin.AccountHandler,
-	announcementHandler *admin.AnnouncementHandler,
-	dataManagementHandler *admin.DataManagementHandler,
-	backupHandler *admin.BackupHandler,
-	oauthHandler *admin.OAuthHandler,
-	openaiOAuthHandler *admin.OpenAIOAuthHandler,
-	geminiOAuthHandler *admin.GeminiOAuthHandler,
-	antigravityOAuthHandler *admin.AntigravityOAuthHandler,
-	grokOAuthHandler *admin.GrokOAuthHandler,
-	cnProviderHandler *admin.CNProviderHandler,
-	proxyHandler *admin.ProxyHandler,
-	redeemHandler *admin.RedeemHandler,
-	promoHandler *admin.PromoHandler,
-	settingHandler *admin.SettingHandler,
-	opsHandler *admin.OpsHandler,
-	systemHandler *admin.SystemHandler,
-	subscriptionHandler *admin.SubscriptionHandler,
-	usageHandler *admin.UsageHandler,
-	userAttributeHandler *admin.UserAttributeHandler,
-	errorPassthroughHandler *admin.ErrorPassthroughHandler,
-	tlsFingerprintProfileHandler *admin.TLSFingerprintProfileHandler,
-	pluginHandler *admin.PluginHandler,
-	apiKeyHandler *admin.AdminAPIKeyHandler,
-	scheduledTestHandler *admin.ScheduledTestHandler,
-	channelHandler *admin.ChannelHandler,
-	channelMonitorHandler *admin.ChannelMonitorHandler,
-	channelMonitorTemplateHandler *admin.ChannelMonitorRequestTemplateHandler,
-	contentModerationHandler *admin.ContentModerationHandler,
-	promptAuditHandler *securityaudit.PromptAdminHandler,
-	paymentHandler *admin.PaymentHandler,
-	affiliateHandler *admin.AffiliateHandler,
-	complianceHandler *admin.ComplianceHandler,
-	auditLogHandler *admin.AuditLogHandler,
-	upstreamBillingProbe *service.UpstreamBillingProbeService,
-	ollamaCloudUsage *service.OllamaCloudUsageService,
-) *AdminHandlers {
-	accountHandler.SetUpstreamBillingProbeService(upstreamBillingProbe)
-	accountHandler.SetOllamaCloudUsageService(ollamaCloudUsage)
-	return &AdminHandlers{
-		Dashboard:              dashboardHandler,
-		User:                   userHandler,
-		Group:                  groupHandler,
-		Account:                accountHandler,
-		Announcement:           announcementHandler,
-		DataManagement:         dataManagementHandler,
-		Backup:                 backupHandler,
-		OAuth:                  oauthHandler,
-		OpenAIOAuth:            openaiOAuthHandler,
-		GeminiOAuth:            geminiOAuthHandler,
-		AntigravityOAuth:       antigravityOAuthHandler,
-		GrokOAuth:              grokOAuthHandler,
-		CNProvider:             cnProviderHandler,
-		Proxy:                  proxyHandler,
-		Redeem:                 redeemHandler,
-		Promo:                  promoHandler,
-		Setting:                settingHandler,
-		Ops:                    opsHandler,
-		System:                 systemHandler,
-		Subscription:           subscriptionHandler,
-		Usage:                  usageHandler,
-		UserAttribute:          userAttributeHandler,
-		ErrorPassthrough:       errorPassthroughHandler,
-		TLSFingerprintProfile:  tlsFingerprintProfileHandler,
-		Plugin:                 pluginHandler,
-		APIKey:                 apiKeyHandler,
-		ScheduledTest:          scheduledTestHandler,
-		Channel:                channelHandler,
-		ChannelMonitor:         channelMonitorHandler,
-		ChannelMonitorTemplate: channelMonitorTemplateHandler,
-		ContentModeration:      contentModerationHandler,
-		PromptAudit:            promptAuditHandler,
-		Payment:                paymentHandler,
-		Affiliate:              affiliateHandler,
-		Compliance:             complianceHandler,
-		AuditLog:               auditLogHandler,
-	}
-}
-
 func ProvideGatewayHandler(
 	gatewayService *service.GatewayService,
 	openAIGatewayService *service.OpenAIGatewayService,
@@ -162,15 +79,6 @@ func ProvideSettingHandler(settingService *service.SettingService, buildInfo Bui
 	return h
 }
 
-// ProvideAdminSettingHandler creates admin.SettingHandler with notification template APIs.
-func ProvideAdminSettingHandler(settingService *service.SettingService, emailService *service.EmailService, turnstileService *service.TurnstileService, aliyunCaptchaService *service.AliyunCaptchaService, opsService *service.OpsService, paymentConfigService *service.PaymentConfigService, paymentService *service.PaymentService, userAttributeService *service.UserAttributeService, notificationEmailService *service.NotificationEmailService, totpService *service.TotpService, userService *service.UserService) *admin.SettingHandler {
-	h := admin.NewSettingHandler(settingService, emailService, turnstileService, opsService, paymentConfigService, paymentService, userAttributeService)
-	h.SetNotificationEmailService(notificationEmailService)
-	h.SetAliyunCaptchaService(aliyunCaptchaService)
-	h.SetStepUpDeps(totpService, userService)
-	return h
-}
-
 // ProvideHandlers creates the Handlers struct
 func ProvideHandlers(
 	authHandler *AuthHandler,
@@ -227,7 +135,8 @@ func ProvideHandlers(
 var ProviderSet = wire.NewSet(
 	// Top-level handlers
 	NewAuthHandler,
-	NewUserHandler,
+	wire.Struct(new(UserHandlerDependencies), "*"),
+	ProvideUserHandler,
 	NewAPIKeyHandler,
 	NewUsageHandler,
 	NewRedeemHandler,
@@ -248,8 +157,10 @@ var ProviderSet = wire.NewSet(
 	ProvideBatchImageHandler,
 
 	// Admin handlers
-	admin.NewDashboardHandler,
-	admin.NewUserHandler,
+	wire.Struct(new(DashboardHandlerDependencies), "*"),
+	ProvideDashboardHandler,
+	wire.Struct(new(AdminUserHandlerDependencies), "*"),
+	ProvideAdminUserHandler,
 	admin.NewGroupHandlerWithConfig,
 	admin.ProvideAccountHandler,
 	admin.NewAnnouncementHandler,
@@ -264,6 +175,7 @@ var ProviderSet = wire.NewSet(
 	admin.NewProxyHandler,
 	admin.NewRedeemHandler,
 	admin.NewPromoHandler,
+	wire.Struct(new(AdminSettingHandlerDependencies), "*"),
 	ProvideAdminSettingHandler,
 	admin.NewOpsHandler,
 	ProvideSystemHandler,
@@ -281,10 +193,12 @@ var ProviderSet = wire.NewSet(
 	admin.NewContentModerationHandler,
 	admin.NewPaymentHandler,
 	admin.NewAffiliateHandler,
+	admin.NewWelfareHandler,
 	admin.NewComplianceHandler,
 	admin.NewAuditLogHandler,
 
 	// AdminHandlers and Handlers constructors
+	wire.Struct(new(AdminHandlersDependencies), "*"),
 	ProvideAdminHandlers,
 	ProvideHandlers,
 )

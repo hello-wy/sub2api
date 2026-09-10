@@ -96,7 +96,18 @@ func initializeApplication(buildInfo handler.BuildInfo) (*Application, error) {
 	userAttributeValueRepository := repository.NewUserAttributeValueRepository(client)
 	userAttributeService := service.NewUserAttributeService(userAttributeDefinitionRepository, userAttributeValueRepository)
 	authHandler := handler.NewAuthHandler(configConfig, authService, userService, settingService, promoService, redeemService, totpService, userAttributeService)
-	userHandler := handler.NewUserHandler(userService, authService, emailService, emailCache, affiliateService, serviceUserPlatformQuotaRepository, userAttributeService)
+	lotteryService := service.NewLotteryService(client, billingCacheService, apiKeyAuthCacheInvalidator)
+	userHandlerDependencies := handler.UserHandlerDependencies{
+		UserService:           userService,
+		AuthService:           authService,
+		EmailService:          emailService,
+		EmailCache:            emailCache,
+		AffiliateService:      affiliateService,
+		UserPlatformQuotaRepo: serviceUserPlatformQuotaRepository,
+		UserAttributeService:  userAttributeService,
+		LotteryService:        lotteryService,
+	}
+	userHandler := handler.ProvideUserHandler(userHandlerDependencies)
 	apiKeyHandler := handler.NewAPIKeyHandler(apiKeyService)
 	usageLogRepository := repository.NewUsageLogRepository(client, db)
 	usageService := service.NewUsageService(usageLogRepository, userRepository, client, apiKeyAuthCacheInvalidator)
@@ -185,13 +196,31 @@ func initializeApplication(buildInfo handler.BuildInfo) (*Application, error) {
 	dashboardService := service.NewDashboardService(usageLogRepository, dashboardAggregationRepository, dashboardStatsCache, configConfig)
 	leaderLockCache := repository.NewLeaderLockCache(redisClient)
 	dashboardAggregationService := service.ProvideDashboardAggregationService(dashboardAggregationRepository, timingWheelService, leaderLockCache, db, configConfig)
-	dashboardHandler := admin.NewDashboardHandler(dashboardService, dashboardAggregationService)
+	businessAnalyticsService := service.NewBusinessAnalyticsService(db)
+	dashboardHandlerDependencies := handler.DashboardHandlerDependencies{
+		DashboardService:   dashboardService,
+		AggregationService: dashboardAggregationService,
+		BusinessService:    businessAnalyticsService,
+	}
+	dashboardHandler := handler.ProvideDashboardHandler(dashboardHandlerDependencies)
 	adminGroupRepository := repository.NewAdminGroupRepository(client, db)
 	adminAccountRepository := repository.NewAdminAccountRepository(client, db, schedulerCache)
 	proxyExitInfoProber := repository.NewProxyExitInfoProber(configConfig)
 	proxyLatencyCache := repository.NewProxyLatencyCache(redisClient)
 	adminService := service.NewAdminService(configConfig, userRepository, adminGroupRepository, adminAccountRepository, proxyRepository, apiKeyRepository, redeemCodeRepository, userGroupRateRepository, userRPMCache, billingCacheService, proxyExitInfoProber, proxyLatencyCache, apiKeyAuthCacheInvalidator, client, settingService, subscriptionService, userSubscriptionRepository, privacyClientFactory, openAIGatewayService, affiliateService, compositeModelRouteRepository, compositeRouteResolver, channelService)
-	adminUserHandler := admin.NewUserHandler(adminService, concurrencyService, serviceUserPlatformQuotaRepository, billingCache, totpService, userService, settingService)
+	qqBindingService := service.NewQQBindingService(client, billingCacheService, apiKeyAuthCacheInvalidator)
+	adminUserHandlerDependencies := handler.AdminUserHandlerDependencies{
+		AdminService:          adminService,
+		ConcurrencyService:    concurrencyService,
+		UserPlatformQuotaRepo: serviceUserPlatformQuotaRepository,
+		BillingCache:          billingCache,
+		TotpService:           totpService,
+		UserService:           userService,
+		SettingService:        settingService,
+		LotteryService:        lotteryService,
+		QQBindingService:      qqBindingService,
+	}
+	adminUserHandler := handler.ProvideAdminUserHandler(adminUserHandlerDependencies)
 	groupCapacityService := service.NewGroupCapacityService(accountRepository, groupRepository, concurrencyService, sessionLimitCache, rpmCache)
 	groupHandler := admin.NewGroupHandlerWithConfig(adminService, dashboardService, groupCapacityService, configConfig)
 	claudeUsageFetcher := repository.NewClaudeUsageFetcher(httpUpstream)
@@ -235,9 +264,22 @@ func initializeApplication(buildInfo handler.BuildInfo) (*Application, error) {
 	paymentConfigService := service.ProvidePaymentConfigService(client, settingRepository, encryptionKey)
 	registry := payment.ProvideRegistry()
 	defaultLoadBalancer := payment.ProvideDefaultLoadBalancer(client, encryptionKey)
-	lotteryService := service.NewLotteryService(client, billingCacheService, apiKeyAuthCacheInvalidator)
 	paymentService := service.ProvidePaymentService(client, registry, defaultLoadBalancer, redeemService, subscriptionService, paymentConfigService, userRepository, groupRepository, affiliateService, notificationEmailService, lotteryService)
-	settingHandler := handler.ProvideAdminSettingHandler(settingService, emailService, turnstileService, aliyunCaptchaService, opsService, paymentConfigService, paymentService, userAttributeService, notificationEmailService, totpService, userService)
+	adminSettingHandlerDependencies := handler.AdminSettingHandlerDependencies{
+		SettingService:           settingService,
+		EmailService:             emailService,
+		TurnstileService:         turnstileService,
+		AliyunCaptchaService:     aliyunCaptchaService,
+		OpsService:               opsService,
+		PaymentConfigService:     paymentConfigService,
+		PaymentService:           paymentService,
+		UserAttributeService:     userAttributeService,
+		NotificationEmailService: notificationEmailService,
+		TotpService:              totpService,
+		UserService:              userService,
+		LotteryService:           lotteryService,
+	}
+	settingHandler := handler.ProvideAdminSettingHandler(adminSettingHandlerDependencies)
 	opsHandler := admin.NewOpsHandler(opsService)
 	updateCache := repository.NewUpdateCache(redisClient)
 	gitHubReleaseClient := repository.ProvideGitHubReleaseClient(configConfig)
@@ -280,13 +322,57 @@ func initializeApplication(buildInfo handler.BuildInfo) (*Application, error) {
 	promptAdminHandler := securityaudit.NewPromptAdminHandler(promptService)
 	paymentHandler := admin.NewPaymentHandler(paymentService, paymentConfigService)
 	affiliateHandler := admin.NewAffiliateHandler(affiliateService, adminService)
+	welfareRepository := repository.NewWelfareRepository(client, db)
+	welfareService := service.ProvideWelfareService(welfareRepository, userService, dashboardService, settingRepository, leaderLockCache, db, client, configConfig)
+	welfareHandler := admin.NewWelfareHandler(welfareService)
 	complianceHandler := admin.NewComplianceHandler(settingService)
 	auditLogRepository := repository.NewAuditLogRepository(db)
 	auditLogService := service.ProvideAuditLogService(auditLogRepository, settingService)
 	auditLogHandler := admin.NewAuditLogHandler(auditLogService, totpService)
 	upstreamBillingProbeService := service.ProvideUpstreamBillingProbeService(accountRepository, accountTestService, settingService, leaderLockCache, db)
 	ollamaCloudUsageService := service.ProvideOllamaCloudUsageService(accountRepository, httpUpstream, settingService, secretEncryptor, configConfig, leaderLockCache, db)
-	adminHandlers := handler.ProvideAdminHandlers(dashboardHandler, adminUserHandler, groupHandler, accountHandler, adminAnnouncementHandler, dataManagementHandler, backupHandler, oAuthHandler, openAIOAuthHandler, geminiOAuthHandler, antigravityOAuthHandler, grokOAuthHandler, cnProviderHandler, proxyHandler, adminRedeemHandler, promoHandler, settingHandler, opsHandler, systemHandler, adminSubscriptionHandler, adminUsageHandler, userAttributeHandler, errorPassthroughHandler, tlsFingerprintProfileHandler, pluginHandler, adminAPIKeyHandler, scheduledTestHandler, channelHandler, channelMonitorHandler, channelMonitorRequestTemplateHandler, contentModerationHandler, promptAdminHandler, paymentHandler, affiliateHandler, complianceHandler, auditLogHandler, upstreamBillingProbeService, ollamaCloudUsageService)
+	adminHandlersDependencies := handler.AdminHandlersDependencies{
+		DashboardHandler:              dashboardHandler,
+		UserHandler:                   adminUserHandler,
+		GroupHandler:                  groupHandler,
+		AccountHandler:                accountHandler,
+		AnnouncementHandler:           adminAnnouncementHandler,
+		DataManagementHandler:         dataManagementHandler,
+		BackupHandler:                 backupHandler,
+		OAuthHandler:                  oAuthHandler,
+		OpenAIOAuthHandler:            openAIOAuthHandler,
+		GeminiOAuthHandler:            geminiOAuthHandler,
+		AntigravityOAuthHandler:       antigravityOAuthHandler,
+		GrokOAuthHandler:              grokOAuthHandler,
+		CNProviderHandler:             cnProviderHandler,
+		ProxyHandler:                  proxyHandler,
+		RedeemHandler:                 adminRedeemHandler,
+		PromoHandler:                  promoHandler,
+		SettingHandler:                settingHandler,
+		OpsHandler:                    opsHandler,
+		SystemHandler:                 systemHandler,
+		SubscriptionHandler:           adminSubscriptionHandler,
+		UsageHandler:                  adminUsageHandler,
+		UserAttributeHandler:          userAttributeHandler,
+		ErrorPassthroughHandler:       errorPassthroughHandler,
+		TLSFingerprintProfileHandler:  tlsFingerprintProfileHandler,
+		PluginHandler:                 pluginHandler,
+		APIKeyHandler:                 adminAPIKeyHandler,
+		ScheduledTestHandler:          scheduledTestHandler,
+		ChannelHandler:                channelHandler,
+		ChannelMonitorHandler:         channelMonitorHandler,
+		ChannelMonitorTemplateHandler: channelMonitorRequestTemplateHandler,
+		ContentModerationHandler:      contentModerationHandler,
+		PromptAuditHandler:            promptAdminHandler,
+		PaymentHandler:                paymentHandler,
+		AffiliateHandler:              affiliateHandler,
+		WelfareHandler:                welfareHandler,
+		ComplianceHandler:             complianceHandler,
+		AuditLogHandler:               auditLogHandler,
+		UpstreamBillingProbe:          upstreamBillingProbeService,
+		OllamaCloudUsage:              ollamaCloudUsageService,
+	}
+	adminHandlers := handler.ProvideAdminHandlers(adminHandlersDependencies)
 	usageRecordWorkerPool := service.NewUsageRecordWorkerPool(configConfig)
 	userMsgQueueCache := repository.NewUserMsgQueueCache(redisClient)
 	userMessageQueueService := service.ProvideUserMessageQueueService(userMsgQueueCache, rpmCache, configConfig)
@@ -344,8 +430,6 @@ func initializeApplication(buildInfo handler.BuildInfo) (*Application, error) {
 	subscriptionExpiryService := service.ProvideSubscriptionExpiryService(userSubscriptionRepository, settingRepository, notificationEmailService, leaderLockCache, db)
 	batchImageWorkerRuntime := service.ProvideBatchImageWorkerRuntime(batchImageRepository, accountRepository, batchImageQueue, usageBillingRepository, usageLogRepository, batchImageModelPricingResolver, apiKeyAuthCacheInvalidator, configConfig)
 	scheduledTestRunnerService := service.ProvideScheduledTestRunnerService(scheduledTestPlanRepository, scheduledTestService, accountTestService, rateLimitService, configConfig)
-	welfareRepository := repository.NewWelfareRepository(client, db)
-	welfareService := service.ProvideWelfareService(welfareRepository, userService, dashboardService, settingRepository, leaderLockCache, db, client, configConfig)
 	paymentOrderExpiryService := service.ProvidePaymentOrderExpiryService(paymentService, leaderLockCache, db)
 	channelMonitorQuotaFetcher := service.NewChannelMonitorQuotaFetcher(accountUsageService, cnProviderQuotaService, cnProviderBalanceService, accountRepository, configConfig)
 	channelMonitorRunner := service.ProvideChannelMonitorRunner(channelMonitorService, settingService, channelMonitorQuotaFetcher)
