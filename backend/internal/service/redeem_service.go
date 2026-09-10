@@ -42,6 +42,13 @@ type RedeemOptions struct {
 	ExpectedSubscriptionExpiresAt   *time.Time
 }
 
+type redeemRateLimitPolicy uint8
+
+const (
+	enforceRedeemRateLimit redeemRateLimitPolicy = iota
+	bypassRedeemRateLimit
+)
+
 type ctxKeySkipRedeemAffiliate struct{}
 
 // ContextSkipRedeemAffiliate returns a context that suppresses the redeem-level
@@ -404,9 +411,22 @@ func (s *RedeemService) Redeem(ctx context.Context, userID int64, code string) (
 // RedeemWithOptions redeems a code while enforcing confirmation for destructive
 // subscription replacement.
 func (s *RedeemService) RedeemWithOptions(ctx context.Context, userID int64, code string, options RedeemOptions) (*RedeemCode, error) {
-	// 检查限流
-	if err := s.checkRedeemRateLimit(ctx, userID); err != nil {
-		return nil, err
+	return s.redeem(ctx, userID, code, options, enforceRedeemRateLimit)
+}
+
+func (s *RedeemService) redeemForPaymentFulfillment(ctx context.Context, userID int64, code string) (*RedeemCode, error) {
+	return s.redeem(ContextSkipRedeemAffiliate(ctx), userID, code, RedeemOptions{}, bypassRedeemRateLimit)
+}
+
+func (s *RedeemService) RedeemForAdminFulfillment(ctx context.Context, userID int64, code string) (*RedeemCode, error) {
+	return s.redeem(ctx, userID, code, RedeemOptions{}, bypassRedeemRateLimit)
+}
+
+func (s *RedeemService) redeem(ctx context.Context, userID int64, code string, options RedeemOptions, rateLimitPolicy redeemRateLimitPolicy) (*RedeemCode, error) {
+	if rateLimitPolicy == enforceRedeemRateLimit {
+		if err := s.checkRedeemRateLimit(ctx, userID); err != nil {
+			return nil, err
+		}
 	}
 
 	// 获取分布式锁，防止同一兑换码并发使用
@@ -419,7 +439,9 @@ func (s *RedeemService) RedeemWithOptions(ctx context.Context, userID int64, cod
 	redeemCode, err := s.redeemRepo.GetByCode(ctx, code)
 	if err != nil {
 		if errors.Is(err, ErrRedeemCodeNotFound) {
-			s.incrementRedeemErrorCount(ctx, userID)
+			if rateLimitPolicy == enforceRedeemRateLimit {
+				s.incrementRedeemErrorCount(ctx, userID)
+			}
 			return nil, ErrRedeemCodeNotFound
 		}
 		return nil, fmt.Errorf("get redeem code: %w", err)
@@ -461,11 +483,15 @@ func (s *RedeemService) RedeemWithOptions(ctx context.Context, userID int64, cod
 
 	// 检查兑换码状态和码本身的过期时间
 	if redeemCode.IsExpired() {
-		s.incrementRedeemErrorCount(ctx, userID)
+		if rateLimitPolicy == enforceRedeemRateLimit {
+			s.incrementRedeemErrorCount(ctx, userID)
+		}
 		return nil, ErrRedeemCodeExpired
 	}
 	if !redeemCode.CanUse() {
-		s.incrementRedeemErrorCount(ctx, userID)
+		if rateLimitPolicy == enforceRedeemRateLimit {
+			s.incrementRedeemErrorCount(ctx, userID)
+		}
 		return nil, ErrRedeemCodeUsed
 	}
 	if redeemCode.Type == RedeemTypeSubscription && s.subscriptionService == nil {

@@ -125,7 +125,7 @@
               <section v-if="checkout.help_text || checkout.help_image_url" class="rounded-lg border border-gray-200 bg-white p-4 dark:border-dark-600 dark:bg-dark-800">
                 <div class="flex flex-col items-center gap-3">
                   <img v-if="checkout.help_image_url" :src="checkout.help_image_url" :alt="t('payment.helpImageAlt')" class="h-40 max-w-full cursor-pointer rounded-lg object-contain transition-opacity hover:opacity-80" @click="previewImage = checkout.help_image_url" />
-                  <p v-if="checkout.help_text" class="text-center text-sm text-gray-500 dark:text-gray-400">{{ checkout.help_text }}</p>
+                  <div v-if="checkout.help_text" class="markdown-body w-full overflow-x-auto break-words" v-html="renderedHelpText"></div>
                 </div>
               </section>
 
@@ -251,6 +251,9 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted, watch } from 'vue'
+import { marked } from 'marked'
+import DOMPurify from 'dompurify'
+import '@/styles/announcement-markdown.css'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
@@ -555,6 +558,10 @@ const checkout = ref<CheckoutInfoResponse>({
   methods: {}, global_min: 0, global_max: 0,
   plans: [], balance_disabled: false, balance_recharge_multiplier: 10, subscription_usd_to_cny_rate: 0, recharge_fee_rate: 0, help_text: '', help_image_url: '', stripe_publishable_key: '',
 })
+
+const renderedHelpText = computed(() => DOMPurify.sanitize(
+  marked.parse(checkout.value.help_text || '', { async: false, gfm: true, breaks: false }),
+))
 
 const walletSectionIds: Record<string, string> = {
   recharge: 'wallet-recharge',

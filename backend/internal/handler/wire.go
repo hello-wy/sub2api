@@ -45,7 +45,6 @@ func ProvideAdminHandlers(
 	promptAuditHandler *securityaudit.PromptAdminHandler,
 	paymentHandler *admin.PaymentHandler,
 	affiliateHandler *admin.AffiliateHandler,
-	welfareHandler *admin.WelfareHandler,
 	complianceHandler *admin.ComplianceHandler,
 	auditLogHandler *admin.AuditLogHandler,
 	upstreamBillingProbe *service.UpstreamBillingProbeService,
@@ -88,39 +87,9 @@ func ProvideAdminHandlers(
 		PromptAudit:            promptAuditHandler,
 		Payment:                paymentHandler,
 		Affiliate:              affiliateHandler,
-		Welfare:                welfareHandler,
 		Compliance:             complianceHandler,
 		AuditLog:               auditLogHandler,
 	}
-}
-
-// ProvideDashboardHandler attaches optional operational analytics without
-// changing NewDashboardHandler's long-standing test-facing constructor.
-func ProvideAdminUserHandler(
-	adminService service.AdminService,
-	concurrencyService *service.ConcurrencyService,
-	userPlatformQuotaRepo service.UserPlatformQuotaRepository,
-	billingCache service.BillingCache,
-	totpService *service.TotpService,
-	userService *service.UserService,
-	settingService *service.SettingService,
-	lotteryService *service.LotteryService,
-	qqBindingService *service.QQBindingService,
-) *admin.UserHandler {
-	h := admin.NewUserHandler(adminService, concurrencyService, userPlatformQuotaRepo, billingCache, totpService, userService, settingService)
-	h.SetLotteryService(lotteryService)
-	h.SetQQBindingService(qqBindingService)
-	return h
-}
-
-func ProvideDashboardHandler(
-	dashboardService *service.DashboardService,
-	aggregationService *service.DashboardAggregationService,
-	businessService *service.BusinessAnalyticsService,
-) *admin.DashboardHandler {
-	handler := admin.NewDashboardHandler(dashboardService, aggregationService)
-	handler.SetBusinessAnalyticsService(businessService)
-	return handler
 }
 
 func ProvideGatewayHandler(
@@ -145,21 +114,6 @@ func ProvideGatewayHandler(
 		userService, concurrencyService, billingCacheService, usageService, apiKeyService, usageRecordWorkerPool,
 		errorPassthroughService, contentModerationService, userMsgQueueService, cfg, settingService)
 	h.securityAuditCoordinator = coordinator
-	return h
-}
-
-func ProvideUserHandler(
-	userService *service.UserService,
-	authService *service.AuthService,
-	emailService *service.EmailService,
-	emailCache service.EmailCache,
-	affiliateService *service.AffiliateService,
-	userPlatformQuotaRepo service.UserPlatformQuotaRepository,
-	userAttributeService *service.UserAttributeService,
-	lotteryService *service.LotteryService,
-) *UserHandler {
-	h := NewUserHandler(userService, authService, emailService, emailCache, affiliateService, userPlatformQuotaRepo, userAttributeService)
-	h.SetLotteryService(lotteryService)
 	return h
 }
 
@@ -209,12 +163,11 @@ func ProvideSettingHandler(settingService *service.SettingService, buildInfo Bui
 }
 
 // ProvideAdminSettingHandler creates admin.SettingHandler with notification template APIs.
-func ProvideAdminSettingHandler(settingService *service.SettingService, emailService *service.EmailService, turnstileService *service.TurnstileService, aliyunCaptchaService *service.AliyunCaptchaService, opsService *service.OpsService, paymentConfigService *service.PaymentConfigService, paymentService *service.PaymentService, userAttributeService *service.UserAttributeService, notificationEmailService *service.NotificationEmailService, totpService *service.TotpService, userService *service.UserService, lotteryService *service.LotteryService) *admin.SettingHandler {
+func ProvideAdminSettingHandler(settingService *service.SettingService, emailService *service.EmailService, turnstileService *service.TurnstileService, aliyunCaptchaService *service.AliyunCaptchaService, opsService *service.OpsService, paymentConfigService *service.PaymentConfigService, paymentService *service.PaymentService, userAttributeService *service.UserAttributeService, notificationEmailService *service.NotificationEmailService, totpService *service.TotpService, userService *service.UserService) *admin.SettingHandler {
 	h := admin.NewSettingHandler(settingService, emailService, turnstileService, opsService, paymentConfigService, paymentService, userAttributeService)
 	h.SetNotificationEmailService(notificationEmailService)
 	h.SetAliyunCaptchaService(aliyunCaptchaService)
 	h.SetStepUpDeps(totpService, userService)
-	h.SetLotteryService(lotteryService)
 	return h
 }
 
@@ -274,7 +227,7 @@ func ProvideHandlers(
 var ProviderSet = wire.NewSet(
 	// Top-level handlers
 	NewAuthHandler,
-	ProvideUserHandler,
+	NewUserHandler,
 	NewAPIKeyHandler,
 	NewUsageHandler,
 	NewRedeemHandler,
@@ -295,9 +248,9 @@ var ProviderSet = wire.NewSet(
 	ProvideBatchImageHandler,
 
 	// Admin handlers
-	ProvideDashboardHandler,
-	ProvideAdminUserHandler,
-	admin.NewGroupHandler,
+	admin.NewDashboardHandler,
+	admin.NewUserHandler,
+	admin.NewGroupHandlerWithConfig,
 	admin.ProvideAccountHandler,
 	admin.NewAnnouncementHandler,
 	admin.NewDataManagementHandler,
@@ -328,7 +281,6 @@ var ProviderSet = wire.NewSet(
 	admin.NewContentModerationHandler,
 	admin.NewPaymentHandler,
 	admin.NewAffiliateHandler,
-	admin.NewWelfareHandler,
 	admin.NewComplianceHandler,
 	admin.NewAuditLogHandler,
 
