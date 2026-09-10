@@ -9,6 +9,7 @@ import (
 
 	ippkg "github.com/Wei-Shaw/sub2api/internal/pkg/ip"
 
+	"github.com/alicebob/miniredis/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
@@ -22,50 +23,39 @@ func TestWindowTTLMillis(t *testing.T) {
 
 func TestRateLimiterFailureModes(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-
+	server := miniredis.RunT(t)
+	server.SetError("ERR Redis unavailable")
 	rdb := redis.NewClient(&redis.Options{
-		Addr:         "127.0.0.1:1",
-		DialTimeout:  50 * time.Millisecond,
-		ReadTimeout:  50 * time.Millisecond,
-		WriteTimeout: 50 * time.Millisecond,
+		Addr:       server.Addr(),
+		MaxRetries: -1,
 	})
 	t.Cleanup(func() {
 		_ = rdb.Close()
 	})
 
-	limiter := NewRateLimiter(rdb)
-
-	failOpenRouter := gin.New()
-	failOpenRouter.Use(limiter.Limit("test", 1, time.Second))
-	failOpenRouter.GET("/test", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"ok": true})
-	})
-
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
-	req.RemoteAddr = "127.0.0.1:1234"
-	recorder := httptest.NewRecorder()
-	failOpenRouter.ServeHTTP(recorder, req)
-	require.Equal(t, http.StatusOK, recorder.Code)
-
-	failCloseRouter := gin.New()
-	failCloseRouter.Use(limiter.LimitWithOptions("test", 1, time.Second, RateLimitOptions{
-		FailureMode: RateLimitFailClose,
-	}))
-	failCloseRouter.GET("/test", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"ok": true})
-	})
-
-	req = httptest.NewRequest(http.MethodGet, "/test", nil)
-	req.RemoteAddr = "127.0.0.1:1234"
-	recorder = httptest.NewRecorder()
-	failCloseRouter.ServeHTTP(recorder, req)
-	require.Equal(t, http.StatusOK, recorder.Code)
-
-	req = httptest.NewRequest(http.MethodGet, "/test", nil)
-	req.RemoteAddr = "127.0.0.1:1234"
-	recorder = httptest.NewRecorder()
-	failCloseRouter.ServeHTTP(recorder, req)
-	require.Equal(t, http.StatusTooManyRequests, recorder.Code)
+	for _, tc := range []struct {
+		mode RateLimitFailureMode
+		want int
+	}{
+		{RateLimitFailOpen, http.StatusOK},
+		{RateLimitFailClose, http.StatusTooManyRequests},
+	} {
+		t.Run(failureModeLabel(tc.mode), func(t *testing.T) {
+			limiter := NewRateLimiter(rdb)
+			_, err := limiter.Allow(context.Background(), "probe", 1, time.Minute)
+			require.ErrorContains(t, err, "Redis unavailable")
+			router := gin.New()
+			router.Use(limiter.LimitWithOptions("test", 1, time.Minute, RateLimitOptions{FailureMode: tc.mode}))
+			router.GET("/test", func(c *gin.Context) { c.Status(http.StatusOK) })
+			for _, want := range []int{http.StatusOK, tc.want} {
+				req := httptest.NewRequest(http.MethodGet, "/test", nil)
+				req.RemoteAddr = "127.0.0.1:1234"
+				recorder := httptest.NewRecorder()
+				router.ServeHTTP(recorder, req)
+				require.Equal(t, want, recorder.Code)
+			}
+		})
+	}
 }
 
 func TestRateLimiterDifferentIPsIndependent(t *testing.T) {

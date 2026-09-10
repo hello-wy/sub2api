@@ -1081,11 +1081,7 @@ func (s *adminServiceImpl) UpdateGroup(ctx context.Context, id int64, input *Upd
 		}
 	}
 
-	if wasLifetimeQuota != group.UsesSubscriptionLifetimeQuota() {
-		if _, err := s.groupQuotaRepo.UpdateWithSubscriptionQuotaTransition(ctx, group); err != nil {
-			return nil, err
-		}
-	} else if err := s.groupRepo.Update(ctx, group); err != nil {
+	if err := s.updateGroupQuota(ctx, group, wasLifetimeQuota); err != nil {
 		return nil, err
 	}
 

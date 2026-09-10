@@ -632,6 +632,8 @@ func TestAdminService_UpdateGroup_RollingQuotaClearsLifetimeLimit(t *testing.T) 
 	})
 
 	require.NoError(t, err)
+	require.Same(t, group, repo.updated)
+	require.Nil(t, repo.quotaTransitionUpdated)
 	require.Nil(t, group.SubscriptionTotalLimitUSD)
 	require.NotNil(t, group.DailyLimitUSD)
 	require.InDelta(t, daily, *group.DailyLimitUSD, 1e-9)
