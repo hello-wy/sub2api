@@ -36,7 +36,8 @@ describe('shellCommandGenerator', () => {
     expect(output.command).toContain('mkdir -p ~/.codex')
     expect(output.command).toContain('cat > ~/.codex/config.toml')
     expect(output.command).toContain('cat > ~/.codex/auth.json')
-    expect(output.command).toContain('model = "gpt-5.5"')
+    expect(output.command).toContain('model = "gpt-5.6-sol"')
+    expect(output.command).toContain('review_model = "gpt-5.6-sol"')
     expect(output.command).toContain('"OPENAI_API_KEY": "<YOUR_OPENAI_API_KEY>"')
     expect(output.command).toContain('chmod 600 ~/.codex/auth.json')
     expect(output.command).toContain('ls -la ~/.codex')
@@ -55,6 +56,8 @@ describe('shellCommandGenerator', () => {
       platform: 'openai'
     })
 
+    expect(output.command).toContain('model = "gpt-5.6-sol"')
+    expect(output.command).toContain('review_model = "gpt-5.6-sol"')
     expect(output.command).toContain('supports_websockets = true')
     expect(output.command).toContain('responses_websockets_v2 = true')
     expect(output.command).toContain("sk''test")
@@ -67,6 +70,8 @@ describe('shellCommandGenerator', () => {
     expect(output.command).toContain("New-Item -ItemType Directory -Force -Path '~/.config/opencode'")
     expect(output.command).toContain("Set-Content -Path '~/.config/opencode/opencode.json'")
     expect(output.command).toContain('GPT-5.4 Mini')
+    expect(output.command).toContain('"gpt-5.6-sol"')
+    expect(output.command).not.toContain('gpt-5.5')
   })
 
   it('escapes special characters for each shell', () => {

@@ -365,8 +365,8 @@ describe('UseKeyModal', () => {
     const configToml = codeBlocks.find((content) => content.includes('model_provider = "OpenAI"'))
 
     expect(configToml).toBeDefined()
-    expect(configToml).toContain('model = "gpt-5.5"')
-    expect(configToml).toContain('review_model = "gpt-5.5"')
+    expect(configToml).toContain('model = "gpt-5.6-sol"')
+    expect(configToml).toContain('review_model = "gpt-5.6-sol"')
     expect(configToml).not.toContain('model = "gpt-5.4"')
     expect(configToml).not.toContain('model_context_window')
     expect(configToml).not.toContain('model_auto_compact_token_limit')
@@ -467,8 +467,8 @@ describe('UseKeyModal', () => {
     const configToml = codeBlocks.find((content) => content.includes('supports_websockets = true'))
 
     expect(configToml).toBeDefined()
-    expect(configToml).toContain('model = "gpt-5.5"')
-    expect(configToml).toContain('review_model = "gpt-5.5"')
+    expect(configToml).toContain('model = "gpt-5.6-sol"')
+    expect(configToml).toContain('review_model = "gpt-5.6-sol"')
     expect(configToml).not.toContain('model = "gpt-5.4"')
     expect(configToml).not.toContain('model_context_window')
     expect(configToml).not.toContain('model_auto_compact_token_limit')
@@ -629,6 +629,7 @@ describe('UseKeyModal', () => {
 
     const parsed = JSON.parse(wrapper.find('pre code').text())
     const models = parsed.provider.openai.models
+    expect(models).not.toHaveProperty('gpt-5.5')
     for (const model of ['gpt-5.6', 'gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna']) {
       expect(models[model]).toBeDefined()
       expect(models[model].variants).toHaveProperty('max')
@@ -772,7 +773,7 @@ describe('UseKeyModal', () => {
       .find((content) => content.includes('[model_providers.sub2api]'))
     expect(loadedUnixConfig).toContain('model = "claude-opus-4-8"')
     expect(loadedUnixConfig).toContain('review_model = "claude-opus-4-8"')
-    expect(loadedUnixConfig).not.toContain('model = "gpt-5.5"')
+    expect(loadedUnixConfig).not.toContain('model = "gpt-5.6-sol"')
 
     const downloadButton = wrapper.findAll('button').find((button) =>
       button.text().includes('keys.useKeyModal.codexModelCatalog.download')
@@ -843,7 +844,7 @@ describe('UseKeyModal', () => {
       json: async () => ({
         models: [
           { slug: 'claude-opus-4-8' },
-          { slug: 'gpt-5.5' }
+          { slug: 'gpt-5.6-sol' }
         ]
       })
     }))
@@ -878,8 +879,8 @@ describe('UseKeyModal', () => {
     const config = wrapper.findAll('pre code')
       .map((code) => code.text())
       .find((content) => content.includes('[model_providers.sub2api]'))
-    expect(config).toContain('model = "gpt-5.5"')
-    expect(config).toContain('review_model = "gpt-5.5"')
+    expect(config).toContain('model = "gpt-5.6-sol"')
+    expect(config).toContain('review_model = "gpt-5.6-sol"')
   })
 
   it('derives OpenAI Codex reasoning effort from the selected catalog descriptor', async () => {

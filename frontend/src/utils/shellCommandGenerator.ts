@@ -88,8 +88,8 @@ export function generateClaudeCodeSettings(baseUrl: string, apiKey: string, plat
 
 export function generateCodexConfig(baseUrl: string, isWebSocket = false): string {
   return `model_provider = "OpenAI"
-model = "gpt-5.5"
-review_model = "gpt-5.5"
+model = "gpt-5.6-sol"
+review_model = "gpt-5.6-sol"
 model_reasoning_effort = "xhigh"
 disable_response_storage = true
 network_access = "enabled"
@@ -124,8 +124,8 @@ export function generateOpenCodeConfig(platform: GroupPlatform | 'antigravity-cl
       options: { store: false },
       variants: { low: {}, medium: {}, high: {}, xhigh: {} }
     },
-    'gpt-5.5': {
-      name: 'GPT-5.5',
+    'gpt-5.6-sol': {
+      name: 'GPT-5.6 Sol',
       limit: { context: 1050000, output: 128000 },
       options: { store: false },
       variants: { low: {}, medium: {}, high: {}, xhigh: {} }

@@ -1,6 +1,6 @@
 import type { GroupPlatform } from '@/types'
 
-export const OPENAI_CC_SWITCH_CODEX_MODEL = 'gpt-5.5'
+export const OPENAI_CC_SWITCH_CODEX_MODEL = 'gpt-5.6-sol'
 export const OPENAI_TO_CLAUDE_DEFAULT_MODEL = 'claude-opus-4-8'
 export const GROK_CC_SWITCH_MODEL = 'grok-4.5'
 
