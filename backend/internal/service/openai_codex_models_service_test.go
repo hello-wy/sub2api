@@ -537,7 +537,8 @@ func TestBuildCodexModelsManifestAdvertisesUltrafastServiceTierForSol(t *testing
 	})
 	require.NoError(t, err)
 	models := decodeCodexManifestModels(t, body)
-	require.Len(t, models, 2)
+	require.Len(t, models, 1)
+	require.Equal(t, "gpt-5.6-sol", models[0]["slug"])
 
 	wantTiers := []any{
 		map[string]any{

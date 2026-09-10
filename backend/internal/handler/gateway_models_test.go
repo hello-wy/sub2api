@@ -226,7 +226,13 @@ func TestGatewayCodexModels_CompositeUsesCompleteEffectiveModelList(t *testing.T
 	require.Equal(t, http.StatusOK, rec.Code)
 	var got codexModelsResponseForTest
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
-	want := service.FilterCodexModelIDsForGroup(openai.DefaultModelIDs(), nil)
+	defaultModels := service.FilterCodexModelIDsForGroup(openai.DefaultModelIDs(), nil)
+	want := make([]string, 0, len(defaultModels)+1)
+	for _, modelID := range defaultModels {
+		if modelID != "gpt-5.6" && modelID != "gpt-6" {
+			want = append(want, modelID)
+		}
+	}
 	require.ElementsMatch(t, append(want, "grok-4.6"), codexModelSlugsForTest(got.Models))
 }
 
