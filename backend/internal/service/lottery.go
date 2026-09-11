@@ -313,17 +313,15 @@ func (s *LotteryService) GetPrizePoolConfig(ctx context.Context) (*LotteryPrizeP
 		if prize.Type == "subscription" {
 			if prize.SubscriptionPlanID > 0 {
 				name, groupID, _, err := s.lotterySubscriptionPlan(ctx, s.entClient, prize.SubscriptionPlanID)
-				if err != nil {
-					continue
+				if err == nil {
+					prize.SubscriptionGroupID = groupID
+					prize.Label = name
 				}
-				prize.SubscriptionGroupID = groupID
-				prize.Label = name
 			} else {
 				name, _, err := s.lotterySubscriptionGroup(ctx, s.entClient, prize.SubscriptionGroupID)
-				if err != nil {
-					continue
+				if err == nil {
+					prize.Label = name
 				}
-				prize.Label = name
 			}
 		}
 		prizes = append(prizes, prize)
