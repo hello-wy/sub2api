@@ -25,6 +25,10 @@
           />
         </template>
         <template v-else>
+          <div v-if="!hasAvailableBilling" class="card py-16 text-center">
+            <p class="text-gray-500 dark:text-gray-400">{{ t('payment.billingUnavailable') }}</p>
+          </div>
+          <template v-else>
           <header class="px-1">
             <div>
               <h1 class="text-2xl font-semibold text-gray-950 dark:text-white">{{ t('wallet.catalogTitle') }}</h1>
@@ -34,7 +38,7 @@
 
           <div class="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
             <main class="min-w-0 space-y-5">
-              <section id="wallet-recharge" class="scroll-mt-6 space-y-5 rounded-lg border border-gray-200 bg-white p-5 dark:border-dark-600 dark:bg-dark-800 sm:p-6">
+              <section v-if="!checkout.balance_disabled" id="wallet-recharge" class="scroll-mt-6 space-y-5 rounded-lg border border-gray-200 bg-white p-5 dark:border-dark-600 dark:bg-dark-800 sm:p-6">
                 <div>
                   <h2 class="text-lg font-semibold text-gray-950 dark:text-white">{{ t('wallet.rechargeSectionTitle') }}</h2>
                   <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ t('wallet.rechargeSectionHint') }}</p>
@@ -93,7 +97,7 @@
                 </template>
               </section>
 
-              <section id="wallet-subscription" class="scroll-mt-6 space-y-5 rounded-lg border border-gray-200 bg-white p-5 dark:border-dark-600 dark:bg-dark-800 sm:p-6">
+              <section v-if="subscriptionEnabled" id="wallet-subscription" class="scroll-mt-6 space-y-5 rounded-lg border border-gray-200 bg-white p-5 dark:border-dark-600 dark:bg-dark-800 sm:p-6">
                 <div>
                   <h2 class="text-lg font-semibold text-gray-950 dark:text-white">{{ t('wallet.subscriptionSectionTitle') }}</h2>
                   <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ t('wallet.subscriptionSectionHint') }}</p>
@@ -148,7 +152,7 @@
                 <WalletRedeemPanel compact />
               </div>
 
-              <section id="wallet-subscription-summary" class="scroll-mt-6 overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-dark-600 dark:bg-dark-800">
+              <section v-if="subscriptionEnabled" id="wallet-subscription-summary" class="scroll-mt-6 overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-dark-600 dark:bg-dark-800">
                 <header class="flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-4 dark:border-dark-700">
                   <div class="flex items-center gap-1.5">
                     <h2 class="text-base font-semibold text-gray-900 dark:text-white">{{ t('wallet.activeSubscriptions') }}</h2>
@@ -193,6 +197,7 @@
               </div>
             </aside>
           </div>
+          </template>
         </template>
       </template>
     </div>
@@ -260,6 +265,7 @@ import { useAuthStore } from '@/stores/auth'
 import { usePaymentStore } from '@/stores/payment'
 import { useSubscriptionStore } from '@/stores/subscriptions'
 import { useAppStore } from '@/stores'
+import { FeatureFlags, resolveFeatureFlag } from '@/utils/featureFlags'
 import { paymentAPI } from '@/api/payment'
 import { extractApiErrorMessage, extractI18nErrorMessage } from '@/utils/apiError'
 import { isMobileDevice } from '@/utils/device'
@@ -591,6 +597,11 @@ async function refreshWalletSummary() {
     refreshingSummary.value = false
   }
 }
+
+// 订阅功能开关（public settings 的 subscription_enabled，opt-out）。关闭后购买页只保留充值：
+// 统一钱包页会隐藏订阅购买区和订阅摘要。
+const subscriptionEnabled = computed(() => resolveFeatureFlag(appStore.cachedPublicSettings, FeatureFlags.subscription))
+const hasAvailableBilling = computed(() => !checkout.value.balance_disabled || subscriptionEnabled.value)
 
 const visibleMethods = computed(() => getVisibleMethods(checkout.value.methods))
 const enabledMethods = computed(() => Object.keys(visibleMethods.value))
@@ -1376,8 +1387,9 @@ onMounted(async () => {
     await resumeWechatPaymentFromQuery()
   } catch (err: unknown) { appStore.showError(extractI18nErrorMessage(err, t, 'payment.errors', t('common.error'))) }
   finally { loading.value = false }
-  // Fetch active subscriptions (uses cache, non-blocking)
-  subscriptionStore.fetchActiveSubscriptions().catch(() => {})
+  if (subscriptionEnabled.value) {
+    subscriptionStore.fetchActiveSubscriptions().catch(() => {})
+  }
   await nextTick()
   if (paymentPhase.value === 'select') scrollToWalletSection(route.query.tab)
 })

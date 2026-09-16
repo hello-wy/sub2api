@@ -137,3 +137,22 @@ describe('AppSidebar user navigation', () => {
     )
   })
 })
+
+describe('AppSidebar subscription feature flag', () => {
+  it('uses the unified wallet entry instead of duplicate purchase and subscription entries', () => {
+    expect(componentSource).toContain('const flagSubscription = makeSidebarFlag(FeatureFlags.subscription)')
+    expect(componentSource).toMatch(/path: '\/wallet'[^\n]*label: t\('nav\.wallet'\)/)
+    expect(componentSource).not.toMatch(/path: '\/subscriptions'/)
+    expect(componentSource).not.toMatch(/path: '\/purchase'/)
+  })
+
+  it('also hides the admin Subscription Management entry on recharge-only sites', () => {
+    expect(componentSource).toMatch(/path: '\/admin\/subscriptions'[^\n]*featureFlag: flagSubscription/)
+  })
+
+  it('keeps the wallet available when subscriptions are disabled', () => {
+    expect(componentSource).toMatch(
+      /\{ path: '\/wallet', label: t\('nav\.wallet'\), icon: CreditCardIcon, hideInSimpleMode: true \}/
+    )
+  })
+})

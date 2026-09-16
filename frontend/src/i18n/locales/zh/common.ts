@@ -213,6 +213,8 @@ export default {
     buySubscription: '充值/订阅',
     wallet: '我的钱包',
     loyalty: '会员计划',
+    recharge: '充值',
+    subscribe: '订阅',
     docs: '文档',
     myOrders: '我的订单',
     dailyCheckin: '每日签到',

@@ -450,7 +450,7 @@ func sumCheckinRewards(records []DailyCheckinRecord, current *DailyCheckinRecord
 }
 
 func prependRecord(records []DailyCheckinRecord, current *DailyCheckinRecord, limit int) []DailyCheckinRecord {
-	out := make([]DailyCheckinRecord, 0, min(limit, len(records)+1))
+	out := make([]DailyCheckinRecord, 0, minInt(limit, len(records)+1))
 	if current != nil {
 		out = append(out, *current)
 	}
@@ -488,7 +488,7 @@ func monthKey(dateKey string) string {
 	return dateKey[:7]
 }
 
-func min(a, b int) int {
+func minInt(a, b int) int {
 	if a < b {
 		return a
 	}

@@ -213,6 +213,8 @@ export default {
     buySubscription: 'Recharge / Subscription',
     wallet: 'My Wallet',
     loyalty: 'Membership Program',
+    recharge: 'Recharge',
+    subscribe: 'Subscription',
     docs: 'Docs',
     myOrders: 'My Orders',
     dailyCheckin: 'Daily Check-in',
