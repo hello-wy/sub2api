@@ -64,7 +64,7 @@ func (c *codexDiagnosticConn) Close() error               { c.closed = true; ret
 func codexDiagnosticResponse(status int, body string) *http.Response {
 	return &http.Response{StatusCode: status, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body))}
 }
-func runCodexDiagnostics(t *testing.T, svc *AccountTestService, account *Account, ctx context.Context) (map[string]codexCapabilityResult, error, string) {
+func runCodexDiagnostics(t *testing.T, svc *AccountTestService, account *Account, ctx context.Context) (map[string]codexCapabilityResult, string, error) {
 	t.Helper()
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -92,7 +92,7 @@ func runCodexDiagnostics(t *testing.T, svc *AccountTestService, account *Account
 	}
 	require.Equal(t, 1, terminalCount)
 	require.Len(t, results, 3)
-	return results, err, rec.Body.String()
+	return results, rec.Body.String(), err
 }
 func codexDiagnosticService(accounts ...Account) (*AccountTestService, *httpUpstreamRecorder, *codexDiagnosticDialer) {
 	upstream := &httpUpstreamRecorder{responses: []*http.Response{
@@ -122,7 +122,7 @@ func TestCodexDiagnosticsSourcesAndActualTargets(t *testing.T) {
 				accounts = []Account{*account, parent}
 			}
 			svc, upstream, dialer := codexDiagnosticService(accounts...)
-			results, err, output := runCodexDiagnostics(t, svc, account, context.Background())
+			results, output, err := runCodexDiagnostics(t, svc, account, context.Background())
 			require.NoError(t, err)
 			expectedSource := source
 			if source == "parent_official" {
@@ -147,7 +147,9 @@ func TestCodexDiagnosticsSourcesAndActualTargets(t *testing.T) {
 			require.Equal(t, "wss"+strings.TrimPrefix(expectedTarget, "https"), dialer.target)
 			require.Equal(t, 101, results["websocket"].HTTPStatus)
 			require.Equal(t, "Bearer test-token", dialer.headers.Get("Authorization"))
-			require.Equal(t, "response.create", dialer.conn.payload.(map[string]any)["type"])
+			payload, ok := dialer.conn.payload.(map[string]any)
+			require.True(t, ok)
+			require.Equal(t, "response.create", payload["type"])
 			require.True(t, dialer.conn.closed)
 			require.NotContains(t, output, "test-token")
 		})
@@ -183,7 +185,7 @@ func TestCodexDiagnosticsFailuresAreIndependent(t *testing.T) {
 				failed = "http"
 				upstream.responses[0] = codexDiagnosticResponse(200, "data: {\"type\":\"response.done\",\"response\":{\"status\":\"failed\"}}\n\n")
 			}
-			results, err, output := runCodexDiagnostics(t, svc, account, context.Background())
+			results, output, err := runCodexDiagnostics(t, svc, account, context.Background())
 			require.Error(t, err)
 			require.Len(t, upstream.requests, 2)
 			for key, result := range results {
@@ -205,7 +207,7 @@ func TestCodexDiagnosticsCancellationRetainsCompletedResult(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	dialer.cancel = cancel
-	results, err, _ := runCodexDiagnostics(t, svc, account, ctx)
+	results, _, err := runCodexDiagnostics(t, svc, account, ctx)
 	require.Error(t, err)
 	require.Equal(t, "passed", results["http"].Status)
 	require.Equal(t, "cancelled", results["websocket"].Status)
@@ -225,7 +227,7 @@ func TestCodexDiagnosticsUnobservablePluginAndInvalidConfiguration(t *testing.T)
 			svc.pluginManager = &PluginManager{}
 			svc.pluginManager.route.Store(&pluginRoute{rolloutPercent: 100})
 		}
-		results, err, output := runCodexDiagnostics(t, svc, account, context.Background())
+		results, output, err := runCodexDiagnostics(t, svc, account, context.Background())
 		require.Error(t, err)
 		require.Empty(t, upstream.requests)
 		require.Empty(t, dialer.target)
@@ -248,7 +250,7 @@ func TestCodexDiagnosticRedirectURLIsObservedAndRedacted(t *testing.T) {
 	finalRequest, err := http.NewRequest("POST", "https://user:secret@final.example/codex/responses?token=secret#secret", nil)
 	require.NoError(t, err)
 	upstream.responses[0].Request = finalRequest
-	results, err, output := runCodexDiagnostics(t, svc, account, context.Background())
+	results, output, err := runCodexDiagnostics(t, svc, account, context.Background())
 	require.NoError(t, err)
 	require.Equal(t, "https://final.example/codex/responses", results["http"].TargetURL)
 	require.NotContains(t, output, "secret")
@@ -265,7 +267,7 @@ func TestCodexDiagnosticsWebSocketRealHandshakeRedirectAndResponse(t *testing.T)
 		if err != nil {
 			return
 		}
-		defer conn.CloseNow()
+		defer func() { _ = conn.CloseNow() }()
 		ctx, cancel := context.WithTimeout(r.Context(), time.Second)
 		defer cancel()
 		_, message, err := conn.Read(ctx)
@@ -286,7 +288,7 @@ func TestCodexDiagnosticsWebSocketRealHandshakeRedirectAndResponse(t *testing.T)
 	svc.codexTestWSDialer = nil
 	svc.cfg = &config.Config{}
 	svc.cfg.Security.URLAllowlist.AllowInsecureHTTP = true
-	results, err, output := runCodexDiagnostics(t, svc, account, context.Background())
+	results, output, err := runCodexDiagnostics(t, svc, account, context.Background())
 	require.NoError(t, err)
 	require.Equal(t, "ws"+strings.TrimPrefix(server.URL, "http")+"/actual/responses", results["websocket"].TargetURL)
 	require.Equal(t, 101, results["websocket"].HTTPStatus)

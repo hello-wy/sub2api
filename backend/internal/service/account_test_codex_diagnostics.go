@@ -143,7 +143,7 @@ func (s *AccountTestService) testCodexGateway(c *gin.Context, account *Account, 
 	}
 	if !allPassed {
 		s.sendEvent(c, TestEvent{Type: "test_complete", Success: false, Error: "Codex gateway diagnostics did not pass all capabilities"})
-		return errors.New("Codex gateway diagnostics did not pass all capabilities")
+		return errors.New("codex gateway diagnostics did not pass all capabilities")
 	}
 	s.sendEvent(c, TestEvent{Type: "test_complete", Success: true})
 	return nil

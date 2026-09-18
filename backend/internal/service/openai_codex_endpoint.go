@@ -22,7 +22,7 @@ func normalizeCodexBaseURL(raw string, cfg *config.Config) (string, error) {
 	}
 	u, err := url.Parse(raw)
 	if err != nil || u.User != nil || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" {
-		return "", fmt.Errorf("Codex gateway must be a base URL without credentials, query parameters or fragment")
+		return "", fmt.Errorf("codex gateway must be a base URL without credentials, query parameters or fragment")
 	}
 	if u.RawPath != "" || strings.ContainsAny(u.Path, "\\") {
 		return "", fmt.Errorf("invalid Codex gateway path")
@@ -36,7 +36,7 @@ func normalizeCodexBaseURL(raw string, cfg *config.Config) (string, error) {
 	u.Host = strings.ToLower(u.Host)
 	u.Path = strings.TrimRight(u.Path, "/")
 	if strings.HasSuffix(u.Path, "/responses") || strings.HasSuffix(u.Path, "/responses/compact") {
-		return "", fmt.Errorf("Codex gateway must be a base URL; remove /responses or /responses/compact")
+		return "", fmt.Errorf("codex gateway must be a base URL; remove /responses or /responses/compact")
 	}
 	normalized, err := (&OpenAIGatewayService{cfg: cfg}).validateOutboundURL(u.String())
 	if err != nil {
