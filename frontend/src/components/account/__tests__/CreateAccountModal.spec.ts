@@ -57,6 +57,7 @@ vi.mock('@/api/admin', () => ({
 }))
 
 vi.mock('@/api/admin/accounts', () => ({
+  listCodexGateways: vi.fn().mockResolvedValue(['https://relay.example/backend-api/codex']),
   getAntigravityDefaultModelMapping: vi.fn().mockResolvedValue([]),
 }))
 
@@ -69,6 +70,7 @@ vi.mock('vue-i18n', async () => {
 })
 
 import CreateAccountModal from '../CreateAccountModal.vue'
+import CodexGatewayField from '../CodexGatewayField.vue'
 
 const BaseDialogStub = defineComponent({
   name: 'BaseDialog',
@@ -660,6 +662,18 @@ describe('CreateAccountModal OpenAI long-context billing', () => {
     expect(payload?.upstream_billing_probe_enabled).toBe(true)
     // 创建成功后前端立即发起一次首探（与其他 apikey 平台一致）。
     expect(probeUpstreamBillingMock).toHaveBeenCalledWith(42)
+  })
+
+  it('includes the selected Codex gateway when importing an OAuth account', async () => {
+    const wrapper = mountModal()
+    await selectButtonByText(wrapper, 'OpenAI')
+    wrapper.getComponent(CodexGatewayField).vm.$emit('update:modelValue', 'https://relay.example/backend-api/codex')
+    await wrapper.get('form#create-account-form input[type="text"]').setValue('Codex gateway account')
+    await wrapper.get('form#create-account-form').trigger('submit.prevent')
+    await wrapper.get('[data-testid="import-codex-session"]').trigger('click')
+    await flushPromises()
+    expect(importCodexSessionMock.mock.calls[0]?.[0]?.extra?.codex_base_url).toBe('https://relay.example/backend-api/codex')
+    wrapper.unmount()
   })
 
   it('leaves Codex session import billing ownership to the backend', async () => {

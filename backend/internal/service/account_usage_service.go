@@ -290,6 +290,7 @@ type ClaudeUsageFetcher interface {
 
 // AccountUsageService 账号使用量查询服务
 type AccountUsageService struct {
+	codexGateway            *OpenAIGatewayService
 	accountRepo             AccountRepository
 	usageLogRepo            UsageLogRepository
 	usageFetcher            ClaudeUsageFetcher
@@ -895,6 +896,15 @@ func (s *AccountUsageService) probeOpenAICodexSnapshot(ctx context.Context, acco
 	})
 	if err != nil {
 		return nil, fmt.Errorf("build openai probe client: %w", err)
+	}
+	// Use the same outbound policy as inference; tests without a gateway still
+	// validate HTTPS and never silently fall back from an invalid configured URL.
+	gateway := s.codexGateway
+	if gateway == nil {
+		gateway = &OpenAIGatewayService{}
+	}
+	if err := applyCodexRequestEndpoint(req, s.accountRepo, gateway.cfg, account); err != nil {
+		return nil, err
 	}
 	resp, err := client.Do(req)
 	if err != nil {

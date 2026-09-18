@@ -141,6 +141,7 @@ func (d *coderOpenAIWSClientDialer) Dial(
 	}
 
 	conn, resp, err := coderws.Dial(ctx, targetURL, opts)
+	observeCodexWebSocketHandshake(ctx, resp)
 	if err != nil {
 		status := 0
 		respHeaders := http.Header(nil)

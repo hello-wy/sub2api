@@ -833,3 +833,7 @@ func (s *stubAdminService) CreateShadow(ctx context.Context, parentID int64, opt
 
 // Ensure stub implements interface.
 var _ service.AdminService = (*stubAdminService)(nil)
+
+func (s *stubAdminService) ListCodexGateways(context.Context) ([]string, error) {
+	return []string{}, nil
+}

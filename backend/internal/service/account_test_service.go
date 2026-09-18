@@ -156,7 +156,8 @@ type AccountTestService struct {
 	agentIdentityWS           agentIdentityWSConnectionInvalidator
 	// grokWSDialer is optional; realtime account tests use the default OpenAI-style
 	// WS dialer when nil (supports proxy + coder/websocket handshake).
-	grokWSDialer openAIWSClientDialer
+	grokWSDialer      openAIWSClientDialer
+	codexTestWSDialer openAIWSClientDialer
 }
 
 func (s *AccountTestService) SetSettingService(settingService *SettingService) {
@@ -370,6 +371,9 @@ func (s *AccountTestService) TestAccountConnection(c *gin.Context, accountID int
 	}
 
 	if account.IsOpenAI() {
+		if mode == AccountTestModeGateway {
+			return s.testCodexGateway(c, account, modelID)
+		}
 		return s.testOpenAIAccountConnection(c, account, modelID, prompt, normalizeAccountTestMode(mode))
 	}
 
@@ -798,7 +802,7 @@ func (s *AccountTestService) testOpenAIAccountConnection(c *gin.Context, account
 	var apiURL string
 	var isOAuth bool
 
-	if credentialAccount.IsOAuth() {
+	if credentialAccount.IsOpenAIOAuthLike() {
 		isOAuth = true
 		// Agent Identity signs each request and does not retain the OAuth token.
 		if !credentialAccount.IsOpenAIAgentIdentity() {
@@ -2153,7 +2157,7 @@ func (s *AccountTestService) testOpenAICompactConnection(c *gin.Context, account
 	isOAuth := false
 
 	switch {
-	case credentialAccount.IsOAuth():
+	case credentialAccount.IsOpenAIOAuthLike():
 		isOAuth = true
 		if !credentialAccount.IsOpenAIAgentIdentity() {
 			authToken = credentialAccount.GetOpenAIAccessToken()
@@ -2256,7 +2260,7 @@ func (s *AccountTestService) testOpenAICompactConnection(c *gin.Context, account
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	body, _ := io.ReadAll(io.LimitReader(resp.Body, 2<<20))
+	body, readErr := io.ReadAll(io.LimitReader(resp.Body, 2<<20))
 	body = redactAgentIdentitySensitiveBodyForAccount(ctx, s.accountRepo, credentialAccount, body)
 	if !agentIdentityTaskRecoveryWasTried(ctx) && credentialAccount.IsOpenAIAgentIdentity() && isAgentIdentityTaskInvalidHTTPResponse(resp.StatusCode, body) {
 		expectedTaskID := credentialAccount.GetCredential("task_id")
@@ -2268,6 +2272,17 @@ func (s *AccountTestService) testOpenAICompactConnection(c *gin.Context, account
 	}
 
 	compactionFound := openAICompactProbeFoundCompactionItem(body)
+	// Acceptance diagnostics require a complete response as well as the item.
+	// A truncated stream must not turn the capability (or persisted support) green.
+	if observation := codexObservation(ctx); observation != nil && resp.StatusCode == http.StatusOK {
+		if readErr != nil || !codexProbeResponseCompleted(body) {
+			observation.result.Code = "incomplete_response"
+			return s.sendErrorAndEnd(c, "Compact response did not complete")
+		}
+		if !compactionFound {
+			observation.result.Code = "compact_missing"
+		}
+	}
 	if s.accountRepo != nil {
 		updates := buildOpenAICompactProbeExtraUpdates(resp, body, nil, compactionFound, time.Now())
 		if codexUpdates, err := extractOpenAICodexProbeUpdates(resp); err == nil && len(codexUpdates) > 0 {
@@ -2947,6 +2962,11 @@ func (s *AccountTestService) processOpenAIStream(c *gin.Context, body io.Reader)
 				s.sendEvent(c, TestEvent{Type: "content", Text: delta})
 			}
 		case "response.completed", "response.done":
+			if response, ok := data["response"].(map[string]any); ok {
+				if status, _ := response["status"].(string); status != "" && status != "completed" {
+					return s.sendErrorAndEnd(c, "OpenAI response not completed")
+				}
+			}
 			s.sendEvent(c, TestEvent{Type: "test_complete", Success: true})
 			return nil
 		case "response.failed":
@@ -3220,6 +3240,14 @@ func (s *AccountTestService) testOpenAIImageOAuth(c *gin.Context, ctx context.Co
 }
 
 func (s *AccountTestService) sendEvent(c *gin.Context, event TestEvent) {
+	if c.Request != nil {
+		if observation := codexObservation(c.Request.Context()); observation != nil && event.Type != "capability_result" {
+			if event.Type == "test_complete" {
+				observation.completed = event.Success
+			}
+			return
+		}
+	}
 	if event.Type == "test_complete" {
 		if suppress, ok := c.Get(accountTestSuppressCompletionContextKey); ok {
 			if suppressCompletion, _ := suppress.(bool); suppressCompletion {

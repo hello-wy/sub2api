@@ -40,7 +40,7 @@ func (s *OpenAIGatewayService) forwardOpenAIWSV2(
 	}
 	responseModelObserver := &upstreamResponseModelObserver{}
 
-	wsURL, err := s.buildOpenAIResponsesWSURL(account)
+	wsURL, err := s.buildOpenAIResponsesWSURLForContext(ctx, account)
 	if err != nil {
 		return nil, wrapOpenAIWSFallback("build_ws_url", err)
 	}

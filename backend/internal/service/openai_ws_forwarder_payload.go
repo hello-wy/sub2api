@@ -58,6 +58,10 @@ func (s *OpenAIGatewayService) buildOpenAIResponsesWSURL(account *Account) (stri
 		targetURL = openaiPlatformAPIURL
 	}
 
+	targetURL, err := rewriteCodexEndpoint(account, s.cfg, targetURL)
+	if err != nil {
+		return "", err
+	}
 	parsed, err := url.Parse(strings.TrimSpace(targetURL))
 	if err != nil {
 		return "", fmt.Errorf("invalid target url: %w", err)

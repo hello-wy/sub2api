@@ -1651,6 +1651,13 @@
         <ProxySelector v-model="form.proxy_id" :proxies="proxies" />
       </div>
 
+      <CodexGatewayField
+        v-if="account.platform === 'openai' && (account.type === 'oauth' || account.type === 'setup-token')"
+        v-model="codexBaseUrl"
+        :active="show"
+        :inherited="isSparkShadow"
+      />
+
       <UpstreamRequestIdHeaderField
         v-model="upstreamRequestIdHeader"
         :platform="account.platform"
@@ -3042,6 +3049,7 @@ import BaseDialog from '@/components/common/BaseDialog.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import Select from '@/components/common/Select.vue'
 import HelpTooltip from '@/components/common/HelpTooltip.vue'
+import CodexGatewayField from '@/components/account/CodexGatewayField.vue'
 import UpstreamRequestIdHeaderField from '@/components/account/UpstreamRequestIdHeaderField.vue'
 import Toggle from '@/components/common/Toggle.vue'
 import Icon from '@/components/icons/Icon.vue'
@@ -3507,6 +3515,7 @@ const tlsFingerprintProfiles = ref<{ id: number; name: string }[]>([])
 const sessionIdMaskingEnabled = ref(false)
 const cacheTTLOverrideEnabled = ref(false)
 const cacheTTLOverrideTarget = ref<string>('5m')
+const codexBaseUrl = ref('')
 const customBaseUrlEnabled = ref(false)
 const customBaseUrl = ref('')
 
@@ -3951,6 +3960,7 @@ const syncFormFromAccount = (newAccount: Account | null) => {
   mixedChannelWarningAction.value = null
   form.name = newAccount.name
   form.notes = newAccount.notes || ''
+  codexBaseUrl.value = typeof newAccount.extra?.codex_base_url === 'string' ? newAccount.extra.codex_base_url : ''
   form.proxy_id = newAccount.proxy_id
   form.concurrency = newAccount.concurrency
   form.load_factor = newAccount.load_factor ?? null
@@ -5490,6 +5500,11 @@ const handleSubmit = async () => {
     if (props.account.platform === 'openai' && (props.account.type === 'oauth' || props.account.type === 'setup-token' || props.account.type === 'apikey')) {
       const currentExtra = (props.account.extra as Record<string, unknown>) || {}
       const newExtra: Record<string, unknown> = { ...currentExtra }
+      if (!isSparkShadow.value && props.account.type !== 'apikey' && codexBaseUrl.value.trim()) {
+        newExtra.codex_base_url = codexBaseUrl.value.trim()
+      } else {
+        delete newExtra.codex_base_url
+      }
       const hadCodexCLIOnlyEnabled = currentExtra.codex_cli_only === true
       if (props.account.type === 'oauth' || props.account.type === 'setup-token') {
         newExtra.openai_oauth_responses_websockets_v2_mode = openaiOAuthResponsesWebSocketV2Mode.value

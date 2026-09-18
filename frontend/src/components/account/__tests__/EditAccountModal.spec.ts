@@ -41,6 +41,7 @@ vi.mock('@/api/admin', () => ({
 }))
 
 vi.mock('@/api/admin/accounts', () => ({
+  listCodexGateways: vi.fn().mockResolvedValue(['https://relay.example/backend-api/codex']),
   getAntigravityDefaultModelMapping: vi.fn()
 }))
 
@@ -55,6 +56,7 @@ vi.mock('vue-i18n', async () => {
 })
 
 import EditAccountModal from '../EditAccountModal.vue'
+import CodexGatewayField from '../CodexGatewayField.vue'
 
 const BaseDialogStub = defineComponent({
   name: 'BaseDialog',
@@ -1687,6 +1689,20 @@ describe('EditAccountModal OpenAI 自动使用重置卡', () => {
       auto_reset_credit_7d_threshold: 0.92
     })
     expect(extra).not.toHaveProperty('codex_auto_reset_credit_state')
+    wrapper.unmount()
+  })
+
+  it.each(['https://new.example/codex', ''])('saves the account gateway selection %s', async (selected) => {
+    const account = buildOpenAIOAuthParentAccount()
+    account.extra = { codex_base_url: 'https://relay.example/backend-api/codex', unrelated: 'keep' }
+    const wrapper = mountModal(account)
+    const field = wrapper.getComponent(CodexGatewayField)
+    expect(field.props('modelValue')).toBe('https://relay.example/backend-api/codex')
+    field.vm.$emit('update:modelValue', selected)
+    await wrapper.get('form#edit-account-form').trigger('submit.prevent')
+    const extra = updateAccountMock.mock.calls[0]?.[1]?.extra
+    expect(extra?.codex_base_url).toBe(selected || undefined)
+    expect(extra?.unrelated).toBe('keep')
     wrapper.unmount()
   })
 
