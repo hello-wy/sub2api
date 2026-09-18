@@ -530,6 +530,9 @@ func (s *adminServiceImpl) CreateAccount(ctx context.Context, input *CreateAccou
 	if err := s.ValidateAccountGroupBindings(ctx, groupIDs); err != nil {
 		return nil, err
 	}
+	if err := s.normalizeAccountCodexGateway(account); err != nil {
+		return nil, err
+	}
 	if err := s.accountRepo.Create(ctx, account); err != nil {
 		return nil, err
 	}
@@ -540,6 +543,8 @@ func (s *adminServiceImpl) CreateAccount(ctx context.Context, input *CreateAccou
 			return nil, err
 		}
 	}
+
+	s.rememberCodexGateway(ctx, account)
 
 	// OAuth 账号：创建后异步设置隐私。
 	// 使用 Ensure（幂等）而非 Force：新建账号 Extra 为空时效果相同，但更安全。
@@ -837,6 +842,9 @@ func (s *adminServiceImpl) UpdateAccount(ctx context.Context, id int64, input *U
 		}
 	}
 
+	if err := s.normalizeAccountCodexGateway(account); err != nil {
+		return nil, err
+	}
 	billingSettingsAppliedAtomically := false
 	updater := s.accountBillingRepo
 	if updater == nil {
@@ -875,6 +883,8 @@ func (s *adminServiceImpl) UpdateAccount(ctx context.Context, id int64, input *U
 			}
 		}
 	}
+
+	s.rememberCodexGateway(ctx, account)
 
 	// 将 proxy 变更传播到 spark 影子账号（同步；Update 内部已触发调度快照）。
 	// 影子自身 proxy 不可独立编辑(见上),故对影子的更新不触发传播。
@@ -919,15 +929,39 @@ func (s *adminServiceImpl) UpdateAccountExtra(ctx context.Context, id int64, upd
 			return err
 		}
 	}
+	var gatewayAccount *Account
+	if raw, exists := updates[codexBaseURLExtraKey]; exists {
+		account, err := s.accountRepo.GetByID(ctx, id)
+		if err != nil {
+			return err
+		}
+		copy := *account
+		copy.Extra = map[string]any{codexBaseURLExtraKey: raw}
+		if err := s.normalizeAccountCodexGateway(&copy); err != nil {
+			return err
+		}
+		// JSONB patches merge keys: an empty string explicitly restores the default.
+		updates[codexBaseURLExtraKey] = copy.GetExtraString(codexBaseURLExtraKey)
+		gatewayAccount = &copy
+	}
 	if len(updates) == 0 {
 		return nil
 	}
-	return s.accountRepo.UpdateExtra(ctx, id, updates)
+	if err := s.accountRepo.UpdateExtra(ctx, id, updates); err != nil {
+		return err
+	}
+	if gatewayAccount != nil {
+		s.rememberCodexGateway(ctx, gatewayAccount)
+	}
+	return nil
 }
 
 // BulkUpdateAccounts updates multiple accounts in one request.
 // It merges credentials/extra keys instead of overwriting the whole object.
 func (s *adminServiceImpl) BulkUpdateAccounts(ctx context.Context, input *BulkUpdateAccountsInput) (*BulkUpdateAccountsResult, error) {
+	if _, exists := input.Extra[codexBaseURLExtraKey]; exists {
+		return nil, infraerrors.BadRequest("CODEX_GATEWAY_ACCOUNT_UPDATE_REQUIRED", "configure Codex gateways through the individual account update endpoint")
+	}
 	// Managed probe/session state may only enter through dedicated typed endpoints.
 	input.Extra = sanitizedCodexFingerprintExtraUpdates(input.Extra)
 	input.Extra = stripOpenAIAutoResetCreditManagedExtra(input.Extra, true)

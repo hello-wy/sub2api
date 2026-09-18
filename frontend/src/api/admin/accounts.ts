@@ -170,6 +170,11 @@ export async function listWithEtag(
  * @param id - Account ID
  * @returns Account details
  */
+export async function listCodexGateways(): Promise<string[]> {
+  const { data } = await apiClient.get<string[]>('/admin/accounts/codex-gateways')
+  return data
+}
+
 export async function getById(id: number): Promise<Account> {
   const { data } = await apiClient.get<Account>(`/admin/accounts/${id}`)
   return data
@@ -1072,6 +1077,7 @@ export async function refreshOllamaCloudUsage(id: number): Promise<OllamaCloudUs
 }
 
 export const accountsAPI = {
+  listCodexGateways,
   list,
   listWithEtag,
   getUpstreamBillingRatesWithEtag,

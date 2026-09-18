@@ -175,7 +175,7 @@ func (s *OpenAIGatewayService) ProxyResponsesWebSocketFromClient(
 		wsPath = "/v1/responses"
 	} else {
 		var err error
-		wsURL, err = s.buildOpenAIResponsesWSURL(account)
+		wsURL, err = s.buildOpenAIResponsesWSURLForContext(ctx, account)
 		if err != nil {
 			return fmt.Errorf("build ws url: %w", err)
 		}

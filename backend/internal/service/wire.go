@@ -240,6 +240,7 @@ func ProvideAccountUsageService(
 		tlsFPProfileService,
 	)
 	service.agentIdentityWS = openAIGatewayService
+	service.codexGateway = openAIGatewayService
 	return service
 }
 
