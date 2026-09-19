@@ -22,11 +22,12 @@ func TestBalanceSubscriptionPlanPriceUsesRechargeMultiplierWithoutLoyaltyDiscoun
 		cnyRate    float64
 		want       float64
 	}{
+		{name: "one-to-one credits", plan: &dbent.SubscriptionPlan{Price: 20}, multiplier: 1, want: 20},
 		{name: "twenty yuan needs two hundred balance", plan: &dbent.SubscriptionPlan{Price: 20}, multiplier: 10, want: 200},
 		{name: "fifty yuan needs five hundred balance", plan: &dbent.SubscriptionPlan{Price: 50}, multiplier: 10, want: 500},
 		{name: "ignores display original price", plan: &dbent.SubscriptionPlan{Price: 20, OriginalPrice: &originalPrice}, multiplier: 10, want: 200},
 		{name: "applies configured subscription CNY conversion first", plan: &dbent.SubscriptionPlan{Price: 10}, multiplier: 10, cnyRate: 7.15, want: 715},
-		{name: "normalizes invalid multiplier", plan: &dbent.SubscriptionPlan{Price: 20}, multiplier: math.NaN(), want: 200},
+		{name: "normalizes invalid multiplier", plan: &dbent.SubscriptionPlan{Price: 20}, multiplier: math.NaN(), want: 20},
 		{name: "handles missing plan", plan: nil, multiplier: 10, want: 0},
 	}
 

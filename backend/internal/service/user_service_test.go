@@ -512,9 +512,9 @@ func TestCheckInDailyComputesStreakAndReward(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Equal(t, 3, result.Record.StreakDays)
-	require.GreaterOrEqual(t, result.Record.BaseReward, 0.0)
-	require.LessOrEqual(t, result.Record.BaseReward, 3.0)
-	require.Equal(t, 3.0, result.Record.BonusReward)
+	require.GreaterOrEqual(t, result.Record.BaseReward, 0.001)
+	require.LessOrEqual(t, result.Record.BaseReward, 0.3)
+	require.Equal(t, 0.3, result.Record.BonusReward)
 	require.Equal(t, result.Record.BaseReward+result.Record.BonusReward, result.Record.TotalReward)
 	require.Equal(t, 10.0+result.Record.TotalReward, result.Balance)
 	require.Equal(t, 1, repo.checkinCreateCalls)
