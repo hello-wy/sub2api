@@ -523,7 +523,7 @@ const trendChartData = computed(() => {
         yAxisID: 'y'
       },
       {
-        label: t('usage.userBilled') + ' (USD)',
+        label: t('usage.userBilled') + ' ($)',
         data: stats.value.history.map((h) => h.user_cost),
         borderColor: '#10b981',
         backgroundColor: 'rgba(16, 185, 129, 0.08)',
@@ -571,7 +571,7 @@ const lineChartOptions = computed(() => ({
         label: (context: any) => {
           const label = context.dataset.label || ''
           const value = context.raw
-          if (label.includes('USD')) {
+          if (label.includes('USD') || label.includes('($)')) {
             return `${label}: $${formatCost(value)}`
           }
           return `${label}: ${formatNumber(value)}`

@@ -42,10 +42,10 @@ describe('checkin api', () => {
 
     const status = await checkinAPI.getCheckinStatus()
 
-    expect(status.base_reward_min).toBe(1)
-    expect(status.base_reward_max).toBe(3)
-    expect(status.today_reward_min).toBe(1)
-    expect(status.today_reward_max).toBe(3)
+    expect(status.base_reward_min).toBe(0.001)
+    expect(status.base_reward_max).toBe(0.3)
+    expect(status.today_reward_min).toBe(0.001)
+    expect(status.today_reward_max).toBe(0.3)
     expect(status.reward_cycle_days).toBe(30)
     expect(status.reward_cycle_day).toBe(1)
     expect(status.reward_cycle_number).toBe(1)

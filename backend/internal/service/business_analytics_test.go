@@ -63,7 +63,7 @@ func TestAddAccruedCostByDaySplitsCostAcrossLocalCalendarDays(t *testing.T) {
 }
 
 func TestCreditsToCNYFallsBackToDefaultRechargeMultiplier(t *testing.T) {
-	require.InDelta(t, 1, creditsToCNY(10, 0), 1e-9)
+	require.InDelta(t, 10, creditsToCNY(10, 0), 1e-9)
 }
 
 func TestBuildProfitSummaryCalculatesCumulativeOperatingProfit(t *testing.T) {

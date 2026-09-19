@@ -216,7 +216,7 @@ type CreateAPIKeyRequest struct {
 	IPBlacklist []string `json:"ip_blacklist"` // IP 黑名单
 
 	// Quota fields
-	Quota         float64 `json:"quota"`           // Quota limit in USD (0 = unlimited)
+	Quota         float64 `json:"quota"`           // Quota limit in site credits ($; 0 = unlimited)
 	ExpiresInDays *int    `json:"expires_in_days"` // Days until expiry (nil = never expires)
 
 	// Rate limit fields (0 = unlimited)
@@ -234,7 +234,7 @@ type UpdateAPIKeyRequest struct {
 	IPBlacklist *[]string `json:"ip_blacklist"` // IP 黑名单（nil 不修改，空数组清空）
 
 	// Quota fields
-	Quota           *float64   `json:"quota"`       // Quota limit in USD (nil = no change, 0 = unlimited)
+	Quota           *float64   `json:"quota"`       // Quota limit in site credits ($; nil = no change, 0 = unlimited)
 	ExpiresAt       *time.Time `json:"expires_at"`  // Expiration time (nil = no change)
 	ClearExpiration bool       `json:"-"`           // Clear expiration (internal use)
 	ResetQuota      *bool      `json:"reset_quota"` // Reset quota_used to 0

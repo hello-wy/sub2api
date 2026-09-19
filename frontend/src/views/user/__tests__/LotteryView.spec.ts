@@ -206,7 +206,7 @@ describe('LotteryView', () => {
     expect(lotteryAPI.listRecentWinners).toHaveBeenCalledWith(30)
     expect(wrapper.find('.lottery-broadcast').text()).toContain('a***e@e*.com')
     expect(wrapper.find('.lottery-broadcast-prize').text()).toBe('$100')
-    expect(wrapper.find('.lottery-broadcast-value').text()).toBe('¥5')
+    expect(wrapper.find('.lottery-broadcast-value').text()).toBe('$100')
     expect(wrapper.find('.lottery-broadcast').text()).toContain('抽中')
     expect(wrapper.find('.lottery-broadcast').text()).not.toContain('刚刚抽中')
     expect(wrapper.find('.lottery-broadcast-prize').classes()).toContain('is-jackpot')

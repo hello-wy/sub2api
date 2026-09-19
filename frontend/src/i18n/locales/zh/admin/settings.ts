@@ -452,9 +452,9 @@ export default {
       },
       platformQuota: {
         platform:    '平台',
-        daily:       '日限额 (USD)',
-        weekly:      '周限额 (USD)',
-        monthly:     '月限额 (USD, 30天滚动)',
+        daily:       '日限额 ($)',
+        weekly:      '周限额 ($)',
+        monthly:     '月限额 ($, 30天滚动)',
         placeholder: '不限',
       },
       claudeCode: {
@@ -744,8 +744,8 @@ export default {
         maxAmount: '最高金额',
         dailyLimit: '每日限额',
         balanceRechargeMultiplier: '余额充值倍率',
-        balanceRechargeMultiplierHint: '用户每支付 1 CNY 可获得多少 USD 余额',
-        balanceRechargePreview: '预览：1 CNY = {usd} USD',
+        balanceRechargeMultiplierHint: '用户每支付 1 CNY 可获得多少 $',
+        balanceRechargePreview: '预览：1 CNY = ${usd}',
         subscriptionUsdToCnyRate: '订阅 CNY 换算汇率',
         subscriptionUsdToCnyRateHint:
           'CNY 支付通道下，套餐每 1 USD 价格收取多少 CNY（如 7.15）。0 或留空 = 不换算，订阅按 price 数值直接收款。启用后所有套餐 price 必须按 USD 定价',

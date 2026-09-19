@@ -29,16 +29,16 @@ export function lotteryPrizeFromSnapshot(draw: LotteryPrizeSnapshot): LotteryPri
 
 export const lotteryPrizePool: LotteryPrize[] = [
   { id: 'none', label: '谢谢参与', detail: '下次好运会来', probability: 50, kind: 'none' },
-  { id: 'quota-10', label: '$10', detail: '幸运奖励已发放', probability: 31, kind: 'quota', amount: 10 },
-  { id: 'quota-30', label: '$30', detail: '幸运奖励已发放', probability: 11, kind: 'quota', amount: 30 },
-  { id: 'quota-100', label: '$100', detail: '幸运奖励已发放', probability: 5, kind: 'quota', amount: 100 },
-  { id: 'quota-1000', label: '$1000', detail: '幸运奖励已发放', probability: 0.1, kind: 'quota', amount: 1000 },
+  { id: 'quota-10', label: '$1', detail: '幸运奖励已发放', probability: 31, kind: 'quota', amount: 1 },
+  { id: 'quota-30', label: '$3', detail: '幸运奖励已发放', probability: 11, kind: 'quota', amount: 3 },
+  { id: 'quota-100', label: '$10', detail: '幸运奖励已发放', probability: 5, kind: 'quota', amount: 10 },
+  { id: 'quota-1000', label: '$100', detail: '幸运奖励已发放', probability: 0.1, kind: 'quota', amount: 100 },
 ]
 
 export const guaranteedPrizePool: LotteryPrize[] = [
-  { id: 'quota-10', label: '$10', detail: '保底奖励已发放', probability: 70, kind: 'quota', amount: 10 },
-  { id: 'quota-30', label: '$30', detail: '保底奖励已发放', probability: 20, kind: 'quota', amount: 30 },
-  { id: 'quota-100', label: '$100', detail: '保底奖励已发放', probability: 7, kind: 'quota', amount: 100 },
+  { id: 'quota-10', label: '$1', detail: '保底奖励已发放', probability: 70, kind: 'quota', amount: 1 },
+  { id: 'quota-30', label: '$3', detail: '保底奖励已发放', probability: 20, kind: 'quota', amount: 3 },
+  { id: 'quota-100', label: '$10', detail: '保底奖励已发放', probability: 7, kind: 'quota', amount: 10 },
 ]
 
 export interface LotteryDrawResult {

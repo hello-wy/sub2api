@@ -25,6 +25,10 @@ const (
 	maxDatabaseInitializationRetries = 8
 	databaseInitializationRetryBase  = time.Second
 	databaseInitializationRetryMax   = 30 * time.Second
+	// Large historical billing migrations can rewrite usage_logs. Keep the
+	// startup deadline long enough for the production-sized table while still
+	// bounding an unhealthy deployment attempt.
+	databaseMigrationTimeout = 30 * time.Minute
 )
 
 // initializeDatabaseWithRetry retries only errors that indicate PostgreSQL is
@@ -133,10 +137,10 @@ func InitEnt(cfg *config.Config) (*ent.Client, *sql.DB, error) {
 	// 确保数据库 schema 已准备就绪。
 	// SQL 迁移文件是 schema 的权威来源（source of truth）。
 	// 这种方式比 Ent 的自动迁移更可控，支持复杂的迁移场景。
-	migrationCtx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	migrationCtx, cancel := context.WithTimeout(context.Background(), databaseMigrationTimeout)
 	defer cancel()
 	if err := initializeDatabaseWithRetry(migrationCtx, func(ctx context.Context) error {
-		return applyMigrationsFS(ctx, drv.DB(), migrations.FS)
+		return applyMigrationsFS(ctx, drv.DB(), migrations.FS, siteCreditsQuotaMigrationHook(cfg))
 	}); err != nil {
 		_ = drv.Close() // 迁移失败时关闭驱动，避免资源泄露
 		return nil, nil, err

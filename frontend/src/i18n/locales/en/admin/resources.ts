@@ -344,7 +344,7 @@ export default {
         selectType: 'Select type',
         valueLabel: 'Value',
         valuePlaceholder: 'Enter value',
-        balanceHint: 'Balance amount (USD)',
+        balanceHint: 'Balance amount ($)',
         concurrencyHint: 'Concurrency increment',
         countLabel: 'Count',
         countPlaceholder: 'Enter count',

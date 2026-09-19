@@ -15,9 +15,13 @@ import (
 )
 
 const (
-	billingBalanceKeyPrefix   = "billing:balance:"
-	billingSubKeyPrefix       = "billing:sub:"
-	billingRateLimitKeyPrefix = "apikey:rate:"
+	// v2 prevents pre-migration 10x site-credit values from being reused after
+	// the balance/quota unit conversion. Old keys are intentionally left to TTL.
+	// Platform quota snapshots are merged into the DB by the startup migration
+	// hook before conversion; their unflushed usage must not be discarded.
+	billingBalanceKeyPrefix   = "billing:v2:balance:"
+	billingSubKeyPrefix       = "billing:v2:sub:"
+	billingRateLimitKeyPrefix = "apikey:v2:rate:"
 	subCacheInvalidateChannel = "subscription:cache:invalidate"
 	billingCacheTTL           = 5 * time.Minute
 	billingCacheJitter        = 30 * time.Second
@@ -396,7 +400,7 @@ func (c *billingCache) InvalidateAPIKeyRateLimit(ctx context.Context, keyID int6
 
 // userPlatformQuotaCacheKey 构造 Redis key
 func userPlatformQuotaCacheKey(userID int64, platform string) string {
-	return fmt.Sprintf("billing:user_platform_quota:%d:%s", userID, platform)
+	return fmt.Sprintf("billing:v2:user_platform_quota:%d:%s", userID, platform)
 }
 
 // parseUserPlatformQuotaHash 将 Redis HGETALL 返回的 map[string]string 反序列化为
@@ -548,7 +552,7 @@ return 1
 
 // userPlatformQuotaDirtySetKey 返回脏集（dirty set）的 Redis key。
 // 使用与 userPlatformQuotaCacheKey 相同的前缀 "billing:"。
-func userPlatformQuotaDirtySetKey() string { return "billing:" + "upq:dirty" }
+func userPlatformQuotaDirtySetKey() string { return "billing:v2:upq:dirty" }
 
 // userPlatformQuotaDirtyTTLSeconds 脏集兜底 TTL（秒）：初始 SADD（Lua）与 Readd 共用，
 // 确保 flusher 长期停摆时脏集最终过期；正常运行因持续 SADD 不断续期。

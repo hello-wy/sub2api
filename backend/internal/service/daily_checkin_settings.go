@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	dailyCheckinRewardCents        = 100
-	dailyCheckinRewardMinimum      = 0.01
+	dailyCheckinRewardCents        = 1000 // three decimal places for the 1/10 credit scale
+	dailyCheckinRewardMinimum      = 0.001
 	dailyCheckinProbabilityScale   = 1_000_000
 	dailyCheckinProbabilityEpsilon = 0.0000001
 )
@@ -34,19 +34,19 @@ type DailyCheckinSettings struct {
 func defaultDailyCheckinSettings() DailyCheckinSettings {
 	return DailyCheckinSettings{
 		RewardMin: dailyCheckinRewardMinimum,
-		RewardMax: 3,
+		RewardMax: 0.3,
 		CycleDays: 30,
 		RewardRanges: []DailyCheckinRewardRange{
-			{Min: dailyCheckinRewardMinimum, Max: 1, Probability: 0.5},
-			{Min: 1, Max: 2, Probability: 0.4},
-			{Min: 2, Max: 2.5, Probability: 0.0999},
-			{Min: 2.5, Max: 3, Probability: 0.0001},
+			{Min: dailyCheckinRewardMinimum, Max: 0.1, Probability: 0.5},
+			{Min: 0.1, Max: 0.2, Probability: 0.4},
+			{Min: 0.2, Max: 0.25, Probability: 0.0999},
+			{Min: 0.25, Max: 0.3, Probability: 0.0001},
 		},
 		StreakRules: []DailyCheckinRule{
-			{Threshold: 3, Bonus: 3},
-			{Threshold: 7, Bonus: 6},
-			{Threshold: 14, Bonus: 12},
-			{Threshold: 30, Bonus: 24},
+			{Threshold: 3, Bonus: 0.3},
+			{Threshold: 7, Bonus: 0.6},
+			{Threshold: 14, Bonus: 1.2},
+			{Threshold: 30, Bonus: 2.4},
 		},
 	}
 }
@@ -131,7 +131,7 @@ func ParseDailyCheckinSettings(values map[string]string) (DailyCheckinSettings, 
 
 func ValidateDailyCheckinSettings(settings DailyCheckinSettings) error {
 	if !isFiniteNonNegative(settings.RewardMin) || settings.RewardMin < dailyCheckinRewardMinimum || !isFiniteNonNegative(settings.RewardMax) || settings.RewardMax < settings.RewardMin {
-		return fmt.Errorf("daily checkin reward range must be finite, at least $0.01, and have max >= min")
+		return fmt.Errorf("daily checkin reward range must be finite, at least $0.001, and have max >= min")
 	}
 	if len(settings.RewardRanges) == 0 {
 		return fmt.Errorf("daily checkin reward ranges must not be empty")
@@ -152,7 +152,7 @@ func validateDailyCheckinRewardRanges(settings DailyCheckinSettings) error {
 	total := 0.0
 	for _, rewardRange := range settings.RewardRanges {
 		if !isFiniteNonNegative(rewardRange.Min) || rewardRange.Min < dailyCheckinRewardMinimum || !isFiniteNonNegative(rewardRange.Max) || rewardRange.Max < rewardRange.Min {
-			return fmt.Errorf("daily checkin reward range bounds must be finite, at least $0.01, and have max >= min")
+			return fmt.Errorf("daily checkin reward range bounds must be finite, at least $0.001, and have max >= min")
 		}
 		if rewardRange.Min < settings.RewardMin || rewardRange.Max > settings.RewardMax {
 			return fmt.Errorf("daily checkin reward ranges must stay within the configured reward minimum and maximum")

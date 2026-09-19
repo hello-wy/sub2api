@@ -1191,7 +1191,9 @@ func TestGrokQuotaServiceQueryQuotaFree429PersistsLimitAndKeepsBilling(t *testin
 	}
 	svc := NewGrokQuotaService(repo, nil, NewGrokTokenProvider(repo, nil), upstream, nil)
 
+	startedAt := time.Now()
 	result, err := svc.QueryQuota(context.Background(), account.ID)
+	finishedAt := time.Now()
 	require.NoError(t, err)
 	require.Equal(t, http.StatusTooManyRequests, result.StatusCode)
 	require.NotNil(t, result.Billing)
@@ -1199,7 +1201,10 @@ func TestGrokQuotaServiceQueryQuotaFree429PersistsLimitAndKeepsBilling(t *testin
 	require.Equal(t, 45, *result.Snapshot.RetryAfterSeconds)
 	require.Equal(t, 1, repo.rateLimitedCalls)
 	require.Equal(t, account.ID, repo.lastRateLimitedID)
-	require.WithinDuration(t, time.Now().Add(45*time.Second), repo.lastRateLimitResetAt, time.Second)
+	// Persisted reset timestamps have second precision; bracket the request
+	// instead of assuming the assertion runs within one second of calculation.
+	require.False(t, repo.lastRateLimitResetAt.Before(startedAt.Truncate(time.Second).Add(45*time.Second)))
+	require.False(t, repo.lastRateLimitResetAt.After(finishedAt.Add(45*time.Second)))
 }
 
 func TestGrokQuotaServiceResetQuotaUnsupported(t *testing.T) {

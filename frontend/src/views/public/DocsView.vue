@@ -411,10 +411,10 @@ const referenceSections: Section[] = [
       { title: '填写基础参数', body: '按下方参数填入并保存：供应商名称随意输入；API Key 粘贴你的 key；API 请求地址填写 https://ai.router.team。' },
       { title: '开启余额 / 订阅额度显示（可选）', body: '在当前供应商卡片中打开“用量查询”开关，查询方式选择“自定义”，粘贴下方配置，保存后点击刷新。' }
     ],
-    codes: [{ id: 'cc-switch-basic-reference', label: '供应商基础参数', content: referenceCode('供应商名称: RouterTeam', 'API Key: sk-********（粘贴你的 key）', 'API 请求地址: https://ai.router.team') }, { id: 'cc-switch-balance-reference', label: '自定义用量查询配置', content: '({ request: { url: "https://ai.router.team/api/public/cc-switch/balance", method: "GET", headers: {"Authorization": "Bearer {{apiKey}}"} }, extractor: function(response) { return { remaining: response.balance, unit: "USD" }; } })' }],
+    codes: [{ id: 'cc-switch-basic-reference', label: '供应商基础参数', content: referenceCode('供应商名称: RouterTeam', 'API Key: sk-********（粘贴你的 key）', 'API 请求地址: https://ai.router.team') }, { id: 'cc-switch-balance-reference', label: '自定义用量查询配置', content: '({ request: { url: "https://ai.router.team/api/public/cc-switch/balance", method: "GET", headers: {"Authorization": "Bearer {{apiKey}}"} }, extractor: function(response) { return { remaining: response.balance, unit: "$" }; } })' }],
     media: [
       { src: ccSwitchUsageEntryImage, alt: 'CC Switch 供应商卡片中的用量查询入口', caption: '在供应商卡片右侧打开用量查询入口，再选择自定义查询。' },
-      { src: ccSwitchBalanceImage, alt: 'SolidAPI CC Switch 自定义余额查询配置', caption: '请求地址使用站点根地址，查询脚本返回 balance 与 USD 单位。' }
+      { src: ccSwitchBalanceImage, alt: 'SolidAPI CC Switch 自定义余额查询配置', caption: '请求地址使用站点根地址，查询脚本返回 balance 与 $ 单位。' }
     ],
     notes: ['订阅分组的 balance 是当前还能实际调用的每日剩余额度；按量分组显示当前账户余额。', 'resetAt / resetRule 对应每日额度恢复时间；未用完的每日额度会在下一次重置或套餐到期时作废。', '想分别查看不同分组的额度时，建议按分组单独创建 API Key。']
   },

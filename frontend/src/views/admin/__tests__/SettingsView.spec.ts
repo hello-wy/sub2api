@@ -255,9 +255,9 @@ vi.mock("vue-i18n", async () => {
     "admin.settings.site.uploadImage": "上传图片",
     "admin.settings.site.remove": "移除",
     "admin.settings.platformQuota.platform": "平台",
-    "admin.settings.platformQuota.daily": "日限额 (USD)",
-    "admin.settings.platformQuota.weekly": "周限额 (USD)",
-    "admin.settings.platformQuota.monthly": "月限额 (USD, 30天滚动)",
+    "admin.settings.platformQuota.daily": "日限额 ($)",
+    "admin.settings.platformQuota.weekly": "周限额 ($)",
+    "admin.settings.platformQuota.monthly": "月限额 ($, 30天滚动)",
     "admin.settings.platformQuota.placeholder": "不限",
     "admin.settings.defaults.defaultPlatformQuotas": "默认平台限额（注册时分配）",
     "admin.settings.defaults.defaultPlatformQuotasHint": "新用户注册时自动写入平台限额记录；已有用户不受影响。留空 = 该平台该窗口不限制。",
@@ -688,7 +688,7 @@ describe("admin SettingsView lottery cooldown", () => {
 
     expect(updateLotteryPrizePoolSettings).toHaveBeenCalledWith(expect.objectContaining({
       prizes: expect.arrayContaining([expect.objectContaining({ id: "quota-10", cooldown_seconds: 300 })]),
-      purchase_price: 30,
+      purchase_price: 3,
     }));
   });
 });

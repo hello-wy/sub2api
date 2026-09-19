@@ -351,11 +351,11 @@ func TestCalculateCreditedBalanceStillUsesRechargeMultiplier(t *testing.T) {
 	}
 }
 
-func TestNormalizeBalanceRechargeMultiplierDefaultsToTen(t *testing.T) {
+func TestNormalizeBalanceRechargeMultiplierDefaultsToOne(t *testing.T) {
 	t.Parallel()
 
-	if got := normalizeBalanceRechargeMultiplier(0); got != 10 {
-		t.Fatalf("default recharge multiplier = %v, want 10", got)
+	if got := normalizeBalanceRechargeMultiplier(0); got != 1 {
+		t.Fatalf("default recharge multiplier = %v, want 1", got)
 	}
 }
 

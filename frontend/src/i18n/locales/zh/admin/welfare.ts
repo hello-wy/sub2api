@@ -34,7 +34,7 @@ export default {
       revoke: '撤销发放',
       revokeButton: '撤销发放',
       revokeConfirmTitle: '确认撤销福利发放',
-      revokeConfirmMessage: '确定要撤销这笔 {amount} 美元的福利发放吗？撤销后将从用户余额中扣除该金额。',
+      revokeConfirmMessage: '确定要撤销这笔 ${amount} 的福利发放吗？撤销后将从用户余额中扣除该金额。',
       revokeSuccess: '福利发放已撤销'
     }
   }

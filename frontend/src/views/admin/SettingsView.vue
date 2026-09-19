@@ -7924,7 +7924,7 @@
                         form.payment_balance_recharge_multiplier =
                           parseFloat(
                             ($event.target as HTMLInputElement).value,
-                          ) || 10
+                          ) || 1
                       "
                       type="number"
                       step="0.01"
@@ -7945,7 +7945,7 @@
                         t("admin.settings.payment.balanceRechargePreview", {
                           usd: (
                             Number(form.payment_balance_recharge_multiplier) ||
-                            10
+                            1
                           ).toFixed(2),
                         })
                       }}
@@ -8431,11 +8431,11 @@
               <div class="grid max-w-xl gap-4 sm:grid-cols-3">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   {{ localText("签到金额最小值", "Minimum reward") }}
-                  <input v-model.number="form.daily_checkin_reward_min" type="number" min="0.01" step="0.01" class="input mt-2" />
+                  <input v-model.number="form.daily_checkin_reward_min" type="number" min="0.001" step="0.001" class="input mt-2" />
                 </label>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   {{ localText("签到金额最大值", "Maximum reward") }}
-                  <input v-model.number="form.daily_checkin_reward_max" type="number" :min="form.daily_checkin_reward_min" step="0.01" class="input mt-2" />
+                  <input v-model.number="form.daily_checkin_reward_max" type="number" :min="form.daily_checkin_reward_min" step="0.001" class="input mt-2" />
                 </label>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   {{ localText("奖励周期天数", "Reward cycle days") }}
@@ -8458,8 +8458,8 @@
                     </thead>
                     <tbody>
                       <tr v-for="(range, index) in dailyCheckinRewardRanges" :key="index" class="border-t border-gray-100 dark:border-dark-700">
-                        <td class="p-2"><input v-model.number="range.min" type="number" :min="form.daily_checkin_reward_min" :max="form.daily_checkin_reward_max" step="0.01" class="input" /></td>
-                        <td class="p-2"><input v-model.number="range.max" type="number" :min="range.min" :max="form.daily_checkin_reward_max" step="0.01" class="input" /></td>
+                        <td class="p-2"><input v-model.number="range.min" type="number" :min="form.daily_checkin_reward_min" :max="form.daily_checkin_reward_max" step="0.001" class="input" /></td>
+                        <td class="p-2"><input v-model.number="range.max" type="number" :min="range.min" :max="form.daily_checkin_reward_max" step="0.001" class="input" /></td>
                         <td class="p-2"><input v-model.number="range.probability" type="number" min="0" max="1" step="0.0001" class="input" /></td>
                         <td class="p-2"><button type="button" class="btn btn-ghost btn-sm text-red-600" :disabled="dailyCheckinRewardRanges.length === 1" @click="removeDailyCheckinRewardRange(index)">{{ localText("删除", "Remove") }}</button></td>
                       </tr>
@@ -8482,7 +8482,7 @@
                 <div class="overflow-x-auto rounded-lg border border-gray-100 dark:border-dark-700">
                   <table class="w-full min-w-[480px] text-sm">
                     <thead class="bg-gray-50 text-left text-gray-500 dark:bg-dark-800 dark:text-dark-400"><tr><th class="px-3 py-2">{{ localText("连续天数", "Streak days") }}</th><th class="px-3 py-2">{{ localText("额外奖励", "Bonus") }}</th><th class="px-3 py-2">{{ localText("操作", "Action") }}</th></tr></thead>
-                    <tbody><tr v-for="(rule, index) in dailyCheckinStreakRules" :key="index" class="border-t border-gray-100 dark:border-dark-700"><td class="p-2"><input v-model.number="rule.threshold" type="number" min="1" :max="form.daily_checkin_cycle_days" step="1" class="input" /></td><td class="p-2"><input v-model.number="rule.bonus" type="number" min="0" step="0.01" class="input" /></td><td class="p-2"><button type="button" class="btn btn-ghost btn-sm text-red-600" @click="removeDailyCheckinStreakRule(index)">{{ localText("删除", "Remove") }}</button></td></tr></tbody>
+                    <tbody><tr v-for="(rule, index) in dailyCheckinStreakRules" :key="index" class="border-t border-gray-100 dark:border-dark-700"><td class="p-2"><input v-model.number="rule.threshold" type="number" min="1" :max="form.daily_checkin_cycle_days" step="1" class="input" /></td><td class="p-2"><input v-model.number="rule.bonus" type="number" min="0" step="0.001" class="input" /></td><td class="p-2"><button type="button" class="btn btn-ghost btn-sm text-red-600" @click="removeDailyCheckinStreakRule(index)">{{ localText("删除", "Remove") }}</button></td></tr></tbody>
                   </table>
                 </div>
               </section>
@@ -8676,7 +8676,7 @@
                   <p class="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">{{ localText("每购买 1 次抽奖机会从用户可用额度扣除的金额。", "Amount deducted from a user's available balance for each ticket.") }}</p>
                 </div>
                 <div class="mt-4 max-w-sm">
-                  <label class="block"><span class="mb-1.5 block text-xs font-medium text-gray-700 dark:text-dark-200">{{ localText("购买价格", "Purchase price") }}</span><div class="relative"><span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span><input v-model.number="lotteryPrizePoolSettings.purchase_price" type="number" min="0.01" max="1000000" step="0.01" class="input pl-7 tabular-nums" /></div></label>
+                  <label class="block"><span class="mb-1.5 block text-xs font-medium text-gray-700 dark:text-dark-200">{{ localText("购买价格", "Purchase price") }}</span><div class="relative"><span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span><input v-model.number="lotteryPrizePoolSettings.purchase_price" type="number" min="0.001" max="1000000" step="0.001" class="input pl-7 tabular-nums" /></div></label>
                 </div>
               </section>
               <section class="rounded-lg border border-gray-100 bg-gray-50/60 p-4 dark:border-dark-700 dark:bg-dark-800/50">
@@ -8686,7 +8686,7 @@
                 </div>
                 <div class="mt-4 grid gap-4 sm:grid-cols-2">
                   <label class="block"><span class="mb-1.5 block text-xs font-medium text-gray-700 dark:text-dark-200">{{ localText("累计充值金额", "Cumulative recharge amount") }}</span><div class="relative"><span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">¥</span><input v-model.number="lotteryPrizePoolSettings.invitation_first_payment_amount" type="number" min="0.01" max="1000000" step="0.01" class="input pl-7 tabular-nums" /></div></label>
-                  <label class="block"><span class="mb-1.5 block text-xs font-medium text-gray-700 dark:text-dark-200">{{ localText("实际消费金额", "Actual usage amount") }}</span><div class="relative"><span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span><input v-model.number="lotteryPrizePoolSettings.invitation_consumption_amount" type="number" min="0.01" max="1000000" step="0.01" class="input pl-7 tabular-nums" /></div></label>
+                  <label class="block"><span class="mb-1.5 block text-xs font-medium text-gray-700 dark:text-dark-200">{{ localText("实际消费金额", "Actual usage amount") }}</span><div class="relative"><span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span><input v-model.number="lotteryPrizePoolSettings.invitation_consumption_amount" type="number" min="0.001" max="1000000" step="0.001" class="input pl-7 tabular-nums" /></div></label>
                 </div>
               </section>
               <div class="overflow-x-auto rounded-lg border border-gray-100 dark:border-dark-700">
@@ -9414,16 +9414,16 @@ function parseWelfareRatios(raw: unknown): number[] {
 }
 
 const defaultDailyCheckinRewardRanges: DailyCheckinRewardRangeSetting[] = [
-  { min: 0.01, max: 1, probability: 0.5 },
-  { min: 1, max: 2, probability: 0.4 },
-  { min: 2, max: 2.5, probability: 0.0999 },
-  { min: 2.5, max: 3, probability: 0.0001 },
+  { min: 0.001, max: 0.1, probability: 0.5 },
+  { min: 0.1, max: 0.2, probability: 0.4 },
+  { min: 0.2, max: 0.25, probability: 0.0999 },
+  { min: 0.25, max: 0.3, probability: 0.0001 },
 ];
 const defaultDailyCheckinStreakRules: DailyCheckinStreakRuleSetting[] = [
-  { threshold: 3, bonus: 3 },
-  { threshold: 7, bonus: 6 },
-  { threshold: 14, bonus: 12 },
-  { threshold: 30, bonus: 24 },
+  { threshold: 3, bonus: 0.3 },
+  { threshold: 7, bonus: 0.6 },
+  { threshold: 14, bonus: 1.2 },
+  { threshold: 30, bonus: 2.4 },
 ];
 
 function parseDailyCheckinSettings<T>(raw: unknown, defaults: T[]): T[] {
@@ -9439,7 +9439,7 @@ function parseDailyCheckinSettings<T>(raw: unknown, defaults: T[]): T[] {
 
 function normalizeDailyCheckinSettings(): void {
 	form.daily_checkin_cycle_days = Math.max(1, Math.floor(Number(form.daily_checkin_cycle_days) || 30));
-  form.daily_checkin_reward_min = Math.max(0.01, Number(form.daily_checkin_reward_min) || 0.01);
+  form.daily_checkin_reward_min = Math.max(0.001, Number(form.daily_checkin_reward_min) || 0.001);
   form.daily_checkin_reward_max = Math.max(
     form.daily_checkin_reward_min,
     Number(form.daily_checkin_reward_max) || form.daily_checkin_reward_min,
@@ -9668,8 +9668,8 @@ async function loadLotteryPrizePoolSettings(): Promise<void> {
     lotteryPrizePoolSettings.prizes = data.prizes.map(normalizeLotteryPrize);
     lotteryPrizePoolSettings.enabled = data.enabled !== false;
     lotteryPrizePoolSettings.invitation_first_payment_amount = Math.max(0.01, Number(data.invitation_first_payment_amount) || 20);
-    lotteryPrizePoolSettings.invitation_consumption_amount = Math.max(0.01, Number(data.invitation_consumption_amount) || 100);
-    lotteryPrizePoolSettings.purchase_price = Math.max(0.01, Math.min(1_000_000, Number(data.purchase_price) || 30));
+    lotteryPrizePoolSettings.invitation_consumption_amount = Math.max(0.001, Number(data.invitation_consumption_amount) || 10);
+    lotteryPrizePoolSettings.purchase_price = Math.max(0.001, Math.min(1_000_000, Number(data.purchase_price) || 3));
   } catch (error) {
     appStore.showError(extractApiErrorMessage(error, localText("加载抽奖设置失败", "Failed to load lottery settings")));
   } finally {
@@ -9689,8 +9689,8 @@ async function saveLotteryPrizePoolSettings(): Promise<void> {
     return;
   }
   const purchasePrice = Number(lotteryPrizePoolSettings.purchase_price);
-  if (!Number.isFinite(purchasePrice) || purchasePrice < 0.01 || purchasePrice > 1_000_000 || Math.abs(purchasePrice * 100 - Math.round(purchasePrice * 100)) > 1e-8) {
-    appStore.showError(localText("购买价格必须在 0.01 至 1000000 之间，且最多保留两位小数。", "Purchase price must be between 0.01 and 1000000 with at most two decimal places."));
+  if (!Number.isFinite(purchasePrice) || purchasePrice < 0.001 || purchasePrice > 1_000_000 || Math.abs(purchasePrice * 1000 - Math.round(purchasePrice * 1000)) > 1e-8) {
+    appStore.showError(localText("购买价格必须在 0.001 至 1000000 之间，且最多保留三位小数。", "Purchase price must be between 0.001 and 1000000 with at most three decimal places."));
     return;
   }
   lotterySettingsSaving.value = true;
@@ -9699,7 +9699,7 @@ async function saveLotteryPrizePoolSettings(): Promise<void> {
       enabled: lotteryPrizePoolSettings.enabled,
       prizes,
       invitation_first_payment_amount: Math.max(0.01, Number(lotteryPrizePoolSettings.invitation_first_payment_amount) || 0),
-      invitation_consumption_amount: Math.max(0.01, Number(lotteryPrizePoolSettings.invitation_consumption_amount) || 0),
+      invitation_consumption_amount: Math.max(0.001, Number(lotteryPrizePoolSettings.invitation_consumption_amount) || 0),
       purchase_price: purchasePrice,
     });
     lotteryPrizePoolSettings.prizes = data.prizes.map(normalizeLotteryPrize);
@@ -10378,8 +10378,8 @@ const form = reactive<SettingsForm>({
   welfare_leaderboard_reward_ratios: "[1.0, 0.5, 0.2]",
   loyalty_weekly_rules: serializeLoyaltyRules("weekly", loyaltyWeeklyRules.value),
   loyalty_permanent_rules: serializeLoyaltyRules("permanent", loyaltyPermanentRules.value),
-  daily_checkin_reward_min: 0.01,
-  daily_checkin_reward_max: 3,
+  daily_checkin_reward_min: 0.001,
+  daily_checkin_reward_max: 0.3,
   daily_checkin_reward_ranges: JSON.stringify(defaultDailyCheckinRewardRanges),
   daily_checkin_streak_rules: JSON.stringify(defaultDailyCheckinStreakRules),
   daily_checkin_cycle_days: 30,
@@ -10433,7 +10433,7 @@ const form = reactive<SettingsForm>({
   payment_max_pending_orders: 3,
   payment_order_timeout_minutes: 30,
   payment_balance_disabled: false,
-  payment_balance_recharge_multiplier: 10,
+  payment_balance_recharge_multiplier: 1,
   payment_subscription_usd_to_cny_rate: 0,
   payment_recharge_fee_rate: 0,
   payment_enabled_types: [],
@@ -12304,7 +12304,7 @@ async function saveSettings() {
         Number(form.payment_order_timeout_minutes) || 0,
       payment_balance_disabled: form.payment_balance_disabled,
       payment_balance_recharge_multiplier:
-        Number(form.payment_balance_recharge_multiplier) || 10,
+        Number(form.payment_balance_recharge_multiplier) || 1,
       payment_subscription_usd_to_cny_rate:
         Number(form.payment_subscription_usd_to_cny_rate) || 0,
       payment_recharge_fee_rate: Number(form.payment_recharge_fee_rate) || 0,
