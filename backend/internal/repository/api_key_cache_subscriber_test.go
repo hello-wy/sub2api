@@ -17,23 +17,26 @@ func TestAPIKeyCacheSubscriber_BlocksUntilContextCancellation(t *testing.T) {
 	defer func() { _ = client.Close() }()
 	cache := NewAPIKeyCache(client)
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	received := make(chan string, 1)
 	returned := make(chan error, 1)
 	go func() {
 		returned <- cache.SubscribeAuthCacheInvalidation(ctx, func(value string) { received <- value })
 	}()
 
-	var value string
+	// Wait for the subscription without publishing on every polling attempt:
+	// duplicate messages can fill received and block the callback during cancel.
 	require.Eventually(t, func() bool {
-		require.NoError(t, client.Publish(context.Background(), authCacheInvalidateChannel, "hash").Err())
-		select {
-		case value = <-received:
-			return true
-		default:
-			return false
-		}
+		counts, err := client.PubSubNumSub(ctx, authCacheInvalidateChannel).Result()
+		return err == nil && counts[authCacheInvalidateChannel] == 1
 	}, time.Second, 10*time.Millisecond)
-	require.Equal(t, "hash", value)
+	require.NoError(t, client.Publish(ctx, authCacheInvalidateChannel, "hash").Err())
+	select {
+	case value := <-received:
+		require.Equal(t, "hash", value)
+	case <-time.After(time.Second):
+		t.Fatal("subscriber did not receive invalidation")
+	}
 	select {
 	case err := <-returned:
 		t.Fatalf("subscriber returned while connection was active: %v", err)

@@ -41,8 +41,8 @@ const (
 	lotteryPrizeCooldownMaxSeconds         = 365 * 24 * 60 * 60
 	lotteryInternalBalancePaymentType      = "balance"
 	// Recharge ticket tiers are real CNY payment thresholds, not site credits.
-	lotteryRechargeRewardTierFirst         = 20
-	lotteryRechargeRewardTierSecond        = 100
+	lotteryRechargeRewardTierFirst  = 20
+	lotteryRechargeRewardTierSecond = 100
 )
 
 type LotteryStatus struct {
