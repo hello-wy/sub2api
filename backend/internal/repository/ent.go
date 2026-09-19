@@ -28,7 +28,7 @@ const (
 	// Large historical billing migrations can rewrite usage_logs. Keep the
 	// startup deadline long enough for the production-sized table while still
 	// bounding an unhealthy deployment attempt.
-	databaseMigrationTimeout = 30 * time.Minute
+	databaseMigrationTimeout = 2 * time.Hour
 )
 
 // initializeDatabaseWithRetry retries only errors that indicate PostgreSQL is
