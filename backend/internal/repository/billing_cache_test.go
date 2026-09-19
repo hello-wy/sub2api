@@ -19,22 +19,22 @@ func TestBillingBalanceKey(t *testing.T) {
 		{
 			name:     "normal_user_id",
 			userID:   123,
-			expected: "billing:balance:123",
+			expected: "billing:v2:balance:123",
 		},
 		{
 			name:     "zero_user_id",
 			userID:   0,
-			expected: "billing:balance:0",
+			expected: "billing:v2:balance:0",
 		},
 		{
 			name:     "negative_user_id",
 			userID:   -1,
-			expected: "billing:balance:-1",
+			expected: "billing:v2:balance:-1",
 		},
 		{
 			name:     "max_int64",
 			userID:   math.MaxInt64,
-			expected: "billing:balance:9223372036854775807",
+			expected: "billing:v2:balance:9223372036854775807",
 		},
 	}
 
@@ -57,25 +57,25 @@ func TestBillingSubKey(t *testing.T) {
 			name:     "normal_ids",
 			userID:   123,
 			groupID:  456,
-			expected: "billing:sub:123:456",
+			expected: "billing:v2:sub:123:456",
 		},
 		{
 			name:     "zero_ids",
 			userID:   0,
 			groupID:  0,
-			expected: "billing:sub:0:0",
+			expected: "billing:v2:sub:0:0",
 		},
 		{
 			name:     "negative_ids",
 			userID:   -1,
 			groupID:  -2,
-			expected: "billing:sub:-1:-2",
+			expected: "billing:v2:sub:-1:-2",
 		},
 		{
 			name:     "max_int64_ids",
 			userID:   math.MaxInt64,
 			groupID:  math.MaxInt64,
-			expected: "billing:sub:9223372036854775807:9223372036854775807",
+			expected: "billing:v2:sub:9223372036854775807:9223372036854775807",
 		},
 	}
 

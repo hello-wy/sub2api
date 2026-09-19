@@ -527,18 +527,18 @@ func TestComputeDailyCheckinBonusRewardsMilestoneDaysWithinCycle(t *testing.T) {
 		want       float64
 	}{
 		{name: "day 1 no bonus", streakDays: 1, want: 0},
-		{name: "day 3 bonus", streakDays: 3, want: 3},
+		{name: "day 3 bonus", streakDays: 3, want: 0.3},
 		{name: "day 4 no bonus", streakDays: 4, want: 0},
 		{name: "day 5 no bonus", streakDays: 5, want: 0},
-		{name: "day 7 bonus", streakDays: 7, want: 6},
+		{name: "day 7 bonus", streakDays: 7, want: 0.6},
 		{name: "day 8 no bonus", streakDays: 8, want: 0},
-		{name: "day 14 bonus", streakDays: 14, want: 12},
-		{name: "day 30 bonus", streakDays: 30, want: 24},
+		{name: "day 14 bonus", streakDays: 14, want: 1.2},
+		{name: "day 30 bonus", streakDays: 30, want: 2.4},
 		{name: "day 31 starts next cycle", streakDays: 31, want: 0},
-		{name: "day 33 repeats day 3 bonus", streakDays: 33, want: 3},
-		{name: "day 37 repeats day 7 bonus", streakDays: 37, want: 6},
-		{name: "day 44 repeats day 14 bonus", streakDays: 44, want: 12},
-		{name: "day 60 repeats day 30 bonus", streakDays: 60, want: 24},
+		{name: "day 33 repeats day 3 bonus", streakDays: 33, want: 0.3},
+		{name: "day 37 repeats day 7 bonus", streakDays: 37, want: 0.6},
+		{name: "day 44 repeats day 14 bonus", streakDays: 44, want: 1.2},
+		{name: "day 60 repeats day 30 bonus", streakDays: 60, want: 2.4},
 	}
 
 	for _, tt := range tests {
@@ -602,15 +602,42 @@ func TestGetDailyCheckinStatusKeepsTodaysPersistedStreak(t *testing.T) {
 	require.Equal(t, 12, status.Summary.RewardCycleDay)
 }
 
-func TestRandomDailyCheckinBaseRewardSupportsCents(t *testing.T) {
-	reward, err := randomDailyCheckinBaseRewardFromReader(bytes.NewReader([]byte{0, 0, 0, 23}), DailyCheckinSettings{
+func TestRandomDailyCheckinBaseRewardSupportsThreeDecimals(t *testing.T) {
+	// Three bytes select the probability bucket; two select one of 2001 amounts.
+	reward, err := randomDailyCheckinBaseRewardFromReader(bytes.NewReader([]byte{0, 0, 0, 0, 23}), DailyCheckinSettings{
 		RewardMin:    1,
 		RewardMax:    3,
 		RewardRanges: []DailyCheckinRewardRange{{Min: 1, Max: 3, Probability: 1}},
 	})
 
 	require.NoError(t, err)
-	require.Equal(t, 1.23, reward)
+	require.Equal(t, 1.023, reward)
+}
+
+func TestRandomDailyCheckinRewardMigratedRangePreservesScale(t *testing.T) {
+	settings := DailyCheckinSettings{
+		RewardMin: 0.1, RewardMax: 0.3,
+		RewardRanges: []DailyCheckinRewardRange{{Min: 0.1, Max: 0.3, Probability: 1}},
+	}
+	for _, tt := range []struct {
+		name string
+		draw byte
+		want float64
+	}{
+		{"minimum", 0, 0.1},
+		{"three decimal reward", 23, 0.123},
+		{"maximum", 200, 0.3},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			reward, err := randomDailyCheckinBaseRewardFromReader(bytes.NewReader([]byte{0, 0, 0, tt.draw}), settings)
+			require.NoError(t, err)
+			require.InDelta(t, tt.want, reward, 1e-12)
+		})
+	}
+	// The minimum supported credit reward must not be rounded down to zero.
+	reward, err := randomDailyCheckinRangeReward(bytes.NewReader(nil), DailyCheckinRewardRange{Min: 0.001, Max: 0.001, Probability: 1}, 0.001)
+	require.NoError(t, err)
+	require.Equal(t, 0.001, reward)
 }
 
 func TestParseDailyCheckinSettingsUsesConfiguredRangesAndRules(t *testing.T) {
@@ -622,7 +649,7 @@ func TestParseDailyCheckinSettingsUsesConfiguredRangesAndRules(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	require.Equal(t, 0.01, settings.RewardMin)
+	require.Equal(t, 0.001, settings.RewardMin)
 	require.Equal(t, 3.0, settings.RewardMax)
 	require.Len(t, settings.RewardRanges, 4)
 	require.Equal(t, 30, settings.CycleDays)
@@ -631,6 +658,7 @@ func TestParseDailyCheckinSettingsUsesConfiguredRangesAndRules(t *testing.T) {
 
 func TestParseDailyCheckinSettingsRejectsInvalidProbabilityTotal(t *testing.T) {
 	_, err := ParseDailyCheckinSettings(map[string]string{
+		SettingKeyDailyCheckinRewardMax:    "3",
 		SettingKeyDailyCheckinRewardRanges: `[{"min":0,"max":3,"probability":0.9}]`,
 	})
 

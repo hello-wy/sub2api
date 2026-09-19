@@ -50,7 +50,7 @@ export const paymentAPI = {
     return apiClient.post<CreateOrderResult>('/payment/orders', data)
   },
 
-  /** Purchase a subscription directly with the account's USD balance. */
+  /** Purchase a subscription directly with the account's $ balance. */
   purchaseSubscriptionWithBalance(planId: number, idempotencyKey: string) {
     return apiClient.post<BalanceSubscriptionPurchaseResult>(
       '/payment/subscriptions/balance',

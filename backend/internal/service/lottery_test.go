@@ -95,8 +95,8 @@ func TestDefaultLotteryPrizePoolProbabilitiesTotalOne(t *testing.T) {
 	if pool.Enabled == nil || !*pool.Enabled {
 		t.Fatal("default lottery pool must be enabled")
 	}
-	if pool.InvitationFirstPaymentAmount != 20 || pool.InvitationConsumptionAmount != 100 {
-		t.Fatalf("default invitation rule = (%v, %v), want (20, 100)", pool.InvitationFirstPaymentAmount, pool.InvitationConsumptionAmount)
+	if pool.InvitationFirstPaymentAmount != 20 || pool.InvitationConsumptionAmount != 10 {
+		t.Fatalf("default invitation rule = (%v, %v), want (20 CNY, 10 credits)", pool.InvitationFirstPaymentAmount, pool.InvitationConsumptionAmount)
 	}
 	if pool.PurchasePrice != defaultLotteryPurchasePrice {
 		t.Fatalf("default purchase price = %v, want %v", pool.PurchasePrice, defaultLotteryPurchasePrice)
@@ -118,12 +118,12 @@ func TestDefaultLotteryPrizePoolProbabilitiesTotalOne(t *testing.T) {
 }
 
 func TestValidateLotteryPurchasePrice(t *testing.T) {
-	for _, price := range []float64{0.01, 12.5, 30, 1_000_000} {
+	for _, price := range []float64{0.001, 12.5, 3, 1_000_000} {
 		if err := validateLotteryPurchasePrice(price); err != nil {
 			t.Fatalf("valid purchase price %v rejected: %v", price, err)
 		}
 	}
-	for _, price := range []float64{0, -1, math.NaN(), math.Inf(1), 1_000_000.01, 12.345} {
+	for _, price := range []float64{0, -1, math.NaN(), math.Inf(1), 1_000_000.01, 12.3456} {
 		if err := validateLotteryPurchasePrice(price); err == nil {
 			t.Fatalf("invalid purchase price %v accepted", price)
 		}
@@ -250,7 +250,7 @@ func TestValidateLotteryPrizePoolConfig(t *testing.T) {
 	}
 
 	invalidPurchasePrice := defaultLotteryPrizePoolConfig()
-	invalidPurchasePrice.PurchasePrice = 12.345
+	invalidPurchasePrice.PurchasePrice = 12.3456
 	if err := validateLotteryPrizePoolConfig(invalidPurchasePrice); err == nil {
 		t.Fatal("pool with invalid purchase price must be rejected")
 	}

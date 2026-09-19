@@ -45,7 +45,7 @@ func (Group) Fields() []ent.Field {
 			Nillable().
 			SchemaType(map[string]string{dialect.Postgres: "text"}),
 		field.Float("rate_multiplier").
-			SchemaType(map[string]string{dialect.Postgres: "decimal(10,4)"}).
+			SchemaType(map[string]string{dialect.Postgres: "decimal(11,5)"}).
 			Default(1.0),
 		// 高峰时段倍率（added by migration 158）
 		field.Bool("peak_rate_enabled").
@@ -117,7 +117,7 @@ func (Group) Fields() []ent.Field {
 			Default(false).
 			Comment("图片生成是否使用独立倍率；false 表示共享分组有效倍率"),
 		field.Float("image_rate_multiplier").
-			SchemaType(map[string]string{dialect.Postgres: "decimal(10,4)"}).
+			SchemaType(map[string]string{dialect.Postgres: "decimal(11,5)"}).
 			Default(1.0).
 			Comment("图片生成独立倍率，仅 image_rate_independent=true 时生效"),
 		field.Float("image_price_1k").
@@ -144,7 +144,7 @@ func (Group) Fields() []ent.Field {
 			Default(false).
 			Comment("视频生成是否使用独立倍率；false 表示共享分组有效倍率"),
 		field.Float("video_rate_multiplier").
-			SchemaType(map[string]string{dialect.Postgres: "decimal(10,4)"}).
+			SchemaType(map[string]string{dialect.Postgres: "decimal(11,5)"}).
 			Default(1.0).
 			Comment("视频生成独立倍率，仅 video_rate_independent=true 时生效"),
 		field.Float("video_price_480p").

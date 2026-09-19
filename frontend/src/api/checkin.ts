@@ -123,14 +123,14 @@ interface RawCheckinClaimResponse extends Partial<CheckinClaimResponse> {
 }
 
 const defaultRewardRules: CheckinRewardRule[] = [
-  { day_count: 3, extra_reward: 3 },
-  { day_count: 7, extra_reward: 6 },
-  { day_count: 14, extra_reward: 12 },
-  { day_count: 30, extra_reward: 24 },
+  { day_count: 3, extra_reward: 0.3 },
+  { day_count: 7, extra_reward: 0.6 },
+  { day_count: 14, extra_reward: 1.2 },
+  { day_count: 30, extra_reward: 2.4 },
 ]
 
-const defaultBaseRewardMin = 1
-const defaultBaseRewardMax = 3
+const defaultBaseRewardMin = 0.001
+const defaultBaseRewardMax = 0.3
 
 function readNumber(value: unknown): number | undefined {
   if (value === null || value === undefined || value === '') return undefined

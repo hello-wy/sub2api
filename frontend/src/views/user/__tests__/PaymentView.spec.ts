@@ -698,7 +698,7 @@ describe('PaymentView inline subscription checkout', () => {
       checkout: { balance_recharge_multiplier: 0 },
       plan: { price: 20 },
     })
-    expect(fallbackWrapper.findComponent({ name: 'SubscriptionPlanCard' }).props('balancePrice')).toBe(200)
+    expect(fallbackWrapper.findComponent({ name: 'SubscriptionPlanCard' }).props('balancePrice')).toBe(20)
   })
 
   it('syncs the effective weekly loyalty discount into subscription recharge prices', async () => {

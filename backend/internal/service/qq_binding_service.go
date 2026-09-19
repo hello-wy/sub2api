@@ -19,7 +19,7 @@ import (
 
 const (
 	qqAttributeKey              = "qq"
-	qqBindingWelcomeBonus       = 10.0
+	qqBindingWelcomeBonus       = 1.0
 	qqBindingWelcomeSourceType  = "qq_bind_welcome_bonus"
 	qqBindingWelcomeDescription = "QQ 绑定新人礼金"
 )

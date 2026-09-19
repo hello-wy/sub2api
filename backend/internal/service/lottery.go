@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	defaultLotteryPurchasePrice = 30.0
+	defaultLotteryPurchasePrice = 3.0
 	lotteryPurchaseDailyLimit   = 5
 	lotteryFreeTicketValidity   = 30 * 24 * time.Hour
 	// Lottery probabilities are stored as decimals with at most six decimal
@@ -40,6 +40,7 @@ const (
 	lotteryTicketSourceRefMaxLength        = 128
 	lotteryPrizeCooldownMaxSeconds         = 365 * 24 * 60 * 60
 	lotteryInternalBalancePaymentType      = "balance"
+	// Recharge ticket tiers are real CNY payment thresholds, not site credits.
 	lotteryRechargeRewardTierFirst         = 20
 	lotteryRechargeRewardTierSecond        = 100
 )
@@ -177,17 +178,19 @@ func NewLotteryService(entClient *dbent.Client, billingCache *BillingCacheServic
 
 func defaultLotteryPrizePoolConfig() LotteryPrizePoolConfig {
 	return LotteryPrizePoolConfig{
-		Enabled:                      lotteryEnabledPointer(true),
+		Enabled: lotteryEnabledPointer(true),
+		// This threshold is a real CNY payment amount, so it is not part of
+		// the site-credit unit conversion.
 		InvitationFirstPaymentAmount: 20,
-		InvitationConsumptionAmount:  100,
+		InvitationConsumptionAmount:  10,
 		PurchasePrice:                defaultLotteryPurchasePrice,
 		BalanceRechargeMultiplier:    defaultBalanceRechargeMultiplier,
 		Prizes: []LotteryPrizeConfig{
 			{ID: "none", Label: "谢谢参与", Type: "none", Probability: 0.529},
-			{ID: "quota-10", Label: "$10", Type: "balance", Amount: 10, Probability: 0.31, EligibleForPity: true},
-			{ID: "quota-30", Label: "$30", Type: "balance", Amount: 30, Probability: 0.11, EligibleForPity: true},
-			{ID: "quota-100", Label: "$100", Type: "balance", Amount: 100, Probability: 0.05, EligibleForPity: true},
-			{ID: "quota-1000", Label: "$1000", Type: "balance", Amount: 1000, Probability: 0.001},
+			{ID: "quota-10", Label: "$1", Type: "balance", Amount: 1, Probability: 0.31, EligibleForPity: true},
+			{ID: "quota-30", Label: "$3", Type: "balance", Amount: 3, Probability: 0.11, EligibleForPity: true},
+			{ID: "quota-100", Label: "$10", Type: "balance", Amount: 10, Probability: 0.05, EligibleForPity: true},
+			{ID: "quota-1000", Label: "$100", Type: "balance", Amount: 100, Probability: 0.001},
 		}}
 }
 
@@ -626,8 +629,8 @@ func (s *LotteryService) getLotteryInvitationRule(ctx context.Context) (lotteryI
 }
 
 func validateLotteryPurchasePrice(price float64) error {
-	if math.IsNaN(price) || math.IsInf(price, 0) || price <= 0 || price > 1_000_000 || math.Abs(price*100-math.Round(price*100)) > 1e-8 {
-		return infraerrors.BadRequest("LOTTERY_PURCHASE_PRICE_INVALID", "lottery purchase price must be between 0 and 1000000 with at most two decimal places")
+	if math.IsNaN(price) || math.IsInf(price, 0) || price <= 0 || price > 1_000_000 || math.Abs(price*1000-math.Round(price*1000)) > 1e-8 {
+		return infraerrors.BadRequest("LOTTERY_PURCHASE_PRICE_INVALID", "lottery purchase price must be between 0 and 1000000 with at most three decimal places")
 	}
 	return nil
 }

@@ -51,7 +51,7 @@
           <div class="lottery-hero-copy">
             <p class="lottery-hero-kicker">幸运福利活动</p>
             <h2>把幸运留给今天</h2>
-            <p class="lottery-hero-description">最高可得 $1000 与订阅兑换券</p>
+            <p class="lottery-hero-description">最高可得 $100 与订阅兑换券</p>
 
             <div class="lottery-stat-grid">
               <div class="lottery-hero-stat"><span>剩余抽奖次数</span><strong>{{ freeTickets }}<small>次</small></strong></div>
@@ -242,9 +242,9 @@ const showPurchaseDialog = ref(false)
 const showInviteRequirement = ref(false)
 const inviteRequirementElement = ref<HTMLElement | null>(null)
 const invitationFirstPaymentAmount = ref(20)
-const invitationConsumptionAmount = ref(100)
-const purchasePrice = ref(30)
-const balanceRechargeMultiplier = ref(10)
+const invitationConsumptionAmount = ref(10)
+const purchasePrice = ref(3)
+const balanceRechargeMultiplier = ref(1)
 const lastResult = ref<DisplayResult | null>(null)
 const history = ref<DrawHistoryItem[]>([])
 const recentWinners = ref<LotteryRecentWinner[]>([])
@@ -379,8 +379,8 @@ function formatBroadcastTime(value: string): string {
 
 function formatBroadcastValue(winner: LotteryRecentWinner): string {
   const amount = Number(winner.amount)
-  const value = Number.isFinite(amount) ? amount / balanceRechargeMultiplier.value : 0
-  return `¥${value.toLocaleString('zh-CN', { maximumFractionDigits: 2 })}`
+  const value = Number.isFinite(amount) ? amount : 0
+  return `$${value.toLocaleString('zh-CN', { maximumFractionDigits: 3 })}`
 }
 
 function formatBroadcastProbability(winner: LotteryRecentWinner): string {
@@ -521,8 +521,8 @@ async function refreshLottery(): Promise<void> {
   setRecentWinners(recentWinnersResponse.data)
   prizePool.value = mapPrizeConfig(prizeResponse.data.prizes)
   invitationFirstPaymentAmount.value = Number(prizeResponse.data.invitation_first_payment_amount) || 20
-  invitationConsumptionAmount.value = Number(prizeResponse.data.invitation_consumption_amount) || 100
-  purchasePrice.value = Number(prizeResponse.data.purchase_price) || 30
+  invitationConsumptionAmount.value = Number(prizeResponse.data.invitation_consumption_amount) || 10
+  purchasePrice.value = Number(prizeResponse.data.purchase_price) || 3
   balanceRechargeMultiplier.value = normalizeBalanceRechargeMultiplier(prizeResponse.data.balance_recharge_multiplier)
 }
 
@@ -530,14 +530,14 @@ async function refreshPrizePool(): Promise<void> {
   const response = await lotteryAPI.getPrizePool()
   prizePool.value = mapPrizeConfig(response.data.prizes)
   invitationFirstPaymentAmount.value = Number(response.data.invitation_first_payment_amount) || 20
-  invitationConsumptionAmount.value = Number(response.data.invitation_consumption_amount) || 100
-  purchasePrice.value = Number(response.data.purchase_price) || 30
+  invitationConsumptionAmount.value = Number(response.data.invitation_consumption_amount) || 10
+  purchasePrice.value = Number(response.data.purchase_price) || 3
   balanceRechargeMultiplier.value = normalizeBalanceRechargeMultiplier(response.data.balance_recharge_multiplier)
 }
 
 function normalizeBalanceRechargeMultiplier(value: unknown): number {
   const multiplier = Number(value)
-  return Number.isFinite(multiplier) && multiplier > 0 ? multiplier : 10
+  return Number.isFinite(multiplier) && multiplier > 0 ? multiplier : 1
 }
 
 async function refreshLotteryStatus(): Promise<void> {

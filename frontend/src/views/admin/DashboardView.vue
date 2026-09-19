@@ -29,7 +29,7 @@
           >
             <span>今日 Token 消耗</span>
             <strong>{{ formatTokens(stats.today_tokens) }}</strong>
-            <small class="cost-breakdown" aria-label="今日费用（美元）">
+            <small class="cost-breakdown" aria-label="今日费用（积分）">
               <span class="cost-breakdown__actual">实际 ${{ formatCost(stats.today_actual_cost) }}</span>
               <span class="cost-breakdown__account">成本 ${{ formatCost(stats.today_account_cost) }}</span>
               <span class="cost-breakdown__standard">标准 ${{ formatCost(stats.today_cost) }}</span>

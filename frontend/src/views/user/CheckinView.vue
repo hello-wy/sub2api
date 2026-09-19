@@ -318,10 +318,10 @@ const rewardRules = computed<CheckinRewardRule[]>(() => {
   const rules = status.value?.reward_rules?.length
     ? status.value.reward_rules
     : [
-        { day_count: 3, extra_reward: 3 },
-        { day_count: 7, extra_reward: 6 },
-        { day_count: 14, extra_reward: 12 },
-        { day_count: 30, extra_reward: 24 },
+        { day_count: 3, extra_reward: 0.3 },
+        { day_count: 7, extra_reward: 0.6 },
+        { day_count: 14, extra_reward: 1.2 },
+        { day_count: 30, extra_reward: 2.4 },
       ]
   return [...rules].sort((a, b) => a.day_count - b.day_count)
 })
@@ -455,7 +455,7 @@ function formatDateText(date?: string): string {
 }
 
 function formatDollar(value: number): string {
-  return `$${Number(value || 0).toFixed(2)}`
+  return `$${Number(value || 0).toFixed(3)}`
 }
 
 function formatRewardRange(min: number, max: number): string {
@@ -467,7 +467,7 @@ function formatRewardRange(min: number, max: number): string {
 
 function formatAmountCompact(value: number): string {
   const n = Number(value || 0)
-  return Number.isInteger(n) ? String(n) : n.toFixed(2)
+  return Number.isInteger(n) ? String(n) : n.toFixed(3)
 }
 
 function formatCalendarDay(date: string): string {

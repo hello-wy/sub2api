@@ -119,6 +119,10 @@ func ApplyMigrations(ctx context.Context, db *sql.DB) error {
 	return applyMigrationsFS(ctx, db, migrations.FS)
 }
 
+// transactionMigrationHook runs only for a pending transactional migration,
+// under the migration lock and inside the same transaction as its SQL/version.
+type transactionMigrationHook func(context.Context, *sql.Tx, string) error
+
 // applyMigrationsFS 是迁移执行的核心实现。
 // 它从指定的文件系统读取 SQL 迁移文件并按顺序应用。
 //
@@ -137,7 +141,7 @@ func ApplyMigrations(ctx context.Context, db *sql.DB) error {
 //   - ctx: 上下文
 //   - db: 数据库连接
 //   - fsys: 包含迁移文件的文件系统（通常是 embed.FS）
-func applyMigrationsFS(ctx context.Context, db *sql.DB, fsys fs.FS) error {
+func applyMigrationsFS(ctx context.Context, db *sql.DB, fsys fs.FS, beforeSQL ...transactionMigrationHook) error {
 	if db == nil {
 		return errors.New("nil sql db")
 	}
@@ -262,7 +266,13 @@ func applyMigrationsFS(ctx context.Context, db *sql.DB, fsys fs.FS) error {
 			return fmt.Errorf("begin migration %s: %w", name, err)
 		}
 
-		// 执行迁移 SQL
+		// 数据准备、迁移 SQL 和版本记录共用同一事务。
+		for _, hook := range beforeSQL {
+			if err := hook(ctx, tx, name); err != nil {
+				_ = tx.Rollback()
+				return fmt.Errorf("prepare migration %s: %w", name, err)
+			}
+		}
 		if _, err := tx.ExecContext(ctx, content); err != nil {
 			_ = tx.Rollback()
 			return fmt.Errorf("apply migration %s: %w", name, err)
