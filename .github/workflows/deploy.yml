@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -17,7 +18,7 @@ jobs:
           password: ${{ secrets.SERVER_PASSWORD }}
           script: |
             cd /root/sub2api/deploy
-            git pull
+            git pull --ff-only origin main
             STATE_KIT_PUBLISHERS='{"state-kit-release-v1":"MGeztZt8xeQAikuzJG9+fdADZmioulH5Ls2Baom1ATA="}'
             if grep -q '^PLUGINS_TRUSTED_PUBLISHERS_JSON=' .env; then
               sed -i "s|^PLUGINS_TRUSTED_PUBLISHERS_JSON=.*|PLUGINS_TRUSTED_PUBLISHERS_JSON=${STATE_KIT_PUBLISHERS}|" .env
