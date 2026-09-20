@@ -9,6 +9,28 @@ vi.mock('vue-i18n', () => ({
 }))
 
 describe('RechargePackageSelector', () => {
+  it('offers the scaled-down fixed recharge packages and submits their payment amounts', async () => {
+    const wrapper = mount(RechargePackageSelector, {
+      props: {
+        modelValue: null,
+        multiplier: 1,
+        formatAmount: (value: number) => `¥${value.toFixed(2)}`,
+      },
+    })
+
+    const credits = [5, 10, 20, 50, 100]
+    const packages = wrapper.findAll('button')
+    expect(packages).toHaveLength(credits.length)
+
+    for (const [index, credit] of credits.entries()) {
+      expect(packages[index].text()).toContain(`$${credit}`)
+      expect(packages[index].text()).toContain(`¥${credit.toFixed(2)}`)
+      await packages[index].trigger('click')
+    }
+
+    expect(wrapper.emitted('update:modelValue')).toEqual(credits.map((credit) => [credit]))
+  })
+
   it('converts a fixed credited balance into the payment amount', async () => {
     const wrapper = mount(RechargePackageSelector, {
       props: {
