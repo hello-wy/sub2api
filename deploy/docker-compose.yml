@@ -115,6 +115,11 @@ services:
       - TOTP_ENCRYPTION_KEY=${TOTP_ENCRYPTION_KEY:-}
 
       # =======================================================================
+      # Plugin Publisher Trust
+      # =======================================================================
+      - PLUGINS_TRUSTED_PUBLISHERS_JSON=${PLUGINS_TRUSTED_PUBLISHERS_JSON:-}
+
+      # =======================================================================
       # Timezone Configuration
       # This affects ALL time operations in the application:
       # - Database timestamps

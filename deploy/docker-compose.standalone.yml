@@ -87,6 +87,11 @@ services:
       - SETUP_MIGRATION_TIMEOUT_SECONDS=${SETUP_MIGRATION_TIMEOUT_SECONDS:-0}
 
       # =======================================================================
+      # Plugin Publisher Trust
+      # =======================================================================
+      - PLUGINS_TRUSTED_PUBLISHERS_JSON=${PLUGINS_TRUSTED_PUBLISHERS_JSON:-}
+
+      # =======================================================================
       # Timezone Configuration
       # =======================================================================
       - TZ=${TZ:-Asia/Shanghai}

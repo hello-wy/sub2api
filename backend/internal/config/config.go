@@ -1819,6 +1819,9 @@ func load(allowMissingJWTSecret bool) (*Config, error) {
 	if err := viper.Unmarshal(&cfg); err != nil {
 		return nil, fmt.Errorf("unmarshal config error: %w", err)
 	}
+	if err := applyPluginTrustedPublishersEnv(&cfg.Plugins); err != nil {
+		return nil, fmt.Errorf("load plugin trusted publishers: %w", err)
+	}
 	if trustedProxiesEnvConfigured {
 		cfg.Server.TrustedProxies = normalizeStringSlice(strings.Split(trustedProxiesEnv, ","))
 	}

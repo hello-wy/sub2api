@@ -18,4 +18,11 @@ jobs:
           script: |
             cd /root/sub2api/deploy
             git pull
+            STATE_KIT_PUBLISHERS='{"state-kit-release-v1":"MGeztZt8xeQAikuzJG9+fdADZmioulH5Ls2Baom1ATA="}'
+            if grep -q '^PLUGINS_TRUSTED_PUBLISHERS_JSON=' .env; then
+              sed -i "s|^PLUGINS_TRUSTED_PUBLISHERS_JSON=.*|PLUGINS_TRUSTED_PUBLISHERS_JSON=${STATE_KIT_PUBLISHERS}|" .env
+            else
+              printf '\nPLUGINS_TRUSTED_PUBLISHERS_JSON=%s\n' "$STATE_KIT_PUBLISHERS" >> .env
+            fi
+            docker compose config --quiet
             docker compose up -d --build
