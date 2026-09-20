@@ -229,7 +229,7 @@ export default {
     channelStatus: '渠道状态',
     riskControl: '风控中心',
     securityAudit: '安全审计',
-    contentModeration: '内容审核',
+    contentModeration: '内容审计',
     promptAudit: '提示词审计',
     leaderboard: '排行榜',
     welfareRecords: '福利发放记录',

@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const post = vi.hoisted(() => vi.fn())
+const { get, post } = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn() }))
 
-vi.mock('@/api/client', () => ({ apiClient: { post } }))
+vi.mock('@/api/client', () => ({ apiClient: { get, post } }))
 
-import { redeem } from '@/api/redeem'
+import { getHistory, redeem } from '@/api/redeem'
 
 describe('redeem API subscription overwrite confirmation', () => {
   beforeEach(() => {
@@ -39,4 +39,19 @@ describe('redeem API subscription overwrite confirmation', () => {
       expected_subscription_expires_at: undefined,
     })
   })
+})
+
+describe('redemption history pagination', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it.each([[undefined, undefined, 1, 20], [3, 50, 3, 50], [2, 100, 2, 100]])(
+    'sends page %s and size %s to the server', async (page, size, expectedPage, expectedSize) => {
+      const response = { items: [], total: 105, page: expectedPage, page_size: expectedSize, pages: 6 }
+      get.mockResolvedValue({ data: response })
+      expect(await getHistory(page, size)).toEqual(response)
+      expect(get).toHaveBeenCalledWith('/redeem/history', {
+        params: { page: expectedPage, page_size: expectedSize }
+      })
+    }
+  )
 })

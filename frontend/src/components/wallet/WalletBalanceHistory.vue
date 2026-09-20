@@ -90,10 +90,11 @@ async function refresh() {
   loading.value = true
   try {
     const limit = props.compact ? 200 : 25
-    const [redeemHistory, lotteryHistoryResponse] = await Promise.all([
-      redeemAPI.getHistory(limit),
+    const [redeemHistoryResponse, lotteryHistoryResponse] = await Promise.all([
+      redeemAPI.getHistory(1, limit),
       lotteryAPI.listBalanceTransactions(limit),
     ])
+    const redeemHistory = redeemHistoryResponse.items
     const lotteryHistory = lotteryHistoryResponse.data
     history.value = [
       ...redeemHistory,

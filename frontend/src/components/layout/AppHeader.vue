@@ -57,6 +57,8 @@
         <router-link
           v-if="user && modelPlazaEnabled"
           :to="{ path: '/model-plaza', query: { embedded: '1' } }"
+          :title="t('nav.modelPlaza')"
+          :aria-label="t('nav.modelPlaza')"
           class="header-tool-button header-tool-optional"
         >
           <Icon name="grid" size="md" />

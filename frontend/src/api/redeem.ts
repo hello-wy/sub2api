@@ -4,7 +4,7 @@
  */
 
 import { apiClient } from './client'
-import type { RedeemCodeRequest } from '@/types'
+import type { PaginatedResponse, RedeemCodeRequest } from '@/types'
 
 export interface RedeemHistoryItem {
   id: number
@@ -64,11 +64,11 @@ export async function redeem(code: string, confirmation?: SubscriptionOverwriteC
 
 /**
  * Get user's redemption history
- * @returns List of redeemed codes
+ * @returns The requested page of redeemed codes and the total count
  */
-export async function getHistory(limit = 25): Promise<RedeemHistoryItem[]> {
-  const { data } = await apiClient.get<RedeemHistoryItem[]>('/redeem/history', {
-    params: { limit },
+export async function getHistory(page = 1, pageSize = 20): Promise<PaginatedResponse<RedeemHistoryItem>> {
+  const { data } = await apiClient.get<PaginatedResponse<RedeemHistoryItem>>('/redeem/history', {
+    params: { page, page_size: pageSize }
   })
   return data
 }
