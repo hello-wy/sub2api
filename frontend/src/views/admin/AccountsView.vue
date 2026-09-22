@@ -291,6 +291,9 @@
               <AccountStatusIndicator :account="row" @show-temp-unsched="handleShowTempUnsched" />
             </div>
           </template>
+          <template #cell-risk_control_status="{ row }">
+            <OpenAIRiskControlStatus :account="row" />
+          </template>
           <template #cell-schedulable="{ row }">
             <button @click="handleToggleSchedulable(row)" :disabled="togglingSchedulable === row.id" class="relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:focus:ring-offset-dark-800" :class="[row.schedulable ? 'bg-primary-500 hover:bg-primary-600' : 'bg-gray-200 hover:bg-gray-300 dark:bg-dark-600 dark:hover:bg-dark-500']" :title="row.schedulable ? t('admin.accounts.schedulableEnabled') : t('admin.accounts.schedulableDisabled')">
               <span class="pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out" :class="[row.schedulable ? 'translate-x-4' : 'translate-x-0']" />
@@ -504,7 +507,7 @@
     <AccountTestModal :show="showTest" :account="testingAcc" @close="closeTestModal" />
     <AccountStatsModal :show="showStats" :account="statsAcc" @close="closeStatsModal" />
     <ScheduledTestsPanel :show="showSchedulePanel" :account-id="scheduleAcc?.id ?? null" :model-options="scheduleModelOptions" @close="closeSchedulePanel" />
-    <AccountActionMenu :show="menu.show" :account="menu.acc" :anchor-rect="menu.anchorRect" @close="menu.show = false" @test="handleTest" @stats="handleViewStats" @schedule="handleSchedule" @duplicate="handleDuplicateAccount" @reauth="handleReAuth" @refresh-token="handleRefresh" @recover-state="handleRecoverState" @reset-quota="handleResetQuota" @set-privacy="handleSetPrivacy" @create-spark-shadow="handleCreateSparkShadow" />
+    <AccountActionMenu :show="menu.show" :account="menu.acc" :anchor-rect="menu.anchorRect" @close="menu.show = false" @test="handleTest" @stats="handleViewStats" @schedule="handleSchedule" @duplicate="handleDuplicateAccount" @reauth="handleReAuth" @refresh-token="handleRefresh" @recover-state="handleRecoverState" @reset-quota="handleResetQuota" @set-privacy="handleSetPrivacy" @create-spark-shadow="handleCreateSparkShadow" @risk-control-check="handleRiskControlCheck" />
     <SyncFromCrsModal :show="showSync" @close="showSync = false" @synced="reload" />
     <ImportDataModal :show="showImportData" @close="showImportData = false" @imported="handleDataImported" />
     <BulkEditAccountModal
@@ -563,6 +566,7 @@ import AccountStatsModal from '@/components/admin/account/AccountStatsModal.vue'
 import ScheduledTestsPanel from '@/components/admin/account/ScheduledTestsPanel.vue'
 import type { SelectOption } from '@/components/common/Select.vue'
 import AccountStatusIndicator from '@/components/account/AccountStatusIndicator.vue'
+import OpenAIRiskControlStatus from '@/components/account/OpenAIRiskControlStatus.vue'
 import AccountUsageCell from '@/components/account/AccountUsageCell.vue'
 import AccountTodayStatsCell from '@/components/account/AccountTodayStatsCell.vue'
 import AccountGroupsCell from '@/components/account/AccountGroupsCell.vue'
@@ -1839,6 +1843,7 @@ const allColumns = computed(() => {
     { key: 'platform_type', label: t('admin.accounts.columns.platformType'), sortable: false },
     { key: 'capacity', label: t('admin.accounts.columns.capacity'), sortable: false },
     { key: 'status', label: t('admin.accounts.columns.status'), sortable: true },
+    { key: 'risk_control_status', label: t('admin.accounts.columns.riskControlStatus'), sortable: false },
     { key: 'schedulable', label: t('admin.accounts.columns.schedulable'), sortable: true },
     { key: 'today_stats', label: t('admin.accounts.columns.todayStats'), sortable: false }
   ]
@@ -2465,6 +2470,31 @@ const handleRecoverState = async (a: Account) => {
   } catch (error: any) {
     console.error('Failed to recover account state:', error)
     appStore.showError(error?.message || t('admin.accounts.recoverStateFailed'))
+  }
+}
+const riskControlCheckingIDs = new Set<number>()
+const handleRiskControlCheck = async (a: Account) => {
+  if (riskControlCheckingIDs.has(a.id)) return
+  riskControlCheckingIDs.add(a.id)
+  try {
+    const { account, result } = await adminAPI.accounts.checkOpenAIRiskControl(a.id)
+    patchAccountInList(account)
+    enterAutoRefreshSilentWindow()
+    const params = { length: result.state_length ?? '-', status: result.http_status }
+    if (result.status === 'suspected') {
+      appStore.showWarning(t('admin.accounts.riskControl.suspectedResult', params))
+    } else if (result.status === 'normal') {
+      appStore.showSuccess(t('admin.accounts.riskControl.normalResult', params))
+    } else if (result.status === 'missing') {
+      appStore.showWarning(t('admin.accounts.riskControl.missingResult', params))
+    } else {
+      appStore.showWarning(t('admin.accounts.riskControl.abnormalResult', params))
+    }
+  } catch (error: any) {
+    console.error('Failed to check OpenAI risk control state:', error)
+    appStore.showError(error?.response?.data?.message || error?.message || t('admin.accounts.riskControl.checkFailed'))
+  } finally {
+    riskControlCheckingIDs.delete(a.id)
   }
 }
 const handleResetQuota = async (a: Account) => {

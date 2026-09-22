@@ -128,6 +128,16 @@
             }}</span>
           </template>
 
+          <template #cell-tag="{ value }">
+            <span
+              v-if="value"
+              class="inline-flex max-w-40 truncate rounded bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-dark-700 dark:text-gray-300"
+            >
+              {{ value }}
+            </span>
+            <span v-else class="text-gray-400">-</span>
+          </template>
+
           <template #cell-id="{ value }">
             <span class="font-mono text-xs text-gray-500 dark:text-gray-400"
               >#{{ value }}</span
@@ -503,6 +513,21 @@
             :placeholder="t('admin.groups.enterGroupName')"
             data-tour="group-form-name"
           />
+        </div>
+        <div>
+          <label class="input-label">{{ t("admin.groups.form.tag") }}</label>
+          <input
+            v-model="createForm.tag"
+            type="text"
+            maxlength="50"
+            class="input"
+            :placeholder="t('admin.groups.form.tagPlaceholder')"
+            list="create-group-tag-suggestions"
+          />
+          <datalist id="create-group-tag-suggestions">
+            <option v-for="tag in existingGroupTags" :key="tag" :value="tag" />
+          </datalist>
+          <p class="input-hint">{{ t("admin.groups.form.tagHint") }}</p>
         </div>
         <div>
           <label class="input-label">{{
@@ -2324,6 +2349,21 @@
             class="input"
             data-tour="edit-group-form-name"
           />
+        </div>
+        <div>
+          <label class="input-label">{{ t("admin.groups.form.tag") }}</label>
+          <input
+            v-model="editForm.tag"
+            type="text"
+            maxlength="50"
+            class="input"
+            :placeholder="t('admin.groups.form.tagPlaceholder')"
+            list="edit-group-tag-suggestions"
+          />
+          <datalist id="edit-group-tag-suggestions">
+            <option v-for="tag in existingGroupTags" :key="tag" :value="tag" />
+          </datalist>
+          <p class="input-hint">{{ t("admin.groups.form.tagHint") }}</p>
         </div>
         <div>
           <label class="input-label">{{
@@ -4822,6 +4862,7 @@ const VERSION_NEW_HIDDEN_COLUMNS: Record<number, string[]> = {
 
 const allColumns = computed<Column[]>(() => [
   { key: "name", label: t("admin.groups.columns.name"), sortable: true },
+  { key: "tag", label: t("admin.groups.columns.tag"), sortable: false },
   { key: "id", label: t("admin.groups.columns.id"), sortable: true },
   {
     key: "platform",
@@ -5155,6 +5196,11 @@ const copyAccountsGroupOptionsForEdit = computed(() => {
 });
 
 const groups = ref<AdminGroup[]>([]);
+const existingGroupTags = computed(() =>
+  [...new Set(groups.value.map((group) => group.tag?.trim()).filter(Boolean) as string[])].sort(
+    (a, b) => a.localeCompare(b),
+  ),
+);
 const loading = ref(false);
 type GroupUsageSummary = {
   today_cost: number;
@@ -5289,6 +5335,7 @@ const editModelsListSelectedCount = computed(
 
 const createForm = reactive({
   name: "",
+  tag: "",
   description: "",
   platform: "anthropic" as GroupPlatform,
   rate_multiplier: 1.0,
@@ -5654,6 +5701,7 @@ const convertApiFormatToRoutingRules = async (
 
 const editForm = reactive({
   name: "",
+  tag: "",
   description: "",
   platform: "anthropic" as GroupPlatform,
   rate_multiplier: 1.0,
@@ -6122,6 +6170,7 @@ const closeCreateModal = () => {
   });
   clearAllAccountSearchState();
   createForm.name = "";
+  createForm.tag = "";
   createForm.description = "";
   createForm.platform = "anthropic";
   createForm.rate_multiplier = 1.0;
@@ -6251,6 +6300,7 @@ const handleCreateGroup = async () => {
     // 构建请求数据，包含模型路由配置
     const requestData = {
       ...createGroupForm,
+      tag: createForm.tag.trim(),
       force_openai_fast: normalizeGroupOpenAIFast(
         createForm.platform,
         createForm.force_openai_fast,
@@ -6386,6 +6436,7 @@ const handleCreateGroup = async () => {
 const handleEdit = async (group: AdminGroup) => {
   editingGroup.value = group;
   editForm.name = group.name;
+  editForm.tag = group.tag || "";
   editForm.description = group.description || "";
   editForm.platform = group.platform;
   editForm.rate_multiplier = group.rate_multiplier;
@@ -6514,6 +6565,7 @@ const closeEditModal = () => {
   clearAllAccountSearchState();
   showEditModal.value = false;
   editingGroup.value = null;
+  editForm.tag = "";
   editForm.max_reasoning_effort = "";
   editForm.max_reasoning_effort_over_limit = reasoningEffortOverLimitDowngrade;
   editForm.reasoning_effort_mappings = [];
@@ -6582,6 +6634,7 @@ const handleUpdateGroup = async () => {
     // 转换 fallback_group_id: null -> 0 (后端使用 0 表示清除)
     const payload = {
       ...editForm,
+      tag: editForm.tag.trim(),
       force_openai_fast: normalizeGroupOpenAIFast(
         editForm.platform,
         editForm.force_openai_fast,
@@ -6713,6 +6766,7 @@ const handleUpdateGroup = async () => {
     const requestData = authStore.isSimpleMode
       ? {
           name: editForm.name,
+          tag: editForm.tag.trim(),
           description: editForm.description,
         }
       : payload;

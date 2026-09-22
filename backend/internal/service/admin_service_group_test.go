@@ -7,6 +7,7 @@ import (
 	"errors"
 	"math"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
@@ -228,7 +229,7 @@ func TestAdminServiceSimpleModeNormalizesAllUnsupportedCreateFieldsDirectly(t *t
 	one := 1.0
 	fallbackID := int64(44)
 	input := &CreateGroupInput{
-		Name: "simple", Description: "allowed", Platform: PlatformAnthropic,
+		Name: "simple", Tag: " production ", Description: "allowed", Platform: PlatformAnthropic,
 		RateMultiplier: 9, IsExclusive: true, SubscriptionType: SubscriptionTypeSubscription,
 		DailyLimitUSD: &one, LongContextPricingEnabled: true,
 		ModelPricing:    []ChannelModelPricing{{Models: []string{"claude"}}},
@@ -248,11 +249,12 @@ func TestAdminServiceSimpleModeNormalizesAllUnsupportedCreateFieldsDirectly(t *t
 	require.NoError(t, err)
 	require.Same(t, repo.created, created)
 	require.Equal(t, CreateGroupInput{
-		Name: "simple", Description: "allowed", Platform: PlatformAnthropic,
+		Name: "simple", Tag: " production ", Description: "allowed", Platform: PlatformAnthropic,
 		RateMultiplier: 1, SubscriptionType: SubscriptionTypeStandard,
 	}, *input)
 	require.Equal(t, 1.0, created.RateMultiplier)
 	require.Equal(t, SubscriptionTypeStandard, created.SubscriptionType)
+	require.Equal(t, "production", created.Tag)
 	require.False(t, created.IsExclusive)
 	require.Nil(t, created.FallbackGroupID)
 	require.Empty(t, created.ModelPricing)
@@ -267,7 +269,7 @@ func TestAdminServiceSimpleModeNormalizesAllUnsupportedUpdateFieldsDirectly(t *t
 	fallbackID := int64(44)
 	pricing := []ChannelModelPricing{{Models: []string{"claude"}}}
 	input := &UpdateGroupInput{
-		Name: "renamed", Description: &description, Platform: PlatformOpenAI, Status: status,
+		Name: "renamed", Tag: ptrString(" backup "), Description: &description, Platform: PlatformOpenAI, Status: status,
 		RateMultiplier: &one, IsExclusive: &truth, SubscriptionType: SubscriptionTypeSubscription,
 		DailyLimitUSD: &one, LongContextPricingEnabled: &truth, ModelPricing: &pricing,
 		PeakRateEnabled: &truth, PeakRateMultiplier: &one, ImageRateIndependent: &truth,
@@ -285,8 +287,9 @@ func TestAdminServiceSimpleModeNormalizesAllUnsupportedUpdateFieldsDirectly(t *t
 
 	updated, err := svc.UpdateGroup(context.Background(), 1, input)
 	require.NoError(t, err)
-	require.Equal(t, UpdateGroupInput{Name: "renamed", Description: &description}, *input)
+	require.Equal(t, UpdateGroupInput{Name: "renamed", Tag: ptrString(" backup "), Description: &description}, *input)
 	require.Equal(t, "renamed", updated.Name)
+	require.Equal(t, "backup", updated.Tag)
 	require.Equal(t, description, updated.Description)
 	require.Equal(t, PlatformAnthropic, updated.Platform)
 	require.Equal(t, StatusActive, updated.Status)
@@ -527,6 +530,46 @@ func TestAdminService_CreateGroup_WithImagePricing(t *testing.T) {
 	require.InDelta(t, 0.10, *repo.created.ImagePrice1K, 0.0001)
 	require.InDelta(t, 0.15, *repo.created.ImagePrice2K, 0.0001)
 	require.InDelta(t, 0.30, *repo.created.ImagePrice4K, 0.0001)
+}
+
+func TestAdminService_GroupTagValidation(t *testing.T) {
+	t.Run("create trims tag", func(t *testing.T) {
+		repo := &groupRepoStubForAdmin{}
+		svc := &adminServiceImpl{groupRepo: repo}
+
+		group, err := svc.CreateGroup(context.Background(), &CreateGroupInput{
+			Name: "tagged", Tag: "  production  ", Platform: PlatformAnthropic, RateMultiplier: 1,
+		})
+
+		require.NoError(t, err)
+		require.Equal(t, "production", group.Tag)
+		require.Equal(t, "production", repo.created.Tag)
+	})
+
+	t.Run("update can clear tag", func(t *testing.T) {
+		existing := &Group{ID: 1, Name: "tagged", Tag: "production", Platform: PlatformAnthropic, Status: StatusActive}
+		repo := &groupRepoStubForAdmin{getByID: existing}
+		svc := &adminServiceImpl{groupRepo: repo}
+		empty := "   "
+
+		group, err := svc.UpdateGroup(context.Background(), existing.ID, &UpdateGroupInput{Tag: &empty})
+
+		require.NoError(t, err)
+		require.Empty(t, group.Tag)
+		require.Empty(t, repo.updated.Tag)
+	})
+
+	t.Run("rejects tags longer than 50 characters", func(t *testing.T) {
+		repo := &groupRepoStubForAdmin{}
+		svc := &adminServiceImpl{groupRepo: repo}
+
+		_, err := svc.CreateGroup(context.Background(), &CreateGroupInput{
+			Name: "tagged", Tag: strings.Repeat("分", 51), Platform: PlatformAnthropic, RateMultiplier: 1,
+		})
+
+		require.EqualError(t, err, "group tag must be at most 50 characters")
+		require.Nil(t, repo.created)
+	})
 }
 
 func TestAdminService_CreateGroup_WithVideoPricing(t *testing.T) {

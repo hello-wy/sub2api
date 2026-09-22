@@ -99,6 +99,7 @@ func createGroupRecord(ctx context.Context, client *dbent.Client, groupIn *servi
 	}
 	builder := client.Group.Create().
 		SetName(groupIn.Name).
+		SetTag(groupIn.Tag).
 		SetDescription(groupIn.Description).
 		SetPlatform(groupIn.Platform).
 		SetRateMultiplier(groupIn.RateMultiplier).
@@ -305,6 +306,7 @@ func (r *groupRepository) updateGroupRecord(ctx context.Context, client *dbent.C
 	}
 	builder := client.Group.UpdateOneID(groupIn.ID).
 		SetName(groupIn.Name).
+		SetTag(groupIn.Tag).
 		SetDescription(groupIn.Description).
 		SetPlatform(groupIn.Platform).
 		SetRateMultiplier(groupIn.RateMultiplier).
@@ -587,6 +589,7 @@ func (r *groupRepository) listWithFiltersQuery(ctx context.Context, q *dbent.Gro
 	if search != "" {
 		q = q.Where(group.Or(
 			group.NameContainsFold(search),
+			group.TagContainsFold(search),
 			group.DescriptionContainsFold(search),
 		))
 	}

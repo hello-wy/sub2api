@@ -40,6 +40,10 @@ func (Group) Fields() []ent.Field {
 		field.String("name").
 			MaxLen(100).
 			NotEmpty(),
+		field.String("tag").
+			MaxLen(50).
+			Default("").
+			Comment("管理端分组标签，用于批量选择分组"),
 		field.String("description").
 			Optional().
 			Nillable().

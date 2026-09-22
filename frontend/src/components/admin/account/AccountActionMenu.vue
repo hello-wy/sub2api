@@ -42,6 +42,10 @@
               <Icon name="sparkles" size="sm" />
               {{ t('admin.accounts.createSparkShadow') }}
             </button>
+            <button v-if="isOpenAIOAuthParent" @click="$emit('risk-control-check', account); $emit('close')" class="flex w-full items-center gap-2 px-4 py-2 text-sm text-amber-700 hover:bg-gray-100 dark:text-amber-400 dark:hover:bg-dark-700">
+              <Icon name="exclamationTriangle" size="sm" />
+              {{ t('admin.accounts.riskControl.checkAction') }}
+            </button>
             <button v-if="supportsPrivacy" @click="$emit('set-privacy', account); $emit('close')" class="flex w-full items-center gap-2 px-4 py-2 text-sm text-emerald-600 hover:bg-gray-100 dark:hover:bg-dark-700">
               <Icon name="shield" size="sm" />
               {{ t('admin.accounts.setPrivacy') }}
@@ -70,7 +74,7 @@ import { Icon } from '@/components/icons'
 import type { Account } from '@/types'
 
 const props = defineProps<{ show: boolean; account: Account | null; anchorRect: DOMRect | null }>()
-const emit = defineEmits(['close', 'test', 'stats', 'schedule', 'duplicate', 'reauth', 'refresh-token', 'recover-state', 'reset-quota', 'set-privacy', 'create-spark-shadow'])
+const emit = defineEmits(['close', 'test', 'stats', 'schedule', 'duplicate', 'reauth', 'refresh-token', 'recover-state', 'reset-quota', 'set-privacy', 'create-spark-shadow', 'risk-control-check'])
 const { t } = useI18n()
 const menuRef = ref<HTMLElement | null>(null)
 const { width: viewportWidth, height: viewportHeight } = useWindowSize()
