@@ -14,6 +14,7 @@ FRONTEND_CRITICAL_VITEST := \
 	src/components/account/__tests__/EditAccountModal.spec.ts \
 	src/components/admin/account/__tests__/AccountTestModal.spec.ts \
 	src/components/admin/account/__tests__/AccountTestModal.codexDiagnostics.spec.ts \
+	src/components/admin/user/__tests__/UserPlatformQuotaModal.spec.ts \
 	src/views/user/__tests__/KeysView.spec.ts \
 	src/api/__tests__/channelMonitorV2.spec.ts \
 	src/views/auth/__tests__/LinuxDoCallbackView.spec.ts \

@@ -20,14 +20,14 @@
       <!-- Number Input -->
       <input
         v-else-if="attr.type === 'number'"
-        v-model.number="localValues[attr.id]"
+        :value="localValues[attr.id]"
         type="number"
         :required="attr.required"
         :placeholder="attr.placeholder"
         :min="attr.validation?.min"
         :max="attr.validation?.max"
         class="input"
-        @input="emitChange"
+        @input="localValues[attr.id] = ($event.target as HTMLInputElement).value; emitChange()"
       />
 
       <!-- Date Input -->
@@ -113,6 +113,7 @@ const loading = ref(false)
 const attributes = ref<UserAttributeDefinition[]>([])
 const localValues = ref<UserAttributeValuesMap>({})
 const editableAttributes = computed(() => attributes.value.filter((attr) => !attr.read_only))
+let requestVersion = 0
 
 const loadAttributes = async () => {
   loading.value = true
@@ -127,9 +128,11 @@ const loadAttributes = async () => {
 
 const loadUserValues = async () => {
   if (!props.userId) return
+  const version = ++requestVersion
 
   try {
     const values = await adminAPI.userAttributes.getUserAttributeValues(props.userId)
+    if (version !== requestVersion) return
     const valuesMap: UserAttributeValuesMap = {}
     values.forEach(v => {
       valuesMap[v.attribute_id] = v.value
@@ -187,12 +190,11 @@ watch(() => props.modelValue, (newVal) => {
   }
 }, { immediate: true })
 
-watch(() => props.userId, (newUserId) => {
+watch(() => props.userId, (newUserId, _, onCleanup) => {
+  onCleanup(() => { requestVersion++ })
+  localValues.value = {}
   if (newUserId) {
     loadUserValues()
-  } else {
-    // Reset for new user
-    localValues.value = {}
   }
 }, { immediate: true })
 

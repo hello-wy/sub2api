@@ -71,7 +71,7 @@ export function resolveCcSwitchImportConfig(
     case 'antigravity':
       return {
         app: clientType === 'gemini' ? 'gemini' : clientType === 'codex' ? 'codex' : 'claude',
-        endpoint: `${baseUrl}/antigravity`,
+        endpoint: `${baseUrl.replace(/\/+$/, '')}/antigravity`,
         model: clientType === 'codex' ? OPENAI_CC_SWITCH_CODEX_MODEL : undefined
       }
     case 'openai':
@@ -84,7 +84,7 @@ export function resolveCcSwitchImportConfig(
       }
       return {
         app: 'codex',
-        endpoint: baseUrl,
+        endpoint: withV1Endpoint(baseUrl),
         model: OPENAI_CC_SWITCH_CODEX_MODEL
       }
     case 'gemini':
