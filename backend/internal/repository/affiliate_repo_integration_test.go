@@ -820,10 +820,12 @@ func TestAffiliateRepository_ListAffiliateRebateRecords_IncludesNonOrderAccruals
 	inviter := mustCreateAffiliateWithdrawUser(t, client, "inviter")
 	invitee := mustCreateAffiliateWithdrawUser(t, client, "invitee")
 	mustSeedAffiliateQuota(t, txCtx, client, inviter.ID, 0, 0, 0)
-
-	applied, err := repo.AccrueQuota(txCtx, inviter.ID, invitee.ID, 2, 0, nil)
+	_, err := repo.EnsureUserAffiliate(txCtx, invitee.ID)
 	require.NoError(t, err)
-	require.True(t, applied)
+
+	applied, err := repo.AccrueQuota(txCtx, inviter.ID, invitee.ID, 2, 0, 0, nil)
+	require.NoError(t, err)
+	require.InDelta(t, 2.0, applied, 1e-9)
 
 	records, total, err := repo.ListAffiliateRebateRecords(txCtx, service.AffiliateRecordFilter{
 		Search:   invitee.Email,
