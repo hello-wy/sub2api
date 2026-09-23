@@ -1670,6 +1670,7 @@ export default {
       testModel: '测试模型',
       testPrompt: '提示词："hi"',
       pelicanTest: {
+        dashboardHint: '按账号展示最近一次自动或手动结果，点击卡片可放大查看动画。',
         scheduledPreview: '定时测试预览',
         sourceManual: '手动',
         sourceScheduled: '定时',

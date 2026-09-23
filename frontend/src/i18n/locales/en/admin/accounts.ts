@@ -1583,6 +1583,7 @@ export default {
       testModel: 'Test model',
       testPrompt: 'Prompt: "hi"',
       pelicanTest: {
+        dashboardHint: 'Recent automatic and manual results by account. Open a card to view the animation.',
         scheduledPreview: 'Scheduled preview',
         sourceManual: 'Manual',
         sourceScheduled: 'Scheduled',
