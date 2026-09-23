@@ -78,6 +78,20 @@ func (_c *GroupCreate) SetName(v string) *GroupCreate {
 	return _c
 }
 
+// SetTag sets the "tag" field.
+func (_c *GroupCreate) SetTag(v string) *GroupCreate {
+	_c.mutation.SetTag(v)
+	return _c
+}
+
+// SetNillableTag sets the "tag" field if the given value is not nil.
+func (_c *GroupCreate) SetNillableTag(v *string) *GroupCreate {
+	if v != nil {
+		_c.SetTag(*v)
+	}
+	return _c
+}
+
 // SetDescription sets the "description" field.
 func (_c *GroupCreate) SetDescription(v string) *GroupCreate {
 	_c.mutation.SetDescription(v)
@@ -1075,6 +1089,10 @@ func (_c *GroupCreate) defaults() error {
 		v := group.DefaultUpdatedAt()
 		_c.mutation.SetUpdatedAt(v)
 	}
+	if _, ok := _c.mutation.Tag(); !ok {
+		v := group.DefaultTag
+		_c.mutation.SetTag(v)
+	}
 	if _, ok := _c.mutation.RateMultiplier(); !ok {
 		v := group.DefaultRateMultiplier
 		_c.mutation.SetRateMultiplier(v)
@@ -1260,6 +1278,14 @@ func (_c *GroupCreate) check() error {
 	if v, ok := _c.mutation.Name(); ok {
 		if err := group.NameValidator(v); err != nil {
 			return &ValidationError{Name: "name", err: fmt.Errorf(`ent: validator failed for field "Group.name": %w`, err)}
+		}
+	}
+	if _, ok := _c.mutation.Tag(); !ok {
+		return &ValidationError{Name: "tag", err: errors.New(`ent: missing required field "Group.tag"`)}
+	}
+	if v, ok := _c.mutation.Tag(); ok {
+		if err := group.TagValidator(v); err != nil {
+			return &ValidationError{Name: "tag", err: fmt.Errorf(`ent: validator failed for field "Group.tag": %w`, err)}
 		}
 	}
 	if _, ok := _c.mutation.RateMultiplier(); !ok {
@@ -1500,6 +1526,10 @@ func (_c *GroupCreate) createSpec() (*Group, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Name(); ok {
 		_spec.SetField(group.FieldName, field.TypeString, value)
 		_node.Name = value
+	}
+	if value, ok := _c.mutation.Tag(); ok {
+		_spec.SetField(group.FieldTag, field.TypeString, value)
+		_node.Tag = value
 	}
 	if value, ok := _c.mutation.Description(); ok {
 		_spec.SetField(group.FieldDescription, field.TypeString, value)
@@ -1952,6 +1982,18 @@ func (u *GroupUpsert) SetName(v string) *GroupUpsert {
 // UpdateName sets the "name" field to the value that was provided on create.
 func (u *GroupUpsert) UpdateName() *GroupUpsert {
 	u.SetExcluded(group.FieldName)
+	return u
+}
+
+// SetTag sets the "tag" field.
+func (u *GroupUpsert) SetTag(v string) *GroupUpsert {
+	u.Set(group.FieldTag, v)
+	return u
+}
+
+// UpdateTag sets the "tag" field to the value that was provided on create.
+func (u *GroupUpsert) UpdateTag() *GroupUpsert {
+	u.SetExcluded(group.FieldTag)
 	return u
 }
 
@@ -3099,6 +3141,20 @@ func (u *GroupUpsertOne) SetName(v string) *GroupUpsertOne {
 func (u *GroupUpsertOne) UpdateName() *GroupUpsertOne {
 	return u.Update(func(s *GroupUpsert) {
 		s.UpdateName()
+	})
+}
+
+// SetTag sets the "tag" field.
+func (u *GroupUpsertOne) SetTag(v string) *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetTag(v)
+	})
+}
+
+// UpdateTag sets the "tag" field to the value that was provided on create.
+func (u *GroupUpsertOne) UpdateTag() *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateTag()
 	})
 }
 
@@ -4587,6 +4643,20 @@ func (u *GroupUpsertBulk) SetName(v string) *GroupUpsertBulk {
 func (u *GroupUpsertBulk) UpdateName() *GroupUpsertBulk {
 	return u.Update(func(s *GroupUpsert) {
 		s.UpdateName()
+	})
+}
+
+// SetTag sets the "tag" field.
+func (u *GroupUpsertBulk) SetTag(v string) *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetTag(v)
+	})
+}
+
+// UpdateTag sets the "tag" field to the value that was provided on create.
+func (u *GroupUpsertBulk) UpdateTag() *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateTag()
 	})
 }
 

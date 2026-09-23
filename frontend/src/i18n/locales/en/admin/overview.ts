@@ -830,6 +830,7 @@ export default {
       public: 'Public',
       columns: {
         name: 'Name',
+        tag: 'Tag',
         id: 'ID',
         platform: 'Platform',
         rateMultiplier: 'Rate Multiplier',
@@ -872,6 +873,9 @@ export default {
       },
       form: {
         name: 'Name',
+        tag: 'Tag',
+        tagPlaceholder: 'For example: Production, Backup, EU nodes',
+        tagHint: 'Groups with the same tag can be selected together in account settings',
         description: 'Description',
         platform: 'Platform',
         rateMultiplier: 'Rate Multiplier',

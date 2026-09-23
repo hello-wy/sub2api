@@ -823,6 +823,7 @@ export default {
         "确定要删除订阅分组 '{name}' 吗？此操作会让所有绑定此订阅的用户的 API Key 失效，并删除所有相关的订阅记录。此操作无法撤销。",
       columns: {
         name: '名称',
+        tag: '标签',
         id: 'ID',
         platform: '平台',
         rateMultiplier: '费率倍数',
@@ -854,6 +855,9 @@ export default {
       accountsUnit: '个账号',
       form: {
         name: '名称',
+        tag: '标签',
+        tagPlaceholder: '例如：生产、备用、欧洲节点',
+        tagHint: '相同标签的分组可在账号设置中一键批量选择',
         description: '描述',
         platform: '平台',
         rateMultiplier: '费率倍数',

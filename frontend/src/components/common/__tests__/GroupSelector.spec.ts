@@ -20,6 +20,13 @@ const mountSelector = (modelValue: number[] = []) => mount(GroupSelector, {
   global: { stubs: { GroupBadge: { props: ['name'], template: '<span>{{ name }}</span>' }, Icon: true } }
 })
 
+const taggedGroups = [
+  { id: 1, name: 'OpenAI A', tag: 'production', platform: 'openai', status: 'active' },
+  { id: 2, name: 'OpenAI B', tag: 'production', platform: 'openai', status: 'active' },
+  { id: 3, name: 'Claude', tag: 'production', platform: 'anthropic', status: 'active' },
+  { id: 4, name: 'OpenAI Backup', tag: 'backup', platform: 'openai', status: 'active' }
+] as any
+
 describe('GroupSelector simple-mode binding policy', () => {
   beforeEach(() => { authState.isSimpleMode = false })
 
@@ -39,5 +46,50 @@ describe('GroupSelector simple-mode binding policy', () => {
     authState.isSimpleMode = true
     const wrapper = mountSelector([1, 2])
     expect(wrapper.emitted('update:modelValue')).toEqual([[[1]]])
+  })
+})
+
+describe('GroupSelector tag selection', () => {
+  beforeEach(() => { authState.isSimpleMode = false })
+
+  it('selects and then clears all eligible groups with the same tag', async () => {
+    const wrapper = mount(GroupSelector, {
+      props: { modelValue: [4], groups: taggedGroups, platform: 'openai' },
+      global: { stubs: { GroupBadge: true, Icon: true } }
+    })
+    const button = wrapper.get('[data-group-tag="production"]')
+
+    await button.trigger('click')
+    expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([[4, 1, 2]])
+
+    await wrapper.setProps({ modelValue: [4, 1, 2] })
+    await button.trigger('click')
+    expect(wrapper.emitted('update:modelValue')?.[1]).toEqual([[4]])
+  })
+
+  it('does not select platform-incompatible groups that share the tag', async () => {
+    const wrapper = mount(GroupSelector, {
+      props: { modelValue: [], groups: taggedGroups, platform: 'openai' },
+      global: { stubs: { GroupBadge: true, Icon: true } }
+    })
+
+    await wrapper.get('[data-group-tag="production"]').trigger('click')
+    expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([[1, 2]])
+  })
+
+  it('matches groups by tag when searching', async () => {
+    const wrapper = mount(GroupSelector, {
+      props: { modelValue: [], groups: taggedGroups, platform: 'openai', searchable: true },
+      global: {
+        stubs: {
+          GroupBadge: { props: ['name'], template: '<span>{{ name }}</span>' },
+          Icon: true
+        }
+      }
+    })
+
+    await wrapper.get('input[type="text"]').setValue('backup')
+    expect(wrapper.text()).toContain('OpenAI Backup')
+    expect(wrapper.text()).not.toContain('OpenAI A')
   })
 })

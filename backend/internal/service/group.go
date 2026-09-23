@@ -18,6 +18,7 @@ type ReasoningEffortMapping = domain.ReasoningEffortMapping
 type Group struct {
 	ID             int64
 	Name           string
+	Tag            string
 	Description    string
 	Platform       string
 	RateMultiplier float64

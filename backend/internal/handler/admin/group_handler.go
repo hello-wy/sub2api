@@ -142,6 +142,7 @@ func (h *GroupHandler) rejectUnsupportedSimpleModeOperation(c *gin.Context, oper
 type simpleModeGroupResponse struct {
 	ID          int64  `json:"id"`
 	Name        string `json:"name"`
+	Tag         string `json:"tag"`
 	Description string `json:"description"`
 	Platform    string `json:"platform"`
 	Status      string `json:"status"`
@@ -159,7 +160,7 @@ func groupForSimpleMode(group *service.Group) *simpleModeGroupResponse {
 		return nil
 	}
 	return &simpleModeGroupResponse{
-		ID: group.ID, Name: group.Name, Description: group.Description, Platform: group.Platform,
+		ID: group.ID, Name: group.Name, Tag: group.Tag, Description: group.Description, Platform: group.Platform,
 		Status:             group.Status,
 		AccountCount:       group.AccountCount,
 		ActiveAccountCount: group.ActiveAccountCount, RateLimitedAccountCount: group.RateLimitedAccountCount,
@@ -171,7 +172,7 @@ func sanitizeCreateGroupRequestForSimpleMode(req *CreateGroupRequest) {
 	if req == nil {
 		return
 	}
-	allowed := CreateGroupRequest{Name: req.Name, Description: req.Description, Platform: req.Platform}
+	allowed := CreateGroupRequest{Name: req.Name, Tag: req.Tag, Description: req.Description, Platform: req.Platform}
 	allowed.RateMultiplier = 1
 	allowed.SubscriptionType = service.SubscriptionTypeStandard
 	*req = allowed
@@ -181,12 +182,13 @@ func sanitizeUpdateGroupRequestForSimpleMode(req *UpdateGroupRequest) {
 	if req == nil {
 		return
 	}
-	*req = UpdateGroupRequest{Name: req.Name, Description: req.Description}
+	*req = UpdateGroupRequest{Name: req.Name, Tag: req.Tag, Description: req.Description}
 }
 
 // CreateGroupRequest represents create group request
 type CreateGroupRequest struct {
 	Name                       string                        `json:"name" binding:"required"`
+	Tag                        string                        `json:"tag"`
 	Description                string                        `json:"description"`
 	Platform                   string                        `json:"platform" binding:"omitempty,oneof=anthropic openai gemini antigravity grok kimi zhipu deepseek minimax opencode_go composite"`
 	RateMultiplier             float64                       `json:"rate_multiplier"`
@@ -263,6 +265,7 @@ type CreateGroupRequest struct {
 // UpdateGroupRequest represents update group request
 type UpdateGroupRequest struct {
 	Name                       string                         `json:"name"`
+	Tag                        *string                        `json:"tag"`
 	Description                *string                        `json:"description"`
 	Platform                   string                         `json:"platform" binding:"omitempty,oneof=anthropic openai gemini antigravity grok kimi zhipu deepseek minimax opencode_go composite"`
 	RateMultiplier             *float64                       `json:"rate_multiplier"`
@@ -671,6 +674,7 @@ func (h *GroupHandler) Create(c *gin.Context) {
 
 	group, err := h.adminService.CreateGroup(c.Request.Context(), &service.CreateGroupInput{
 		Name:                            req.Name,
+		Tag:                             req.Tag,
 		Description:                     req.Description,
 		Platform:                        req.Platform,
 		RateMultiplier:                  req.RateMultiplier,
@@ -818,6 +822,7 @@ func (h *GroupHandler) Update(c *gin.Context) {
 
 	group, err := h.adminService.UpdateGroup(c.Request.Context(), groupID, &service.UpdateGroupInput{
 		Name:                            req.Name,
+		Tag:                             req.Tag,
 		Description:                     req.Description,
 		Platform:                        req.Platform,
 		RateMultiplier:                  req.RateMultiplier,

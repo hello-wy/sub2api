@@ -74,6 +74,8 @@ export default {
     searchPlaceholder: 'Search...',
     noOptionsFound: 'No options found',
     noGroupsAvailable: 'No groups available',
+    groupTags: 'Select by tag',
+    groupTagSelection: '{selected}/{total}',
     unknownError: 'Unknown error occurred',
     saving: 'Saving...',
     selectedCount: '({count} selected)',

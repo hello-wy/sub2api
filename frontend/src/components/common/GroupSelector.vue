@@ -5,8 +5,40 @@
       <span class="font-normal text-gray-400">{{ t('common.selectedCount', { count: modelValue.length }) }}</span>
     </label>
     <div
+      v-if="tagSummaries.length > 0"
+      class="rounded-t-lg border border-b-0 border-gray-200 bg-gray-50 px-3 py-2 dark:border-dark-600 dark:bg-dark-800"
+    >
+      <div class="mb-1.5 text-xs font-medium text-gray-500 dark:text-gray-400">
+        {{ t('common.groupTags') }}
+      </div>
+      <div class="flex flex-wrap gap-1.5">
+        <button
+          v-for="summary in tagSummaries"
+          :key="summary.tag"
+          type="button"
+          :aria-pressed="summary.allSelected"
+          :data-group-tag="summary.tag"
+          :class="[
+            'inline-flex max-w-full items-center gap-1 rounded border px-2 py-1 text-xs font-medium transition-colors',
+            summary.allSelected
+              ? 'border-primary-500 bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300'
+              : 'border-gray-200 bg-white text-gray-600 hover:border-primary-300 hover:text-primary-600 dark:border-dark-600 dark:bg-dark-700 dark:text-gray-300 dark:hover:border-primary-600'
+          ]"
+          @click="toggleTag(summary.ids, summary.allSelected)"
+        >
+          <span class="truncate">{{ summary.tag }}</span>
+          <span class="shrink-0 text-[11px] opacity-70">
+            {{ t('common.groupTagSelection', { selected: summary.selected, total: summary.ids.length }) }}
+          </span>
+        </button>
+      </div>
+    </div>
+    <div
       v-if="isSearchable"
-      class="flex items-center gap-2 rounded-t-lg border border-b-0 border-gray-200 bg-gray-50 px-3 py-2 dark:border-dark-600 dark:bg-dark-800"
+      :class="[
+        'flex items-center gap-2 border border-b-0 border-gray-200 bg-gray-50 px-3 py-2 dark:border-dark-600 dark:bg-dark-800',
+        tagSummaries.length === 0 ? 'rounded-t-lg' : ''
+      ]"
     >
       <Icon name="search" size="sm" class="shrink-0 text-gray-400" />
       <input
@@ -19,7 +51,7 @@
     <div
       :class="[
         'grid max-h-32 grid-cols-2 gap-1 overflow-y-auto p-2',
-        isSearchable
+        isSearchable || tagSummaries.length > 0
           ? 'rounded-b-lg border border-t-0 border-gray-200 bg-gray-50 dark:border-dark-600 dark:bg-dark-800'
           : 'rounded-lg border border-gray-200 bg-gray-50 dark:border-dark-600 dark:bg-dark-800'
       ]"
@@ -44,6 +76,12 @@
           :rate-multiplier="group.rate_multiplier == null ? undefined : group.rate_multiplier"
           class="min-w-0 flex-1"
         />
+        <span
+          v-if="group.tag"
+          class="max-w-20 shrink-0 truncate rounded bg-gray-200 px-1.5 py-0.5 text-[10px] text-gray-600 dark:bg-dark-600 dark:text-gray-300"
+        >
+          {{ group.tag }}
+        </span>
         <span class="shrink-0 text-xs text-gray-400">{{ group.account_count || 0 }}</span>
       </label>
       <div
@@ -89,8 +127,9 @@ const isSearchable = computed(() => {
   return props.searchable
 })
 
-// Filter groups by platform if specified
-const filteredGroups = computed(() => {
+// Filter by account compatibility before tag operations so a tag never selects
+// groups that the current account cannot use.
+const eligibleGroups = computed(() => {
   let result = authStore.isSimpleMode
     ? props.groups.filter((g) => g.platform !== 'composite')
     : props.groups
@@ -105,14 +144,46 @@ const filteredGroups = computed(() => {
       result = result.filter((g) => g.platform === props.platform || g.platform === 'composite')
     }
   }
+  return result
+})
+
+const filteredGroups = computed(() => {
+  let result = eligibleGroups.value
   if (isSearchable.value && searchText.value) {
     const q = searchText.value.toLowerCase()
     result = result.filter(
-      (g) => g.name.toLowerCase().includes(q) || g.description?.toLowerCase().includes(q)
+      (g) =>
+        g.name.toLowerCase().includes(q) ||
+        g.description?.toLowerCase().includes(q) ||
+        g.tag?.toLowerCase().includes(q)
     )
   }
   return result
 })
+
+const tagSummaries = computed(() => {
+  const groupsByTag = new Map<string, number[]>()
+  for (const group of eligibleGroups.value) {
+    const tag = group.tag?.trim()
+    if (!tag) continue
+    const ids = groupsByTag.get(tag) || []
+    ids.push(group.id)
+    groupsByTag.set(tag, ids)
+  }
+
+  return [...groupsByTag.entries()]
+    .map(([tag, ids]) => {
+      const selected = ids.filter((id) => props.modelValue.includes(id)).length
+      return { tag, ids, selected, allSelected: selected === ids.length }
+    })
+    .sort((a, b) => a.tag.localeCompare(b.tag))
+})
+
+const toggleTag = (ids: number[], allSelected: boolean) => {
+  const selected = new Set(props.modelValue)
+  ids.forEach((id) => (allSelected ? selected.delete(id) : selected.add(id)))
+  emit('update:modelValue', [...selected])
+}
 
 watch(
   () => [authStore.isSimpleMode, props.groups, props.modelValue] as const,

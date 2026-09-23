@@ -235,6 +235,7 @@ type AdminBoundAuthIdentityChannel struct {
 
 type CreateGroupInput struct {
 	Name                       string
+	Tag                        string
 	Description                string
 	Platform                   string
 	RateMultiplier             float64
@@ -317,6 +318,7 @@ type CreateGroupInput struct {
 
 type UpdateGroupInput struct {
 	Name                         string
+	Tag                          *string
 	Description                  *string
 	Platform                     string
 	RateMultiplier               *float64 // 使用指针以支持设置为0
@@ -716,6 +718,7 @@ type adminServiceImpl struct {
 	userSubRepo          UserSubscriptionRepository
 	privacyClientFactory PrivacyClientFactory
 	runtimeBlocker       AccountRuntimeBlocker
+	openaiRiskControl    OpenAIRiskControlAutoProber
 	affiliateService     adminRechargeAffiliateAccruer
 	compositeRouteRepo   CompositeModelRouteRepository
 	compositeResolver    *CompositeRouteResolver
@@ -758,6 +761,7 @@ func NewAdminService(
 	userSubRepo UserSubscriptionRepository,
 	privacyClientFactory PrivacyClientFactory,
 	runtimeBlocker AccountRuntimeBlocker,
+	openaiRiskControl *OpenAIRiskControlService,
 	affiliateService *AffiliateService,
 	compositeRouteRepo CompositeModelRouteRepository,
 	compositeResolver *CompositeRouteResolver,
@@ -788,6 +792,7 @@ func NewAdminService(
 		userSubRepo:          userSubRepo,
 		privacyClientFactory: privacyClientFactory,
 		runtimeBlocker:       runtimeBlocker,
+		openaiRiskControl:    openaiRiskControl,
 		affiliateService:     affiliateService,
 		compositeRouteRepo:   compositeRouteRepo,
 		compositeResolver:    compositeResolver,
