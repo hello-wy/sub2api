@@ -1,4 +1,5 @@
 <template>
+  <PelicanRecordsDashboard v-if="dashboardOpen" :accounts="props.accounts?.length ? props.accounts : (props.account ? [props.account as unknown as AccountListItem] : [])" @close="dashboardOpen = false" />
   <BaseDialog :show="show" :title="t('admin.accounts.pelicanTest.title')" width="full" :fullscreen="viewingScheduled" @close="handleClose">
     <div class="space-y-5">
       <div v-if="account" class="flex flex-col items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/70 p-3 dark:border-amber-800/60 dark:bg-amber-950/20 sm:flex-row sm:items-center sm:justify-between">
@@ -66,7 +67,7 @@
             type="button"
             class="rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
             :class="activeTab === 'history' ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300' : 'text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-dark-700'"
-            @click="activeTab = 'history'; viewingScheduled = false"
+            @click="dashboardOpen = true"
           >
             {{ t('admin.accounts.pelicanTest.history') }}<span v-if="records.length" class="ml-1">({{ records.length }})</span>
           </button>
@@ -172,8 +173,9 @@ import Select from '@/components/common/Select.vue'
 import { Icon } from '@/components/icons'
 import { buildApiUrl } from '@/api/client'
 import { ADMIN_UI_REQUEST_HEADER } from '@/api/adminUIRequest'
-import type { Account, PelicanTestConfig, ScheduledTestResult } from '@/types'
+import type { Account, AccountListItem, PelicanTestConfig, ScheduledTestResult } from '@/types'
 import ScheduledTestsPanel from './ScheduledTestsPanel.vue'
+import PelicanRecordsDashboard from './PelicanRecordsDashboard.vue'
 
 const { t } = useI18n()
 
@@ -204,7 +206,7 @@ interface TestRecord {
   runs: TestRun[]
 }
 
-const props = defineProps<{ show: boolean; account: Account | null }>()
+const props = defineProps<{ show: boolean; account: Account | null; accounts?: AccountListItem[] }>()
 const emit = defineEmits<{ (event: 'close'): void }>()
 
 const prompt = ref(DEFAULT_PROMPT)
@@ -214,6 +216,7 @@ const parallelCount = ref<string | number>(1)
 const activeTab = ref<'results' | 'history' | 'schedule'>('results')
 const running = ref(false)
 const viewingScheduled = ref(false)
+const dashboardOpen = ref(false)
 const runs = ref<TestRun[]>([])
 const records = ref<TestRecord[]>([])
 const scheduledRecords = ref<ScheduledTestResult[]>([])
