@@ -107,19 +107,6 @@
         <div v-if="scheduledRecords.length === 0 && records.length === 0" class="rounded-lg border border-dashed border-gray-300 py-10 text-center text-sm text-gray-500 dark:border-dark-600 dark:text-gray-400">
           {{ t('admin.accounts.pelicanTest.noHistory') }}
         </div>
-        <button
-          v-for="record in records"
-          :key="record.id"
-          type="button"
-          class="flex w-full items-center justify-between rounded-lg border border-gray-200 px-3 py-2 text-left transition-colors hover:border-primary-300 hover:bg-primary-50/50 dark:border-dark-600 dark:hover:border-primary-700 dark:hover:bg-primary-900/10"
-          @click="loadRecord(record)"
-        >
-          <span class="min-w-0">
-            <span class="block truncate text-sm font-medium text-gray-800 dark:text-gray-100">{{ record.prompt }}</span>
-            <span class="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">{{ formatDate(record.createdAt) }} · {{ record.modelId }} · {{ record.runs.length }} {{ t('admin.accounts.pelicanTest.outputs') }}</span>
-          </span>
-          <Icon name="chevronRight" size="sm" class="shrink-0 text-gray-400" />
-        </button>
       </div>
 
       <div v-else>
