@@ -80,9 +80,10 @@
         </span>
       </div>
 
-      <PelicanSchedulePanel v-if="show && account && activeTab === 'schedule'" :key="account.id" :account-id="account.id"
-        :model-id="modelId" :prompt="prompt" :reasoning-effort="reasoningEffort" :parallel-count="Number(parallelCount)"
-        :disabled="running" @edit="editSchedule" @preview="previewScheduled" />
+      <ScheduledTestsPanel v-if="show && account && activeTab === 'schedule'" :key="account.id" :show="true" embedded
+        :account-id="account.id" :default-model="modelId" :model-options="[{ value: modelId, label: modelId }]"
+        :pelican-config="{ prompt, reasoning_effort: reasoningEffort, parallel_count: Number(parallelCount) }"
+        :disabled="running" @preview="previewScheduled" />
       <div v-else-if="activeTab === 'history'" class="space-y-2">
         <div v-if="records.length === 0" class="rounded-lg border border-dashed border-gray-300 py-10 text-center text-sm text-gray-500 dark:border-dark-600 dark:text-gray-400">
           {{ t('admin.accounts.pelicanTest.noHistory') }}
@@ -161,7 +162,7 @@ import { Icon } from '@/components/icons'
 import { buildApiUrl } from '@/api/client'
 import { ADMIN_UI_REQUEST_HEADER } from '@/api/adminUIRequest'
 import type { Account, PelicanTestConfig, ScheduledTestResult } from '@/types'
-import PelicanSchedulePanel from './PelicanSchedulePanel.vue'
+import ScheduledTestsPanel from './ScheduledTestsPanel.vue'
 
 const { t } = useI18n()
 

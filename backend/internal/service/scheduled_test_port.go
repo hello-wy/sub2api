@@ -7,18 +7,15 @@ import (
 
 // PelicanTestConfig is the saved input for server-side HTML generation.
 type PelicanTestConfig struct {
-	RunForHours     int    `json:"run_for_hours"`
 	Prompt          string `json:"prompt"`
 	ReasoningEffort string `json:"reasoning_effort"`
 	ParallelCount   int    `json:"parallel_count"`
-	IntervalMinutes int    `json:"interval_minutes"`
 	// ModelID is recorded with each result so later edits do not relabel history.
 	ModelID string `json:"model_id,omitempty"`
 }
 
 // ScheduledTestPlan represents a scheduled test plan domain model.
 type ScheduledTestPlan struct {
-	ExpiresAt      *time.Time         `json:"expires_at,omitempty"`
 	PelicanConfig  *PelicanTestConfig `json:"pelican_config,omitempty"`
 	RunningUntil   *time.Time         `json:"running_until,omitempty"`
 	ID             int64              `json:"id"`
@@ -50,7 +47,6 @@ type ScheduledTestResult struct {
 
 // ScheduledTestPlanRepository defines the data access interface for test plans.
 type ScheduledTestPlanRepository interface {
-	ExpirePelican(ctx context.Context, now time.Time) error
 	ClaimPelican(ctx context.Context, plan *ScheduledTestPlan, now, until, next time.Time) (bool, error)
 	FinishPelican(ctx context.Context, id int64, until, finished time.Time) error
 	Create(ctx context.Context, plan *ScheduledTestPlan) (*ScheduledTestPlan, error)

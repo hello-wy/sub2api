@@ -13,24 +13,25 @@ import (
 )
 
 func pelicanPlan() *ScheduledTestPlan {
-	return &ScheduledTestPlan{ID: 1, AccountID: 42, ModelID: "gpt-6-astra", Enabled: true, MaxResults: 50, PelicanConfig: &PelicanTestConfig{Prompt: "draw a pelican", ReasoningEffort: "medium", ParallelCount: 2, IntervalMinutes: 30}}
+	return &ScheduledTestPlan{ID: 1, AccountID: 42, ModelID: "gpt-6-astra", CronExpression: "*/30 * * * *", Enabled: true, MaxResults: 50, PelicanConfig: &PelicanTestConfig{Prompt: "draw a pelican", ReasoningEffort: "medium", ParallelCount: 2}}
 }
 func TestPelicanPlanValidation(t *testing.T) {
 	now := time.Now()
 	plan := pelicanPlan()
+	plan.AutoRecover = true
 	next, err := nextPlanRun(plan, now)
 	require.NoError(t, err)
-	require.Equal(t, now.Add(30*time.Minute), next)
+	expected, err := computeNextRun(plan.CronExpression, now)
+	require.NoError(t, err)
+	require.Equal(t, expected, next)
 	require.Equal(t, plan.ModelID, plan.PelicanConfig.ModelID)
-	require.Equal(t, 24, plan.PelicanConfig.RunForHours)
+	require.True(t, plan.AutoRecover)
 	for _, change := range []func(*ScheduledTestPlan){
 		func(p *ScheduledTestPlan) { p.PelicanConfig.ParallelCount = 9 },
-		func(p *ScheduledTestPlan) { p.PelicanConfig.IntervalMinutes = 0 },
+		func(p *ScheduledTestPlan) { p.CronExpression = "bad cron" },
 		func(p *ScheduledTestPlan) { p.PelicanConfig.Prompt = " " },
 		func(p *ScheduledTestPlan) { p.PelicanConfig.ReasoningEffort = "invalid" },
-		func(p *ScheduledTestPlan) { p.MaxResults = 51 },
-		func(p *ScheduledTestPlan) { p.PelicanConfig.RunForHours = 169 },
-		func(p *ScheduledTestPlan) { p.PelicanConfig.RunForHours = 1; p.PelicanConfig.IntervalMinutes = 60 },
+		func(p *ScheduledTestPlan) { p.MaxResults = 201 },
 	} {
 		p := pelicanPlan()
 		change(p)

@@ -94,9 +94,6 @@ func (s *ScheduledTestRunnerService) runScheduled() {
 	defer cancel()
 
 	now := time.Now()
-	if err := s.planRepo.ExpirePelican(ctx, now); err != nil {
-		logger.LegacyPrintf("service.scheduled_test_runner", "pelican expiry failed: %v", err)
-	}
 	if err := s.scheduledSvc.resultRepo.PruneExpiredPelican(ctx, now.Add(-7*24*time.Hour)); err != nil {
 		logger.LegacyPrintf("service.scheduled_test_runner", "pelican history cleanup failed: %v", err)
 	}
