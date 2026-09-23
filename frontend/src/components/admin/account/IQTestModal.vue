@@ -123,6 +123,11 @@
                 </button>
               </div>
             </header>
+            <div class="space-y-1 px-3 py-2 text-xs text-gray-500 dark:text-gray-400" data-testid="run-metadata">
+              <div>{{ t(run.source === 'scheduled' ? 'admin.accounts.pelicanTest.sourceScheduled' : 'admin.accounts.pelicanTest.sourceManual') }} · {{ run.modelId || '—' }} / {{ run.reasoningEffort || '—' }}</div>
+              <div>{{ t('admin.accounts.pelicanTest.generatedAt') }}：{{ run.startedAt ? formatDate(run.startedAt) : '—' }}</div>
+              <div>{{ t('admin.accounts.pelicanTest.duration') }}：{{ run.durationMs == null ? '—' : `${(run.durationMs / 1000).toFixed(1)} s` }}</div>
+            </div>
             <div v-if="run.html" class="aspect-[4/3] bg-white dark:bg-white">
               <iframe :srcdoc="run.html" class="h-full w-full border-0" sandbox="allow-scripts" referrerpolicy="no-referrer" :title="`${t('admin.accounts.pelicanTest.output')} ${index + 1}`"></iframe>
             </div>
@@ -177,6 +182,12 @@ interface TestRun {
   output: string
   html: string
   error: string
+  source?: 'manual' | 'scheduled'
+  startedAt?: string
+  finishedAt?: string
+  durationMs?: number
+  modelId?: string
+  reasoningEffort?: string
 }
 interface TestRecord {
   id: string
@@ -235,7 +246,7 @@ function saveRecords() {
 }
 
 function formatDate(value: string) {
-  return new Intl.DateTimeFormat(undefined, { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value))
+  return new Intl.DateTimeFormat(undefined, { dateStyle: 'short', timeStyle: 'medium' }).format(new Date(value))
 }
 
 function extractHtml(raw: string): string {
@@ -276,7 +287,10 @@ function previewScheduled(result: ScheduledTestResult) {
   const config = result.pelican_config
   if (config) editSchedule(config, config.model_id || modelId.value)
   const html = extractHtml(result.response_text)
-  runs.value = [{ id: `scheduled-${result.id}`, status: result.status === 'success' && html ? 'success' : 'error', output: result.response_text, html, error: result.error_message }]
+  runs.value = [{ id: `scheduled-${result.id}`, status: result.status === 'success' && html ? 'success' : 'error', output: result.response_text, html, error: result.error_message,
+    source: 'scheduled', startedAt: result.started_at, finishedAt: result.finished_at,
+    durationMs: result.latency_ms, modelId: config?.model_id, reasoningEffort: config?.reasoning_effort
+  }]
   activeTab.value = 'results'
 }
 
@@ -285,7 +299,7 @@ function loadRecord(record: TestRecord) {
   prompt.value = record.prompt
   modelId.value = record.modelId
   reasoningEffort.value = record.reasoningEffort || 'medium'
-  runs.value = record.runs.map((run) => ({ ...run }))
+  runs.value = record.runs.map((run) => ({ ...run, modelId: run.modelId || record.modelId, reasoningEffort: run.reasoningEffort || record.reasoningEffort }))
   activeTab.value = 'results'
 }
 
@@ -351,6 +365,8 @@ async function consumeRun(run: TestRun, signal: AbortSignal) {
 }
 
 async function startOne(run: TestRun) {
+  const started = performance.now()
+  run.startedAt = new Date().toISOString()
   const controller = new AbortController()
   controllers.set(run.id, controller)
   try {
@@ -360,6 +376,8 @@ async function startOne(run: TestRun) {
     run.status = 'error'
     run.error = error instanceof Error ? error.message : t('admin.accounts.pelicanTest.failed')
   } finally {
+    run.durationMs = Math.max(0, Math.round(performance.now() - started))
+    run.finishedAt = new Date().toISOString()
     controllers.delete(run.id)
   }
 }
@@ -373,7 +391,10 @@ async function startTest() {
     status: 'running',
     output: '',
     html: '',
-    error: ''
+    error: '',
+    source: 'manual',
+    modelId: modelId.value.trim(),
+    reasoningEffort: reasoningEffort.value
   }))
   activeTab.value = 'results'
   running.value = true

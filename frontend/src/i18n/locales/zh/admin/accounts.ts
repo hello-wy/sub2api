@@ -1670,6 +1670,11 @@ export default {
       testModel: '测试模型',
       testPrompt: '提示词："hi"',
       pelicanTest: {
+        sourceManual: '手动',
+        sourceScheduled: '定时',
+        generatedAt: '生成时间',
+        duration: '耗时',
+
         schedule: '定时测试',
         preview: '查看 HTML / 动画',
         scheduleHint: '关闭网页后仍按 Cron 执行。默认保留最近 100 份结果，可设置 1–200 份；超过 7 天自动清理，暂停后仍清理。',

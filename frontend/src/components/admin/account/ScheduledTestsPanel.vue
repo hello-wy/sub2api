@@ -397,16 +397,19 @@
 
                     <!-- Latency -->
                     <span v-if="result.latency_ms > 0" class="text-xs text-gray-500 dark:text-gray-400">
-                      {{ result.latency_ms }}ms
+                      {{ pelicanConfig ? `${t('admin.accounts.pelicanTest.duration')} ${(result.latency_ms / 1000).toFixed(1)} s` : `${result.latency_ms}ms` }}
                     </span>
                   </div>
 
                   <!-- Started At -->
                   <span class="text-xs text-gray-400">
-                    {{ formatDateTime(result.started_at) }}
+                    <span v-if="pelicanConfig">{{ t('admin.accounts.pelicanTest.generatedAt') }}：</span>{{ formatDateTime(result.started_at) }}
                   </span>
                 </div>
 
+                <div v-if="pelicanConfig" class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  {{ t('admin.accounts.pelicanTest.sourceScheduled') }} · {{ result.pelican_config?.model_id || '—' }} / {{ result.pelican_config?.reasoning_effort || '—' }}
+                </div>
                 <button v-if="pelicanConfig" type="button" class="mt-2 text-xs text-primary-600" :disabled="disabled" @click="previewResult(result)">
                   {{ t('admin.accounts.pelicanTest.preview') }}
                 </button>

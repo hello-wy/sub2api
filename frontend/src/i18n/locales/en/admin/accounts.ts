@@ -1583,6 +1583,11 @@ export default {
       testModel: 'Test model',
       testPrompt: 'Prompt: "hi"',
       pelicanTest: {
+        sourceManual: 'Manual',
+        sourceScheduled: 'Scheduled',
+        generatedAt: 'Generation time',
+        duration: 'Duration',
+
         schedule: 'Scheduled tests',
         preview: 'View HTML / animation',
         scheduleHint: 'Runs on the server according to Cron even after closing this page. Keeps 100 outputs by default (1–200 configurable). Results older than 7 days are cleaned up even while paused.',

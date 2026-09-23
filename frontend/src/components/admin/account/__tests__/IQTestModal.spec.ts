@@ -108,4 +108,32 @@ describe('IQTestModal', () => {
     expect(wrapper.text()).toContain('I cannot provide HTML.')
     expect(wrapper.text()).toContain('admin.accounts.pelicanTest.failed')
   })
+  it('persists manual timing and model snapshots independently of later form edits', async () => {
+    const wrapper = mountModal()
+    await (wrapper.vm as any).startTest()
+    const saved = JSON.parse(localStorage.getItem('sub2api-pelican-test:42')!)[0]
+    expect(saved.runs[0]).toMatchObject({ source: 'manual', modelId: 'gpt-6-astra', reasoningEffort: 'medium' })
+    expect(Number.isFinite(Date.parse(saved.runs[0].startedAt))).toBe(true)
+    expect(saved.runs[0].durationMs).toBeGreaterThanOrEqual(0)
+    ;(wrapper.vm as any).modelId = 'changed-model'
+    await flushPromises()
+    const metadata = wrapper.get('[data-testid="run-metadata"]').text()
+    expect(metadata).toContain('gpt-6-astra')
+    expect(metadata).not.toContain('changed-model')
+    expect(metadata).toContain('admin.accounts.pelicanTest.sourceManual')
+    wrapper.unmount()
+  })
+
+  it('shows server timing and saved settings when previewing a scheduled output', async () => {
+    const wrapper = mountModal()
+    ;(wrapper.vm as any).previewScheduled({ id: 9, status: 'success', response_text: '<html><body>pelican</body></html>', error_message: '', started_at: '2026-09-23T11:32:30Z', finished_at: '2026-09-23T11:34:42Z', latency_ms: 132100, pelican_config: { prompt: 'pelican', model_id: 'saved-model', reasoning_effort: 'high', parallel_count: 1 } })
+    await flushPromises()
+    const metadata = wrapper.get('[data-testid="run-metadata"]').text()
+    expect(metadata).toContain('admin.accounts.pelicanTest.sourceScheduled')
+    expect(metadata).toContain('saved-model / high')
+    expect(metadata).toContain('132.1 s')
+    expect(metadata).toContain('admin.accounts.pelicanTest.generatedAt')
+    wrapper.unmount()
+  })
+
 })
