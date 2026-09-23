@@ -83,9 +83,28 @@
       <ScheduledTestsPanel v-if="show && account && activeTab === 'schedule'" :key="account.id" :show="true" embedded
         :account-id="account.id" :default-model="modelId" :model-options="[{ value: modelId, label: modelId }]"
         :pelican-config="{ prompt, reasoning_effort: reasoningEffort, parallel_count: Number(parallelCount) }"
-        :disabled="running" @preview="previewScheduled" />
+        :disabled="running" @preview="previewScheduled" @history="scheduledRecords = $event" />
       <div v-else-if="activeTab === 'history'" class="space-y-2">
-        <div v-if="records.length === 0" class="rounded-lg border border-dashed border-gray-300 py-10 text-center text-sm text-gray-500 dark:border-dark-600 dark:text-gray-400">
+        <button v-for="result in scheduledRecords" :key="`scheduled-${result.id}`" type="button"
+          class="flex w-full items-center justify-between rounded-lg border border-gray-200 px-3 py-2 text-left transition-colors hover:border-primary-300 hover:bg-primary-50/50 dark:border-dark-600 dark:hover:border-primary-700 dark:hover:bg-primary-900/10"
+          @click="previewScheduled(result)">
+          <span class="min-w-0">
+            <span class="block truncate text-sm font-medium text-gray-800 dark:text-gray-100">
+              {{ t('admin.accounts.pelicanTest.sourceScheduled') }} · {{ result.pelican_config?.model_id || modelId }} / {{ result.pelican_config?.reasoning_effort || reasoningEffort }}
+            </span>
+            <span class="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">
+              {{ formatDate(result.started_at) }} · {{ t('admin.accounts.pelicanTest.duration') }} {{ (result.latency_ms / 1000).toFixed(1) }} s
+            </span>
+          </span>
+          <span class="text-xs" :class="result.status === 'success' ? 'text-emerald-600' : 'text-red-500'">{{ t(result.status === 'success' ? 'admin.accounts.pelicanTest.success' : 'admin.accounts.pelicanTest.failed') }}</span>
+        </button>
+        <div v-for="record in records" :key="record.id" class="flex w-full items-center justify-between rounded-lg border border-gray-200 px-3 py-2 text-left dark:border-dark-600">
+          <button type="button" class="min-w-0 text-left" @click="loadRecord(record)">
+            <span class="block truncate text-sm font-medium text-gray-800 dark:text-gray-100">{{ t('admin.accounts.pelicanTest.sourceManual') }} · {{ record.modelId }} / {{ record.reasoningEffort }}</span>
+            <span class="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">{{ formatDate(record.createdAt) }} · {{ record.runs.length }} {{ t('admin.accounts.pelicanTest.outputs') }}</span>
+          </button>
+        </div>
+        <div v-if="scheduledRecords.length === 0 && records.length === 0" class="rounded-lg border border-dashed border-gray-300 py-10 text-center text-sm text-gray-500 dark:border-dark-600 dark:text-gray-400">
           {{ t('admin.accounts.pelicanTest.noHistory') }}
         </div>
         <button
@@ -166,7 +185,7 @@ import Select from '@/components/common/Select.vue'
 import { Icon } from '@/components/icons'
 import { buildApiUrl } from '@/api/client'
 import { ADMIN_UI_REQUEST_HEADER } from '@/api/adminUIRequest'
-import type { Account, PelicanTestConfig, ScheduledTestResult } from '@/types'
+import type { Account, PelicanTestConfig, ScheduledTestPlan, ScheduledTestResult } from '@/types'
 import ScheduledTestsPanel from './ScheduledTestsPanel.vue'
 
 const { t } = useI18n()
@@ -209,6 +228,7 @@ const activeTab = ref<'results' | 'history' | 'schedule'>('results')
 const running = ref(false)
 const runs = ref<TestRun[]>([])
 const records = ref<TestRecord[]>([])
+const scheduledRecords = ref<ScheduledTestResult[]>([])
 const controllers = new Map<string, AbortController>()
 
 const deliveryContract = DELIVERY_CONTRACT
@@ -433,6 +453,7 @@ watch(() => [props.show, props.account?.id] as const, ([show]) => {
   if (show) {
     readRecords()
     activeTab.value = 'results'
+    scheduledRecords.value = []
     prompt.value = DEFAULT_PROMPT
     modelId.value = 'gpt-6-astra'
     reasoningEffort.value = 'medium'

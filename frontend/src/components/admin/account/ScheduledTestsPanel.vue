@@ -507,6 +507,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'close'): void
   (e: 'preview', result: ScheduledTestResult): void
+  (e: 'history', results: ScheduledTestResult[]): void
 }>()
 
 const configDefaults = (): PelicanTestConfig => ({ prompt: '', reasoning_effort: 'medium', parallel_count: 1, ...props.pelicanConfig })
@@ -563,6 +564,9 @@ const loadPlans = async () => {
     const data = await adminAPI.scheduledTests.listByAccount(accountId)
     if (alive && props.show && props.accountId === accountId && revision === version) {
       plans.value = data.filter((plan) => Boolean(plan.pelican_config) === Boolean(props.pelicanConfig))
+      if (props.pelicanConfig && plans.value.length > 0 && expandedPlanId.value === null) {
+        await expandPlan(plans.value[0].id)
+      }
     }
   } catch (error: any) {
     appStore.showError(error?.message || 'Failed to load plans')
@@ -678,27 +682,30 @@ const handleDelete = async () => {
   }
 }
 
-const toggleExpand = async (planId: number) => {
+const expandPlan = async (planId: number) => {
   const accountId = props.accountId
-  if (expandedPlanId.value === planId) {
-    expandedPlanId.value = null
-    results.value = []
-    expandedResultIds.clear()
-    return
-  }
-
   expandedPlanId.value = planId
   expandedResultIds.clear()
   loadingResults.value = true
   try {
     const data = await adminAPI.scheduledTests.listResults(planId, 20, !props.pelicanConfig)
-    if (alive && props.show && props.accountId === accountId && expandedPlanId.value === planId) results.value = data
+    if (alive && props.show && props.accountId === accountId && expandedPlanId.value === planId) { results.value = data; emit('history', data) }
   } catch (error: any) {
     appStore.showError(error?.message || 'Failed to load results')
     results.value = []
   } finally {
     loadingResults.value = false
   }
+}
+
+const toggleExpand = async (planId: number) => {
+  if (expandedPlanId.value === planId) {
+    expandedPlanId.value = null
+    results.value = []
+    expandedResultIds.clear()
+    return
+  }
+  await expandPlan(planId)
 }
 
 const toggleResultDetail = (resultId: number) => {
@@ -723,6 +730,7 @@ watch(() => [props.show, props.accountId] as const, async ([visible, accountId])
   revision++
   plans.value = []
   results.value = []
+  emit('history', [])
   expandedPlanId.value = null
   expandedResultIds.clear()
   showAddForm.value = false
