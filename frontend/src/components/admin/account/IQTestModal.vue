@@ -1,5 +1,5 @@
 <template>
-  <PelicanRecordsDashboard v-if="dashboardOpen" :accounts="props.accounts?.length ? props.accounts : (props.account ? [props.account as unknown as AccountListItem] : [])" @close="dashboardOpen = false" />
+  <PelicanRecordsDashboard v-if="dashboardOpen" :accounts="props.accounts || []" :account="props.account" :manual-record="records[0] || null" @close="dashboardOpen = false" />
   <BaseDialog :show="show" :title="t('admin.accounts.pelicanTest.title')" width="full" :fullscreen="viewingScheduled" @close="handleClose">
     <div class="space-y-5">
       <div v-if="account" class="flex flex-col items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/70 p-3 dark:border-amber-800/60 dark:bg-amber-950/20 sm:flex-row sm:items-center sm:justify-between">
