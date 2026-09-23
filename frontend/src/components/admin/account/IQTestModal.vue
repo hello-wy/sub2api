@@ -70,6 +70,9 @@
           >
             {{ t('admin.accounts.pelicanTest.history') }}<span v-if="records.length" class="ml-1">({{ records.length }})</span>
           </button>
+          <button type="button" class="rounded-md px-3 py-1.5 text-sm font-medium"
+            :class="activeTab === 'schedule' ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300' : 'text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-dark-700'"
+            @click="activeTab = 'schedule'">{{ t('admin.accounts.pelicanTest.schedule') }}</button>
         </div>
         <span v-if="running" class="flex items-center gap-1.5 text-xs text-primary-600 dark:text-primary-300">
           <Icon name="refresh" size="sm" class="animate-spin" />
@@ -77,7 +80,10 @@
         </span>
       </div>
 
-      <div v-if="activeTab === 'history'" class="space-y-2">
+      <PelicanSchedulePanel v-if="show && account && activeTab === 'schedule'" :key="account.id" :account-id="account.id"
+        :model-id="modelId" :prompt="prompt" :reasoning-effort="reasoningEffort" :parallel-count="Number(parallelCount)"
+        :disabled="running" @edit="editSchedule" @preview="previewScheduled" />
+      <div v-else-if="activeTab === 'history'" class="space-y-2">
         <div v-if="records.length === 0" class="rounded-lg border border-dashed border-gray-300 py-10 text-center text-sm text-gray-500 dark:border-dark-600 dark:text-gray-400">
           {{ t('admin.accounts.pelicanTest.noHistory') }}
         </div>
@@ -133,7 +139,7 @@
         </button>
         <div class="flex gap-3">
           <button type="button" class="btn btn-secondary" :disabled="running" @click="handleClose">{{ t('common.close') }}</button>
-          <button type="button" class="btn btn-primary flex items-center gap-2" :disabled="running || !canStart" @click="startTest">
+          <button v-if="activeTab !== 'schedule'" type="button" class="btn btn-primary flex items-center gap-2" :disabled="running || !canStart" @click="startTest">
             <Icon v-if="running" name="refresh" size="sm" class="animate-spin" />
             <Icon v-else name="play" size="sm" />
             {{ running ? t('admin.accounts.pelicanTest.generating') : t('admin.accounts.pelicanTest.start') }}
@@ -145,7 +151,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import Input from '@/components/common/Input.vue'
@@ -154,7 +160,8 @@ import Select from '@/components/common/Select.vue'
 import { Icon } from '@/components/icons'
 import { buildApiUrl } from '@/api/client'
 import { ADMIN_UI_REQUEST_HEADER } from '@/api/adminUIRequest'
-import type { Account } from '@/types'
+import type { Account, PelicanTestConfig, ScheduledTestResult } from '@/types'
+import PelicanSchedulePanel from './PelicanSchedulePanel.vue'
 
 const { t } = useI18n()
 
@@ -186,7 +193,7 @@ const prompt = ref(DEFAULT_PROMPT)
 const modelId = ref('gpt-6-astra')
 const reasoningEffort = ref('medium')
 const parallelCount = ref<string | number>(1)
-const activeTab = ref<'results' | 'history'>('results')
+const activeTab = ref<'results' | 'history' | 'schedule'>('results')
 const running = ref(false)
 const runs = ref<TestRun[]>([])
 const records = ref<TestRecord[]>([])
@@ -255,7 +262,25 @@ function extractHtml(raw: string): string {
   return html
 }
 
+function editSchedule(config: PelicanTestConfig, model: string) {
+  if (running.value) return
+  prompt.value = config.prompt
+  modelId.value = model
+  reasoningEffort.value = config.reasoning_effort
+  parallelCount.value = config.parallel_count
+}
+
+function previewScheduled(result: ScheduledTestResult) {
+  if (running.value) return
+  const config = result.pelican_config
+  if (config) editSchedule(config, config.model_id || modelId.value)
+  const html = extractHtml(result.response_text)
+  runs.value = [{ id: `scheduled-${result.id}`, status: result.status === 'success' && html ? 'success' : 'error', output: result.response_text, html, error: result.error_message }]
+  activeTab.value = 'results'
+}
+
 function loadRecord(record: TestRecord) {
+  if (running.value) return
   prompt.value = record.prompt
   modelId.value = record.modelId
   reasoningEffort.value = record.reasoningEffort || 'medium'
@@ -339,7 +364,7 @@ async function startOne(run: TestRun) {
 }
 
 async function startTest() {
-  if (!props.account || !canStart.value) return
+  if (running.value || !props.account || !canStart.value) return
   const count = normalizeCount()
   parallelCount.value = count
   runs.value = Array.from({ length: count }, (_, index) => ({
@@ -380,7 +405,9 @@ function downloadAll() {
   runs.value.filter((run) => run.html).forEach((run) => downloadHtml(run))
 }
 
-watch(() => props.show, (show) => {
+onBeforeUnmount(() => { for (const controller of controllers.values()) controller.abort() })
+
+watch(() => [props.show, props.account?.id] as const, ([show]) => {
   if (show) {
     readRecords()
     activeTab.value = 'results'
@@ -393,5 +420,5 @@ watch(() => props.show, (show) => {
     for (const controller of controllers.values()) controller.abort()
     controllers.clear()
   }
-})
+}, { immediate: true })
 </script>

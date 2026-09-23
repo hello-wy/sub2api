@@ -2460,7 +2460,19 @@ export interface TotpLogin2FARequest {
 
 // ==================== Scheduled Test Types ====================
 
+export interface PelicanTestConfig {
+  run_for_hours: number
+  prompt: string
+  reasoning_effort: string
+  parallel_count: number
+  interval_minutes: number
+  model_id?: string
+}
+
 export interface ScheduledTestPlan {
+  expires_at?: string | null
+  pelican_config?: PelicanTestConfig
+  running_until?: string | null
   id: number
   account_id: number
   model_id: string
@@ -2475,6 +2487,7 @@ export interface ScheduledTestPlan {
 }
 
 export interface ScheduledTestResult {
+  pelican_config?: PelicanTestConfig
   id: number
   plan_id: number
   status: string
@@ -2487,6 +2500,7 @@ export interface ScheduledTestResult {
 }
 
 export interface CreateScheduledTestPlanRequest {
+  pelican_config?: PelicanTestConfig
   account_id: number
   model_id: string
   cron_expression: string
@@ -2496,6 +2510,7 @@ export interface CreateScheduledTestPlanRequest {
 }
 
 export interface UpdateScheduledTestPlanRequest {
+  pelican_config?: PelicanTestConfig
   model_id?: string
   cron_expression?: string
   enabled?: boolean

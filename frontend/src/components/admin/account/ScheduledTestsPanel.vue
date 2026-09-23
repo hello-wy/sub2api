@@ -548,7 +548,7 @@ const loadPlans = async () => {
   if (!props.accountId) return
   loading.value = true
   try {
-    plans.value = await adminAPI.scheduledTests.listByAccount(props.accountId)
+    plans.value = (await adminAPI.scheduledTests.listByAccount(props.accountId)).filter((plan) => !plan.pelican_config)
   } catch (error: any) {
     appStore.showError(error?.message || 'Failed to load plans')
   } finally {
