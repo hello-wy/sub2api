@@ -110,6 +110,20 @@ func (_c *SubscriptionPlanCreate) SetNillableValidityUnit(v *string) *Subscripti
 	return _c
 }
 
+// SetRepurchaseCooldownHours sets the "repurchase_cooldown_hours" field.
+func (_c *SubscriptionPlanCreate) SetRepurchaseCooldownHours(v int) *SubscriptionPlanCreate {
+	_c.mutation.SetRepurchaseCooldownHours(v)
+	return _c
+}
+
+// SetNillableRepurchaseCooldownHours sets the "repurchase_cooldown_hours" field if the given value is not nil.
+func (_c *SubscriptionPlanCreate) SetNillableRepurchaseCooldownHours(v *int) *SubscriptionPlanCreate {
+	if v != nil {
+		_c.SetRepurchaseCooldownHours(*v)
+	}
+	return _c
+}
+
 // SetFeatures sets the "features" field.
 func (_c *SubscriptionPlanCreate) SetFeatures(v string) *SubscriptionPlanCreate {
 	_c.mutation.SetFeatures(v)
@@ -245,6 +259,10 @@ func (_c *SubscriptionPlanCreate) defaults() {
 		v := subscriptionplan.DefaultValidityUnit
 		_c.mutation.SetValidityUnit(v)
 	}
+	if _, ok := _c.mutation.RepurchaseCooldownHours(); !ok {
+		v := subscriptionplan.DefaultRepurchaseCooldownHours
+		_c.mutation.SetRepurchaseCooldownHours(v)
+	}
 	if _, ok := _c.mutation.Features(); !ok {
 		v := subscriptionplan.DefaultFeatures
 		_c.mutation.SetFeatures(v)
@@ -307,6 +325,14 @@ func (_c *SubscriptionPlanCreate) check() error {
 	if v, ok := _c.mutation.ValidityUnit(); ok {
 		if err := subscriptionplan.ValidityUnitValidator(v); err != nil {
 			return &ValidationError{Name: "validity_unit", err: fmt.Errorf(`ent: validator failed for field "SubscriptionPlan.validity_unit": %w`, err)}
+		}
+	}
+	if _, ok := _c.mutation.RepurchaseCooldownHours(); !ok {
+		return &ValidationError{Name: "repurchase_cooldown_hours", err: errors.New(`ent: missing required field "SubscriptionPlan.repurchase_cooldown_hours"`)}
+	}
+	if v, ok := _c.mutation.RepurchaseCooldownHours(); ok {
+		if err := subscriptionplan.RepurchaseCooldownHoursValidator(v); err != nil {
+			return &ValidationError{Name: "repurchase_cooldown_hours", err: fmt.Errorf(`ent: validator failed for field "SubscriptionPlan.repurchase_cooldown_hours": %w`, err)}
 		}
 	}
 	if _, ok := _c.mutation.Features(); !ok {
@@ -390,6 +416,10 @@ func (_c *SubscriptionPlanCreate) createSpec() (*SubscriptionPlan, *sqlgraph.Cre
 	if value, ok := _c.mutation.ValidityUnit(); ok {
 		_spec.SetField(subscriptionplan.FieldValidityUnit, field.TypeString, value)
 		_node.ValidityUnit = value
+	}
+	if value, ok := _c.mutation.RepurchaseCooldownHours(); ok {
+		_spec.SetField(subscriptionplan.FieldRepurchaseCooldownHours, field.TypeInt, value)
+		_node.RepurchaseCooldownHours = value
 	}
 	if value, ok := _c.mutation.Features(); ok {
 		_spec.SetField(subscriptionplan.FieldFeatures, field.TypeString, value)
@@ -590,6 +620,24 @@ func (u *SubscriptionPlanUpsert) SetValidityUnit(v string) *SubscriptionPlanUpse
 // UpdateValidityUnit sets the "validity_unit" field to the value that was provided on create.
 func (u *SubscriptionPlanUpsert) UpdateValidityUnit() *SubscriptionPlanUpsert {
 	u.SetExcluded(subscriptionplan.FieldValidityUnit)
+	return u
+}
+
+// SetRepurchaseCooldownHours sets the "repurchase_cooldown_hours" field.
+func (u *SubscriptionPlanUpsert) SetRepurchaseCooldownHours(v int) *SubscriptionPlanUpsert {
+	u.Set(subscriptionplan.FieldRepurchaseCooldownHours, v)
+	return u
+}
+
+// UpdateRepurchaseCooldownHours sets the "repurchase_cooldown_hours" field to the value that was provided on create.
+func (u *SubscriptionPlanUpsert) UpdateRepurchaseCooldownHours() *SubscriptionPlanUpsert {
+	u.SetExcluded(subscriptionplan.FieldRepurchaseCooldownHours)
+	return u
+}
+
+// AddRepurchaseCooldownHours adds v to the "repurchase_cooldown_hours" field.
+func (u *SubscriptionPlanUpsert) AddRepurchaseCooldownHours(v int) *SubscriptionPlanUpsert {
+	u.Add(subscriptionplan.FieldRepurchaseCooldownHours, v)
 	return u
 }
 
@@ -848,6 +896,27 @@ func (u *SubscriptionPlanUpsertOne) SetValidityUnit(v string) *SubscriptionPlanU
 func (u *SubscriptionPlanUpsertOne) UpdateValidityUnit() *SubscriptionPlanUpsertOne {
 	return u.Update(func(s *SubscriptionPlanUpsert) {
 		s.UpdateValidityUnit()
+	})
+}
+
+// SetRepurchaseCooldownHours sets the "repurchase_cooldown_hours" field.
+func (u *SubscriptionPlanUpsertOne) SetRepurchaseCooldownHours(v int) *SubscriptionPlanUpsertOne {
+	return u.Update(func(s *SubscriptionPlanUpsert) {
+		s.SetRepurchaseCooldownHours(v)
+	})
+}
+
+// AddRepurchaseCooldownHours adds v to the "repurchase_cooldown_hours" field.
+func (u *SubscriptionPlanUpsertOne) AddRepurchaseCooldownHours(v int) *SubscriptionPlanUpsertOne {
+	return u.Update(func(s *SubscriptionPlanUpsert) {
+		s.AddRepurchaseCooldownHours(v)
+	})
+}
+
+// UpdateRepurchaseCooldownHours sets the "repurchase_cooldown_hours" field to the value that was provided on create.
+func (u *SubscriptionPlanUpsertOne) UpdateRepurchaseCooldownHours() *SubscriptionPlanUpsertOne {
+	return u.Update(func(s *SubscriptionPlanUpsert) {
+		s.UpdateRepurchaseCooldownHours()
 	})
 }
 
@@ -1283,6 +1352,27 @@ func (u *SubscriptionPlanUpsertBulk) SetValidityUnit(v string) *SubscriptionPlan
 func (u *SubscriptionPlanUpsertBulk) UpdateValidityUnit() *SubscriptionPlanUpsertBulk {
 	return u.Update(func(s *SubscriptionPlanUpsert) {
 		s.UpdateValidityUnit()
+	})
+}
+
+// SetRepurchaseCooldownHours sets the "repurchase_cooldown_hours" field.
+func (u *SubscriptionPlanUpsertBulk) SetRepurchaseCooldownHours(v int) *SubscriptionPlanUpsertBulk {
+	return u.Update(func(s *SubscriptionPlanUpsert) {
+		s.SetRepurchaseCooldownHours(v)
+	})
+}
+
+// AddRepurchaseCooldownHours adds v to the "repurchase_cooldown_hours" field.
+func (u *SubscriptionPlanUpsertBulk) AddRepurchaseCooldownHours(v int) *SubscriptionPlanUpsertBulk {
+	return u.Update(func(s *SubscriptionPlanUpsert) {
+		s.AddRepurchaseCooldownHours(v)
+	})
+}
+
+// UpdateRepurchaseCooldownHours sets the "repurchase_cooldown_hours" field to the value that was provided on create.
+func (u *SubscriptionPlanUpsertBulk) UpdateRepurchaseCooldownHours() *SubscriptionPlanUpsertBulk {
+	return u.Update(func(s *SubscriptionPlanUpsert) {
+		s.UpdateRepurchaseCooldownHours()
 	})
 }
 

@@ -51,6 +51,9 @@ func (SubscriptionPlan) Fields() []ent.Field {
 		field.String("validity_unit").
 			MaxLen(10).
 			Default("day"),
+		field.Int("repurchase_cooldown_hours").
+			Default(0).
+			NonNegative(),
 		field.String("features").
 			SchemaType(map[string]string{dialect.Postgres: "text"}).
 			Default(""),

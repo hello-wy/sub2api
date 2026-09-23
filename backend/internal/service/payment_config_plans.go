@@ -68,6 +68,18 @@ func validatePlanPatch(req UpdatePlanRequest) error {
 	if req.OriginalPrice != nil && *req.OriginalPrice < 0 {
 		return infraerrors.BadRequest("PLAN_ORIGINAL_PRICE_INVALID", "original price must be >= 0")
 	}
+	if req.RepurchaseCooldownHours != nil {
+		if err := validatePlanRepurchaseCooldown(*req.RepurchaseCooldownHours); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validatePlanRepurchaseCooldown(hours int) error {
+	if hours < 0 {
+		return infraerrors.BadRequest("PLAN_COOLDOWN_INVALID", "repurchase cooldown hours must be >= 0")
+	}
 	return nil
 }
 
@@ -144,9 +156,13 @@ func (s *PaymentConfigService) CreatePlan(ctx context.Context, req CreatePlanReq
 	if err != nil {
 		return nil, err
 	}
+	if err := validatePlanRepurchaseCooldown(req.RepurchaseCooldownHours); err != nil {
+		return nil, err
+	}
 	b := s.entClient.SubscriptionPlan.Create().
 		SetGroupID(req.GroupID).SetName(req.Name).SetDescription(req.Description).
 		SetPrice(req.Price).SetCurrency(currency).SetValidityDays(req.ValidityDays).SetValidityUnit(req.ValidityUnit).
+		SetRepurchaseCooldownHours(req.RepurchaseCooldownHours).
 		SetFeatures(req.Features).SetProductName(req.ProductName).
 		SetForSale(req.ForSale).SetSortOrder(req.SortOrder)
 	if req.OriginalPrice != nil {
@@ -190,6 +206,9 @@ func (s *PaymentConfigService) UpdatePlan(ctx context.Context, id int64, req Upd
 	}
 	if req.ValidityUnit != nil {
 		u.SetValidityUnit(*req.ValidityUnit)
+	}
+	if req.RepurchaseCooldownHours != nil {
+		u.SetRepurchaseCooldownHours(*req.RepurchaseCooldownHours)
 	}
 	if req.Features != nil {
 		u.SetFeatures(*req.Features)

@@ -192,6 +192,19 @@ func TestValidatePlanPatch_AllNil(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestValidatePlanPatch_NegativeRepurchaseCooldown(t *testing.T) {
+	cooldown := -1
+	err := validatePlanPatch(UpdatePlanRequest{RepurchaseCooldownHours: &cooldown})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "cooldown")
+}
+
+func TestValidatePlanPatch_ZeroRepurchaseCooldown(t *testing.T) {
+	cooldown := 0
+	err := validatePlanPatch(UpdatePlanRequest{RepurchaseCooldownHours: &cooldown})
+	require.NoError(t, err)
+}
+
 // --- normalizePlanCurrency tests ---
 // Empty must stay empty (not coerced to the default payment currency),
 // so existing plans keep rendering without any currency label.

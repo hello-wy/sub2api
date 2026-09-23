@@ -9,6 +9,7 @@ import (
 	dbent "github.com/Wei-Shaw/sub2api/ent"
 	"github.com/Wei-Shaw/sub2api/ent/paymentauditlog"
 	"github.com/Wei-Shaw/sub2api/ent/usersubscription"
+	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/stretchr/testify/require"
 )
 
@@ -256,6 +257,35 @@ func TestPurchaseSubscriptionWithBalanceRecoversSameIdempotentOrder(t *testing.T
 	auditCount, err := client.PaymentAuditLog.Query().Count(context.Background())
 	require.NoError(t, err)
 	require.Equal(t, 2, auditCount)
+}
+
+func TestPurchaseSubscriptionWithBalanceEnforcesPlanCooldown(t *testing.T) {
+	ctx := context.Background()
+	service, client, userID, planID := newBalancePurchaseService(t, false)
+	_, err := client.SubscriptionPlan.UpdateOneID(planID).SetRepurchaseCooldownHours(2).Save(ctx)
+	require.NoError(t, err)
+
+	_, err = service.PurchaseSubscriptionWithBalance(ctx, BalanceSubscriptionPurchaseRequest{
+		UserID: userID, PlanID: planID, IdempotencyKey: "cooldown-first", SrcHost: "test",
+	})
+	require.NoError(t, err)
+	_, err = service.PurchaseSubscriptionWithBalance(ctx, BalanceSubscriptionPurchaseRequest{
+		UserID: userID, PlanID: planID, IdempotencyKey: "cooldown-blocked", SrcHost: "test",
+	})
+	require.Equal(t, "PLAN_PURCHASE_COOLDOWN", infraerrors.Reason(err))
+
+	order, err := client.PaymentOrder.Query().Only(ctx)
+	require.NoError(t, err)
+	_, err = client.PaymentOrder.UpdateOneID(order.ID).SetCompletedAt(time.Now().Add(-3 * time.Hour)).Save(ctx)
+	require.NoError(t, err)
+	_, err = service.validateSubOrder(ctx, CreateOrderRequest{
+		UserID: userID, PlanID: planID, OrderType: "subscription",
+	})
+	require.NoError(t, err)
+
+	user, err := client.User.Get(ctx, userID)
+	require.NoError(t, err)
+	require.InDelta(t, 90, user.Balance, 1e-9)
 }
 
 func TestPurchaseSubscriptionWithBalanceDoesNotGrantLoyaltyPoints(t *testing.T) {

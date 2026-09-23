@@ -42392,32 +42392,34 @@ func (m *SettingMutation) ResetEdge(name string) error {
 // SubscriptionPlanMutation represents an operation that mutates the SubscriptionPlan nodes in the graph.
 type SubscriptionPlanMutation struct {
 	config
-	op                Op
-	typ               string
-	id                *int64
-	group_id          *int64
-	addgroup_id       *int64
-	name              *string
-	description       *string
-	price             *float64
-	addprice          *float64
-	original_price    *float64
-	addoriginal_price *float64
-	currency          *string
-	validity_days     *int
-	addvalidity_days  *int
-	validity_unit     *string
-	features          *string
-	product_name      *string
-	for_sale          *bool
-	sort_order        *int
-	addsort_order     *int
-	created_at        *time.Time
-	updated_at        *time.Time
-	clearedFields     map[string]struct{}
-	done              bool
-	oldValue          func(context.Context) (*SubscriptionPlan, error)
-	predicates        []predicate.SubscriptionPlan
+	op                           Op
+	typ                          string
+	id                           *int64
+	group_id                     *int64
+	addgroup_id                  *int64
+	name                         *string
+	description                  *string
+	price                        *float64
+	addprice                     *float64
+	original_price               *float64
+	addoriginal_price            *float64
+	currency                     *string
+	validity_days                *int
+	addvalidity_days             *int
+	validity_unit                *string
+	repurchase_cooldown_hours    *int
+	addrepurchase_cooldown_hours *int
+	features                     *string
+	product_name                 *string
+	for_sale                     *bool
+	sort_order                   *int
+	addsort_order                *int
+	created_at                   *time.Time
+	updated_at                   *time.Time
+	clearedFields                map[string]struct{}
+	done                         bool
+	oldValue                     func(context.Context) (*SubscriptionPlan, error)
+	predicates                   []predicate.SubscriptionPlan
 }
 
 var _ ent.Mutation = (*SubscriptionPlanMutation)(nil)
@@ -42900,6 +42902,62 @@ func (m *SubscriptionPlanMutation) ResetValidityUnit() {
 	m.validity_unit = nil
 }
 
+// SetRepurchaseCooldownHours sets the "repurchase_cooldown_hours" field.
+func (m *SubscriptionPlanMutation) SetRepurchaseCooldownHours(i int) {
+	m.repurchase_cooldown_hours = &i
+	m.addrepurchase_cooldown_hours = nil
+}
+
+// RepurchaseCooldownHours returns the value of the "repurchase_cooldown_hours" field in the mutation.
+func (m *SubscriptionPlanMutation) RepurchaseCooldownHours() (r int, exists bool) {
+	v := m.repurchase_cooldown_hours
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRepurchaseCooldownHours returns the old "repurchase_cooldown_hours" field's value of the SubscriptionPlan entity.
+// If the SubscriptionPlan object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SubscriptionPlanMutation) OldRepurchaseCooldownHours(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRepurchaseCooldownHours is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRepurchaseCooldownHours requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRepurchaseCooldownHours: %w", err)
+	}
+	return oldValue.RepurchaseCooldownHours, nil
+}
+
+// AddRepurchaseCooldownHours adds i to the "repurchase_cooldown_hours" field.
+func (m *SubscriptionPlanMutation) AddRepurchaseCooldownHours(i int) {
+	if m.addrepurchase_cooldown_hours != nil {
+		*m.addrepurchase_cooldown_hours += i
+	} else {
+		m.addrepurchase_cooldown_hours = &i
+	}
+}
+
+// AddedRepurchaseCooldownHours returns the value that was added to the "repurchase_cooldown_hours" field in this mutation.
+func (m *SubscriptionPlanMutation) AddedRepurchaseCooldownHours() (r int, exists bool) {
+	v := m.addrepurchase_cooldown_hours
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetRepurchaseCooldownHours resets all changes to the "repurchase_cooldown_hours" field.
+func (m *SubscriptionPlanMutation) ResetRepurchaseCooldownHours() {
+	m.repurchase_cooldown_hours = nil
+	m.addrepurchase_cooldown_hours = nil
+}
+
 // SetFeatures sets the "features" field.
 func (m *SubscriptionPlanMutation) SetFeatures(s string) {
 	m.features = &s
@@ -43170,7 +43228,7 @@ func (m *SubscriptionPlanMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *SubscriptionPlanMutation) Fields() []string {
-	fields := make([]string, 0, 14)
+	fields := make([]string, 0, 15)
 	if m.group_id != nil {
 		fields = append(fields, subscriptionplan.FieldGroupID)
 	}
@@ -43194,6 +43252,9 @@ func (m *SubscriptionPlanMutation) Fields() []string {
 	}
 	if m.validity_unit != nil {
 		fields = append(fields, subscriptionplan.FieldValidityUnit)
+	}
+	if m.repurchase_cooldown_hours != nil {
+		fields = append(fields, subscriptionplan.FieldRepurchaseCooldownHours)
 	}
 	if m.features != nil {
 		fields = append(fields, subscriptionplan.FieldFeatures)
@@ -43237,6 +43298,8 @@ func (m *SubscriptionPlanMutation) Field(name string) (ent.Value, bool) {
 		return m.ValidityDays()
 	case subscriptionplan.FieldValidityUnit:
 		return m.ValidityUnit()
+	case subscriptionplan.FieldRepurchaseCooldownHours:
+		return m.RepurchaseCooldownHours()
 	case subscriptionplan.FieldFeatures:
 		return m.Features()
 	case subscriptionplan.FieldProductName:
@@ -43274,6 +43337,8 @@ func (m *SubscriptionPlanMutation) OldField(ctx context.Context, name string) (e
 		return m.OldValidityDays(ctx)
 	case subscriptionplan.FieldValidityUnit:
 		return m.OldValidityUnit(ctx)
+	case subscriptionplan.FieldRepurchaseCooldownHours:
+		return m.OldRepurchaseCooldownHours(ctx)
 	case subscriptionplan.FieldFeatures:
 		return m.OldFeatures(ctx)
 	case subscriptionplan.FieldProductName:
@@ -43351,6 +43416,13 @@ func (m *SubscriptionPlanMutation) SetField(name string, value ent.Value) error 
 		}
 		m.SetValidityUnit(v)
 		return nil
+	case subscriptionplan.FieldRepurchaseCooldownHours:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRepurchaseCooldownHours(v)
+		return nil
 	case subscriptionplan.FieldFeatures:
 		v, ok := value.(string)
 		if !ok {
@@ -43413,6 +43485,9 @@ func (m *SubscriptionPlanMutation) AddedFields() []string {
 	if m.addvalidity_days != nil {
 		fields = append(fields, subscriptionplan.FieldValidityDays)
 	}
+	if m.addrepurchase_cooldown_hours != nil {
+		fields = append(fields, subscriptionplan.FieldRepurchaseCooldownHours)
+	}
 	if m.addsort_order != nil {
 		fields = append(fields, subscriptionplan.FieldSortOrder)
 	}
@@ -43432,6 +43507,8 @@ func (m *SubscriptionPlanMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedOriginalPrice()
 	case subscriptionplan.FieldValidityDays:
 		return m.AddedValidityDays()
+	case subscriptionplan.FieldRepurchaseCooldownHours:
+		return m.AddedRepurchaseCooldownHours()
 	case subscriptionplan.FieldSortOrder:
 		return m.AddedSortOrder()
 	}
@@ -43470,6 +43547,13 @@ func (m *SubscriptionPlanMutation) AddField(name string, value ent.Value) error 
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddValidityDays(v)
+		return nil
+	case subscriptionplan.FieldRepurchaseCooldownHours:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddRepurchaseCooldownHours(v)
 		return nil
 	case subscriptionplan.FieldSortOrder:
 		v, ok := value.(int)
@@ -43537,6 +43621,9 @@ func (m *SubscriptionPlanMutation) ResetField(name string) error {
 		return nil
 	case subscriptionplan.FieldValidityUnit:
 		m.ResetValidityUnit()
+		return nil
+	case subscriptionplan.FieldRepurchaseCooldownHours:
+		m.ResetRepurchaseCooldownHours()
 		return nil
 	case subscriptionplan.FieldFeatures:
 		m.ResetFeatures()

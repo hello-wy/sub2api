@@ -54,6 +54,19 @@
         <div><label class="input-label">{{ t('payment.admin.validity') }} <span class="text-red-500">*</span></label><input v-model.number="planForm.validity_days" type="number" min="1" class="input" required /></div>
         <div><label class="input-label">{{ t('payment.admin.validityUnit') }} <span class="text-red-500">*</span></label><Select v-model="planForm.validity_unit" :options="validityUnitOptions" /></div>
       </div>
+      <div>
+        <label class="input-label">{{ t('payment.admin.repurchaseCooldown') }}</label>
+        <input
+          v-model.number="planForm.repurchase_cooldown_hours"
+          name="repurchase-cooldown-hours"
+          type="number"
+          min="0"
+          step="1"
+          class="input"
+          required
+        />
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ t('payment.admin.repurchaseCooldownHint') }}</p>
+      </div>
       <div class="grid grid-cols-2 gap-4">
         <div><label class="input-label">{{ t('payment.admin.sortOrder') }}</label><input v-model.number="planForm.sort_order" type="number" min="0" class="input" /></div>
         <div>
@@ -125,7 +138,19 @@ const { t } = useI18n()
 const appStore = useAppStore()
 
 const saving = ref(false)
-const planForm = reactive({ name: '', group_id: null as number | null, description: '', price: 0, original_price: 0, currency: '', validity_days: 30, validity_unit: 'days', sort_order: 0, for_sale: true })
+const planForm = reactive({
+  name: '',
+  group_id: null as number | null,
+  description: '',
+  price: 0,
+  original_price: 0,
+  currency: '',
+  validity_days: 30,
+  validity_unit: 'days',
+  repurchase_cooldown_hours: 0,
+  sort_order: 0,
+  for_sale: true,
+})
 const planFeaturesText = ref('')
 
 const validityUnitOptions = computed(() => [
@@ -178,10 +203,34 @@ const subscriptionCnyPreview = computed(() => {
 watch(() => props.show, (visible) => {
   if (!visible) return
   if (props.plan) {
-    Object.assign(planForm, { name: props.plan.name, group_id: props.plan.group_id, description: props.plan.description, price: props.plan.price, original_price: props.plan.original_price || 0, currency: props.plan.currency || '', validity_days: props.plan.validity_days, validity_unit: props.plan.validity_unit || 'days', sort_order: props.plan.sort_order || 0, for_sale: props.plan.for_sale })
+    Object.assign(planForm, {
+      name: props.plan.name,
+      group_id: props.plan.group_id,
+      description: props.plan.description,
+      price: props.plan.price,
+      original_price: props.plan.original_price || 0,
+      currency: props.plan.currency || '',
+      validity_days: props.plan.validity_days,
+      validity_unit: props.plan.validity_unit || 'days',
+      repurchase_cooldown_hours: props.plan.repurchase_cooldown_hours || 0,
+      sort_order: props.plan.sort_order || 0,
+      for_sale: props.plan.for_sale,
+    })
     planFeaturesText.value = (props.plan.features || []).join('\n')
   } else {
-    Object.assign(planForm, { name: '', group_id: null, description: '', price: 0, original_price: 0, currency: '', validity_days: 30, validity_unit: 'days', sort_order: 0, for_sale: true })
+    Object.assign(planForm, {
+      name: '',
+      group_id: null,
+      description: '',
+      price: 0,
+      original_price: 0,
+      currency: '',
+      validity_days: 30,
+      validity_unit: 'days',
+      repurchase_cooldown_hours: 0,
+      sort_order: 0,
+      for_sale: true,
+    })
     planFeaturesText.value = ''
   }
 })
@@ -198,6 +247,7 @@ function buildPlanPayload() {
     currency: planForm.currency.trim().toUpperCase(),
     validity_days: planForm.validity_days,
     validity_unit: planForm.validity_unit,
+    repurchase_cooldown_hours: planForm.repurchase_cooldown_hours,
     sort_order: planForm.sort_order,
     for_sale: planForm.for_sale,
     features,
@@ -215,6 +265,10 @@ async function handleSavePlan() {
   }
   if (!planForm.validity_days || planForm.validity_days < 1) {
     appStore.showError(t('payment.admin.validityRequired'))
+    return
+  }
+  if (!Number.isInteger(planForm.repurchase_cooldown_hours) || planForm.repurchase_cooldown_hours < 0) {
+    appStore.showError(t('payment.admin.repurchaseCooldownInvalid'))
     return
   }
   saving.value = true

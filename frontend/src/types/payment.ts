@@ -189,6 +189,8 @@ export interface SubscriptionPlan {
   currency?: string
   validity_days: number
   validity_unit: string
+  /** Hours after a completed purchase before the same user may buy this plan again; 0 disables the cooldown. */
+  repurchase_cooldown_hours: number
   /** Stored as JSON string in backend; API layer should parse before use */
   features: string[]
   for_sale: boolean

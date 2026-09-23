@@ -4,6 +4,12 @@ import { mount } from '@vue/test-utils'
 
 import PlanEditDialog from '../PlanEditDialog.vue'
 import type { AdminGroup } from '@/types'
+import type { SubscriptionPlan } from '@/types/payment'
+
+const { createPlan, updatePlan } = vi.hoisted(() => ({
+  createPlan: vi.fn(),
+  updatePlan: vi.fn(),
+}))
 
 vi.mock('vue-i18n', () => ({
   useI18n: () => ({
@@ -24,8 +30,8 @@ vi.mock('@/stores/app', () => ({
 
 vi.mock('@/api/admin/payment', () => ({
   adminPaymentAPI: {
-    createPlan: vi.fn(),
-    updatePlan: vi.fn(),
+    createPlan,
+    updatePlan,
   },
 }))
 
@@ -116,14 +122,18 @@ const groupFixture = (overrides: Partial<AdminGroup>): AdminGroup => ({
 function mountDialog({
   groups = [],
   paymentConfig = null,
+  plan = null,
+  show = true,
 }: {
   groups?: AdminGroup[]
   paymentConfig?: Record<string, unknown> | null
+  plan?: SubscriptionPlan | null
+  show?: boolean
 } = {}) {
   return mount(PlanEditDialog, {
     props: {
-      show: true,
-      plan: null,
+      show,
+      plan,
       groups,
       paymentConfig,
     },
@@ -215,5 +225,39 @@ describe('PlanEditDialog', () => {
     expect(wrapper.text()).not.toContain('payment.admin.dailyLimit')
     expect(wrapper.text()).not.toContain('payment.admin.weeklyLimit')
     expect(wrapper.text()).not.toContain('payment.admin.monthlyLimit')
+  })
+
+  it('loads and submits the plan repurchase cooldown', async () => {
+    updatePlan.mockReset()
+    updatePlan.mockResolvedValue({ data: {} })
+    const plan: SubscriptionPlan = {
+      id: 8,
+      group_id: 10,
+      name: 'Daily plan',
+      description: 'Daily access',
+      price: 12.99,
+      original_price: 0,
+      validity_days: 1,
+      validity_unit: 'days',
+      repurchase_cooldown_hours: 24,
+      features: [],
+      for_sale: true,
+      sort_order: 1,
+    }
+    const wrapper = mountDialog({
+      groups: [groupFixture({ id: 10 })],
+      plan,
+      show: false,
+    })
+
+    await wrapper.setProps({ show: true })
+    const cooldownInput = wrapper.get('input[name="repurchase-cooldown-hours"]')
+    expect(cooldownInput.element.value).toBe('24')
+    await cooldownInput.setValue('48')
+    await wrapper.get('form').trigger('submit')
+
+    expect(updatePlan).toHaveBeenCalledWith(8, expect.objectContaining({
+      repurchase_cooldown_hours: 48,
+    }))
   })
 })

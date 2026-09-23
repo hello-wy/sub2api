@@ -94,6 +94,11 @@ func ValidityUnit(v string) predicate.SubscriptionPlan {
 	return predicate.SubscriptionPlan(sql.FieldEQ(FieldValidityUnit, v))
 }
 
+// RepurchaseCooldownHours applies equality check predicate on the "repurchase_cooldown_hours" field. It's identical to RepurchaseCooldownHoursEQ.
+func RepurchaseCooldownHours(v int) predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldEQ(FieldRepurchaseCooldownHours, v))
+}
+
 // Features applies equality check predicate on the "features" field. It's identical to FeaturesEQ.
 func Features(v string) predicate.SubscriptionPlan {
 	return predicate.SubscriptionPlan(sql.FieldEQ(FieldFeatures, v))
@@ -552,6 +557,46 @@ func ValidityUnitEqualFold(v string) predicate.SubscriptionPlan {
 // ValidityUnitContainsFold applies the ContainsFold predicate on the "validity_unit" field.
 func ValidityUnitContainsFold(v string) predicate.SubscriptionPlan {
 	return predicate.SubscriptionPlan(sql.FieldContainsFold(FieldValidityUnit, v))
+}
+
+// RepurchaseCooldownHoursEQ applies the EQ predicate on the "repurchase_cooldown_hours" field.
+func RepurchaseCooldownHoursEQ(v int) predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldEQ(FieldRepurchaseCooldownHours, v))
+}
+
+// RepurchaseCooldownHoursNEQ applies the NEQ predicate on the "repurchase_cooldown_hours" field.
+func RepurchaseCooldownHoursNEQ(v int) predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldNEQ(FieldRepurchaseCooldownHours, v))
+}
+
+// RepurchaseCooldownHoursIn applies the In predicate on the "repurchase_cooldown_hours" field.
+func RepurchaseCooldownHoursIn(vs ...int) predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldIn(FieldRepurchaseCooldownHours, vs...))
+}
+
+// RepurchaseCooldownHoursNotIn applies the NotIn predicate on the "repurchase_cooldown_hours" field.
+func RepurchaseCooldownHoursNotIn(vs ...int) predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldNotIn(FieldRepurchaseCooldownHours, vs...))
+}
+
+// RepurchaseCooldownHoursGT applies the GT predicate on the "repurchase_cooldown_hours" field.
+func RepurchaseCooldownHoursGT(v int) predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldGT(FieldRepurchaseCooldownHours, v))
+}
+
+// RepurchaseCooldownHoursGTE applies the GTE predicate on the "repurchase_cooldown_hours" field.
+func RepurchaseCooldownHoursGTE(v int) predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldGTE(FieldRepurchaseCooldownHours, v))
+}
+
+// RepurchaseCooldownHoursLT applies the LT predicate on the "repurchase_cooldown_hours" field.
+func RepurchaseCooldownHoursLT(v int) predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldLT(FieldRepurchaseCooldownHours, v))
+}
+
+// RepurchaseCooldownHoursLTE applies the LTE predicate on the "repurchase_cooldown_hours" field.
+func RepurchaseCooldownHoursLTE(v int) predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldLTE(FieldRepurchaseCooldownHours, v))
 }
 
 // FeaturesEQ applies the EQ predicate on the "features" field.

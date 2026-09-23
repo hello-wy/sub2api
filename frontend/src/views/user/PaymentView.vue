@@ -269,6 +269,7 @@ import { FeatureFlags, resolveFeatureFlag } from '@/utils/featureFlags'
 import { paymentAPI } from '@/api/payment'
 import { extractApiErrorMessage, extractI18nErrorMessage } from '@/utils/apiError'
 import { isMobileDevice } from '@/utils/device'
+import { formatDateTimeToMinute } from '@/utils/format'
 import type { SubscriptionPlan, CheckoutInfoResponse, CreateOrderResult, OrderType } from '@/types/payment'
 import type { UserSubscription } from '@/types'
 import AppLayout from '@/components/layout/AppLayout.vue'
@@ -984,6 +985,16 @@ function cancelPendingSubscriptionPurchase() {
   pendingSubscriptionPurchase.value = null
 }
 
+function localizedPaymentError(error: unknown, fallback: string): string {
+  const apiError = error as { reason?: string; metadata?: Record<string, unknown> }
+  if (apiError.reason !== 'PLAN_PURCHASE_COOLDOWN') {
+    return extractI18nErrorMessage(error, t, 'payment.errors', fallback)
+  }
+  const rawAvailableAt = String(apiError.metadata?.available_at || '')
+  const availableAt = formatDateTimeToMinute(rawAvailableAt, i18n.locale.value) || rawAvailableAt
+  return t('payment.errors.PLAN_PURCHASE_COOLDOWN', { available_at: availableAt })
+}
+
 async function confirmPendingSubscriptionPurchase() {
   const pending = pendingSubscriptionPurchase.value
   if (!pending) return
@@ -1007,7 +1018,7 @@ async function executeSubscriptionPurchase(plan: SubscriptionPlan, source: Subsc
       ])
       appStore.showInfo(t('wallet.subscriptionBalanceSuccess'))
     } catch (error) {
-      appStore.showError(extractApiErrorMessage(error, t('common.error')))
+      appStore.showError(localizedPaymentError(error, t('common.error')))
     } finally {
       submitting.value = false
       submittingPlanId.value = null
@@ -1191,7 +1202,7 @@ async function createOrder(orderAmount: number, orderType: OrderType, planId?: n
         normalizeVisibleMethod(options.paymentType || selectedMethod.value) || selectedMethod.value,
       )
       if (!handled) {
-        errorMessage.value = extractI18nErrorMessage(err, t, 'payment.errors', extractApiErrorMessage(err, t('payment.result.failed')))
+        errorMessage.value = localizedPaymentError(err, extractApiErrorMessage(err, t('payment.result.failed')))
         errorHintMessage.value = ''
       }
       if (handled) {

@@ -29,6 +29,8 @@ const (
 	FieldValidityDays = "validity_days"
 	// FieldValidityUnit holds the string denoting the validity_unit field in the database.
 	FieldValidityUnit = "validity_unit"
+	// FieldRepurchaseCooldownHours holds the string denoting the repurchase_cooldown_hours field in the database.
+	FieldRepurchaseCooldownHours = "repurchase_cooldown_hours"
 	// FieldFeatures holds the string denoting the features field in the database.
 	FieldFeatures = "features"
 	// FieldProductName holds the string denoting the product_name field in the database.
@@ -56,6 +58,7 @@ var Columns = []string{
 	FieldCurrency,
 	FieldValidityDays,
 	FieldValidityUnit,
+	FieldRepurchaseCooldownHours,
 	FieldFeatures,
 	FieldProductName,
 	FieldForSale,
@@ -89,6 +92,10 @@ var (
 	DefaultValidityUnit string
 	// ValidityUnitValidator is a validator for the "validity_unit" field. It is called by the builders before save.
 	ValidityUnitValidator func(string) error
+	// DefaultRepurchaseCooldownHours holds the default value on creation for the "repurchase_cooldown_hours" field.
+	DefaultRepurchaseCooldownHours int
+	// RepurchaseCooldownHoursValidator is a validator for the "repurchase_cooldown_hours" field. It is called by the builders before save.
+	RepurchaseCooldownHoursValidator func(int) error
 	// DefaultFeatures holds the default value on creation for the "features" field.
 	DefaultFeatures string
 	// DefaultProductName holds the default value on creation for the "product_name" field.
@@ -153,6 +160,11 @@ func ByValidityDays(opts ...sql.OrderTermOption) OrderOption {
 // ByValidityUnit orders the results by the validity_unit field.
 func ByValidityUnit(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldValidityUnit, opts...).ToFunc()
+}
+
+// ByRepurchaseCooldownHours orders the results by the repurchase_cooldown_hours field.
+func ByRepurchaseCooldownHours(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldRepurchaseCooldownHours, opts...).ToFunc()
 }
 
 // ByFeatures orders the results by the features field.

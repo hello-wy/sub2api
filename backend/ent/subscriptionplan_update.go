@@ -174,6 +174,27 @@ func (_u *SubscriptionPlanUpdate) SetNillableValidityUnit(v *string) *Subscripti
 	return _u
 }
 
+// SetRepurchaseCooldownHours sets the "repurchase_cooldown_hours" field.
+func (_u *SubscriptionPlanUpdate) SetRepurchaseCooldownHours(v int) *SubscriptionPlanUpdate {
+	_u.mutation.ResetRepurchaseCooldownHours()
+	_u.mutation.SetRepurchaseCooldownHours(v)
+	return _u
+}
+
+// SetNillableRepurchaseCooldownHours sets the "repurchase_cooldown_hours" field if the given value is not nil.
+func (_u *SubscriptionPlanUpdate) SetNillableRepurchaseCooldownHours(v *int) *SubscriptionPlanUpdate {
+	if v != nil {
+		_u.SetRepurchaseCooldownHours(*v)
+	}
+	return _u
+}
+
+// AddRepurchaseCooldownHours adds value to the "repurchase_cooldown_hours" field.
+func (_u *SubscriptionPlanUpdate) AddRepurchaseCooldownHours(v int) *SubscriptionPlanUpdate {
+	_u.mutation.AddRepurchaseCooldownHours(v)
+	return _u
+}
+
 // SetFeatures sets the "features" field.
 func (_u *SubscriptionPlanUpdate) SetFeatures(v string) *SubscriptionPlanUpdate {
 	_u.mutation.SetFeatures(v)
@@ -301,6 +322,11 @@ func (_u *SubscriptionPlanUpdate) check() error {
 			return &ValidationError{Name: "validity_unit", err: fmt.Errorf(`ent: validator failed for field "SubscriptionPlan.validity_unit": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.RepurchaseCooldownHours(); ok {
+		if err := subscriptionplan.RepurchaseCooldownHoursValidator(v); err != nil {
+			return &ValidationError{Name: "repurchase_cooldown_hours", err: fmt.Errorf(`ent: validator failed for field "SubscriptionPlan.repurchase_cooldown_hours": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.ProductName(); ok {
 		if err := subscriptionplan.ProductNameValidator(v); err != nil {
 			return &ValidationError{Name: "product_name", err: fmt.Errorf(`ent: validator failed for field "SubscriptionPlan.product_name": %w`, err)}
@@ -359,6 +385,12 @@ func (_u *SubscriptionPlanUpdate) sqlSave(ctx context.Context) (_node int, err e
 	}
 	if value, ok := _u.mutation.ValidityUnit(); ok {
 		_spec.SetField(subscriptionplan.FieldValidityUnit, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.RepurchaseCooldownHours(); ok {
+		_spec.SetField(subscriptionplan.FieldRepurchaseCooldownHours, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedRepurchaseCooldownHours(); ok {
+		_spec.AddField(subscriptionplan.FieldRepurchaseCooldownHours, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.Features(); ok {
 		_spec.SetField(subscriptionplan.FieldFeatures, field.TypeString, value)
@@ -544,6 +576,27 @@ func (_u *SubscriptionPlanUpdateOne) SetNillableValidityUnit(v *string) *Subscri
 	return _u
 }
 
+// SetRepurchaseCooldownHours sets the "repurchase_cooldown_hours" field.
+func (_u *SubscriptionPlanUpdateOne) SetRepurchaseCooldownHours(v int) *SubscriptionPlanUpdateOne {
+	_u.mutation.ResetRepurchaseCooldownHours()
+	_u.mutation.SetRepurchaseCooldownHours(v)
+	return _u
+}
+
+// SetNillableRepurchaseCooldownHours sets the "repurchase_cooldown_hours" field if the given value is not nil.
+func (_u *SubscriptionPlanUpdateOne) SetNillableRepurchaseCooldownHours(v *int) *SubscriptionPlanUpdateOne {
+	if v != nil {
+		_u.SetRepurchaseCooldownHours(*v)
+	}
+	return _u
+}
+
+// AddRepurchaseCooldownHours adds value to the "repurchase_cooldown_hours" field.
+func (_u *SubscriptionPlanUpdateOne) AddRepurchaseCooldownHours(v int) *SubscriptionPlanUpdateOne {
+	_u.mutation.AddRepurchaseCooldownHours(v)
+	return _u
+}
+
 // SetFeatures sets the "features" field.
 func (_u *SubscriptionPlanUpdateOne) SetFeatures(v string) *SubscriptionPlanUpdateOne {
 	_u.mutation.SetFeatures(v)
@@ -684,6 +737,11 @@ func (_u *SubscriptionPlanUpdateOne) check() error {
 			return &ValidationError{Name: "validity_unit", err: fmt.Errorf(`ent: validator failed for field "SubscriptionPlan.validity_unit": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.RepurchaseCooldownHours(); ok {
+		if err := subscriptionplan.RepurchaseCooldownHoursValidator(v); err != nil {
+			return &ValidationError{Name: "repurchase_cooldown_hours", err: fmt.Errorf(`ent: validator failed for field "SubscriptionPlan.repurchase_cooldown_hours": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.ProductName(); ok {
 		if err := subscriptionplan.ProductNameValidator(v); err != nil {
 			return &ValidationError{Name: "product_name", err: fmt.Errorf(`ent: validator failed for field "SubscriptionPlan.product_name": %w`, err)}
@@ -759,6 +817,12 @@ func (_u *SubscriptionPlanUpdateOne) sqlSave(ctx context.Context) (_node *Subscr
 	}
 	if value, ok := _u.mutation.ValidityUnit(); ok {
 		_spec.SetField(subscriptionplan.FieldValidityUnit, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.RepurchaseCooldownHours(); ok {
+		_spec.SetField(subscriptionplan.FieldRepurchaseCooldownHours, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedRepurchaseCooldownHours(); ok {
+		_spec.AddField(subscriptionplan.FieldRepurchaseCooldownHours, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.Features(); ok {
 		_spec.SetField(subscriptionplan.FieldFeatures, field.TypeString, value)

@@ -104,6 +104,14 @@ func (s *PaymentService) PurchaseSubscriptionWithBalance(ctx context.Context, re
 			"available": fmt.Sprintf("%.2f", user.Balance),
 		})
 	}
+	if err := checkPlanPurchaseCooldown(txCtx, planPurchaseCooldownCheck{
+		Client: txClient,
+		UserID: req.UserID,
+		Plan:   plan,
+		Now:    time.Now(),
+	}); err != nil {
+		return nil, err
+	}
 
 	outTradeNo, err := s.allocateOutTradeNo(txCtx, tx)
 	if err != nil {

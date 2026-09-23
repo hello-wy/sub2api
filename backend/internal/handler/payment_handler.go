@@ -74,6 +74,7 @@ func (h *PaymentHandler) GetPlans(c *gin.Context) {
 		Currency                   string   `json:"currency,omitempty"`
 		ValidityDays               int      `json:"validity_days"`
 		ValidityUnit               string   `json:"validity_unit"`
+		RepurchaseCooldownHours    int      `json:"repurchase_cooldown_hours"`
 		Features                   string   `json:"features"`
 		ProductName                string   `json:"product_name"`
 		ForSale                    bool     `json:"for_sale"`
@@ -93,7 +94,8 @@ func (h *PaymentHandler) GetPlans(c *gin.Context) {
 			DailyLimitUSD:              gi.DailyLimitUSD, WeeklyLimitUSD: gi.WeeklyLimitUSD, MonthlyLimitUSD: gi.MonthlyLimitUSD,
 			Name: p.Name, Description: p.Description, Price: p.Price, OriginalPrice: p.OriginalPrice,
 			Currency:     p.Currency,
-			ValidityDays: p.ValidityDays, ValidityUnit: p.ValidityUnit, Features: p.Features,
+			ValidityDays: p.ValidityDays, ValidityUnit: p.ValidityUnit,
+			RepurchaseCooldownHours: p.RepurchaseCooldownHours, Features: p.Features,
 			ProductName: p.ProductName, ForSale: p.ForSale, SortOrder: p.SortOrder,
 		})
 	}
@@ -151,7 +153,8 @@ func (h *PaymentHandler) GetCheckoutInfo(c *gin.Context) {
 			ModelScopes: gi.ModelScopes,
 			Name:        p.Name, Description: p.Description, Price: p.Price, OriginalPrice: p.OriginalPrice,
 			Currency:     p.Currency,
-			ValidityDays: p.ValidityDays, ValidityUnit: p.ValidityUnit, Features: parseFeatures(p.Features),
+			ValidityDays: p.ValidityDays, ValidityUnit: p.ValidityUnit,
+			RepurchaseCooldownHours: p.RepurchaseCooldownHours, Features: parseFeatures(p.Features),
 			ProductName: p.ProductName,
 		})
 	}
@@ -220,6 +223,7 @@ type checkoutPlan struct {
 	Currency                   string   `json:"currency,omitempty"`
 	ValidityDays               int      `json:"validity_days"`
 	ValidityUnit               string   `json:"validity_unit"`
+	RepurchaseCooldownHours    int      `json:"repurchase_cooldown_hours"`
 	Features                   []string `json:"features"`
 	ProductName                string   `json:"product_name"`
 }
