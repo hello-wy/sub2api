@@ -37,6 +37,7 @@ import adminComplianceAPI from './compliance'
 import welfareAPI from './welfare'
 import auditAPI from './audit'
 import pluginsAPI from './plugins'
+import accountHealthAPI from './accountHealth'
 
 /**
  * Unified admin API object for convenient access
@@ -75,7 +76,8 @@ export const adminAPI = {
   compliance: adminComplianceAPI,
   welfare: welfareAPI,
   audit: auditAPI,
-  plugins: pluginsAPI
+  plugins: pluginsAPI,
+  accountHealth: accountHealthAPI
 }
 
 export {
@@ -112,7 +114,8 @@ export {
   adminComplianceAPI,
   welfareAPI,
   auditAPI,
-  pluginsAPI
+  pluginsAPI,
+  accountHealthAPI
 }
 
 export default adminAPI

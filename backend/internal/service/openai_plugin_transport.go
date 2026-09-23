@@ -1,6 +1,35 @@
 package service
 
-import "net/http"
+import (
+	"encoding/json"
+	"errors"
+	"io"
+	"net/http"
+
+	"github.com/Wei-Shaw/sub2api/internal/pkg/tlsfingerprint"
+)
+
+func requestModelFromBody(req *http.Request) string {
+	if req == nil || req.GetBody == nil {
+		return ""
+	}
+	body, err := req.GetBody()
+	if err != nil {
+		return ""
+	}
+	defer body.Close()
+	raw, err := io.ReadAll(io.LimitReader(body, 1<<20))
+	if err != nil {
+		return ""
+	}
+	var payload struct {
+		Model string `json:"model"`
+	}
+	if json.Unmarshal(raw, &payload) != nil {
+		return ""
+	}
+	return payload.Model
+}
 
 func (s *OpenAIGatewayService) SetPluginManager(manager *PluginManager) {
 	s.pluginManager = manager
@@ -18,6 +47,13 @@ func (s *OpenAIGatewayService) doOpenAIUpstream(request *http.Request, proxyURL 
 			return response, err
 		}
 	}
+	if s.cfg == nil || s.cfg.Gateway.TLSFingerprint.Enabled {
+		if profile, profileErr := resolveMode1TLSProfile(account); profileErr != nil {
+			return nil, profileErr
+		} else if profile != nil {
+			return s.httpUpstream.DoWithTLS(request, proxyURL, account.ID, account.Concurrency, profile)
+		}
+	}
 	return s.httpUpstream.Do(request, proxyURL, account.ID, account.Concurrency)
 }
 
@@ -31,6 +67,22 @@ func (s *AccountTestService) doOpenAIAccountTestUpstream(
 ) (response *http.Response, err error) {
 	if err := applyCodexRequestEndpoint(request, s.accountRepo, s.cfg, account); err != nil {
 		return nil, err
+	}
+	// 账号测试必须与真实 Codex HTTP/Responses 调度共享同一 STATE 门禁。
+	// 未配置 gateway 时保留官方账号测试路径；配置后由 gateway 读取实时账号、
+	// 校验固定代理/凭据指纹并注入已验证票据，失败时 fail-closed 且不拨号。
+	if s.openaiGatewayService != nil {
+		model := requestModelFromBody(request)
+		stateRequired := isOpenAICodexTicketAccount(account) && codexAccountTicketConfigOf(account).Enabled
+		if model == "" && stateRequired {
+			return nil, errors.Join(ErrOpenAICodexTicketUnavailable, errors.New("STATE request model/body is unavailable"))
+		}
+		if stateRequired && proxyURL != "" && account != nil && account.Proxy != nil && proxyURL != account.Proxy.URL() {
+			return nil, errors.Join(ErrOpenAICodexTicketUnavailable, errors.New("STATE fixed business route mismatch"))
+		}
+		if err := s.openaiGatewayService.applyOpenAICodexTicketToRequest(request.Context(), account, model, request); err != nil {
+			return nil, err
+		}
 	}
 	if observation := codexObservation(request.Context()); observation != nil {
 		observation.result.TargetURL = safeCodexDiagnosticURL(request.URL.String())
@@ -48,19 +100,44 @@ func (s *AccountTestService) doOpenAIAccountTestUpstream(
 	if s.pluginManager != nil {
 		response, handled, err := s.pluginManager.RoundTripOpenAIOAuth(request.Context(), request, proxyURL, account)
 		if handled {
+			if s.openaiGatewayService != nil {
+				s.openaiGatewayService.observeCodexTicketResponse(request, response)
+			}
+			s.observeAccountTestModelMismatch(request, response, account)
 			return response, err
 		}
 	}
+	if isOpenAICodexTicketAccount(account) && codexAccountTicketConfigOf(account).Enabled && s.openaiGatewayService == nil {
+		return nil, ErrOpenAICodexTicketUnavailable
+	}
 	if useTLSFallback {
-		return s.httpUpstream.DoWithTLS(
+		response, err = s.httpUpstream.DoWithTLS(
 			request,
 			proxyURL,
 			account.ID,
 			account.Concurrency,
-			s.tlsFPProfileService.ResolveTLSProfile(account),
+			resolveAccountTLSProfile(s.tlsFPProfileService, account),
 		)
+	} else if profile, profileErr := resolveMode1TLSProfile(account); profileErr != nil {
+		return nil, profileErr
+	} else if profile != nil {
+		response, err = s.httpUpstream.DoWithTLS(request, proxyURL, account.ID, account.Concurrency, profile)
+	} else {
+		response, err = s.httpUpstream.Do(request, proxyURL, account.ID, account.Concurrency)
 	}
-	return s.httpUpstream.Do(request, proxyURL, account.ID, account.Concurrency)
+	if s.openaiGatewayService != nil {
+		s.openaiGatewayService.observeCodexTicketResponse(request, response)
+	}
+	s.observeAccountTestModelMismatch(request, response, account)
+	return response, err
+}
+
+func resolveAccountTLSProfile(service *TLSFingerprintProfileService, account *Account) *tlsfingerprint.Profile {
+	if service != nil {
+		return service.ResolveTLSProfile(account)
+	}
+	profile, _ := resolveMode1TLSProfile(account)
+	return profile
 }
 
 // doOpenAIOfficialProbeUpstream keeps diagnostic probes on the official URL

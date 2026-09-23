@@ -28,6 +28,7 @@ func IsWindowExpired(windowStart *time.Time, duration time.Duration) bool {
 }
 
 type APIKey struct {
+	groupProbe  *groupProbeCapture // Internal-only; never serialized or persisted.
 	ID          int64
 	UserID      int64
 	Key         string

@@ -844,6 +844,20 @@ func (_c *GroupCreate) SetNillableModelAllowlist(v *domain.GroupModelAllowlist) 
 	return _c
 }
 
+// SetCodexTicketDefaults sets the "codex_ticket_defaults" field.
+func (_c *GroupCreate) SetCodexTicketDefaults(v domain.GroupCodexTicketDefaults) *GroupCreate {
+	_c.mutation.SetCodexTicketDefaults(v)
+	return _c
+}
+
+// SetNillableCodexTicketDefaults sets the "codex_ticket_defaults" field if the given value is not nil.
+func (_c *GroupCreate) SetNillableCodexTicketDefaults(v *domain.GroupCodexTicketDefaults) *GroupCreate {
+	if v != nil {
+		_c.SetCodexTicketDefaults(*v)
+	}
+	return _c
+}
+
 // SetCodexModelsManifestConfig sets the "codex_models_manifest_config" field.
 func (_c *GroupCreate) SetCodexModelsManifestConfig(v domain.GroupCodexModelsManifestConfig) *GroupCreate {
 	_c.mutation.SetCodexModelsManifestConfig(v)
@@ -1229,6 +1243,10 @@ func (_c *GroupCreate) defaults() error {
 		v := group.DefaultModelAllowlist
 		_c.mutation.SetModelAllowlist(v)
 	}
+	if _, ok := _c.mutation.CodexTicketDefaults(); !ok {
+		v := group.DefaultCodexTicketDefaults
+		_c.mutation.SetCodexTicketDefaults(v)
+	}
 	if _, ok := _c.mutation.CodexModelsManifestConfig(); !ok {
 		v := group.DefaultCodexModelsManifestConfig
 		_c.mutation.SetCodexModelsManifestConfig(v)
@@ -1449,6 +1467,9 @@ func (_c *GroupCreate) check() error {
 	}
 	if _, ok := _c.mutation.ModelAllowlist(); !ok {
 		return &ValidationError{Name: "model_allowlist", err: errors.New(`ent: missing required field "Group.model_allowlist"`)}
+	}
+	if _, ok := _c.mutation.CodexTicketDefaults(); !ok {
+		return &ValidationError{Name: "codex_ticket_defaults", err: errors.New(`ent: missing required field "Group.codex_ticket_defaults"`)}
 	}
 	if _, ok := _c.mutation.CodexModelsManifestConfig(); !ok {
 		return &ValidationError{Name: "codex_models_manifest_config", err: errors.New(`ent: missing required field "Group.codex_models_manifest_config"`)}
@@ -1754,6 +1775,10 @@ func (_c *GroupCreate) createSpec() (*Group, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.ModelAllowlist(); ok {
 		_spec.SetField(group.FieldModelAllowlist, field.TypeJSON, value)
 		_node.ModelAllowlist = value
+	}
+	if value, ok := _c.mutation.CodexTicketDefaults(); ok {
+		_spec.SetField(group.FieldCodexTicketDefaults, field.TypeJSON, value)
+		_node.CodexTicketDefaults = value
 	}
 	if value, ok := _c.mutation.CodexModelsManifestConfig(); ok {
 		_spec.SetField(group.FieldCodexModelsManifestConfig, field.TypeJSON, value)
@@ -2930,6 +2955,18 @@ func (u *GroupUpsert) SetModelAllowlist(v domain.GroupModelAllowlist) *GroupUpse
 // UpdateModelAllowlist sets the "model_allowlist" field to the value that was provided on create.
 func (u *GroupUpsert) UpdateModelAllowlist() *GroupUpsert {
 	u.SetExcluded(group.FieldModelAllowlist)
+	return u
+}
+
+// SetCodexTicketDefaults sets the "codex_ticket_defaults" field.
+func (u *GroupUpsert) SetCodexTicketDefaults(v domain.GroupCodexTicketDefaults) *GroupUpsert {
+	u.Set(group.FieldCodexTicketDefaults, v)
+	return u
+}
+
+// UpdateCodexTicketDefaults sets the "codex_ticket_defaults" field to the value that was provided on create.
+func (u *GroupUpsert) UpdateCodexTicketDefaults() *GroupUpsert {
+	u.SetExcluded(group.FieldCodexTicketDefaults)
 	return u
 }
 
@@ -4247,6 +4284,20 @@ func (u *GroupUpsertOne) SetModelAllowlist(v domain.GroupModelAllowlist) *GroupU
 func (u *GroupUpsertOne) UpdateModelAllowlist() *GroupUpsertOne {
 	return u.Update(func(s *GroupUpsert) {
 		s.UpdateModelAllowlist()
+	})
+}
+
+// SetCodexTicketDefaults sets the "codex_ticket_defaults" field.
+func (u *GroupUpsertOne) SetCodexTicketDefaults(v domain.GroupCodexTicketDefaults) *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetCodexTicketDefaults(v)
+	})
+}
+
+// UpdateCodexTicketDefaults sets the "codex_ticket_defaults" field to the value that was provided on create.
+func (u *GroupUpsertOne) UpdateCodexTicketDefaults() *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateCodexTicketDefaults()
 	})
 }
 
@@ -5749,6 +5800,20 @@ func (u *GroupUpsertBulk) SetModelAllowlist(v domain.GroupModelAllowlist) *Group
 func (u *GroupUpsertBulk) UpdateModelAllowlist() *GroupUpsertBulk {
 	return u.Update(func(s *GroupUpsert) {
 		s.UpdateModelAllowlist()
+	})
+}
+
+// SetCodexTicketDefaults sets the "codex_ticket_defaults" field.
+func (u *GroupUpsertBulk) SetCodexTicketDefaults(v domain.GroupCodexTicketDefaults) *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetCodexTicketDefaults(v)
+	})
+}
+
+// UpdateCodexTicketDefaults sets the "codex_ticket_defaults" field to the value that was provided on create.
+func (u *GroupUpsertBulk) UpdateCodexTicketDefaults() *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateCodexTicketDefaults()
 	})
 }
 

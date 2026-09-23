@@ -124,6 +124,9 @@ func provideCleanup(
 	paymentOrderExpiry *service.PaymentOrderExpiryService,
 	channelMonitorRunner *service.ChannelMonitorRunner,
 	channelMonitorV2Aggregator *service.ChannelMonitorV2Aggregator,
+	intelligentTests *service.IntelligentTestService,
+	groupStatus *service.GroupStatusService,
+	accountHealth *service.AccountHealthService,
 	quotaFlusher *service.UserPlatformQuotaUsageFlusher,
 	upstreamBillingProbe *service.UpstreamBillingProbeService,
 	ollamaCloudUsage *service.OllamaCloudUsageService,
@@ -144,6 +147,24 @@ func provideCleanup(
 
 		// 应用层清理步骤可并行执行，基础设施资源（Redis/Ent）最后按顺序关闭。
 		parallelSteps := []cleanupStep{
+			{"IntelligentTestService", func() error {
+				if intelligentTests != nil {
+					intelligentTests.Stop()
+				}
+				return nil
+			}},
+			{"GroupStatusService", func() error {
+				if groupStatus != nil {
+					groupStatus.Stop()
+				}
+				return nil
+			}},
+			{"AccountHealthService", func() error {
+				if accountHealth != nil {
+					accountHealth.Stop()
+				}
+				return nil
+			}},
 			{"PluginManager", func() error {
 				if pluginManager != nil {
 					pluginManager.Stop()
@@ -336,6 +357,7 @@ func provideCleanup(
 			}},
 			{"OpenAIWSPool", func() error {
 				if openAIGateway != nil {
+					openAIGateway.StopOpenAICodexTicketHarvester()
 					openAIGateway.CloseOpenAIWSPool()
 				}
 				return nil

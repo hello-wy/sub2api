@@ -308,8 +308,9 @@ func (s *ConcurrencyService) SetAccountLoadBatchCacheTTL(ttl time.Duration) {
 
 // AcquireResult represents the result of acquiring a concurrency slot
 type AcquireResult struct {
-	Acquired    bool
-	ReleaseFunc func() // Must be called when done (typically via defer)
+	Acquired        bool
+	ReleaseFunc     func() // Must be called when done (typically via defer)
+	SelectedAccount *Account
 }
 
 type AccountWithConcurrency struct {
@@ -768,4 +769,11 @@ func (s *ConcurrencyService) GetAccountConcurrencyBatch(ctx context.Context, acc
 	defer cancel()
 
 	return s.cache.GetAccountConcurrencyBatch(redisCtx, accountIDs)
+}
+
+func (s *ConcurrencyService) GetAccountConcurrencyBatchStrict(ctx context.Context, accountIDs []int64) (map[int64]int, error) {
+	if s == nil || s.cache == nil {
+		return nil, errors.New("concurrency backend unavailable")
+	}
+	return s.GetAccountConcurrencyBatch(ctx, accountIDs)
 }

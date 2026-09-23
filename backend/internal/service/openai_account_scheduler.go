@@ -395,7 +395,7 @@ func (s *defaultOpenAIAccountScheduler) Select(
 
 	previousResponseID := strings.TrimSpace(req.PreviousResponseID)
 	if previousResponseID != "" && NormalizeOpenAICompatiblePlatform(req.Platform) == PlatformOpenAI &&
-		(!req.StickyWeighted || !req.PreviousResponseCanMove) {
+		!req.PreviousResponseCanMove {
 		selection, err := s.service.selectAccountByPreviousResponseIDForCapability(
 			ctx,
 			req.GroupID,
@@ -452,6 +452,18 @@ func (s *defaultOpenAIAccountScheduler) Select(
 		}
 	}
 
+	// Previous-response continuations are physically pinned above; the logical
+	// fixed-IP family is expanded only for sticky/load-balanced selection.
+	ctx = s.service.withOrderedIPChannelSelection(ctx, req)
+	if selection, count, handled, err := s.service.selectBalancedLogicalAccounts(ctx, req); handled {
+		decision.Layer = openAIAccountScheduleLayerLoadBalance
+		decision.CandidateCount = count
+		if selection != nil && selection.Account != nil {
+			decision.SelectedAccountID = selection.Account.ID
+			decision.SelectedAccountType = selection.Account.Type
+		}
+		return selection, decision, err
+	}
 	if !req.StickyWeighted {
 		selection, escapedSticky, err := s.selectBySessionHash(ctx, req)
 		if err != nil {
@@ -1809,6 +1821,12 @@ func (s *defaultOpenAIAccountScheduler) isAccountRequestCompatibleReason(ctx con
 	}
 	if req.RequestedModel != "" && !account.IsModelSupported(req.RequestedModel) {
 		return false, "model_not_supported"
+	}
+	if s != nil && s.service != nil {
+		outboundModel := s.service.openAICodexTicketOutboundModel(account, req.RequestedModel, req.RequireCompact)
+		if s.service.openAICodexTicketBlocksAccount(ctx, account, outboundModel) {
+			return false, "codex_ticket_unavailable"
+		}
 	}
 	if req.GroupID != nil && s != nil && s.service != nil &&
 		s.service.needsUpstreamChannelRestrictionCheck(ctx, req.GroupID) &&

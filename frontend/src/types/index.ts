@@ -1207,7 +1207,54 @@ export interface OpenCodeGoUsageSettings {
   debounce_minutes: number
 }
 
+export interface AccountIPChannel {
+	upstream_429_observation?: { status_code?: number; observed_at?: string; ignored?: boolean; reset_at?: string }
+	rate_limit_429_enabled?: boolean
+	codex_ticket?: import('@/api/admin/codexTickets').CodexAccountTicketStatus
+	model_mismatch?: AccountModelMismatch
+	load_factor?: number | null
+  id: number
+  logical_account_id: number
+  proxy_id: number | null
+  proxy?: Pick<Proxy, 'id' | 'name' | 'host' | 'port'> | null
+  concurrency: number
+  current_concurrency: number | null
+  priority: number
+  enabled: boolean
+  logical_enabled?: boolean
+  healthy?: boolean
+  status: string
+  schedulable: boolean
+  recoverable?: boolean
+  error_message?: string | null
+  rate_limit_reset_at?: string | null
+  overload_until?: string | null
+  temp_unschedulable_until?: string | null
+	temp_unschedulable_reason?: string | null
+	disabled_at?: string | null
+}
+
+export interface AccountModelMismatch {
+	quarantined?: boolean
+	expected_model?: string
+	actual_model?: string
+	request_id?: string
+	detected_at?: string
+	source_account_id?: number
+	proxy_id?: number | null
+}
+
 export interface Account {
+	rate_limit_429_enabled?: boolean
+	codex_ticket?: import('@/api/admin/codexTickets').CodexAccountTicketStatus
+	anti_degradation?: boolean
+	protection_scope?: 'codex_v3' | 'generic_v1' | 'legacy' | 'disabled'
+	protection_mode?: 'mode1' | 'mode2' | 'legacy' | 'generic' | 'disabled' | string
+	logical_account_id?: number
+	ip_channels_unavailable?: boolean
+	ip_channels?: AccountIPChannel[]
+	channel_count?: number
+	channel_status?: 'normal' | 'partial' | 'unavailable' | string
   id: number
   name: string
   notes?: string | null
@@ -1372,6 +1419,32 @@ export interface OpenAIRiskControlCheckResponse {
 // The admin account list may return this compact shape when lite=1. Detail
 // operations still use Account from /admin/accounts/:id.
 export type AccountListItem = Omit<Account, 'groups'>
+
+export interface AccountHealthSnapshot {
+  account_id: number
+  name: string
+  platform: string
+  score: number
+  err_rate: number
+  avg_latency_ms?: number | null
+  total: number
+  errors: number
+  state: 'healthy' | 'degraded' | 'isolated' | string
+  isolated: boolean
+  isolate_reason?: string
+  isolated_until?: string
+  evaluated_at: string
+}
+
+export interface AccountHealthSettings {
+  enabled: boolean
+  window_minutes: number
+  min_samples: number
+  isolate_err_rate: number
+  recover_err_rate: number
+  cooldown_minutes: number
+  interval_seconds: number
+}
 
 export interface AccountSchedulerGroupScore {
   group_id?: number | null

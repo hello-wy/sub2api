@@ -89,25 +89,28 @@ type ChannelMonitorV2Filter struct {
 }
 
 type ChannelMonitorV2Metric struct {
-	SuccessRequests          int64                   `json:"success_requests"`
-	ErrorRequests            int64                   `json:"error_requests"`
-	RequestCount             int64                   `json:"request_count"`
-	InputTokens              int64                   `json:"input_tokens"`
-	OutputTokens             int64                   `json:"output_tokens"`
-	CacheCreationTokens      int64                   `json:"cache_creation_tokens"`
-	CacheReadTokens          int64                   `json:"cache_read_tokens"`
-	TokenCount               int64                   `json:"token_count"`
-	RPM                      float64                 `json:"rpm"`
-	TPM                      float64                 `json:"tpm"`
-	ErrorRate                float64                 `json:"error_rate"`
-	SuccessRate              float64                 `json:"success_rate"`
-	CacheRate                float64                 `json:"cache_rate"`
-	CacheRateNumerator       int64                   `json:"cache_rate_numerator"`
-	CacheRateDenominator     int64                   `json:"cache_rate_denominator"`
-	TTFT                     ChannelMonitorV2Latency `json:"ttft"`
-	Duration                 ChannelMonitorV2Latency `json:"duration"`
-	UpstreamAffectedRequests *int64                  `json:"upstream_affected_requests,omitempty"`
-	UpstreamAttemptCount     *int64                  `json:"upstream_attempt_count,omitempty"`
+	EvaluatedErrorRequests    int64                   `json:"-"`
+	GenerationTokensPerSecond *float64                `json:"generation_tokens_per_second"`
+	GenerationSampleCount     int64                   `json:"generation_sample_count"`
+	SuccessRequests           int64                   `json:"success_requests"`
+	ErrorRequests             int64                   `json:"error_requests"`
+	RequestCount              int64                   `json:"request_count"`
+	InputTokens               int64                   `json:"input_tokens"`
+	OutputTokens              int64                   `json:"output_tokens"`
+	CacheCreationTokens       int64                   `json:"cache_creation_tokens"`
+	CacheReadTokens           int64                   `json:"cache_read_tokens"`
+	TokenCount                int64                   `json:"token_count"`
+	RPM                       float64                 `json:"rpm"`
+	TPM                       float64                 `json:"tpm"`
+	ErrorRate                 float64                 `json:"error_rate"`
+	SuccessRate               float64                 `json:"success_rate"`
+	CacheRate                 float64                 `json:"cache_rate"`
+	CacheRateNumerator        int64                   `json:"cache_rate_numerator"`
+	CacheRateDenominator      int64                   `json:"cache_rate_denominator"`
+	TTFT                      ChannelMonitorV2Latency `json:"ttft"`
+	Duration                  ChannelMonitorV2Latency `json:"duration"`
+	UpstreamAffectedRequests  *int64                  `json:"upstream_affected_requests,omitempty"`
+	UpstreamAttemptCount      *int64                  `json:"upstream_attempt_count,omitempty"`
 }
 
 type ChannelMonitorV2Latency struct {

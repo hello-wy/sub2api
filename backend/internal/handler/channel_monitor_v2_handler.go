@@ -14,6 +14,7 @@ import (
 )
 
 type ChannelMonitorV2Handler struct {
+	groupStatus   *service.GroupStatusService
 	service       *service.ChannelMonitorV2Service
 	apiKeyService channelMonitorV2GroupAuthorizer
 }
@@ -30,7 +31,7 @@ func NewChannelMonitorV2Handler(svc *service.ChannelMonitorV2Service, apiKeyServ
 // (shared Dimensions/Errors handlers serve both user and admin route groups).
 func channelMonitorV2IsAdmin(c *gin.Context) bool {
 	role, ok := middleware.GetUserRoleFromContext(c)
-	return ok && role == service.RoleAdmin
+	return ok && service.IsAdminRole(role)
 }
 
 func (h *ChannelMonitorV2Handler) GetConfig(c *gin.Context) {

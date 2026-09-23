@@ -1115,6 +1115,16 @@ func (s *OpenAIGatewayService) isBetterAccount(candidate, current *Account) bool
 func (s *OpenAIGatewayService) SelectAccountWithLoadAwareness(ctx context.Context, groupID *int64, sessionHash string, requestedModel string, excludedIDs map[int64]struct{}) (*AccountSelectionResult, error) {
 	ctx = s.withOpenAIQuotaAutoPauseContext(ctx)
 	ctx = s.withOpenAIGroupPrivacyRequirement(ctx, groupID)
+	ctx = s.withOrderedIPChannelSelection(ctx, OpenAIAccountScheduleRequest{
+		GroupID: groupID, Platform: PlatformOpenAI, SessionHash: sessionHash,
+		RequestedModel: requestedModel, ExcludedIDs: excludedIDs,
+	})
+	if selection, _, handled, err := s.selectBalancedLogicalAccounts(ctx, OpenAIAccountScheduleRequest{
+		GroupID: groupID, Platform: PlatformOpenAI, SessionHash: sessionHash,
+		RequestedModel: requestedModel, ExcludedIDs: excludedIDs,
+	}); handled {
+		return selection, err
+	}
 	// 分组利润控制：legacy 公共入口同样装门，保证不经
 	// selectAccountWithScheduler 的调用方也无法绕过利润准入。
 	ctx = s.withOpenAIProfitControlGate(ctx, groupID)
@@ -1516,6 +1526,14 @@ func (s *OpenAIGatewayService) listSchedulableAccounts(ctx context.Context, grou
 }
 
 func (s *OpenAIGatewayService) tryAcquireAccountSlot(ctx context.Context, accountID int64, maxConcurrency int) (*AcquireResult, error) {
+	// Fixed-IP logical accounts are expanded at admission time. This hook is
+	// intentionally below the scheduler layers so sticky, load-balanced and
+	// legacy callers share ordered channel reservation semantics.
+	if scope, _ := ctx.Value(openAIIPChannelSelectionKey{}).(*openAIIPChannelSelectionScope); scope != nil {
+		if result, handled, err := scope.acquire(ctx, accountID); handled {
+			return result, err
+		}
+	}
 	if s.concurrencyService == nil {
 		return &AcquireResult{Acquired: true, ReleaseFunc: func() {}}, nil
 	}
@@ -1721,9 +1739,16 @@ func (s *OpenAIGatewayService) hydrateSelectedAccount(ctx context.Context, accou
 }
 
 func (s *OpenAIGatewayService) newSelectionResult(ctx context.Context, account *Account, acquired bool, release func(), waitPlan *AccountWaitPlan) (*AccountSelectionResult, error) {
-	hydrated, err := s.hydrateSelectedAccount(ctx, account)
-	if err != nil {
-		return nil, err
+	hydrated := account
+	scope, _ := ctx.Value(openAIIPChannelSelectionKey{}).(*openAIIPChannelSelectionScope)
+	// IP-family expansion returns a current DB account including its fixed proxy.
+	// Rehydrating it from the scheduler snapshot can restore an obsolete proxy.
+	if scope == nil || !scope.isKnownChannel(account.ID) {
+		var err error
+		hydrated, err = s.hydrateSelectedAccount(ctx, account)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return attachSelectionProfitGate(ctx, &AccountSelectionResult{
 		Account:     hydrated,

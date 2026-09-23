@@ -69,6 +69,9 @@ func (p *AntigravityTokenProvider) GetAccessToken(ctx context.Context, account *
 	if account == nil {
 		return "", errors.New("account is nil")
 	}
+	if intelligentContext(ctx) != nil && account.Type == AccountTypeOAuth {
+		return intelligentExistingAccessToken(account)
+	}
 	if account.Platform != PlatformAntigravity {
 		return "", errors.New("not an antigravity account")
 	}

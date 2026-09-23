@@ -869,6 +869,20 @@ func ProvideAPIKeyService(
 	return svc
 }
 
+// ProvideIntelligentTestService starts the bounded intelligent-test worker.
+func ProvideIntelligentTestService(repo IntelligentTestRepository, runner *AccountTestService) *IntelligentTestService {
+	svc := NewIntelligentTestService(repo, runner)
+	svc.Start()
+	return svc
+}
+
+func ProvideAntiDegradeService(admin AdminService, cfg *config.Config, plugins *PluginManager) *AntiDegradeService {
+	svc := NewAntiDegradeService(admin)
+	svc.cfg = cfg
+	svc.pluginManager = plugins
+	return svc
+}
+
 func ProvideUserService(
 	userRepo UserRepository,
 	settingRepo SettingRepository,
@@ -897,6 +911,10 @@ var ProviderSet = wire.NewSet(
 	NewRedeemService,
 	NewPromoService,
 	NewUsageService,
+	ProvideIntelligentTestService,
+	NewAccountTrafficService,
+	ProvideAccountHealthService,
+	ProvideAntiDegradeService,
 	NewDashboardService,
 	NewBusinessAnalyticsService,
 	ProvidePricingService,
@@ -1014,6 +1032,7 @@ var ProviderSet = wire.NewSet(
 	ProvideChannelMonitorRunner,
 	NewChannelMonitorQuotaFetcher,
 	ProvideChannelMonitorV2Service,
+	NewGroupStatusService,
 	ProvideChannelMonitorV2Aggregator,
 	NewChannelMonitorRequestTemplateService,
 	ProvideUserPlatformQuotaUsageFlusher,

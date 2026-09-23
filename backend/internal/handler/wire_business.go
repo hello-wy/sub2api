@@ -10,8 +10,12 @@ import (
 type AdminHandlersDependencies struct {
 	DashboardHandler              *admin.DashboardHandler
 	UserHandler                   *admin.UserHandler
+	IntelligentTestHandler        *admin.IntelligentTestHandler
 	GroupHandler                  *admin.GroupHandler
 	AccountHandler                *admin.AccountHandler
+	AccountTrafficHandler         *admin.AccountTrafficHandler
+	AccountHealthHandler          *admin.AccountHealthHandler
+	AntiDegradeHandler            *admin.AntiDegradeHandler
 	AnnouncementHandler           *admin.AnnouncementHandler
 	DataManagementHandler         *admin.DataManagementHandler
 	BackupHandler                 *admin.BackupHandler
@@ -48,17 +52,24 @@ type AdminHandlersDependencies struct {
 	UpstreamBillingProbe          *service.UpstreamBillingProbeService
 	OllamaCloudUsage              *service.OllamaCloudUsageService
 	OpenCodeGoUsage               *service.OpenCodeGoUsageService
+	OpenAIGateway                 *service.OpenAIGatewayService
 }
 
 func ProvideAdminHandlers(deps AdminHandlersDependencies) *AdminHandlers {
 	deps.AccountHandler.SetUpstreamBillingProbeService(deps.UpstreamBillingProbe)
 	deps.AccountHandler.SetOllamaCloudUsageService(deps.OllamaCloudUsage)
 	deps.AccountHandler.SetOpenCodeGoUsageService(deps.OpenCodeGoUsage)
+	deps.AccountHandler.SetCodexAccountTicketService(deps.OpenAIGateway)
+	deps.AccountHandler.SetAccountTrafficHandler(deps.AccountTrafficHandler)
 	return &AdminHandlers{
 		Dashboard:              deps.DashboardHandler,
 		User:                   deps.UserHandler,
+		IntelligentTest:        deps.IntelligentTestHandler,
 		Group:                  deps.GroupHandler,
 		Account:                deps.AccountHandler,
+		AccountTraffic:         deps.AccountTrafficHandler,
+		AccountHealth:          deps.AccountHealthHandler,
+		AntiDegrade:            deps.AntiDegradeHandler,
 		Announcement:           deps.AnnouncementHandler,
 		DataManagement:         deps.DataManagementHandler,
 		Backup:                 deps.BackupHandler,

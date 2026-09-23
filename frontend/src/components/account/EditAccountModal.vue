@@ -3057,6 +3057,14 @@
         data-tour="account-form-groups"
       />
 
+      <CodexAccountTicketSettings
+        v-if="account?.platform === 'openai' && (account?.type === 'oauth' || account?.type === 'setup-token')"
+        :account-id="account.id"
+        :visible="show"
+        :proxy-changed="(form.proxy_id ?? 0) !== (account.proxy_id ?? 0)"
+        :disabled="submitting"
+      />
+
     </form>
 
     <template #footer>
@@ -3137,6 +3145,7 @@ import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import Select from '@/components/common/Select.vue'
 import HelpTooltip from '@/components/common/HelpTooltip.vue'
 import CodexGatewayField from '@/components/account/CodexGatewayField.vue'
+import CodexAccountTicketSettings from '@/components/account/CodexAccountTicketSettings.vue'
 import UpstreamRequestIdHeaderField from '@/components/account/UpstreamRequestIdHeaderField.vue'
 import Toggle from '@/components/common/Toggle.vue'
 import Icon from '@/components/icons/Icon.vue'

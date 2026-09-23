@@ -133,6 +133,9 @@ var auditBodySensitiveExactKeys = func() map[string]struct{} {
 		// custom_key 为用户自设的平台 API Key 明文，
 		// session 为 Ollama Cloud 用量的浏览器会话 Cookie 明文。
 		"proxy_key", "custom_key", "session",
+		// Codex STATE 的代理配置可能在 URL 中携带用户名和密码；审计只保留
+		// 配置存在性，不能把完整代理凭据写入审计日志。
+		"proxy_url", "harvest_proxy_url",
 	}
 	set := make(map[string]struct{}, len(builtin)+len(SensitiveCredentialKeys)+16)
 	for _, k := range builtin {
@@ -217,7 +220,8 @@ func redactAuditValue(value any, depth int) any {
 	case map[string]any:
 		out := make(map[string]any, len(v))
 		for k, item := range v {
-			if isAuditSensitiveBodyKey(k) {
+			normalizedKey := auditNormalizeBodyKey(k)
+			if isAuditSensitiveBodyKey(k) || IsOpenAICodexTicketPrivateExtraKey(k) || strings.Contains(normalizedKey, "codexturnticket") || normalizedKey == "codexticketconfig" {
 				out[k] = auditRedactedPlaceholder
 				continue
 			}

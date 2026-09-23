@@ -1,0 +1,4 @@
+-- Preserve every existing account policy: new defaults are applied at the
+-- common account creation boundary; missing old flags retain legacy meaning.
+-- Account protection is stored in account extra/runtime state.  This migration
+-- intentionally does not alter user roles or permissions.

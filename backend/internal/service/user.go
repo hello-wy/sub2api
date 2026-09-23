@@ -6,6 +6,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+const RoleSuperAdmin = "super_admin"
+
 type User struct {
 	ID             int64
 	Email          string
@@ -73,6 +75,8 @@ type User struct {
 func (u *User) IsAdmin() bool {
 	return u.Role == RoleAdmin
 }
+
+func IsAdminRole(role string) bool { return role == RoleAdmin || role == RoleSuperAdmin }
 
 func (u *User) IsActive() bool {
 	return u.Status == StatusActive

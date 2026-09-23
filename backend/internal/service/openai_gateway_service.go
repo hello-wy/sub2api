@@ -78,6 +78,8 @@ var openaiAllowedHeaders = map[string]bool{
 	"user-agent":              true,
 	"originator":              true,
 	"session_id":              true,
+	"session-id":              true,
+	"thread-id":               true,
 	"x-codex-beta-features":   true,
 	"x-codex-installation-id": true,
 	"x-codex-turn-state":      true,
@@ -97,6 +99,8 @@ var openaiPassthroughAllowedHeaders = map[string]bool{
 	"user-agent":              true,
 	"originator":              true,
 	"session_id":              true,
+	"session-id":              true,
+	"thread-id":               true,
 	"x-codex-beta-features":   true,
 	"x-codex-installation-id": true,
 	"x-codex-turn-state":      true,
@@ -232,8 +236,9 @@ type OpenAIUsage struct {
 
 // OpenAIForwardResult represents the result of forwarding
 type OpenAIForwardResult struct {
-	RequestID  string
-	ResponseID string
+	RequestID                string
+	modelMismatchQuarantined bool
+	ResponseID               string
 	// UpstreamHeaders 是直接上游的响应头，用于按账户配置解析上游请求标识。
 	UpstreamHeaders http.Header
 	Usage           OpenAIUsage
@@ -505,8 +510,24 @@ type OpenAIGatewayService struct {
 	// openaiCodexTurnStateOrigins: 下游会话 seed → openAICodexTurnStateOrigin，
 	// 记录最近一次向该会话下发 x-codex-turn-state 的铸造账号，供出站守卫
 	// 剥离跨账号回带（openai_codex_turn_state.go）。
-	openaiCodexTurnStateOrigins sync.Map
-	openaiCodexTurnStateWrites  atomic.Uint64
+	openaiCodexTurnStateOrigins    sync.Map
+	openaiCodexTurnStateWrites     atomic.Uint64
+	openaiCodexWatchdogRevoked     sync.Map
+	openaiCodexWatchdogPending     sync.Map
+	openaiCodexWatchdogRetry       sync.Map
+	openaiCodexTicketProbe         func(context.Context, *Account, string, string, string, string, time.Duration) (string, int, error)
+	openaiCodexTickets             sync.Map
+	openaiCodexTicketMutationLocks sync.Map
+	openaiCodexAccountMu           sync.Mutex
+	openaiCodexAccountJobs         map[int64]*codexAccountTicketJob
+	openaiCodexAccountWG           sync.WaitGroup
+	openaiCodexAccountStopping     bool
+	openaiCodexTicketSlots         chan struct{}
+	openaiCodexTicketLifecycleMu   sync.Mutex
+	openaiCodexTicketCancel        context.CancelFunc
+	openaiCodexTicketContext       context.Context
+	openaiCodexTicketDone          chan struct{}
+	openaiCodexTicketStopped       bool
 }
 
 // NewOpenAIGatewayService creates a new OpenAIGatewayService

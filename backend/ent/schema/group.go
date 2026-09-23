@@ -279,6 +279,9 @@ func (Group) Fields() []ent.Field {
 			Default(domain.GroupModelAllowlist{}).
 			SchemaType(map[string]string{dialect.Postgres: "jsonb"}).
 			Comment("分组模型白名单：同时约束模型列表接口与请求准入"),
+		field.JSON("codex_ticket_defaults", domain.GroupCodexTicketDefaults{}).
+			Default(domain.GroupCodexTicketDefaults{}).
+			SchemaType(map[string]string{dialect.Postgres: "jsonb"}),
 		field.JSON("codex_models_manifest_config", domain.GroupCodexModelsManifestConfig{}).
 			Default(domain.GroupCodexModelsManifestConfig{}).
 			SchemaType(map[string]string{dialect.Postgres: "jsonb"}).

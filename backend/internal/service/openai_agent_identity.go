@@ -239,6 +239,9 @@ func ensureAgentIdentityTaskForAccount(ctx context.Context, repo AccountReposito
 	if account == nil || !account.IsOpenAIAgentIdentity() {
 		return nil
 	}
+	if intelligentContext(ctx) != nil && strings.TrimSpace(expectedTaskID) != "" {
+		return errIntelligentCredentialRefreshRequired
+	}
 	credAccount := account
 	if account.IsShadow() {
 		resolved, err := resolveCredentialAccount(ctx, repo, account)
@@ -251,6 +254,11 @@ func ensureAgentIdentityTaskForAccount(ctx context.Context, repo AccountReposito
 		return errors.New("agent identity credentials are unavailable")
 	}
 	currentTaskID := strings.TrimSpace(credAccount.GetCredential("task_id"))
+	if intelligentContext(ctx) != nil {
+		if currentTaskID == "" || strings.TrimSpace(expectedTaskID) != "" {
+			return errIntelligentCredentialRefreshRequired
+		}
+	}
 	if currentTaskID != "" && (expectedTaskID == "" || currentTaskID != expectedTaskID) {
 		return nil
 	}

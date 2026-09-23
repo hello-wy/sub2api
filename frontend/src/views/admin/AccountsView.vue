@@ -160,6 +160,14 @@
               </div>
             </template>
           </AccountTableActions>
+          <div class="flex flex-wrap gap-2">
+            <button type="button" class="btn btn-secondary" :disabled="!selIds.length" @click="stateBatchAccountIds = [...selIds]">
+              {{ t('admin.accounts.stateTicket.batch.title') }}
+            </button>
+            <button type="button" class="btn btn-secondary" @click="showTicketDefaults = true">
+              {{ t('admin.accounts.stateTicket.defaults') }}
+            </button>
+          </div>
         </div>
         <div
           v-if="hasPendingListSync"
@@ -284,7 +292,7 @@
             </div>
           </template>
           <template #cell-capacity="{ row }">
-            <AccountCapacityCell :account="row" />
+            <AccountCapacityCell :account="row" @manage="openIPChannels(row)" />
           </template>
           <template #cell-status="{ row }">
             <div class="flex items-center gap-1.5">
@@ -503,6 +511,9 @@
     </TablePageLayout>
     <CreateAccountModal :show="showCreate" :proxies="proxies" :groups="groups" @close="showCreate = false" @created="reload" />
     <EditAccountModal :show="showEdit" :account="edAcc" :proxies="proxies" :groups="groups" @close="showEdit = false" @updated="handleAccountUpdated" />
+    <CodexTicketBatchModal v-if="stateBatchAccountIds" :show="true" :account-ids="stateBatchAccountIds" @close="stateBatchAccountIds = null" @updated="reload" />
+    <AccountTicketDefaultsDialog :show="showTicketDefaults" @close="showTicketDefaults = false" />
+    <AccountIPChannelsModal :show="showIPChannels" :account="ipChannelAccount" :proxies="proxies" @close="showIPChannels = false" @updated="reload" />
     <ReAuthAccountModal :show="showReAuth" :account="reAuthAcc" @close="closeReAuthModal" @reauthorized="handleAccountUpdated" />
     <AccountTestModal :show="showTest" :account="testingAcc" @close="closeTestModal" />
     <AccountStatsModal :show="showStats" :account="statsAcc" @close="closeStatsModal" />
@@ -555,6 +566,9 @@ import HelpTooltip from '@/components/common/HelpTooltip.vue'
 import Pagination from '@/components/common/Pagination.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import { CreateAccountModal, EditAccountModal, BulkEditAccountModal, SyncFromCrsModal, TempUnschedStatusModal } from '@/components/account'
+import CodexTicketBatchModal from '@/components/account/CodexTicketBatchModal.vue'
+import AccountTicketDefaultsDialog from '@/components/account/AccountTicketDefaultsDialog.vue'
+import AccountIPChannelsModal from '@/components/account/AccountIPChannelsModal.vue'
 import AccountTableActions from '@/components/admin/account/AccountTableActions.vue'
 import AccountTableFilters from '@/components/admin/account/AccountTableFilters.vue'
 import AccountBulkActionsBar from '@/components/admin/account/AccountBulkActionsBar.vue'
@@ -641,6 +655,11 @@ const selTypes = computed<AccountType[]>(() => {
 })
 const showCreate = ref(false)
 const showEdit = ref(false)
+const showTicketDefaults = ref(false)
+const stateBatchAccountIds = ref<number[] | null>(null)
+const showIPChannels = ref(false)
+const ipChannelAccount = ref<AccountListItem | null>(null)
+const openIPChannels = (account: AccountListItem) => { ipChannelAccount.value = account; showIPChannels.value = true }
 const showSync = ref(false)
 const showImportData = ref(false)
 const showExportDataDialog = ref(false)

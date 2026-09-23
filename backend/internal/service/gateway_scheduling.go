@@ -1150,6 +1150,9 @@ func (s *GatewayService) isAccountSchedulableForSelection(account *Account) bool
 	if account == nil {
 		return false
 	}
+	if hasPendingAccountModelMismatch(account) {
+		return false
+	}
 	return account.IsSchedulable()
 }
 

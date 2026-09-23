@@ -198,6 +198,8 @@ export default {
     modelPlaza: '模型广场',
     subscriptions: '订阅管理',
     accounts: '账号管理',
+    intelligentTests: '智能测试',
+    accountHealth: '账号健康',
     plugins: '插件管理',
     proxies: 'IP管理',
     redeemCodes: '兑换码',

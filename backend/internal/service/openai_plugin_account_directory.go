@@ -108,6 +108,7 @@ func accountReadableSnapshotJSON(account *Account) []byte {
 		return nil
 	}
 	clone := *account
+	clone.InitialCodexTicketDefaults = nil
 	clone.Credentials = nil
 	clone.Groups = nil
 	clone.AccountGroups = nil

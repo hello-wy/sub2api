@@ -584,6 +584,14 @@ func (s *adminServiceImpl) UpdateAccount(ctx context.Context, id int64, input *U
 	if err != nil {
 		return nil, err
 	}
+	if input != nil && input.Extra != nil && !ProtectionManagedWrite(ctx) {
+		if ProtectedProxyModeConflict(account, input.Extra) {
+			return nil, ErrProtectedProxyModeChange
+		}
+		if isMode1ProtectionEnabled(account) && hasMode1ManagedUpdates(input.Extra) {
+			return nil, infraerrors.BadRequest("MODE1_MANAGED_UPDATE", "模式一保护字段必须通过专用保护入口修改")
+		}
+	}
 	var normalizedExtra map[string]any
 	if input.Extra != nil {
 		normalizedExtra, err = normalizeOpenAILongContextBillingUpdateExtra(account, input)
@@ -604,6 +612,12 @@ func (s *adminServiceImpl) UpdateAccount(ctx context.Context, id int64, input *U
 		}
 		if err := ValidateUpstreamRequestIDHeaderExtra(normalizedExtra); err != nil {
 			return nil, err
+		}
+		if !ProtectionManagedWrite(ctx) && ProtectedProxyModeConflict(account, normalizedExtra) {
+			return nil, ErrProtectedProxyModeChange
+		}
+		if !ProtectionManagedWrite(ctx) && isMode1ProtectionEnabled(account) && hasMode1ManagedUpdates(normalizedExtra) {
+			return nil, infraerrors.BadRequest("MODE1_MANAGED_UPDATE", "模式一保护字段必须通过专用保护入口修改")
 		}
 	}
 	previousProbeIdentity := upstreamBillingProbeIdentity(account)
@@ -710,6 +724,9 @@ func (s *adminServiceImpl) UpdateAccount(ctx context.Context, id int64, input *U
 			}
 		}
 		normalizedExtra = prepareCodexFingerprintExtraForUpdate(account, normalizedExtra)
+		// 在服务层先保留受管保护字段，保证内存仓储/导入路径与生产数据库
+		// 行锁合并路径具有同样的安全不变量；repository 会再次在锁内复核。
+		normalizedExtra = PreserveAccountProtection(ctx, account, normalizedExtra)
 		account.Extra = normalizedExtra
 		if account.Platform == PlatformAntigravity && wasOveragesEnabled && !account.IsOveragesEnabled() {
 			delete(account.Extra, "antigravity_credits_overages") // 清理旧版 overages 运行态
@@ -933,6 +950,16 @@ func (s *adminServiceImpl) UpdateAccount(ctx context.Context, id int64, input *U
 // UpdateAccountExtra 仅对 Extra JSONB 做 key 级合并，避免覆盖其它运行态键
 // （如 model_rate_limits / passive_usage_* 等）。
 func (s *adminServiceImpl) UpdateAccountExtra(ctx context.Context, id int64, updates map[string]any) error {
+	current, err := s.accountRepo.GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	if !ProtectionManagedWrite(ctx) && ProtectedProxyModeConflict(current, updates) {
+		return ErrProtectedProxyModeChange
+	}
+	if !ProtectionManagedWrite(ctx) && isMode1ProtectionEnabled(current) && hasMode1ManagedUpdates(updates) {
+		return infraerrors.BadRequest("MODE1_MANAGED_UPDATE", "模式一保护字段必须通过专用保护入口修改")
+	}
 	updates = sanitizedCodexFingerprintExtraUpdates(updates)
 	updates = stripOpenAIAutoResetCreditManagedExtra(updates, true)
 	delete(updates, UpstreamBillingProbeEnabledExtraKey)
@@ -1031,7 +1058,7 @@ func (s *adminServiceImpl) BulkUpdateAccounts(ctx context.Context, input *BulkUp
 
 	// 预取所有目标账号，供凭据守卫/代理守卫/混合渠道检查共用，避免多次 DB 查询。
 	var cachedTargets []*Account
-	if len(input.Credentials) > 0 || input.ProxyID != nil || needMixedChannelCheck || openAISettings.any() || input.ProbeEnabled != nil || input.RateMultiplier != nil {
+	if len(input.Credentials) > 0 || input.ProxyID != nil || len(input.Extra) > 0 || needMixedChannelCheck || openAISettings.any() || input.ProbeEnabled != nil || input.RateMultiplier != nil {
 		loaded, err := s.accountRepo.GetByIDs(ctx, input.AccountIDs)
 		if err != nil {
 			return nil, err
@@ -1081,6 +1108,19 @@ func (s *adminServiceImpl) BulkUpdateAccounts(ctx context.Context, input *BulkUp
 			if acc != nil && acc.IsCredentialShadow() {
 				return nil, infraerrors.Newf(http.StatusBadRequest, "SPARK_SHADOW_PROXY_INHERITED",
 					"spark shadow account %d proxy is inherited from its parent and cannot be set in bulk; manage it on the parent account", acc.ID)
+			}
+		}
+	}
+	if len(input.Extra) > 0 && !ProtectionManagedWrite(ctx) {
+		for _, account := range cachedTargets {
+			if account == nil {
+				continue
+			}
+			if ProtectedProxyModeConflict(account, input.Extra) {
+				return nil, ErrProtectedProxyModeChange
+			}
+			if isMode1ProtectionEnabled(account) && hasMode1ManagedUpdates(input.Extra) {
+				return nil, infraerrors.BadRequest("MODE1_MANAGED_UPDATE", "模式一保护字段必须通过专用保护入口修改")
 			}
 		}
 	}

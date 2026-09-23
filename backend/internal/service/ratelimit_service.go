@@ -2217,6 +2217,12 @@ func hasRecoverableRuntimeState(account *Account) bool {
 		hasNonEmptyMapValue(account.Extra, "antigravity_quota_scopes")
 }
 
+// AccountHasRecoverableState is the read-side predicate used by admin health
+// views to decide whether an account can be explicitly recovered.
+func AccountHasRecoverableState(account *Account) bool {
+	return account != nil && (account.Status == StatusError || hasRecoverableRuntimeState(account))
+}
+
 func hasNonEmptyMapValue(extra map[string]any, key string) bool {
 	raw, ok := extra[key]
 	if !ok || raw == nil {

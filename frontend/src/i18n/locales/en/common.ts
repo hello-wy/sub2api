@@ -198,6 +198,8 @@ export default {
     modelPlaza: 'Model Plaza',
     subscriptions: 'Subscriptions',
     accounts: 'Accounts',
+    intelligentTests: 'Intelligent Tests',
+    accountHealth: 'Account Health',
     plugins: 'Plugins',
     proxies: 'Proxies',
     redeemCodes: 'Redeem Codes',

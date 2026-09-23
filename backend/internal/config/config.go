@@ -986,6 +986,8 @@ type GatewayConfig struct {
 	// ForceCodexCLI: 强制将 OpenAI `/v1/responses` 请求按 Codex CLI 处理。
 	// 用于网关未透传/改写 User-Agent 时的兼容兜底（默认关闭，避免影响其他客户端）。
 	ForceCodexCLI bool `mapstructure:"force_codex_cli"`
+	// Experimental STATE management is disabled unless explicitly enabled.
+	OpenAICodexTicket OpenAICodexTicketConfig `mapstructure:"openai_codex_ticket"`
 	// DisableCodexIdentityEnforcement: 关闭「强制统一 Codex 出站身份」。上游 /backend-api/codex
 	// 在容量紧张时按客户端身份分优先级降载，被降载的请求会拿到 HTTP 200 + 流内
 	// server_is_overloaded，该次请求失败。默认强制统一出口：所有 OAuth 出站的
@@ -1225,6 +1227,19 @@ func (c *UserMessageQueueConfig) GetEffectiveMode() string {
 		return UMQModeSerialize // 向后兼容
 	}
 	return ""
+}
+
+// OpenAICodexTicketConfig controls bounded synthetic ticket probes. Business
+// traffic continues to use each account's fixed proxy and existing concurrency.
+type OpenAICodexTicketConfig struct {
+	Enabled                      bool   `mapstructure:"enabled"`
+	TTLSeconds                   int    `mapstructure:"ttl_seconds"`
+	RefreshBeforeSeconds         int    `mapstructure:"refresh_before_seconds"`
+	HarvestProxyURL              string `mapstructure:"harvest_proxy_url"`
+	HarvestDialProxyURL          string `mapstructure:"harvest_dial_proxy_url"`
+	HarvestProbeIntervalSeconds  int    `mapstructure:"harvest_probe_interval_seconds"`
+	HarvestAttemptTimeoutSeconds int    `mapstructure:"harvest_attempt_timeout_seconds"`
+	MaxConcurrentHarvests        int    `mapstructure:"max_concurrent_harvests"`
 }
 
 // DefaultOpenAIWSClientFirstMessageTimeoutSeconds preserves the legacy ingress deadline.
@@ -2390,6 +2405,14 @@ func setDefaults() {
 	viper.SetDefault("gateway.max_account_switches", 10)
 	viper.SetDefault("gateway.max_account_switches_gemini", 3)
 	viper.SetDefault("gateway.force_codex_cli", false)
+	viper.SetDefault("gateway.openai_codex_ticket.enabled", false)
+	viper.SetDefault("gateway.openai_codex_ticket.ttl_seconds", 3600)
+	viper.SetDefault("gateway.openai_codex_ticket.refresh_before_seconds", 600)
+	viper.SetDefault("gateway.openai_codex_ticket.harvest_proxy_url", "")
+	viper.SetDefault("gateway.openai_codex_ticket.harvest_dial_proxy_url", "")
+	viper.SetDefault("gateway.openai_codex_ticket.harvest_probe_interval_seconds", 30)
+	viper.SetDefault("gateway.openai_codex_ticket.harvest_attempt_timeout_seconds", 25)
+	viper.SetDefault("gateway.openai_codex_ticket.max_concurrent_harvests", 2)
 	viper.SetDefault("gateway.disable_codex_identity_enforcement", false)
 	viper.SetDefault("gateway.disable_codex_originator_normalization", false)
 	viper.SetDefault("gateway.codex_image_generation_bridge_enabled", false)

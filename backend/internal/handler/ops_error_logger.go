@@ -1074,7 +1074,7 @@ func (state *opsCaptureWriterState) shouldCapture() bool {
 // Notes:
 // - It buffers response bodies only for status >= 400 or terminal SSE frames.
 // - Streaming errors after the response has started (SSE) may still need explicit logging.
-func OpsErrorLoggerMiddleware(ops *service.OpsService) gin.HandlerFunc {
+func OpsErrorLoggerMiddleware(ops *service.OpsService, groupStatus ...*service.GroupStatusService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		originalWriter := c.Writer
 		w := acquireOpsCaptureWriter(originalWriter)
@@ -1082,14 +1082,26 @@ func OpsErrorLoggerMiddleware(ops *service.OpsService) gin.HandlerFunc {
 		defer func() {
 			// Restore the original writer before returning so outer middlewares
 			// don't observe a pooled wrapper that has been released.
-			if c.Writer == w {
-				c.Writer = originalWriter
-			}
+			c.Writer = originalWriter
 			releaseOpsCaptureWriter(w)
 		}()
 		c.Writer = w
+		var completion *groupCompletionWriter
+		if len(groupStatus) > 0 && groupStatus[0] != nil {
+			completion = &groupCompletionWriter{ResponseWriter: w}
+			c.Writer = completion
+		}
 		c.Next()
 		w.finalizeCapture()
+		if completion != nil {
+			completion.finish()
+		}
+		if len(groupStatus) > 0 {
+			recordGroupMonitorOutcome(c, w, completion, groupStatus[0])
+		}
+		if service.IsGroupProbe(c.Request.Context()) {
+			return
+		}
 
 		if _, rejected := middleware2.GetIngressRejectReason(c); rejected {
 			return

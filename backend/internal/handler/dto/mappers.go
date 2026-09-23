@@ -163,6 +163,7 @@ func GroupFromServiceAdmin(g *service.Group) *AdminGroup {
 		MessagesDispatchModelConfig: g.MessagesDispatchModelConfig,
 		ModelAllowlist:              g.ModelAllowlist,
 		CodexModelsManifestConfig:   g.CodexModelsManifestConfig,
+		CodexTicketDefaults:         g.CodexTicketDefaults,
 		SupportedModelScopes:        g.SupportedModelScopes,
 		AccountCount:                g.AccountCount,
 		ActiveAccountCount:          g.ActiveAccountCount,
@@ -424,6 +425,9 @@ func redactAccountManagedExtra(extra map[string]any) map[string]any {
 	}
 	redacted := make(map[string]any, len(extra))
 	for key, value := range extra {
+		if service.IsOpenAICodexTicketPrivateExtraKey(key) || key == "codex_fingerprint_seed" {
+			continue
+		}
 		switch key {
 		case service.OllamaCloudUsageSessionExtraKey,
 			service.OllamaCloudUsageAutoRefreshExtraKey,

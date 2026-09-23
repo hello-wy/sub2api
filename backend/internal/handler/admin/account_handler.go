@@ -65,6 +65,8 @@ type AccountHandler struct {
 	grokImportProber        grokImportProber
 	upstreamBillingProbe    *service.UpstreamBillingProbeService
 	ollamaCloudUsage        *service.OllamaCloudUsageService
+	accountTraffic          *AccountTrafficHandler
+	codexAccountTickets     codexAccountTicketManager
 	cfg                     *config.Config
 	opencodeGoUsage         *service.OpenCodeGoUsageService
 }
@@ -76,6 +78,10 @@ func (h *AccountHandler) SetUpstreamBillingProbeService(probe *service.UpstreamB
 
 func (h *AccountHandler) SetOllamaCloudUsageService(usage *service.OllamaCloudUsageService) {
 	h.ollamaCloudUsage = usage
+}
+
+func (h *AccountHandler) SetAccountTrafficHandler(traffic *AccountTrafficHandler) {
+	h.accountTraffic = traffic
 }
 
 func (h *AccountHandler) SetOpenCodeGoUsageService(usage *service.OpenCodeGoUsageService) {
@@ -197,10 +203,16 @@ type CheckMixedChannelRequest struct {
 // AccountWithConcurrency extends Account with real-time concurrency info
 type AccountWithConcurrency struct {
 	*dto.Account
-	simpleMode         bool                         `json:"-"`
-	CurrentConcurrency int                          `json:"current_concurrency"`
-	SchedulerScore     *AccountSchedulerScore       `json:"scheduler_score,omitempty"`
-	SchedulerScores    []AccountSchedulerGroupScore `json:"scheduler_scores,omitempty"`
+	RateLimit429Enabled   bool                              `json:"rate_limit_429_enabled"`
+	CodexTicket           *service.CodexAccountTicketStatus `json:"codex_ticket,omitempty"`
+	simpleMode            bool                              `json:"-"`
+	CurrentConcurrency    int                               `json:"current_concurrency"`
+	IPChannels            []AccountIPChannelResponse        `json:"ip_channels,omitempty"`
+	IPChannelsUnavailable bool                              `json:"ip_channels_unavailable,omitempty"`
+	ChannelCount          int                               `json:"channel_count,omitempty"`
+	ChannelStatus         string                            `json:"channel_status,omitempty"`
+	SchedulerScore        *AccountSchedulerScore            `json:"scheduler_score,omitempty"`
+	SchedulerScores       []AccountSchedulerGroupScore      `json:"scheduler_scores,omitempty"`
 	// 以下字段仅对 Anthropic OAuth/SetupToken 账号有效，且仅在启用相应功能时返回
 	CurrentWindowCost *float64 `json:"current_window_cost,omitempty"` // 当前窗口费用
 	ActiveSessions    *int     `json:"active_sessions,omitempty"`     // 当前活跃会话数
@@ -212,12 +224,17 @@ type AccountWithConcurrency struct {
 // so groups/account_groups never appear in the list payload.
 type AccountListItemWithConcurrency struct {
 	*dto.AccountListItem
-	CurrentConcurrency int                          `json:"current_concurrency"`
-	SchedulerScore     *AccountSchedulerScore       `json:"scheduler_score,omitempty"`
-	SchedulerScores    []AccountSchedulerGroupScore `json:"scheduler_scores,omitempty"`
-	CurrentWindowCost  *float64                     `json:"current_window_cost,omitempty"`
-	ActiveSessions     *int                         `json:"active_sessions,omitempty"`
-	CurrentRPM         *int                         `json:"current_rpm,omitempty"`
+	RateLimit429Enabled bool                              `json:"rate_limit_429_enabled"`
+	CodexTicket         *service.CodexAccountTicketStatus `json:"codex_ticket,omitempty"`
+	CurrentConcurrency  int                               `json:"current_concurrency"`
+	IPChannels          []AccountIPChannelResponse        `json:"ip_channels,omitempty"`
+	ChannelCount        int                               `json:"channel_count,omitempty"`
+	ChannelStatus       string                            `json:"channel_status,omitempty"`
+	SchedulerScore      *AccountSchedulerScore            `json:"scheduler_score,omitempty"`
+	SchedulerScores     []AccountSchedulerGroupScore      `json:"scheduler_scores,omitempty"`
+	CurrentWindowCost   *float64                          `json:"current_window_cost,omitempty"`
+	ActiveSessions      *int                              `json:"active_sessions,omitempty"`
+	CurrentRPM          *int                              `json:"current_rpm,omitempty"`
 }
 
 type simpleModeGroupReference struct {
@@ -406,6 +423,32 @@ func (h *AccountHandler) buildAccountResponseWithRuntime(ctx context.Context, ac
 	}
 
 	h.enrichShadowParents(ctx, []AccountWithConcurrency{item})
+
+	// 固定 IP 通道元数据参与账号安全与调度展示。读取失败不能静默降级为
+	// 普通账号响应；写接口仍可返回已提交的账号变更，并由该标记提示客户端刷新。
+	if h != nil {
+		if _, ok := h.adminService.(service.AccountIPChannelAdmin); ok && account != nil {
+			channels, err := h.accountIPChannelResponses(ctx, []int64{account.ID})
+			if err != nil {
+				item.IPChannelsUnavailable = true
+			} else if values := channels[account.ID]; len(values) > 0 {
+				item.IPChannels = values
+				item.ChannelCount = len(values)
+				item.ChannelStatus = "unavailable"
+				healthy := 0
+				for _, channel := range values {
+					if channel.Healthy {
+						healthy++
+					}
+				}
+				if healthy == len(values) {
+					item.ChannelStatus = "normal"
+				} else if healthy > 0 {
+					item.ChannelStatus = "partial"
+				}
+			}
+		}
+	}
 
 	return item
 }
@@ -962,7 +1005,12 @@ func (h *AccountHandler) GetByID(c *gin.Context) {
 		}
 	}
 
-	response.Success(c, h.buildAccountResponseWithRuntime(c.Request.Context(), account))
+	item := h.buildAccountResponseWithRuntime(c.Request.Context(), account)
+	if item.IPChannelsUnavailable {
+		response.ErrorFrom(c, infraerrors.ServiceUnavailable("IP_CHANNEL_METADATA_UNAVAILABLE", "IP channel metadata unavailable"))
+		return
+	}
+	response.Success(c, item)
 }
 
 // CheckMixedChannel handles checking mixed channel risk for account-group binding.

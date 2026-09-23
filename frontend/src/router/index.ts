@@ -564,6 +564,18 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/group-status',
+    name: 'GroupStatus',
+    component: () => import('@/views/user/GroupStatusView.vue'),
+    meta: { requiresAuth: true, requiresAdmin: false, title: 'Group Status', titleKey: 'groupStatus.title', descriptionKey: 'groupStatus.description' }
+  },
+  {
+    path: '/admin/group-status',
+    name: 'AdminGroupStatus',
+    component: () => import('@/views/user/GroupStatusView.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true, title: 'Group Status', titleKey: 'groupStatus.title', descriptionKey: 'groupStatus.description' }
+  },
+  {
     path: '/admin/subscriptions',
     name: 'AdminSubscriptions',
     component: () => import('@/views/admin/SubscriptionsView.vue'),
@@ -586,6 +598,33 @@ const routes: RouteRecordRaw[] = [
       titleKey: 'admin.accounts.title',
       descriptionKey: 'admin.accounts.description'
     }
+  },
+  {
+    path: '/admin/accounts/tests',
+    name: 'AdminIntelligentTests',
+    component: () => import('@/views/admin/IntelligentTestsView.vue'),
+    props: { mode: 'tests' },
+    meta: { requiresAuth: true, requiresAdmin: true, title: 'Intelligent Tests', titleKey: 'admin.intelligentTests.title' }
+  },
+  {
+    path: '/admin/accounts/test-history',
+    name: 'AdminIntelligentTestHistory',
+    component: () => import('@/views/admin/IntelligentTestsView.vue'),
+    props: { mode: 'history' },
+    meta: { requiresAuth: true, requiresAdmin: true, title: 'Test History', titleKey: 'admin.intelligentTests.historyTitle' }
+  },
+  {
+    path: '/admin/accounts/test-settings',
+    name: 'AdminIntelligentTestSettings',
+    component: () => import('@/views/admin/IntelligentTestsView.vue'),
+    props: { mode: 'settings' },
+    meta: { requiresAuth: true, requiresAdmin: true, title: 'Test Settings', titleKey: 'admin.intelligentTests.settingsTitle' }
+  },
+  {
+    path: '/admin/account-health',
+    name: 'AdminAccountHealth',
+    component: () => import('@/views/admin/AccountHealthView.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true, title: 'Account Health', titleKey: 'nav.accountHealth' }
   },
   {
     path: '/admin/plugins',

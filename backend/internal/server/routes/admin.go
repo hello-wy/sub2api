@@ -45,6 +45,8 @@ func RegisterAdminRoutes(
 
 		// 账号管理
 		registerAccountRoutes(admin, h, stepUpAuth)
+		registerAccountHealthRoutes(admin, h)
+		registerIntelligentTestRoutes(admin, h)
 
 		// 公告管理
 		registerAnnouncementRoutes(admin, h)
@@ -437,6 +439,24 @@ func registerAccountRoutes(admin *gin.RouterGroup, h *handler.Handlers, stepUpAu
 		accounts.POST("/batch-delete", h.Admin.Account.BatchDelete)
 		accounts.POST("/batch-clear-error", h.Admin.Account.BatchClearError)
 		accounts.POST("/batch-refresh", h.Admin.Account.BatchRefresh)
+		accounts.GET("/:id/traffic-control", h.Admin.AccountTraffic.Get)
+		accounts.PUT("/:id/traffic-control", h.Admin.AccountTraffic.Update)
+		accounts.POST("/:id/protection", h.Admin.AntiDegrade.SetProtection)
+		accounts.GET("/:id/anti-degrade", h.Admin.AntiDegrade.Preview)
+		accounts.POST("/:id/anti-degrade/apply", h.Admin.AntiDegrade.Apply)
+		accounts.POST("/:id/anti-degrade/revert", h.Admin.AntiDegrade.Revert)
+		accounts.GET("/anti-degrade/strategies", h.Admin.AntiDegrade.Strategies)
+		accounts.POST("/protection/enable-batch", h.Admin.AntiDegrade.EnableBatch)
+		accounts.POST("/codex-ticket/batch", h.Admin.Account.BatchCodexAccountTickets)
+		accounts.GET("/:id/codex-ticket", h.Admin.Account.GetCodexAccountTicket)
+		accounts.PUT("/:id/codex-ticket", h.Admin.Account.UpdateCodexAccountTicket)
+		accounts.POST("/:id/codex-ticket/harvest", h.Admin.Account.HarvestCodexAccountTicket)
+		accounts.GET("/:id/ip-channels", h.Admin.Account.GetIPChannels)
+		accounts.GET("/:id/ip-channels/:channelId/stats", h.Admin.Account.GetIPChannelStats)
+		accounts.POST("/:id/ip-channels/:channelId/recover-state", h.Admin.Account.RecoverIPChannelState)
+		accounts.POST("/:id/ip-channels", h.Admin.Account.AddIPChannels)
+		accounts.PATCH("/:id/ip-channels/:channelId", h.Admin.Account.PatchIPChannel)
+		accounts.DELETE("/:id/ip-channels/:channelId", h.Admin.Account.DeleteIPChannel)
 
 		// Antigravity 默认模型映射
 		accounts.GET("/antigravity/default-model-mapping", h.Admin.Account.GetAntigravityDefaultModelMapping)
@@ -451,6 +471,35 @@ func registerAccountRoutes(admin *gin.RouterGroup, h *handler.Handlers, stepUpAu
 		accounts.POST("/exchange-setup-token-code", h.Admin.OAuth.ExchangeSetupTokenCode)
 		accounts.POST("/cookie-auth", h.Admin.OAuth.CookieAuth)
 		accounts.POST("/setup-token-cookie-auth", h.Admin.OAuth.SetupTokenCookieAuth)
+	}
+}
+
+func registerAccountHealthRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
+	health := admin.Group("/account-health")
+	{
+		health.GET("", h.Admin.AccountHealth.Snapshot)
+		health.GET("/settings", h.Admin.AccountHealth.GetSettings)
+		health.PUT("/settings", h.Admin.AccountHealth.UpdateSettings)
+		health.POST("/:id/isolate", h.Admin.AccountHealth.Isolate)
+		health.POST("/:id/resume", h.Admin.AccountHealth.Resume)
+	}
+}
+
+func registerIntelligentTestRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
+	tests := admin.Group("/intelligent-tests")
+	{
+		tests.GET("/accounts", h.Admin.IntelligentTest.Accounts)
+		tests.GET("/records", h.Admin.IntelligentTest.Records)
+		tests.POST("/records/delete-batch", h.Admin.IntelligentTest.DeleteBatch)
+		tests.DELETE("/records/:id", h.Admin.IntelligentTest.Delete)
+		tests.GET("/records/:id", h.Admin.IntelligentTest.Get)
+		tests.GET("/records/:id/image", h.Admin.IntelligentTest.Image)
+		tests.POST("/records/:id/cancel", h.Admin.IntelligentTest.Cancel)
+		tests.POST("/records/:id/reevaluate", h.Admin.IntelligentTest.Reevaluate)
+		tests.POST("/evaluate-preview", h.Admin.IntelligentTest.PreviewEvaluation)
+		tests.POST("/run", h.Admin.IntelligentTest.Run)
+		tests.GET("/settings", h.Admin.IntelligentTest.Settings)
+		tests.PUT("/settings/:test_type", h.Admin.IntelligentTest.UpdateSetting)
 	}
 }
 
@@ -585,6 +634,10 @@ func registerSettingsRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 	{
 		adminSettings.GET("", h.Admin.Setting.GetSettings)
 		adminSettings.PUT("", h.Admin.Setting.UpdateSettings)
+		adminSettings.GET("/codex-ticket", h.Admin.Setting.GetCodexTicketSettings)
+		adminSettings.PUT("/codex-ticket", h.Admin.Setting.UpdateCodexTicketSettings)
+		adminSettings.GET("/codex-ticket-defaults", h.Admin.Setting.GetNewAccountCodexTicketDefaults)
+		adminSettings.PUT("/codex-ticket-defaults", h.Admin.Setting.UpdateNewAccountCodexTicketDefaults)
 		adminSettings.GET("/lottery", h.Admin.Setting.GetLotteryPrizePool)
 		adminSettings.PUT("/lottery", h.Admin.Setting.UpdateLotteryPrizePool)
 		adminSettings.POST("/test-smtp", h.Admin.Setting.TestSMTPConnection)
@@ -889,6 +942,16 @@ func registerChannelMonitorV2Routes(admin *gin.RouterGroup, h *handler.Handlers,
 			reads.GET("/errors", h.ChannelMonitorV2.Errors)
 			reads.GET("/users", h.ChannelMonitorV2.AdminUsers)
 		}
+	}
+
+	groups := admin.Group("/group-status")
+	groups.Use(modeV2Guard)
+	{
+		groups.GET("", h.ChannelMonitorV2.GroupStatus)
+		groups.GET("/probes", h.ChannelMonitorV2.ProbeConfigs)
+		groups.PUT("/probes/:group_id", h.ChannelMonitorV2.SaveProbeConfig)
+		groups.POST("/probes/:group_id/run", h.ChannelMonitorV2.RunGroupProbe)
+		groups.GET("/probes/:group_id/history", h.ChannelMonitorV2.GroupProbeHistory)
 	}
 }
 

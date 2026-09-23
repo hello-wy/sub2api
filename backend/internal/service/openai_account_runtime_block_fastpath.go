@@ -557,6 +557,11 @@ func (s *OpenAIGatewayService) isOpenAIAccountRequestRuntimeBlocked(account *Acc
 	if s == nil {
 		return false
 	}
+	// Model-mismatch persistence is fail-closed: while the durable quarantine
+	// write is pending or retrying, no scheduler path may admit the account.
+	if hasPendingAccountModelMismatch(account) {
+		return true
+	}
 	snapshot := s.peekOpenAIAccountRuntimeBlock(account)
 	if snapshot.blocked {
 		if accountPersistedSchedulingCooldownActive(account) {

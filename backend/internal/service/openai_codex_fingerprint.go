@@ -230,6 +230,21 @@ func resolveConvergedInstallationID(account *Account, seed string) string {
 	if account == nil {
 		return ""
 	}
+	// 显式 device 收敛策略以账号级持久种子为权威身份。旧的
+	// openai_device_id 可能在多个账号间复用，不能覆盖 mode1/STATE 为每个
+	// 账号签发的独立指纹；未启用收敛或没有有效种子时仍兼容旧字段。
+	if account.GetCodexFingerprintMode() == codexFingerprintDevice {
+		// A configured device id remains the explicit administrator override;
+		// otherwise the per-account seed supplies the stable mode-1 identity.
+		if !isMode1ProtectionEnabled(account) {
+			if deviceID := account.GetOpenAIDeviceID(); deviceID != "" {
+				return deviceID
+			}
+		}
+		if _, ok := codexFingerprintSeed(account.Extra); ok && seed != "" {
+			return deriveStableUUIDv4("sub2api:codex-install-id:v2:" + seed)
+		}
+	}
 	if deviceID := account.GetOpenAIDeviceID(); deviceID != "" {
 		return deviceID
 	}

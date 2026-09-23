@@ -376,6 +376,16 @@ export async function clearError(id: number): Promise<Account> {
   return data
 }
 
+export async function setProtection(id: number, enabled: boolean, confirmDisable = false): Promise<Account> {
+  const { data } = await apiClient.post<Account>(`/admin/accounts/${id}/protection`, { enabled, confirm_disable: confirmDisable })
+  return data
+}
+
+export async function enableProtectionBatch(accountIds: number[]): Promise<{ success_ids: number[]; failures: Record<string, string> }> {
+  const { data } = await apiClient.post('/admin/accounts/protection/enable-batch', { account_ids: accountIds })
+  return data
+}
+
 /**
  * Get account usage information (5h/7d window)
  * @param id - Account ID
@@ -1164,6 +1174,8 @@ export const accountsAPI = {
   applyOAuthCredentials,
   getStats,
   clearError,
+  setProtection,
+  enableProtectionBatch,
   getUsage,
   getBatchUsage,
   getTodayStats,

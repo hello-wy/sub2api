@@ -2,6 +2,7 @@ package service
 
 import (
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/tidwall/gjson"
@@ -290,7 +291,63 @@ func upstreamModelsMatchForAudit(sentModel, responseModel string) bool {
 	// Canonicalize only for mismatch auditing; keep the raw response model for
 	// observability and for the separate response-model billing safeguards.
 	sentGrokModel := canonicalGrokBuildRuntimeModel(sentModel)
-	return sentGrokModel != "" && sentGrokModel == canonicalGrokBuildRuntimeModel(responseModel)
+	if sentGrokModel != "" {
+		return sentGrokModel == canonicalGrokBuildRuntimeModel(responseModel)
+	}
+	return providerModelAliasesMatch(sentModel, responseModel)
+}
+
+// providerModelAliasesMatch accepts a provider's floating alias and one valid
+// concrete member of the same family. Two concrete versions only match when
+// they are identical: this prevents aliases from hiding an actual model swap.
+func providerModelAliasesMatch(left, right string) bool {
+	leftFamily, leftVariant, leftOK := splitProviderModelAlias(left)
+	rightFamily, rightVariant, rightOK := splitProviderModelAlias(right)
+	if !leftOK || !rightOK || leftFamily != rightFamily {
+		return false
+	}
+	return leftVariant == "" || rightVariant == "" || leftVariant == rightVariant
+}
+
+func splitProviderModelAlias(model string) (family, variant string, ok bool) {
+	model = strings.ToLower(strings.TrimSpace(model))
+	switch {
+	case model == "gpt-6":
+		return "gpt-6", "", true
+	case model == "gpt-6-astra":
+		return "gpt-6", "astra", true
+	case model == "gpt-5.6":
+		return "gpt-5.6", "", true
+	case model == "gpt-5.6-sol":
+		return "gpt-5.6", "sol", true
+	case model == "gpt-5.4":
+		return "gpt-5.4", "", true
+	case strings.HasPrefix(model, "gpt-5.4-"):
+		variant = strings.TrimPrefix(model, "gpt-5.4-")
+		return "gpt-5.4", variant, validModelDate(variant, "2006-01-02")
+	case model == "claude-3-5-sonnet", model == "claude-3-5-sonnet-latest":
+		return "claude-3-5-sonnet", "", true
+	case strings.HasPrefix(model, "claude-3-5-sonnet-"):
+		variant = strings.TrimPrefix(model, "claude-3-5-sonnet-")
+		return "claude-3-5-sonnet", variant, validModelDate(variant, "20060102")
+	case model == "claude-sonnet-4", model == "claude-sonnet-4-latest":
+		return "claude-sonnet-4", "", true
+	case strings.HasPrefix(model, "claude-sonnet-4-"), strings.HasPrefix(model, "claude-sonnet-4@"):
+		variant = strings.TrimPrefix(strings.TrimPrefix(model, "claude-sonnet-4-"), "claude-sonnet-4@")
+		return "claude-sonnet-4", variant, validModelDate(variant, "20060102")
+	case model == "gemini-2.0-flash":
+		return "gemini-2.0-flash", "", true
+	case strings.HasPrefix(model, "gemini-2.0-flash-"):
+		variant = strings.TrimPrefix(model, "gemini-2.0-flash-")
+		return "gemini-2.0-flash", variant, len(variant) == 3 && variant[0] >= '0' && variant[0] <= '9' && variant[1] >= '0' && variant[1] <= '9' && variant[2] >= '0' && variant[2] <= '9'
+	default:
+		return "", "", false
+	}
+}
+
+func validModelDate(value, layout string) bool {
+	_, err := time.Parse(layout, value)
+	return err == nil
 }
 
 func canonicalGrokBuildRuntimeModel(model string) string {

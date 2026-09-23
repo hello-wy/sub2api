@@ -8,6 +8,7 @@ import welfare from './welfare'
 import audit from './audit'
 import promptAudit from './promptAudit'
 import plugins from './plugins'
+import intelligentTests from './intelligentTests'
 
 export default {
   ...overview,
@@ -20,4 +21,5 @@ export default {
   ...audit,
   ...promptAudit,
   ...plugins,
+  ...intelligentTests,
 }

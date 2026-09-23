@@ -2,6 +2,7 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"hash/fnv"
@@ -21,18 +22,20 @@ import (
 )
 
 type Account struct {
-	ID                      int64
-	Name                    string
-	Notes                   *string
-	Platform                string
-	Type                    string
-	Credentials             map[string]any
-	Extra                   map[string]any
-	ProxyID                 *int64
-	ProxyFallbackOriginID   *int64
-	ProxyFallbackOriginName *string // 仅展示用
-	Concurrency             int
-	Priority                int
+	// Trusted server-owned template, used only while inserting a new account.
+	InitialCodexTicketDefaults *GroupCodexTicketDefaults `json:"-"`
+	ID                         int64
+	Name                       string
+	Notes                      *string
+	Platform                   string
+	Type                       string
+	Credentials                map[string]any
+	Extra                      map[string]any
+	ProxyID                    *int64
+	ProxyFallbackOriginID      *int64
+	ProxyFallbackOriginName    *string // 仅展示用
+	Concurrency                int
+	Priority                   int
 	// RateMultiplier 账号计费倍率（>=0，允许 0 表示该账号计费为 0）。
 	// 使用指针用于兼容旧版本调度缓存（Redis）中缺字段的情况：nil 表示按 1.0 处理。
 	RateMultiplier     *float64
@@ -82,6 +85,25 @@ type Account struct {
 	headerOverrideCacheRawPtr         uintptr
 	headerOverrideCacheRawLen         int
 	headerOverrideCacheRawSig         uint64
+}
+
+// ProxyModeExtraKey stores the account proxy selection mode in the existing
+// JSONB extra column. Keeping this in extra preserves compatibility with
+// existing installations without requiring an account table migration.
+const ProxyModeExtraKey = "proxy_mode"
+
+const ProxyModeRandom = "random"
+
+func (a *Account) IsRandomProxy() bool {
+	if a == nil || a.Extra == nil {
+		return false
+	}
+	mode, ok := a.Extra[ProxyModeExtraKey].(string)
+	return ok && strings.EqualFold(strings.TrimSpace(mode), ProxyModeRandom)
+}
+
+type RandomProxySelector interface {
+	SelectRandomActiveProxy(context.Context) (*Proxy, error)
 }
 
 type OpenAIEndpointCapability string
@@ -179,7 +201,11 @@ func (a *Account) EffectiveLoadFactor() int {
 }
 
 func (a *Account) IsSchedulable() bool {
-	if !a.IsActive() || !a.Schedulable {
+	return a.IsSchedulableWithContext(context.Background())
+}
+
+func (a *Account) IsSchedulableWithContext(ctx context.Context) bool {
+	if !a.IsActive() || !a.Schedulable || a.IsModelMismatchQuarantined() {
 		return false
 	}
 	now := time.Now()
@@ -189,10 +215,10 @@ func (a *Account) IsSchedulable() bool {
 	if a.OverloadUntil != nil && now.Before(*a.OverloadUntil) {
 		return false
 	}
-	if a.RateLimitResetAt != nil && now.Before(*a.RateLimitResetAt) {
+	if Context429Enforcement(ctx) && a.IsRateLimited() {
 		return false
 	}
-	if a.TempUnschedulableUntil != nil && now.Before(*a.TempUnschedulableUntil) {
+	if a.IsTemporarilyUnschedulableWithContext(ctx) {
 		return false
 	}
 	if a.IsAPIKeyOrBedrock() && a.IsQuotaExceeded() {
@@ -2385,12 +2411,12 @@ func (a *Account) IsAnthropicOAuthOrSetupToken() bool {
 	return a.Platform == PlatformAnthropic && (a.Type == AccountTypeOAuth || a.Type == AccountTypeSetupToken)
 }
 
-// IsTLSFingerprintEnabled 检查是否启用 TLS 指纹伪装
-// 仅适用于 Anthropic OAuth/SetupToken 类型账号
-// 启用后将模拟 Claude Code (Node.js) 客户端的 TLS 握手特征
+// IsTLSFingerprintEnabled 检查是否启用 TLS 指纹伪装。
+// Anthropic 与 OpenAI OAuth/Setup Token 都使用该受管开关；OpenAI 的
+// Codex/STATE 保护也需要读取同一配置，不能因为历史注释只覆盖 Anthropic
+// 而把账号的显式 TLS 策略判定成关闭。
 func (a *Account) IsTLSFingerprintEnabled() bool {
-	// 仅支持 Anthropic OAuth/SetupToken 账号
-	if !a.IsAnthropicOAuthOrSetupToken() {
+	if a == nil || !(a.IsAnthropicOAuthOrSetupToken() || a.IsOpenAIOAuthLike()) {
 		return false
 	}
 	if a.Extra == nil {

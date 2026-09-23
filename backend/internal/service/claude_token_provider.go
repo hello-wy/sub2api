@@ -56,6 +56,9 @@ func (p *ClaudeTokenProvider) GetAccessToken(ctx context.Context, account *Accou
 	if account == nil {
 		return "", errors.New("account is nil")
 	}
+	if intelligentContext(ctx) != nil && account.Type == AccountTypeOAuth {
+		return intelligentExistingAccessToken(account)
+	}
 	if account.Platform != PlatformAnthropic || (account.Type != AccountTypeOAuth && account.Type != AccountTypeServiceAccount) {
 		return "", errors.New("not an anthropic oauth or service account")
 	}

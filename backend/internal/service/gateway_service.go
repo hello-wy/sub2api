@@ -585,7 +585,8 @@ type AccountSelectionResult struct {
 	// profitGate 携带本次选号真实生效的利润门（无门为 nil）。门安装在调度栈的
 	// 局部 ctx 上，handler 必须经 ContextWithSelectionProfitGate 重放后才能在
 	// 调度栈之外做抢槽后终检与准入后粘性绑定。
-	profitGate *openAIProfitControlGate
+	profitGate         *openAIProfitControlGate
+	ipChannelSelection *openAIIPChannelSelectionScope
 }
 
 // ProfitGateActive 报告本次选号是否处于利润门之下。
@@ -611,7 +612,8 @@ type AudioUsage struct {
 }
 
 type ForwardResult struct {
-	RequestID string
+	RequestID                string
+	modelMismatchQuarantined bool
 	// UpstreamHeaders 是直接上游的响应头，用于按账户配置解析上游请求标识。
 	UpstreamHeaders http.Header
 	Usage           ClaudeUsage
@@ -702,6 +704,7 @@ type UpstreamFailoverError struct {
 	NextAccountAction        NextAccountAction
 	ClientStatusCode         int
 	ClientMessage            string
+	Cause                    error // optional local cause, retained for errors.As compatibility
 }
 
 func (e *UpstreamFailoverError) Error() string {
@@ -709,6 +712,13 @@ func (e *UpstreamFailoverError) Error() string {
 		return fmt.Sprintf("credential failure: %s (failover)", e.Reason)
 	}
 	return fmt.Sprintf("upstream error: %d (failover)", e.StatusCode)
+}
+
+func (e *UpstreamFailoverError) Unwrap() error {
+	if e == nil {
+		return nil
+	}
+	return e.Cause
 }
 
 func (e *UpstreamFailoverError) ShouldRetryNextAccount() bool {
@@ -724,6 +734,9 @@ func (e *UpstreamFailoverError) IsCredentialFailure() bool {
 // and inference failures retain their existing scheduler-health behavior.
 func (e *UpstreamFailoverError) ShouldReportAccountScheduleFailure() bool {
 	if e == nil {
+		return false
+	}
+	if e.Reason == "account_traffic_limit" {
 		return false
 	}
 	return !e.IsCredentialFailure() || e.Scope == GatewayFailureScopeAccount

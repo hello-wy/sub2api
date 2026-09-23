@@ -53,6 +53,9 @@ func (p *GeminiTokenProvider) GetAccessToken(ctx context.Context, account *Accou
 	if account == nil {
 		return "", errors.New("account is nil")
 	}
+	if intelligentContext(ctx) != nil && account.Type == AccountTypeOAuth {
+		return intelligentExistingAccessToken(account)
+	}
 	if account.Platform != PlatformGemini || (account.Type != AccountTypeOAuth && account.Type != AccountTypeServiceAccount) {
 		return "", errors.New("not a gemini oauth or service account")
 	}

@@ -1142,6 +1142,20 @@ func (_u *GroupUpdate) SetNillableModelAllowlist(v *domain.GroupModelAllowlist) 
 	return _u
 }
 
+// SetCodexTicketDefaults sets the "codex_ticket_defaults" field.
+func (_u *GroupUpdate) SetCodexTicketDefaults(v domain.GroupCodexTicketDefaults) *GroupUpdate {
+	_u.mutation.SetCodexTicketDefaults(v)
+	return _u
+}
+
+// SetNillableCodexTicketDefaults sets the "codex_ticket_defaults" field if the given value is not nil.
+func (_u *GroupUpdate) SetNillableCodexTicketDefaults(v *domain.GroupCodexTicketDefaults) *GroupUpdate {
+	if v != nil {
+		_u.SetCodexTicketDefaults(*v)
+	}
+	return _u
+}
+
 // SetCodexModelsManifestConfig sets the "codex_models_manifest_config" field.
 func (_u *GroupUpdate) SetCodexModelsManifestConfig(v domain.GroupCodexModelsManifestConfig) *GroupUpdate {
 	_u.mutation.SetCodexModelsManifestConfig(v)
@@ -1958,6 +1972,9 @@ func (_u *GroupUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.ModelAllowlist(); ok {
 		_spec.SetField(group.FieldModelAllowlist, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.CodexTicketDefaults(); ok {
+		_spec.SetField(group.FieldCodexTicketDefaults, field.TypeJSON, value)
 	}
 	if value, ok := _u.mutation.CodexModelsManifestConfig(); ok {
 		_spec.SetField(group.FieldCodexModelsManifestConfig, field.TypeJSON, value)
@@ -3416,6 +3433,20 @@ func (_u *GroupUpdateOne) SetNillableModelAllowlist(v *domain.GroupModelAllowlis
 	return _u
 }
 
+// SetCodexTicketDefaults sets the "codex_ticket_defaults" field.
+func (_u *GroupUpdateOne) SetCodexTicketDefaults(v domain.GroupCodexTicketDefaults) *GroupUpdateOne {
+	_u.mutation.SetCodexTicketDefaults(v)
+	return _u
+}
+
+// SetNillableCodexTicketDefaults sets the "codex_ticket_defaults" field if the given value is not nil.
+func (_u *GroupUpdateOne) SetNillableCodexTicketDefaults(v *domain.GroupCodexTicketDefaults) *GroupUpdateOne {
+	if v != nil {
+		_u.SetCodexTicketDefaults(*v)
+	}
+	return _u
+}
+
 // SetCodexModelsManifestConfig sets the "codex_models_manifest_config" field.
 func (_u *GroupUpdateOne) SetCodexModelsManifestConfig(v domain.GroupCodexModelsManifestConfig) *GroupUpdateOne {
 	_u.mutation.SetCodexModelsManifestConfig(v)
@@ -4262,6 +4293,9 @@ func (_u *GroupUpdateOne) sqlSave(ctx context.Context) (_node *Group, err error)
 	}
 	if value, ok := _u.mutation.ModelAllowlist(); ok {
 		_spec.SetField(group.FieldModelAllowlist, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.CodexTicketDefaults(); ok {
+		_spec.SetField(group.FieldCodexTicketDefaults, field.TypeJSON, value)
 	}
 	if value, ok := _u.mutation.CodexModelsManifestConfig(); ok {
 		_spec.SetField(group.FieldCodexModelsManifestConfig, field.TypeJSON, value)

@@ -68,8 +68,10 @@ type TestEvent struct {
 // AccountTestOptions carries optional media for admin connectivity tests.
 // ImageDataURL / AudioDataURL are full data URLs (data:<mime>;base64,...).
 type AccountTestOptions struct {
-	ImageDataURL string
-	AudioDataURL string
+	ImageDataURL    string
+	AudioDataURL    string
+	ReasoningEffort string
+	TimeoutSeconds  int
 }
 
 func firstAccountTestOptions(opts []AccountTestOptions) AccountTestOptions {
@@ -138,6 +140,7 @@ func normalizeGrokAccountTestMode(mode string) string {
 
 // AccountTestService handles account testing operations
 type AccountTestService struct {
+	concurrencyService        *ConcurrencyService
 	accountRepo               AccountRepository
 	geminiTokenProvider       *GeminiTokenProvider
 	claudeTokenProvider       *ClaudeTokenProvider
@@ -159,6 +162,36 @@ type AccountTestService struct {
 	// WS dialer when nil (supports proxy + coder/websocket handshake).
 	grokWSDialer      openAIWSClientDialer
 	codexTestWSDialer openAIWSClientDialer
+}
+
+// testAccountConnectionForAccount invokes the provider adapter after the
+// admission, cooldown and channel checks have completed.
+func (s *AccountTestService) testAccountConnectionForAccount(c *gin.Context, account *Account, modelID, prompt, mode string, testOpts AccountTestOptions) error {
+	if account.IsCNProvider() {
+		switch account.GetAPIProtocol() {
+		case APIProtocolAdaptive:
+			return s.testCNProviderAdaptiveConnection(c, account, modelID, prompt)
+		case APIProtocolResponses:
+			return s.testOpenAIAccountConnection(c, account, modelID, prompt, normalizeAccountTestMode(mode))
+		case APIProtocolChatCompletions:
+			return s.testCNProviderChatCompletionsConnection(c, account, modelID, prompt)
+		case APIProtocolAnthropic:
+			return s.testCNProviderAnthropicConnection(c, account, modelID)
+		}
+	}
+	if account.IsOpenAI() {
+		return s.testOpenAIAccountConnection(c, account, modelID, prompt, normalizeAccountTestMode(mode))
+	}
+	if account.IsGemini() {
+		return s.testGeminiAccountConnection(c, account, modelID, prompt)
+	}
+	if account.Platform == PlatformGrok {
+		return s.testGrokAccountConnection(c, account, modelID, prompt, mode, testOpts)
+	}
+	if account.Platform == PlatformAntigravity {
+		return s.routeAntigravityTest(c, account, modelID, prompt)
+	}
+	return s.testClaudeAccountConnection(c, account, modelID)
 }
 
 func (s *AccountTestService) SetSettingService(settingService *SettingService) {
@@ -885,6 +918,13 @@ func (s *AccountTestService) testOpenAIAccountConnection(c *gin.Context, account
 		upstreamTestModelID = normalizeOpenAIModelForUpstream(credentialAccount, testModelID)
 	}
 	payload := createOpenAITestPayload(upstreamTestModelID, isOAuth)
+	applyIntelligentPayloadPrompt(ctx, payload)
+	if err := applyIntelligentPayloadReasoning(ctx, payload, APIProtocolResponses); err != nil {
+		return s.sendErrorAndEnd(c, err.Error())
+	}
+	if err := prepareIntelligentTestProtection(c, credentialAccount, payload); err != nil {
+		return s.sendErrorAndEnd(c, err.Error())
+	}
 	payloadBytes, _ := json.Marshal(payload)
 
 	// Send test_start event once. A task-invalid Agent Identity response may
@@ -938,6 +978,9 @@ func (s *AccountTestService) testOpenAIAccountConnection(c *gin.Context, account
 
 	// 账号级请求头覆写：测试请求与真实转发保持一致的最终头
 	credentialAccount.ApplyHeaderOverrides(req.Header)
+	if err := applyIntelligentTestProtection(c, credentialAccount, req.Header, payloadBytes); err != nil {
+		return s.sendErrorAndEnd(c, err.Error())
+	}
 
 	// Get proxy URL
 	proxyURL := ""
@@ -1250,6 +1293,20 @@ func (s *AccountTestService) testGrokResponsesConnection(c *gin.Context, ctx con
 	payloadBytes, err := buildGrokQuotaProbeBody(testModelID)
 	if err != nil {
 		return s.sendErrorAndEnd(c, "Failed to create Grok test payload")
+	}
+	if intelligentContext(ctx) != nil {
+		var payload map[string]any
+		if err := json.Unmarshal(payloadBytes, &payload); err != nil {
+			return s.sendErrorAndEnd(c, "Failed to decode Grok test payload")
+		}
+		applyIntelligentPayloadPrompt(ctx, payload)
+		if err := applyIntelligentPayloadReasoning(ctx, payload, APIProtocolResponses); err != nil {
+			return s.sendErrorAndEnd(c, err.Error())
+		}
+		payloadBytes, err = json.Marshal(payload)
+		if err != nil {
+			return s.sendErrorAndEnd(c, "Failed to encode Grok test payload")
+		}
 	}
 
 	if !agentIdentityTaskRecoveryWasTried(ctx) {
@@ -2127,6 +2184,9 @@ func (s *AccountTestService) testOpenAIChatCompletionsConnection(
 	c.Writer.Flush()
 
 	payload := createOpenAIChatCompletionsTestPayload(testModelID, prompt)
+	if err := applyIntelligentPayloadReasoning(ctx, payload, APIProtocolChatCompletions); err != nil {
+		return s.sendErrorAndEnd(c, err.Error())
+	}
 	payloadBytes, _ := json.Marshal(payload)
 
 	s.sendEvent(c, TestEvent{Type: "test_start", Model: testModelID})
@@ -2957,6 +3017,7 @@ func (s *AccountTestService) processOpenAIChatCompletionsStream(c *gin.Context, 
 func (s *AccountTestService) processOpenAIStream(c *gin.Context, body io.Reader) error {
 	reader := bufio.NewReader(body)
 	seenCompleted := false
+	seenContent := false
 
 	for {
 		line, err := reader.ReadString('\n')
@@ -2996,12 +3057,18 @@ func (s *AccountTestService) processOpenAIStream(c *gin.Context, body io.Reader)
 		case "response.output_text.delta":
 			// OpenAI Responses API uses "delta" field for text content
 			if delta, ok := data["delta"].(string); ok && delta != "" {
+				seenContent = true
 				s.sendEvent(c, TestEvent{Type: "content", Text: delta})
 			}
 		case "response.completed", "response.done":
 			if response, ok := data["response"].(map[string]any); ok {
 				if status, _ := response["status"].(string); status != "" && status != "completed" {
 					return s.sendErrorAndEnd(c, "OpenAI response not completed")
+				}
+				if !seenContent {
+					if text := intelligentTerminalText(response); text != "" {
+						s.sendEvent(c, TestEvent{Type: "content", Text: text})
+					}
 				}
 			}
 			s.sendEvent(c, TestEvent{Type: "test_complete", Success: true})

@@ -24,6 +24,7 @@ func RegisterUserRoutes(
 	authenticated.Use(panelRateLimiter.Global())
 	// 用户管理面变更类操作入审计（含 TOTP 启用/禁用、step-up 验证、密码修改等安全事件）
 	authenticated.Use(gin.HandlerFunc(auditLog))
+	registerAccountCapabilityRoutes(authenticated, h)
 	{
 		// 用户接口
 		user := authenticated.Group("/user")
@@ -159,6 +160,7 @@ func RegisterUserRoutes(
 		}
 
 		// V2 passive views require feature on + mode=v2.
+		authenticated.GET("/group-status", panelRateLimiter.Heavy(), channelMonitorModeV2Guard(settingService), h.ChannelMonitorV2.GroupStatus)
 		monitorV2 := authenticated.Group("/channel-monitor-v2")
 		monitorV2.Use(panelRateLimiter.Heavy())
 		monitorV2.Use(channelMonitorModeV2Guard(settingService))
@@ -170,5 +172,15 @@ func RegisterUserRoutes(
 			monitorV2.GET("/errors", h.ChannelMonitorV2.Errors)
 			monitorV2.GET("/users", h.ChannelMonitorV2.Users)
 		}
+	}
+}
+
+func registerAccountCapabilityRoutes(authenticated *gin.RouterGroup, h *handler.Handlers) {
+	capabilities := authenticated.Group("/account-capabilities")
+	{
+		capabilities.GET("", h.AccountCapability.List)
+		capabilities.GET("/:account_id/tests", h.AccountCapability.History)
+		capabilities.GET("/results/:id", h.AccountCapability.Get)
+		capabilities.GET("/results/:id/image", h.AccountCapability.Image)
 	}
 }

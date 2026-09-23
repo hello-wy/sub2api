@@ -277,6 +277,9 @@ func attachSelectionProfitGate(ctx context.Context, sel *AccountSelectionResult)
 	if sel == nil {
 		return nil
 	}
+	if scope, _ := ctx.Value(openAIIPChannelSelectionKey{}).(*openAIIPChannelSelectionScope); scope != nil {
+		sel.ipChannelSelection = scope
+	}
 	if gate, ok := ctx.Value(openAIProfitControlGateCtxKey{}).(*openAIProfitControlGate); ok && gate != nil {
 		sel.profitGate = gate
 	}

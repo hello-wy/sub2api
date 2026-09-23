@@ -20,6 +20,17 @@ import (
 // The timeout only covers dialing; an established session is not interrupted.
 const DefaultGrokRealtimeDialTimeout = 12 * time.Second
 
+func validateGrokRealtimeTrafficPolicy(account *Account) error {
+	plan, err := AccountTrafficPlanFor(account)
+	if err != nil {
+		return err
+	}
+	if plan.Policy.Enforces() {
+		return (&AccountTrafficLimitError{Status: http.StatusBadRequest, Reason: "Grok realtime 不支持逐轮硬限制，请使用仅观测模式"}).FailoverError()
+	}
+	return nil
+}
+
 // supportedGrokVoiceHTTPEndpoints are xAI Voice HTTP paths we forward as-is.
 var supportedGrokVoiceHTTPEndpoints = map[string]struct{}{
 	"tts":           {},
@@ -160,6 +171,9 @@ func (u *GrokRealtimeUpstream) Close() error {
 func (s *OpenAIGatewayService) OpenGrokRealtime(ctx context.Context, account *Account, token, model string) (*GrokRealtimeUpstream, error) {
 	if s == nil || account == nil || account.Platform != PlatformGrok {
 		return nil, fmt.Errorf("grok realtime account is required")
+	}
+	if err := validateGrokRealtimeTrafficPolicy(account); err != nil {
+		return nil, err
 	}
 	base, err := buildGrokVoiceURL(account, s.cfg, "realtime")
 	if err != nil {
