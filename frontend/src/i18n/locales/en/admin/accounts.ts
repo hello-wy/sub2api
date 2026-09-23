@@ -1583,8 +1583,13 @@ export default {
       testModel: 'Test model',
       testPrompt: 'Prompt: "hi"',
       pelicanTest: {
+        recordCount: '{count} records',
+        recordId: 'Record',
+        moreRecords: 'Load more records',
+        recordLoadError: 'This record expired or could not be loaded. Open the card to retry.',
+
         historyLoadError: 'Some scheduled records could not be loaded. Available manual records are still shown.',
-        dashboardHint: 'Recent automatic and manual results by account. Open a card to view the animation.',
+        dashboardHint: 'All retained manual and scheduled outputs, one card per output. Refreshes every 15 seconds. Open a card to view the animation.',
         scheduledPreview: 'Scheduled preview',
         sourceManual: 'Manual',
         sourceScheduled: 'Scheduled',

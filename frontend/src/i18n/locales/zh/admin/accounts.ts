@@ -1670,8 +1670,13 @@ export default {
       testModel: '测试模型',
       testPrompt: '提示词："hi"',
       pelicanTest: {
+        recordCount: '共 {count} 条记录',
+        recordId: '记录',
+        moreRecords: '加载更多记录',
+        recordLoadError: '这条记录已清理或暂时无法加载，点击卡片可重试。',
+
         historyLoadError: '部分自动记录加载失败，已保留可用的手动记录。',
-        dashboardHint: '按账号展示最近一次自动或手动结果，点击卡片可放大查看动画。',
+        dashboardHint: '展示所有保留的自动和手动测试，每次输出一张卡片，每 15 秒刷新。点击卡片可放大查看动画。',
         scheduledPreview: '定时测试预览',
         sourceManual: '手动',
         sourceScheduled: '定时',

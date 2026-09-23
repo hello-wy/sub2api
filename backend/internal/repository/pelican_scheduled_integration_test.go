@@ -82,3 +82,70 @@ func TestPelicanSchedulePersistenceLeaseAndRetention(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, saved, 1, "do not expire connectivity history")
 }
+
+func TestPelicanHistoryReturnsEveryRetainedOutputAcrossAccounts(t *testing.T) {
+	ctx := context.Background()
+	plans := NewScheduledTestPlanRepository(integrationDB)
+	results := NewScheduledTestResultRepository(integrationDB)
+	svc := service.NewScheduledTestService(plans, results)
+	var accountIDs []int64
+	defer func() {
+		for _, id := range accountIDs {
+			_, _ = integrationDB.ExecContext(ctx, `DELETE FROM accounts WHERE id=$1`, id)
+		}
+	}()
+	var ids []int64
+	now := time.Now()
+	for i := 0; i < 2; i++ {
+		var accountID int64
+		require.NoError(t, integrationDB.QueryRowContext(ctx, `INSERT INTO accounts (name,platform,type,status) VALUES ('pelican-history','openai','apikey','active') RETURNING id`).Scan(&accountID))
+		accountIDs = append(accountIDs, accountID)
+		plan, err := svc.CreatePlan(ctx, &service.ScheduledTestPlan{AccountID: accountID, ModelID: "gpt-6-astra", CronExpression: "*/3 * * * *", Enabled: false, MaxResults: 6, PelicanConfig: &service.PelicanTestConfig{Prompt: "draw", ReasoningEffort: "medium", ParallelCount: 1}})
+		require.NoError(t, err)
+		count := 6
+		if i == 1 {
+			count = 1
+		}
+		for j := 0; j < count; j++ {
+			status := "success"
+			if j == 5 {
+				status = "failed"
+			}
+			result, err := results.Create(ctx, &service.ScheduledTestResult{PlanID: plan.ID, Status: status, ResponseText: "<html>saved</html>", StartedAt: now, FinishedAt: now, PelicanConfig: plan.PelicanConfig})
+			require.NoError(t, err)
+			ids = append(ids, result.ID)
+		}
+		// Ordinary connection records must not leak into Pelican history.
+		legacy, err := svc.CreatePlan(ctx, &service.ScheduledTestPlan{AccountID: accountID, CronExpression: "*/3 * * * *"})
+		require.NoError(t, err)
+		_, err = results.Create(ctx, &service.ScheduledTestResult{PlanID: legacy.ID, Status: "success", StartedAt: now, FinishedAt: now})
+		require.NoError(t, err)
+	}
+	var found []*service.PelicanHistoryResult
+	cursor := int64(0)
+	for {
+		page, err := svc.ListPelicanHistory(ctx, cursor, 2)
+		require.NoError(t, err)
+		found = append(found, page.Items...)
+		if page.NextCursor == 0 {
+			break
+		}
+		if cursor > 0 {
+			require.Less(t, page.NextCursor, cursor)
+		}
+		cursor = page.NextCursor
+	}
+	require.Len(t, found, 7)
+	actual := make([]int64, 0)
+	failed := 0
+	for _, result := range found {
+		actual = append(actual, result.ID)
+		require.Empty(t, result.ResponseText)
+		require.Equal(t, "pelican-history", result.AccountName)
+		if result.Status == "failed" {
+			failed++
+		}
+	}
+	require.ElementsMatch(t, ids, actual)
+	require.Equal(t, 1, failed)
+}

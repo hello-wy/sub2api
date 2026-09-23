@@ -58,8 +58,20 @@ type ScheduledTestPlanRepository interface {
 	UpdateAfterRun(ctx context.Context, id int64, lastRunAt time.Time, nextRunAt time.Time) error
 }
 
+// PelicanHistoryResult includes account identity without exposing account credentials.
+type PelicanHistoryResult struct {
+	ScheduledTestResult
+	AccountID   int64  `json:"account_id"`
+	AccountName string `json:"account_name"`
+}
+type PelicanHistoryPage struct {
+	Items      []*PelicanHistoryResult `json:"items"`
+	NextCursor int64                   `json:"next_cursor"`
+}
+
 // ScheduledTestResultRepository defines the data access interface for test results.
 type ScheduledTestResultRepository interface {
+	ListPelicanHistory(ctx context.Context, beforeID int64, limit int) ([]*PelicanHistoryResult, error)
 	PruneExpiredPelican(ctx context.Context, before time.Time) error
 	Create(ctx context.Context, result *ScheduledTestResult) (*ScheduledTestResult, error)
 	GetResult(ctx context.Context, planID, resultID int64) (*ScheduledTestResult, error)

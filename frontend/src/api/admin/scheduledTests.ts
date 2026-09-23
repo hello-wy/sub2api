@@ -79,7 +79,17 @@ export async function getResult(planId: number, resultId: number): Promise<Sched
   return data
 }
 
+export interface PelicanHistoryResult extends ScheduledTestResult {
+  account_id: number
+  account_name: string
+}
+export async function listPelicanHistory(beforeId = 0): Promise<{ items: PelicanHistoryResult[]; next_cursor: number }> {
+  const { data } = await apiClient.get('/admin/pelican-test-results', { params: { before_id: beforeId } })
+  return data
+}
+
 export const scheduledTestsAPI = {
+  listPelicanHistory,
   getResult,
   listByAccount,
   create,
