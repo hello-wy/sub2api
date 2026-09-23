@@ -172,7 +172,7 @@ import Select from '@/components/common/Select.vue'
 import { Icon } from '@/components/icons'
 import { buildApiUrl } from '@/api/client'
 import { ADMIN_UI_REQUEST_HEADER } from '@/api/adminUIRequest'
-import type { Account, PelicanTestConfig, ScheduledTestPlan, ScheduledTestResult } from '@/types'
+import type { Account, PelicanTestConfig, ScheduledTestResult } from '@/types'
 import ScheduledTestsPanel from './ScheduledTestsPanel.vue'
 
 const { t } = useI18n()
