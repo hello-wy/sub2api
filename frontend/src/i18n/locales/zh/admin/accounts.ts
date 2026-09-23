@@ -1670,6 +1670,7 @@ export default {
       testModel: '测试模型',
       testPrompt: '提示词："hi"',
       pelicanTest: {
+        scheduledPreview: '定时测试预览',
         sourceManual: '手动',
         sourceScheduled: '定时',
         generatedAt: '生成时间',

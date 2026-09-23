@@ -1,5 +1,5 @@
 <template>
-  <BaseDialog :show="show" :title="t('admin.accounts.pelicanTest.title')" width="full" @close="handleClose">
+  <BaseDialog :show="show" :title="t('admin.accounts.pelicanTest.title')" width="full" :fullscreen="viewingScheduled" @close="handleClose">
     <div class="space-y-5">
       <div v-if="account" class="flex flex-col items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/70 p-3 dark:border-amber-800/60 dark:bg-amber-950/20 sm:flex-row sm:items-center sm:justify-between">
         <div class="flex items-center gap-3">
@@ -58,15 +58,15 @@
             type="button"
             class="rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
             :class="activeTab === 'results' ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300' : 'text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-dark-700'"
-            @click="activeTab = 'results'"
+            @click="openManualResults"
           >
-            {{ t('admin.accounts.pelicanTest.results') }}
+            {{ viewingScheduled ? t('admin.accounts.pelicanTest.scheduledPreview') : t('admin.accounts.pelicanTest.results') }}
           </button>
           <button
             type="button"
             class="rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
             :class="activeTab === 'history' ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300' : 'text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-dark-700'"
-            @click="activeTab = 'history'"
+            @click="activeTab = 'history'; viewingScheduled = false"
           >
             {{ t('admin.accounts.pelicanTest.history') }}<span v-if="records.length" class="ml-1">({{ records.length }})</span>
           </button>
@@ -213,6 +213,7 @@ const reasoningEffort = ref('medium')
 const parallelCount = ref<string | number>(1)
 const activeTab = ref<'results' | 'history' | 'schedule'>('results')
 const running = ref(false)
+const viewingScheduled = ref(false)
 const runs = ref<TestRun[]>([])
 const records = ref<TestRecord[]>([])
 const scheduledRecords = ref<ScheduledTestResult[]>([])
@@ -289,6 +290,13 @@ function editSchedule(config: PelicanTestConfig, model: string) {
   parallelCount.value = config.parallel_count
 }
 
+function openManualResults() {
+  if (running.value) return
+  viewingScheduled.value = false
+  runs.value = []
+  activeTab.value = 'results'
+}
+
 function previewScheduled(result: ScheduledTestResult) {
   if (running.value) return
   const config = result.pelican_config
@@ -298,6 +306,7 @@ function previewScheduled(result: ScheduledTestResult) {
     source: 'scheduled', startedAt: result.started_at, finishedAt: result.finished_at,
     durationMs: result.latency_ms, modelId: config?.model_id, reasoningEffort: config?.reasoning_effort
   }]
+  viewingScheduled.value = true
   activeTab.value = 'results'
 }
 
@@ -307,6 +316,7 @@ function loadRecord(record: TestRecord) {
   modelId.value = record.modelId
   reasoningEffort.value = record.reasoningEffort || 'medium'
   runs.value = record.runs.map((run) => ({ ...run, modelId: run.modelId || record.modelId, reasoningEffort: run.reasoningEffort || record.reasoningEffort }))
+  viewingScheduled.value = false
   activeTab.value = 'results'
 }
 
@@ -391,6 +401,7 @@ async function startOne(run: TestRun) {
 
 async function startTest() {
   if (running.value || !props.account || !canStart.value) return
+  viewingScheduled.value = false
   const count = normalizeCount()
   parallelCount.value = count
   runs.value = Array.from({ length: count }, (_, index) => ({
@@ -440,6 +451,7 @@ watch(() => [props.show, props.account?.id] as const, ([show]) => {
   if (show) {
     readRecords()
     activeTab.value = 'results'
+    viewingScheduled.value = false
     scheduledRecords.value = []
     prompt.value = DEFAULT_PROMPT
     modelId.value = 'gpt-6-astra'
