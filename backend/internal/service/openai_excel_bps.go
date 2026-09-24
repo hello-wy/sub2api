@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Wei-Shaw/sub2api/internal/pkg/openai"
 	"github.com/Wei-Shaw/sub2api/internal/service/basispoints"
 	"github.com/gin-gonic/gin"
 	"github.com/tidwall/gjson"
@@ -17,6 +18,32 @@ import (
 )
 
 var excelBPSReplay basispoints.ReplayCache
+
+func excelBPSAccountID(account *Account, accessToken string) string {
+	if accountID := strings.TrimSpace(account.GetChatGPTAccountID()); accountID != "" {
+		return accountID
+	}
+	claims, err := openai.DecodeIDToken(accessToken)
+	if err != nil || claims.OpenAIAuth == nil {
+		return ""
+	}
+	return strings.TrimSpace(claims.OpenAIAuth.ChatGPTAccountID)
+}
+
+func newExcelBPSRequest(ctx context.Context, body []byte, token, accountID string) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, basispoints.ResponsesURL, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	req.Header = http.Header{
+		"Authorization": {"Bearer " + token}, "Chatgpt-Account-Id": {accountID}, "X-Openai-Account-Id": {accountID},
+		"X-Basispoints-Auth-Mode": {"chatgpt"}, "Content-Type": {"application/json"}, "Accept": {"text/event-stream"},
+		"Origin": {"https://bps.openai.com"}, "User-Agent": {"Mozilla/5.0"},
+		"X-Openai-Internal-Basispoints-Client-Product":       {"basispoints-excel-plugin"},
+		"X-Openai-Internal-Basispoints-Client-Agent-Profile": {"excel"},
+	}
+	return req, nil
+}
 
 // BPS deliberately bypasses Codex ticket/cookie injection and OAuth plugins:
 // only the selected account's bearer and ChatGPT account ID belong on this host.
@@ -70,21 +97,14 @@ func (s *OpenAIGatewayService) forwardExcelBPS(ctx context.Context, c *gin.Conte
 	if err != nil {
 		return fail(502, "basispoints_auth_unavailable", "Account OAuth credential is unavailable")
 	}
-	accountID := strings.TrimSpace(account.GetCredential("chatgpt_account_id"))
+	accountID := excelBPSAccountID(account, token)
 	if accountID == "" {
 		return fail(400, "basispoints_account_id_missing", "Excel BPS requires chatgpt_account_id")
 	}
 	requestCtx := WithHTTPUpstreamRedirectsDisabled(WithHTTPUpstreamProfile(ctx, HTTPUpstreamProfileLongStream))
-	req, err := http.NewRequestWithContext(requestCtx, http.MethodPost, basispoints.ResponsesURL, bytes.NewReader(upstreamBody))
+	req, err := newExcelBPSRequest(requestCtx, upstreamBody, token, accountID)
 	if err != nil {
 		return nil, err
-	}
-	req.Header = http.Header{
-		"Authorization": {"Bearer " + token}, "Chatgpt-Account-Id": {accountID}, "X-Openai-Account-Id": {accountID},
-		"X-Basispoints-Auth-Mode": {"chatgpt"}, "Content-Type": {"application/json"}, "Accept": {"text/event-stream"},
-		"Origin": {"https://bps.openai.com"}, "User-Agent": {"Mozilla/5.0"},
-		"X-Openai-Internal-Basispoints-Client-Product":       {"basispoints-excel-plugin"},
-		"X-Openai-Internal-Basispoints-Client-Agent-Profile": {"excel"},
 	}
 	proxyURL := ""
 	if account.Proxy != nil {
