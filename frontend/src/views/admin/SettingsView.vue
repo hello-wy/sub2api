@@ -7201,6 +7201,9 @@
               <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
                 {{ t('admin.settings.features.excelBpsImages.retentionHint') }}
               </p>
+              <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                {{ t('admin.settings.features.excelBpsImages.capacityHint') }}
+              </p>
             </div>
           </div>
         </div>

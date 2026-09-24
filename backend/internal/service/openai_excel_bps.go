@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -30,11 +32,24 @@ func (s *OpenAIGatewayService) excelBPSImageRelay(ctx context.Context) (*basispo
 	s.excelBPSImagesMu.Lock()
 	defer s.excelBPSImagesMu.Unlock()
 	if s.excelBPSImages == nil {
-		s.excelBPSImages, err = basispoints.NewImageRelay(settings.BaseURL)
+		dataDir := strings.TrimSpace(os.Getenv("DATA_DIR"))
+		if dataDir == "" {
+			dataDir = "./data"
+		}
+		s.excelBPSImages, err = basispoints.NewImageRelay(settings.BaseURL, filepath.Join(dataDir, "bps-images"))
 	} else {
 		err = s.excelBPSImages.SetPublicOrigin(settings.BaseURL)
 	}
 	return s.excelBPSImages, err
+}
+
+func (s *OpenAIGatewayService) CloseExcelBPSImages() error {
+	if s == nil {
+		return nil
+	}
+	s.excelBPSImagesMu.Lock()
+	defer s.excelBPSImagesMu.Unlock()
+	return s.excelBPSImages.Close()
 }
 
 // ServeExcelBPSImage allows the upstream to retrieve an unguessable temporary URL.
@@ -129,6 +144,9 @@ func (s *OpenAIGatewayService) forwardExcelBPS(ctx context.Context, c *gin.Conte
 	if err != nil {
 		if errors.Is(err, basispoints.ErrImageRelayFull) {
 			return fail(503, "basispoints_image_relay_full", err.Error())
+		}
+		if errors.Is(err, basispoints.ErrImageRelayStorage) {
+			return fail(503, "basispoints_image_relay_unavailable", err.Error())
 		}
 		return fail(400, "basispoints_request_invalid", err.Error())
 	}

@@ -13,6 +13,7 @@ import (
 	"image/png"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -20,6 +21,29 @@ import (
 
 	"github.com/stretchr/testify/require"
 )
+
+func newTestImageRelay(t *testing.T, origin string) (*ImageRelay, error) {
+	t.Helper()
+	r, err := NewImageRelay(origin, t.TempDir())
+	if err == nil {
+		t.Cleanup(func() { require.NoError(t, r.Close()) })
+	}
+	return r, err
+}
+
+func decodeTestRelayImage(t *testing.T, raw string) ([]byte, string, error) {
+	t.Helper()
+	r, err := newTestImageRelay(t, "https://images.example")
+	if err != nil {
+		return nil, "", err
+	}
+	img, _, err := r.storeImage(raw, "test")
+	if err != nil {
+		return nil, "", err
+	}
+	data, err := os.ReadFile(img.path)
+	return data, img.contentType, err
+}
 
 func relayTestPNG(t *testing.T) []byte {
 	t.Helper()
@@ -49,7 +73,7 @@ func relayTestURL(t *testing.T, raw []byte) string {
 }
 
 func TestImageRelayRoundTripAndScope(t *testing.T) {
-	r, err := NewImageRelay("https://images.example/")
+	r, err := newTestImageRelay(t, "https://images.example/")
 	require.NoError(t, err)
 	data := relayTestPNG(t)
 	raw := relayTestRequest(t, data)
@@ -85,7 +109,7 @@ func TestImageRelayRoundTripAndScope(t *testing.T) {
 }
 
 func TestImageRelayToolResultsAndUntouchedFields(t *testing.T) {
-	r, err := NewImageRelay("https://images.example")
+	r, err := newTestImageRelay(t, "https://images.example")
 	require.NoError(t, err)
 	dataURL := "data:image/png;base64," + base64.StdEncoding.EncodeToString(relayTestPNG(t))
 	for _, kind := range []string{"function_call_output", "custom_tool_call_output"} {
@@ -114,7 +138,7 @@ func TestImageRelayDisabledAndHTTPSPassthrough(t *testing.T) {
 	require.Equal(t, raw, out)
 	_, _, err = Prepare(out, "scope", nil)
 	require.ErrorContains(t, err, "HTTPS image URL")
-	r, err := NewImageRelay("https://images.example")
+	r, err := newTestImageRelay(t, "https://images.example")
 	require.NoError(t, err)
 	raw = []byte(`{ "model":"gpt-6-astra", "input":[{"role":"user","content":[{"type":"input_image","image_url":"https://cdn.example/image.png?sig=a%2Fb"}]}] }`)
 	out, err = r.Rewrite(raw, "scope")
@@ -125,7 +149,7 @@ func TestImageRelayDisabledAndHTTPSPassthrough(t *testing.T) {
 
 func TestImageRelayRejectsInvalidOrigins(t *testing.T) {
 	for _, origin := range []string{"", "http://images.example", "https:///image", "https://user:secret@images.example", "https://images.example/path", "https://images.example?x=y", "https://images.example?", "https://images.example#", "https://images.example/#"} {
-		_, err := NewImageRelay(origin)
+		_, err := newTestImageRelay(t, origin)
 		require.Error(t, err, origin)
 		require.NotContains(t, err.Error(), "secret")
 	}
@@ -139,7 +163,7 @@ func TestImageRelaySupportedFormats(t *testing.T) {
 	webp, err := base64.StdEncoding.DecodeString("UklGRiIAAABXRUJQVlA4IBYAAAAwAQCdASoBAAEADsD+JaQAA3AAAAAA")
 	require.NoError(t, err)
 	for mimeType, data := range map[string][]byte{"image/png": relayTestPNG(t), "image/jpeg": jpg.Bytes(), "image/gif": gifBytes.Bytes(), "image/webp": webp} {
-		decoded, contentType, err := decodeRelayImage("data:" + mimeType + ";base64," + base64.StdEncoding.EncodeToString(data))
+		decoded, contentType, err := decodeTestRelayImage(t, "data:"+mimeType+";base64,"+base64.StdEncoding.EncodeToString(data))
 		require.NoError(t, err, mimeType)
 		require.Equal(t, mimeType, contentType)
 		require.Equal(t, data, decoded)
@@ -164,14 +188,14 @@ func TestImageRelayRejectsUnsafeOrOversizedData(t *testing.T) {
 		"data:image/png;base64," + base64.StdEncoding.EncodeToString(bigDimensions),
 		"data:image/png;base64," + strings.Repeat("A", base64.StdEncoding.EncodedLen(imageRelayMaxImageBytes)+1),
 	} {
-		_, _, err := decodeRelayImage(raw)
+		_, _, err := decodeTestRelayImage(t, raw)
 		require.Error(t, err)
 		require.NotContains(t, err.Error(), "PRIVATE_INVALID_PAYLOAD")
 	}
 }
 
 func TestImageRelayBatchValidationAndLimitsAreAtomic(t *testing.T) {
-	r, err := NewImageRelay("https://images.example")
+	r, err := newTestImageRelay(t, "https://images.example")
 	require.NoError(t, err)
 	var source object
 	require.NoError(t, decode(relayTestRequest(t, relayTestPNG(t)), &source))
@@ -214,7 +238,7 @@ func TestImageRelayBatchValidationAndLimitsAreAtomic(t *testing.T) {
 }
 
 func TestImageRelayAggregateRequestByteLimit(t *testing.T) {
-	r, err := NewImageRelay("https://images.example")
+	r, err := newTestImageRelay(t, "https://images.example")
 	require.NoError(t, err)
 	// Valid PNG metadata with padding exercises the decoded byte accounting
 	// without requiring a decompression bomb or a large pixel allocation.
@@ -234,7 +258,7 @@ func TestImageRelayAggregateRequestByteLimit(t *testing.T) {
 }
 
 func TestImageRelayExpiryAndMissingTokens(t *testing.T) {
-	r, err := NewImageRelay("https://images.example")
+	r, err := newTestImageRelay(t, "https://images.example")
 	require.NoError(t, err)
 	raw := relayTestRequest(t, relayTestPNG(t))
 	out, err := r.Rewrite(raw, "scope")
@@ -266,7 +290,7 @@ func TestImageRelayExpiryAndMissingTokens(t *testing.T) {
 }
 
 func TestImageRelayConcurrentReuse(t *testing.T) {
-	r, err := NewImageRelay("https://images.example")
+	r, err := newTestImageRelay(t, "https://images.example")
 	require.NoError(t, err)
 	raw := relayTestRequest(t, relayTestPNG(t))
 	var wg sync.WaitGroup
@@ -291,7 +315,7 @@ func TestImageRelayConcurrentReuse(t *testing.T) {
 }
 
 func TestImageRelayConcurrentOriginUpdatesPreserveImages(t *testing.T) {
-	r, err := NewImageRelay("https://images.example")
+	r, err := newTestImageRelay(t, "https://images.example")
 	require.NoError(t, err)
 	raw := relayTestRequest(t, relayTestPNG(t))
 	initial, err := r.Rewrite(raw, "scope")

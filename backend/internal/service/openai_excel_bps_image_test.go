@@ -20,6 +20,7 @@ import (
 )
 
 func TestExcelBPSInlineImageForwardAndFetch(t *testing.T) {
+	t.Setenv("DATA_DIR", t.TempDir())
 	gin.SetMode(gin.TestMode)
 	var pngBytes bytes.Buffer
 	require.NoError(t, png.Encode(&pngBytes, image.NewRGBA(image.Rect(0, 0, 2, 3))))
@@ -30,6 +31,7 @@ func TestExcelBPSInlineImageForwardAndFetch(t *testing.T) {
 				wire := "event: response.completed\ndata: {\"type\":\"response.completed\",\"response\":{\"id\":\"resp_image\",\"status\":\"completed\",\"model\":\"gpt-6-astra\",\"output\":[{\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"image received\"}]}]}}\n\n"
 				upstream := &httpUpstreamRecorder{resp: &http.Response{StatusCode: 200, Header: http.Header{}, Body: io.NopCloser(strings.NewReader(wire))}}
 				svc := openAIClientToolsTestService(upstream)
+				t.Cleanup(func() { require.NoError(t, svc.CloseExcelBPSImages()) })
 				router := gin.New()
 				router.GET(basispoints.ImageRelayPath+":token", svc.ServeExcelBPSImage)
 				server := httptest.NewTLSServer(router)
@@ -67,6 +69,7 @@ func TestExcelBPSInlineImageForwardAndFetch(t *testing.T) {
 }
 
 func TestExcelBPSImageRelayValidationDoesNotCallUpstream(t *testing.T) {
+	t.Setenv("DATA_DIR", t.TempDir())
 	for _, tt := range []struct {
 		name, baseURL, dataURL string
 		status                 int
@@ -78,6 +81,7 @@ func TestExcelBPSImageRelayValidationDoesNotCallUpstream(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			upstream := &httpUpstreamRecorder{}
 			svc := openAIClientToolsTestService(upstream)
+			t.Cleanup(func() { require.NoError(t, svc.CloseExcelBPSImages()) })
 			svc.settingService = NewSettingService(&excelBPSImageSettingsRepo{values: map[string]string{SettingKeyExcelBPSImageRelayEnabled: fmt.Sprint(tt.baseURL != ""), SettingKeyExcelBPSImageBaseURL: tt.baseURL}}, svc.cfg)
 			rec := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(rec)

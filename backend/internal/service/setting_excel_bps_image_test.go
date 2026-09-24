@@ -65,10 +65,12 @@ func (r *excelBPSImageSettingsRepo) SetMultiple(_ context.Context, values map[st
 }
 
 func TestExcelBPSImageSettingsPersistAndApplyImmediately(t *testing.T) {
+	t.Setenv("DATA_DIR", t.TempDir())
 	ctx := context.Background()
 	repo := &excelBPSImageSettingsRepo{}
 	settings := NewSettingService(repo, &config.Config{})
 	gateway := &OpenAIGatewayService{settingService: settings}
+	t.Cleanup(func() { require.NoError(t, gateway.CloseExcelBPSImages()) })
 	relay, err := gateway.excelBPSImageRelay(ctx)
 	require.NoError(t, err)
 	require.Nil(t, relay)
