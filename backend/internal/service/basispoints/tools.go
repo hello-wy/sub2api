@@ -46,7 +46,9 @@ func (c *ReplayCache) put(scope, id string, item object, clientCall ...object) {
 	}
 	key := scope + "\x00" + id
 	if old := c.entries[key]; old != nil {
-		c.bytes -= len(old.Value.(replayEntry).raw)
+		// Only replayEntry values are inserted into this private list.
+		entry, _ := old.Value.(replayEntry)
+		c.bytes -= len(entry.raw)
 		c.order.Remove(old)
 	}
 	var signature string
@@ -57,7 +59,7 @@ func (c *ReplayCache) put(scope, id string, item object, clientCall ...object) {
 	c.bytes += len(raw)
 	for len(c.entries) > 1024 || c.bytes > 16<<20 {
 		old := c.order.Front()
-		entry := old.Value.(replayEntry)
+		entry, _ := old.Value.(replayEntry)
 		delete(c.entries, entry.key)
 		c.bytes -= len(entry.raw)
 		c.order.Remove(old)
@@ -127,12 +129,13 @@ func (c *ReplayCache) getMatching(scope, id, signature string, requireSignature 
 	if entry == nil {
 		return nil
 	}
-	if requireSignature && entry.Value.(replayEntry).callFingerprint != signature {
+	cached, ok := entry.Value.(replayEntry)
+	if !ok || (requireSignature && cached.callFingerprint != signature) {
 		return nil
 	}
 	c.order.MoveToBack(entry)
 	var item object
-	if decode(entry.Value.(replayEntry).raw, &item) != nil {
+	if decode(cached.raw, &item) != nil {
 		return nil
 	}
 	return item

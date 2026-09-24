@@ -20,8 +20,8 @@ func TestHistoryRecoveryPreservesCompleteCallsWithoutCurrentCatalog(t *testing.T
 			source["input"] = []any{message("user", "continue"), call, object{"type": strings.Replace(kind, "_call", "_call_output", 1), "call_id": "call_old", "output": "recorded result"}}
 			cache := new(ReplayCache)
 			body, _ := mustPrepare(t, source, "new-account|key", cache)
-			items := body["input"].([]any)
-			native := items[len(items)-2].(object)
+			items := mustTestValue[[]any](t, body["input"])
+			native := mustTestValue[object](t, items[len(items)-2])
 			if native["name"] != "run_officejs" || native["call_id"] != "call_old" || !strings.HasPrefix(text(native["id"]), "fc_") {
 				t.Fatalf("incomplete native call: %+v", native)
 			}
@@ -89,10 +89,10 @@ func TestCodexToolOutputIDRoundTrip(t *testing.T) {
 			var firstID string
 			for _, replay := range []*ReplayCache{cache, new(ReplayCache)} {
 				body, _ := mustPrepare(t, source, "scope", replay)
-				items := body["input"].([]any)
-				result := items[len(items)-1].(object)
+				items := mustTestValue[[]any](t, body["input"])
+				result := mustTestValue[object](t, items[len(items)-1])
 				id := text(result["id"])
-				if !strings.HasPrefix(id, "fc_") || len(id) > 64 || id == items[len(items)-2].(object)["id"] {
+				if !strings.HasPrefix(id, "fc_") || len(id) > 64 || id == mustTestValue[object](t, items[len(items)-2])["id"] {
 					t.Fatalf("invalid or colliding BPS output ID: %q", id)
 				}
 				if result["type"] != "function_call_output" || result["call_id"] != call["call_id"] || result["output"] != output["output"] {
@@ -164,8 +164,8 @@ func TestToolOutputHTTPSImagesRemainIntact(t *testing.T) {
 	image := object{"type": "input_image", "image_url": "https://example.com/screenshot.png?signature=unchanged%2F"}
 	source["input"] = []any{message("user", "inspect"), object{"type": "function_call", "name": "view_image", "call_id": "call_image", "arguments": `{}`}, object{"type": "function_call_output", "call_id": "call_image", "output": []any{image}}}
 	body, _ := mustPrepare(t, source, "scope", nil)
-	items := body["input"].([]any)
-	if !reflect.DeepEqual(items[len(items)-1].(object)["output"], []any{image}) {
+	items := mustTestValue[[]any](t, body["input"])
+	if !reflect.DeepEqual(mustTestValue[object](t, items[len(items)-1])["output"], []any{image}) {
 		t.Fatal("HTTPS tool image changed")
 	}
 }
