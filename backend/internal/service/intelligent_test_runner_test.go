@@ -186,7 +186,9 @@ func TestIntelligentRunnerContextCancellation(t *testing.T) {
 	svc, _ := intelligentRunnerFixture(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		fmt.Fprint(w, "data: {\"type\":\"response.output_text.delta\",\"delta\":\"working\"}\n\n")
-		w.(http.Flusher).Flush()
+		flusher, ok := w.(http.Flusher)
+		require.True(t, ok)
+		flusher.Flush()
 		<-r.Context().Done()
 	})
 	ctx, cancel := context.WithTimeout(context.Background(), 80*time.Millisecond)

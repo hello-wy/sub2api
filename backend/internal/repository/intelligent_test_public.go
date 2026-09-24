@@ -94,7 +94,7 @@ func (r *intelligentTestRepository) PublicRecords(ctx context.Context, user int6
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		p, err := scanPublicIntelligent(rows)
 		if err != nil {
@@ -126,14 +126,14 @@ func (r *intelligentTestRepository) Capabilities(ctx context.Context, user int64
 	for rows.Next() {
 		var item service.AccountCapability
 		if err := rows.Scan(&item.AccountID, &item.Platform, &item.AccountType); err != nil {
-			rows.Close()
+			_ = rows.Close()
 			return nil, 0, err
 		}
 		item.Tests = []service.PublicAccountTest{}
 		out = append(out, item)
 	}
 	err = rows.Err()
-	rows.Close()
+	_ = rows.Close()
 	if err != nil {
 		return nil, 0, err
 	}

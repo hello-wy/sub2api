@@ -29,7 +29,7 @@ func (r *intelligentTestRepository) DeleteRecords(ctx context.Context, actor int
 		removed = append(removed, id)
 	}
 	err = rows.Err()
-	rows.Close()
+	_ = rows.Close()
 	if err != nil {
 		return 0, err
 	}

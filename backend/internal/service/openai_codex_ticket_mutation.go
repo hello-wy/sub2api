@@ -28,7 +28,10 @@ func (s *OpenAIGatewayService) mutateCodexTicket(ctx context.Context, id int64, 
 	}
 	// Small in-memory repositories used by tests still receive local serialization.
 	lock, _ := s.openaiCodexTicketMutationLocks.LoadOrStore(id, &sync.Mutex{})
-	mu := lock.(*sync.Mutex)
+	mu, ok := lock.(*sync.Mutex)
+	if !ok {
+		return errors.New("invalid STATE mutation lock")
+	}
 	mu.Lock()
 	defer mu.Unlock()
 	account, err := s.accountRepo.GetByID(ctx, id)
