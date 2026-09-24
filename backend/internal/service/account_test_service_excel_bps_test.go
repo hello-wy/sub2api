@@ -24,8 +24,9 @@ func TestBuildExcelBPSAccountTestBodyUsesResponsesContract(t *testing.T) {
 	if content["text"] != "糖果题" {
 		t.Fatalf("prompt was not preserved: %#v", content)
 	}
-	if body["reasoning"].(map[string]any)["effort"] != "medium" {
-		t.Fatalf("missing reasoning effort")
+	reasoning, ok := body["reasoning"].(map[string]any)
+	if !ok || reasoning["effort"] != "medium" {
+		t.Fatalf("missing reasoning effort: %#v", body["reasoning"])
 	}
 }
 
