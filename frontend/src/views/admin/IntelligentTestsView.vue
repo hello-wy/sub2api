@@ -1,7 +1,8 @@
 <template>
   <AppLayout>
-    <AccountManagementTabs :active="mode" />
-    <div class="space-y-5">
+    <ScrollablePageLayout>
+      <AccountManagementTabs :active="mode" />
+      <div class="space-y-5">
       <div class="flex flex-wrap items-start justify-between gap-4">
         <div><h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100">{{ titles[mode] }}</h1><p class="mt-2 text-sm text-gray-500">{{ mode === 'settings' ? '按测试类型管理题目、答案判定和可见范围。' : '分别查看执行状态、答案与格式；单次测试不足以判断模型能力下降。' }}</p></div>
         <button class="btn btn-secondary" :disabled="loading || metadataLoading" @click="refresh"><Icon name="refresh" size="sm" :class="loading || metadataLoading ? 'animate-spin' : ''" /> 刷新</button>
@@ -71,7 +72,8 @@
       </template>
       <TestSettingsPanel v-else-if="settings.length" :settings="settings" @saved="settingSaved" />
       <p v-else-if="loading" class="py-12 text-center text-sm text-gray-500">正在加载设置…</p>
-    </div>
+      </div>
+    </ScrollablePageLayout>
     <TestDetailDialog :record-id="detailId" :running="running" @close="detailId = null" @history="showHistory" @run="(id, type) => run([id], [type])" @updated="load(false)" />
   </AppLayout>
 </template>
@@ -79,6 +81,7 @@
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppLayout from '@/components/layout/AppLayout.vue'
+import ScrollablePageLayout from '@/components/layout/ScrollablePageLayout.vue'
 import Icon from '@/components/icons/Icon.vue'
 import Pagination from '@/components/common/Pagination.vue'
 import AccountManagementTabs from '@/components/admin/intelligent-tests/AccountManagementTabs.vue'

@@ -1,6 +1,7 @@
 <template>
   <AppLayout>
-    <div class="space-y-6 pb-12">
+    <ScrollablePageLayout>
+      <div class="space-y-6 pb-12">
       <!-- Ops-style elevated shell: title toolbar + filters (mirrors OpsDashboardHeader) -->
       <section
         class="card sticky top-0 z-20 !rounded-3xl !border-0 p-0 shadow-sm ring-1 ring-gray-900/5 backdrop-blur-sm dark:!bg-dark-800 dark:ring-dark-700 supports-[backdrop-filter]:bg-white/95 dark:supports-[backdrop-filter]:bg-dark-800/95"
@@ -453,7 +454,8 @@
           </div>
         </div>
       </section>
-    </div>
+      </div>
+    </ScrollablePageLayout>
   </AppLayout>
 </template>
 
@@ -462,6 +464,7 @@ import { useI18n } from 'vue-i18n'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppLayout from '@/components/layout/AppLayout.vue'
+import ScrollablePageLayout from '@/components/layout/ScrollablePageLayout.vue'
 import Icon from '@/components/icons/Icon.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import Select from '@/components/common/Select.vue'

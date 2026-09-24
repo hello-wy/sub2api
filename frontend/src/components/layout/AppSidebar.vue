@@ -11,29 +11,21 @@
     <div class="sidebar-header" :class="{ 'sidebar-header-collapsed': sidebarCollapsed }">
       <router-link
         :to="homePath"
-        class="sidebar-logo flex items-center transition-opacity hover:opacity-80"
-        :aria-label="sidebarCollapsed ? 'SolidAPI' : 'SolidAPI 首页'"
+        class="sidebar-logo flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl shadow-glow transition-opacity hover:opacity-80"
+        :aria-label="`${siteName} 首页`"
         @click="handleMenuItemClick(homePath)"
       >
-        <img
-          v-if="sidebarCollapsed"
-          src="/brand/solidapi-mark.png"
-          alt="SolidAPI"
-          class="sidebar-logo-mark"
-        />
-        <template v-else>
-          <img
-            src="/brand/solidapi-lockup-light.png"
-            alt="SolidAPI"
-            class="sidebar-logo-lockup sidebar-logo-lockup-light"
-          />
-          <img
-            src="/brand/solidapi-lockup-dark.png"
-            alt="SolidAPI"
-            class="sidebar-logo-lockup sidebar-logo-lockup-dark"
-          />
-        </template>
+        <img v-if="settingsLoaded" :src="siteLogo || '/logo.svg'" :alt="siteName" class="h-full w-full object-contain" />
       </router-link>
+      <div class="sidebar-brand" :class="{ 'sidebar-brand-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'">
+        <router-link
+          :to="homePath"
+          class="sidebar-brand-title text-lg font-bold text-gray-900 transition-colors hover:text-primary-600 dark:text-white dark:hover:text-primary-400"
+          @click="handleMenuItemClick(homePath)"
+        >
+          {{ siteName }}
+        </router-link>
+      </div>
     </div>
 
     <!-- Navigation -->
@@ -204,6 +196,7 @@ import { useAdminSettingsStore, useAppStore, useAuthStore, useOnboardingStore } 
 import LiquidGlass from '@/components/common/LiquidGlass.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { sanitizeSvg } from '@/utils/sanitize'
+import { sanitizeUrl } from '@/utils/url'
 import { FeatureFlags, makeSidebarFlag } from '@/utils/featureFlags'
 import { useBatchImageAccess } from '@/composables/useBatchImageAccess'
 import { useCheckinReminder } from '@/composables/useCheckinReminder'
@@ -264,6 +257,9 @@ const isAdmin = computed(() => authStore.isAdmin)
 const sidebarNavRef = ref<HTMLElement | null>(null)
 
 const homePath = computed(() => (isAdmin.value ? '/admin/dashboard' : '/dashboard'))
+const siteName = computed(() => appStore.siteName || 'Sub2API')
+const siteLogo = computed(() => sanitizeUrl(appStore.siteLogo || '', { allowRelative: true, allowDataUrl: true }))
+const settingsLoaded = computed(() => appStore.publicSettingsLoaded)
 
 // Per-group expand/collapse overrides. A group with no entry follows the
 // automatic behavior (expanded while the active route is one of its children);
@@ -867,6 +863,9 @@ function handleMenuItemClick(itemPath: string) {
 }
 
 function isActive(path: string): boolean {
+  if (path === '/admin/accounts') {
+    return route.path === path
+  }
   return route.path === path || route.path.startsWith(path + '/')
 }
 
@@ -1039,62 +1038,14 @@ watch(
 }
 
 .sidebar-logo {
-  flex: 0 0 8.25rem;
-  width: 8.25rem;
-  min-width: 8.25rem;
-  height: 2.75rem;
-  overflow: visible;
-  transition:
-    width 0.2s ease,
-    min-width 0.2s ease,
-    flex-basis 0.2s ease,
-    opacity 0.2s ease;
-}
-
-.sidebar-logo-lockup {
-  display: block;
-  width: 8.25rem;
-  height: auto;
-  object-fit: contain;
-}
-
-.sidebar-logo-lockup-dark {
-  display: none;
-}
-
-:global(.dark .sidebar-logo-lockup-light) {
-  display: none;
-}
-
-:global(.dark .sidebar-logo-lockup-dark) {
-  display: block;
-}
-
-.sidebar-logo-mark {
-  display: block;
-  width: 2.25rem;
-  height: 2.25rem;
-  object-fit: contain;
+  flex: 0 0 2.25rem;
+  min-width: 2.25rem;
 }
 
 .sidebar-header-collapsed {
   gap: 0;
   padding-left: 1.125rem;
   padding-right: 1.125rem;
-}
-
-.sidebar-header:not(.sidebar-header-collapsed) {
-  height: 4rem;
-  justify-content: flex-start;
-  padding-right: 1.25rem;
-  padding-left: 1.25rem;
-}
-
-.sidebar-header-collapsed .sidebar-logo {
-  flex-basis: 2.25rem;
-  width: 2.25rem;
-  min-width: 2.25rem;
-  height: 2.5rem;
 }
 
 .sidebar-link-collapsed {

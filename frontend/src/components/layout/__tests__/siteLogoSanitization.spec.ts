@@ -10,16 +10,13 @@ const homeViewSource = readFileSync(resolve(dir, '../../../views/HomeView.vue'),
 const keyUsageViewSource = readFileSync(resolve(dir, '../../../views/KeyUsageView.vue'), 'utf8')
 
 describe('site logo handling', () => {
-  it('uses the SolidAPI brand lockups on the public home and authenticated sidebar', () => {
-    for (const src of [sidebarSource, homeViewSource]) {
-      expect(src).toContain('/brand/solidapi-lockup-light.png')
-      expect(src).toContain('/brand/solidapi-lockup-dark.png')
-    }
-
-    expect(sidebarSource).toContain('/brand/solidapi-mark.png')
-    expect(existsSync(resolve(dir, '../../../../public/brand/solidapi-lockup-light.png'))).toBe(true)
-    expect(existsSync(resolve(dir, '../../../../public/brand/solidapi-lockup-dark.png'))).toBe(true)
-    expect(existsSync(resolve(dir, '../../../../public/brand/solidapi-mark.png'))).toBe(true)
+  it('keeps the public home brand and restores the configurable sidebar logo', () => {
+    expect(homeViewSource).toContain('/brand/solidapi-lockup-light.png')
+    expect(homeViewSource).toContain('/brand/solidapi-lockup-dark.png')
+    expect(sidebarSource).toContain("siteLogo || '/logo.svg'")
+    expect(sidebarSource).toContain("import { sanitizeUrl } from '@/utils/url'")
+    expect(sidebarSource).toContain('sanitizeUrl(appStore.siteLogo ||')
+    expect(existsSync(resolve(dir, '../../../../public/logo.svg'))).toBe(true)
   })
 
   it('KeyUsageView applies sanitizeUrl to siteLogo', () => {
