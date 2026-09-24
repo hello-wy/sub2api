@@ -15,3 +15,9 @@ Only the protocol package is imported; Sub2API supplies its own account setting,
 OAuth credential lifecycle, proxy transport, usage recording and frontend.
 The repositories have different layouts; this is a source port, not a Git merge
 of the other application's deployment, database or account pool implementation.
+
+Additional review reference: JaxsonWang/cpa-plugin-oai-basispoints at
+05b2d97efa1bd117da6bd4d362d6e88f8e483680. Its tool/args envelope examples
+were compared with this package. We retain scoped caches, incremental text
+streaming and multiple-terminal-tool handling rather than its global call-ID
+cache and single-transport extraction. No CPA plugin ABI is imported.

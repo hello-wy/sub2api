@@ -169,7 +169,7 @@ func repairIllegalEscapes(raw string) string {
 			quoted = !quoted
 		}
 		if ch != '\\' || !quoted || i+1 >= len(raw) {
-			out.WriteByte(ch)
+			_ = out.WriteByte(ch)
 			continue
 		}
 		next := raw[i+1]
@@ -182,12 +182,12 @@ func repairIllegalEscapes(raw string) string {
 				}
 			}
 		}
-		out.WriteByte('\\')
+		_ = out.WriteByte('\\')
 		if valid {
-			out.WriteByte(next)
+			_ = out.WriteByte(next)
 			i++
 		} else {
-			out.WriteByte('\\')
+			_ = out.WriteByte('\\')
 		}
 	}
 	return out.String()

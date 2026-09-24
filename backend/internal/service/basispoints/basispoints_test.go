@@ -149,7 +149,7 @@ func TestStreamingToolRoundTripPreservesNativeIdentity(t *testing.T) {
 					added++
 				}
 				if text(event["type"]) == "response.output_item.done" {
-					call = event["item"].(object)
+					call, _ = event["item"].(object)
 				}
 				return nil
 			})
@@ -165,10 +165,10 @@ func TestStreamingToolRoundTripPreservesNativeIdentity(t *testing.T) {
 			}
 			source["input"] = []any{message("user", "hello"), call, object{"type": outputType, "call_id": "call_native", "output": "done"}, object{"type": "reasoning", "encrypted_content": "encrypted"}}
 			next, _ := mustPrepare(t, source, "account/key/session", cache)
-			items := next["input"].([]any)
+			items, _ := next["input"].([]any)
 			var restored object
 			for _, raw := range items {
-				item := raw.(object)
+				item, _ := raw.(object)
 				if isTool(item) {
 					restored = item
 				}
@@ -229,7 +229,7 @@ func TestToolAliasAndObjectArgumentsPreserveCompleteReplay(t *testing.T) {
 			output := object{"type": "function_call_output", "call_id": call["call_id"], "output": "18 C"}
 			source["input"] = []any{message("user", "weather"), call, output}
 			next, _ := mustPrepare(t, source, "account/key", cache)
-			items := next["input"].([]any)
+			items, _ := next["input"].([]any)
 			output["id"] = "fc_" + text(call["call_id"])
 			if !reflect.DeepEqual(items[len(items)-2], native) || !reflect.DeepEqual(items[len(items)-1], output) {
 				t.Fatal("replay lost the original item ID, arguments, references or tool result")

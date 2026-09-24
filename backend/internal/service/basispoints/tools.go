@@ -237,6 +237,9 @@ func (b *Bridge) translateCall(native object) (object, error) {
 	if itemID == "" {
 		itemID = "fc_" + fingerprint(id)
 	}
+	if info.Kind == "function" {
+		itemID = "fc_" + fingerprint(id)
+	}
 	result := object{"type": info.Kind + "_call", "id": itemID, "call_id": id, "name": info.Name, "status": "completed"}
 	if info.Namespace != "" {
 		result["namespace"] = info.Namespace

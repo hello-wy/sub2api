@@ -1,7 +1,6 @@
 package service
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -24,7 +23,7 @@ var excelBPSReplay basispoints.ReplayCache
 func (s *OpenAIGatewayService) forwardExcelBPS(ctx context.Context, c *gin.Context, account *Account, body []byte, start time.Time) (*OpenAIForwardResult, error) {
 	fail := func(status int, code, message string) (*OpenAIForwardResult, error) {
 		c.JSON(status, gin.H{"error": gin.H{"type": "invalid_request_error", "code": code, "message": message}})
-		return nil, fmt.Errorf("Excel BPS: %s", code)
+		return nil, fmt.Errorf("excel BPS: %s", code)
 	}
 	originalModel := gjson.GetBytes(body, "model").String()
 	model := account.GetMappedModel(originalModel)
@@ -34,10 +33,7 @@ func (s *OpenAIGatewayService) forwardExcelBPS(ctx context.Context, c *gin.Conte
 	if err != nil {
 		return fail(400, "basispoints_request_invalid", "Invalid model request")
 	}
-	identity := explicitOpenAIRequestSessionID(c, body)
-	if thread := gjson.GetBytes(body, "client_metadata.thread_id").String(); thread != "" {
-		identity = thread
-	}
+	identity, _ := resolveOpenAIWSExecutionScope(c, body, getAPIKeyIDFromContext(c))
 	if identity != "" {
 		body, err = sjson.SetBytes(body, "prompt_cache_key", identity)
 		if err != nil {
@@ -119,11 +115,19 @@ func (s *OpenAIGatewayService) forwardExcelBPS(ctx context.Context, c *gin.Conte
 		c.Header("Cache-Control", "no-cache")
 		c.Header("X-Accel-Buffering", "no")
 	}
-	scanner := bufio.NewScanner(converted)
-	scanner.Buffer(make([]byte, 64*1024), 16<<20)
+	scanner := newOpenAISSEReadPump(converted, 16<<20)
+	defer scanner.Close()
+	heartbeat := time.NewTicker(15 * time.Second)
+	defer heartbeat.Stop()
+	keepalive := func() {
+		if stream && ctx.Err() == nil {
+			_, _ = c.Writer.WriteString(": keepalive\n\n")
+			c.Writer.Flush()
+		}
+	}
 	var completed []byte
 	terminal := ""
-	for scanner.Scan() {
+	for scanner.Next(ctx, 0, heartbeat.C, keepalive) {
 		line := scanner.Text()
 		if strings.HasPrefix(line, "data: ") {
 			payload := []byte(strings.TrimPrefix(line, "data: "))
@@ -155,13 +159,17 @@ func (s *OpenAIGatewayService) forwardExcelBPS(ctx context.Context, c *gin.Conte
 	result.Duration = time.Since(start)
 	result.UpstreamTerminalEvent = terminal
 	if err = scanner.Err(); err != nil || terminal == "" {
+		if ctx.Err() != nil {
+			result.ClientDisconnect = true
+			return result, ctx.Err()
+		}
 		if stream {
 			_, _ = c.Writer.WriteString("event: response.failed\ndata: {\"type\":\"response.failed\",\"response\":{\"status\":\"failed\",\"error\":{\"code\":\"basispoints_stream_incomplete\",\"message\":\"Upstream stream ended before completion\"}}}\n\n")
 			c.Writer.Flush()
 		} else {
 			c.JSON(502, gin.H{"error": gin.H{"code": "basispoints_stream_incomplete", "message": "Excel BPS stream ended before completion"}})
 		}
-		return result, fmt.Errorf("Excel BPS stream incomplete")
+		return result, fmt.Errorf("excel BPS stream incomplete")
 	}
 	if !stream {
 		if terminal != "response.completed" {
@@ -171,7 +179,7 @@ func (s *OpenAIGatewayService) forwardExcelBPS(ctx context.Context, c *gin.Conte
 		}
 	}
 	if terminal != "response.completed" {
-		return result, fmt.Errorf("Excel BPS terminal: %s", terminal)
+		return result, fmt.Errorf("excel BPS terminal: %s", terminal)
 	}
 	s.bindHTTPResponseAccount(ctx, c, account, result.ResponseID)
 	return result, nil
