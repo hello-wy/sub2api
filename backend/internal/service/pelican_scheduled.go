@@ -16,11 +16,23 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const CandyPrompt = `在一个黑色的袋子里放有三种口味的糖果，每种糖果有两种不同的形状（圆形和五角星形，不同的形状靠手感可以分辨）。现已知不同口味的糖和不同形状的数量统计如下表。参赛者需要在活动前决定摸出的糖果数目，那么，最少取出多少个糖果才能保证手中同时拥有不同形状的苹果味和桃子味的糖？（同时手中有圆形苹果味匹配五角星桃子味糖果，或者有圆形桃子味匹配五角星苹果味糖果都满足要求）
+苹果味 桃子味 西瓜味
+圆形 7 9 8
+五角星形 7 6 4`
+
 const PelicanDeliveryContract = "所有账号使用相同交付约定：直接返回独立 HTML，不使用 Markdown 代码块或外部依赖。只输出 HTML，不要解释。"
 
 var pelicanHTMLPattern = regexp.MustCompile(`(?i)<(?:!doctype\s+html|html|svg)[\s>]`)
 
 func (s *AccountTestService) RunPelicanBackground(ctx context.Context, accountID int64, model string, cfg *PelicanTestConfig) (*ScheduledTestResult, error) {
+	// Recognize the exact built-in question in legacy HTML plans as well.
+	if isBuiltinCandyPlan(cfg) {
+		copy := *cfg
+		copy.QuestionKind = "candy"
+		cfg = &copy
+
+	}
 	started := time.Now()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -99,7 +111,7 @@ func (s *ScheduledTestRunnerService) runPelicanPlan(ctx context.Context, plan *S
 			logger.LegacyPrintf("service.scheduled_test_runner", "pelican plan=%d save failed: %v", plan.ID, err)
 		}
 	}
-	if succeeded && plan.AutoRecover {
+	if succeeded && plan.AutoRecover && !isBuiltinCandyPlan(plan.PelicanConfig) {
 		s.tryRecoverAccount(saveCtx, plan.AccountID, plan.ID)
 	}
 	if err := s.planRepo.FinishPelican(saveCtx, plan.ID, until, time.Now()); err != nil {
@@ -148,19 +160,26 @@ func parsePelicanOutput(body string) (string, string) {
 	return output, message
 }
 
+func isBuiltinCandyPlan(cfg *PelicanTestConfig) bool {
+	return cfg != nil && strings.TrimSpace(cfg.Prompt) == strings.TrimSpace(CandyPrompt)
+}
+
 // Missing kind preserves HTML validation for saved plans from older versions.
 func intelligenceTestPrompt(cfg *PelicanTestConfig) string {
 	contract := PelicanDeliveryContract
-	if cfg.QuestionKind == "candy" {
+	if cfg.QuestionKind == "candy" || isBuiltinCandyPlan(cfg) {
 		contract = "只输出最终整数，不要解释。"
 	}
 	return cfg.Prompt + "\n\n" + contract
 }
 func intelligenceTestOutputError(cfg *PelicanTestConfig, output string) string {
+	if isBuiltinCandyPlan(cfg) && strings.TrimSpace(output) != "21" {
+		return "answer_mismatch: expected 21"
+	}
 	if strings.TrimSpace(output) == "" {
 		return "Model returned empty output"
 	}
-	if cfg.QuestionKind != "candy" && !pelicanHTMLPattern.MatchString(output) {
+	if cfg.QuestionKind != "candy" && !isBuiltinCandyPlan(cfg) && !pelicanHTMLPattern.MatchString(output) {
 		return "Model did not return HTML or SVG"
 	}
 	return ""

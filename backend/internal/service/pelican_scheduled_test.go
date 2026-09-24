@@ -156,3 +156,13 @@ func TestIntelligenceQuestionContractAndLegacyPlans(t *testing.T) {
 	_, err = nextPlanRun(plan, time.Now())
 	require.Error(t, err)
 }
+
+func TestLegacyCandyPlanRejectsWrongAnswer(t *testing.T) {
+	cfg := &PelicanTestConfig{Prompt: CandyPrompt}
+	require.True(t, isBuiltinCandyPlan(cfg))
+	require.Contains(t, intelligenceTestOutputError(cfg, "29"), "answer_mismatch")
+	require.Contains(t, intelligenceTestOutputError(cfg, "<html>29</html>"), "answer_mismatch")
+	cfg.QuestionKind = "candy"
+	require.Empty(t, intelligenceTestOutputError(cfg, "21"))
+	require.False(t, isBuiltinCandyPlan(&PelicanTestConfig{Prompt: "custom question"}))
+}
