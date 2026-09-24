@@ -27,7 +27,7 @@ func (s *AccountTestService) RunPelicanBackground(ctx context.Context, accountID
 	w := &pelicanRecorder{ResponseRecorder: httptest.NewRecorder(), cancel: cancel}
 	c, _ := gin.CreateTestContext(w)
 	c.Request = (&http.Request{}).WithContext(ctx)
-	err := s.TestPelicanAccountConnection(c, accountID, model, cfg.Prompt+"\n\n"+PelicanDeliveryContract, cfg.ReasoningEffort)
+	err := s.TestPelicanAccountConnection(c, accountID, model, intelligenceTestPrompt(cfg), cfg.ReasoningEffort)
 	output, message := parsePelicanOutput(w.Body.String())
 	if w.overflow {
 		output = ""
@@ -36,13 +36,13 @@ func (s *AccountTestService) RunPelicanBackground(ctx context.Context, accountID
 	if err != nil && message == "" {
 		message = err.Error()
 	}
-	if message == "" && !pelicanHTMLPattern.MatchString(output) {
-		message = "Model did not return HTML or SVG"
+	if message == "" {
+		message = intelligenceTestOutputError(cfg, output)
 	}
 	// Bounded history storage; never persist a truncated animation as a success.
 	if len(output) > 2<<20 {
 		output = ""
-		message = "HTML exceeds 2 MiB history limit"
+		message = "Output exceeds 2 MiB history limit"
 	}
 	status := "success"
 	if message != "" {
@@ -146,4 +146,22 @@ func parsePelicanOutput(body string) (string, string) {
 		message = "Generation stream ended before completion"
 	}
 	return output, message
+}
+
+// Missing kind preserves HTML validation for saved plans from older versions.
+func intelligenceTestPrompt(cfg *PelicanTestConfig) string {
+	contract := PelicanDeliveryContract
+	if cfg.QuestionKind == "candy" {
+		contract = "只输出最终整数，不要解释。"
+	}
+	return cfg.Prompt + "\n\n" + contract
+}
+func intelligenceTestOutputError(cfg *PelicanTestConfig, output string) string {
+	if strings.TrimSpace(output) == "" {
+		return "Model returned empty output"
+	}
+	if cfg.QuestionKind != "candy" && !pelicanHTMLPattern.MatchString(output) {
+		return "Model did not return HTML or SVG"
+	}
+	return ""
 }

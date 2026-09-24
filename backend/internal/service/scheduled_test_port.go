@@ -5,8 +5,9 @@ import (
 	"time"
 )
 
-// PelicanTestConfig is the saved input for server-side HTML generation.
+// PelicanTestConfig stores intelligence test inputs; a missing kind preserves legacy HTML plans.
 type PelicanTestConfig struct {
+	QuestionKind    string `json:"question_kind,omitempty"`
 	Prompt          string `json:"prompt"`
 	ReasoningEffort string `json:"reasoning_effort"`
 	ParallelCount   int    `json:"parallel_count"`

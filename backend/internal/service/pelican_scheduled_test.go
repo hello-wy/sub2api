@@ -130,3 +130,29 @@ func TestPelicanIncompleteStreamIsNotSuccess(t *testing.T) {
 	_, message = parsePelicanOutput("data: {\"type\":\"test_complete\",\"success\":true}\n")
 	require.Empty(t, message)
 }
+
+func TestIntelligenceQuestionContractAndLegacyPlans(t *testing.T) {
+	for _, kind := range []string{"", "pelican", "candy"} {
+		cfg := &PelicanTestConfig{QuestionKind: kind, Prompt: "original question"}
+		prompt := intelligenceTestPrompt(cfg)
+		require.Contains(t, prompt, "original question")
+		if kind == "candy" {
+			require.NotContains(t, prompt, "HTML")
+			require.Contains(t, prompt, "只输出最终整数")
+			require.Empty(t, intelligenceTestOutputError(cfg, "21"))
+			require.Empty(t, intelligenceTestOutputError(cfg, "29"), "not an automatic score")
+			require.NotEmpty(t, intelligenceTestOutputError(cfg, " "))
+		} else {
+			require.Contains(t, prompt, PelicanDeliveryContract)
+			require.NotEmpty(t, intelligenceTestOutputError(cfg, "21"))
+			require.Empty(t, intelligenceTestOutputError(cfg, "<html></html>"))
+		}
+	}
+	plan := pelicanPlan()
+	plan.PelicanConfig.QuestionKind = "candy"
+	_, err := nextPlanRun(plan, time.Now())
+	require.NoError(t, err)
+	plan.PelicanConfig.QuestionKind = "unknown"
+	_, err = nextPlanRun(plan, time.Now())
+	require.Error(t, err)
+}

@@ -99,6 +99,9 @@ func nextPlanRun(plan *ScheduledTestPlan, now time.Time) (time.Time, error) {
 		if strings.TrimSpace(cfg.Prompt) == "" || len(cfg.Prompt) > 32000 || strings.TrimSpace(plan.ModelID) == "" || len(plan.ModelID) > 100 {
 			return time.Time{}, fmt.Errorf("pelican prompt and model are required (maximum 32000/100 bytes)")
 		}
+		if cfg.QuestionKind != "" && cfg.QuestionKind != "pelican" && cfg.QuestionKind != "candy" {
+			return time.Time{}, fmt.Errorf("invalid question kind")
+		}
 		if cfg.ParallelCount < 1 || cfg.ParallelCount > 8 {
 			return time.Time{}, fmt.Errorf("parallel count must be 1–8")
 		}

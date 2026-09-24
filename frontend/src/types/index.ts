@@ -2461,6 +2461,7 @@ export interface TotpLogin2FARequest {
 // ==================== Scheduled Test Types ====================
 
 export interface PelicanTestConfig {
+  question_kind?: 'candy' | 'pelican'
   prompt: string
   reasoning_effort: string
   parallel_count: number
