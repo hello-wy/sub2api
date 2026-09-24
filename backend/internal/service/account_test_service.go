@@ -994,16 +994,7 @@ func (s *AccountTestService) testExcelBPSAccountConnection(c *gin.Context, accou
 	prompt = promptOrDefault(prompt)
 	s.sendEvent(c, TestEvent{Type: "test_start", Model: model})
 
-	body, err := json.Marshal(map[string]any{
-		"model":  model,
-		"stream": true,
-		"store":  false,
-		"input": []any{map[string]any{
-			"type": "message", "role": "user",
-			"content": []any{map[string]any{"type": "input_text", "text": prompt}},
-		}},
-		"reasoning": map[string]any{"effort": "medium"},
-	})
+	body, err := buildExcelBPSAccountTestBody(model, prompt)
 	if err != nil {
 		return s.sendErrorAndEnd(c, "Failed to create Excel BPS test payload")
 	}
@@ -1047,6 +1038,16 @@ func (s *AccountTestService) testExcelBPSAccountConnection(c *gin.Context, accou
 	}
 	s.sendEvent(c, TestEvent{Type: "test_complete", Success: true})
 	return nil
+}
+
+func buildExcelBPSAccountTestBody(model, prompt string) ([]byte, error) {
+	return json.Marshal(map[string]any{
+		"model": model, "stream": true, "store": false,
+		"input": []any{map[string]any{"type": "message", "role": "user", "content": []any{
+			map[string]any{"type": "input_text", "text": promptOrDefault(prompt)},
+		}}},
+		"reasoning": map[string]any{"effort": "medium"},
+	})
 }
 
 // testGrokAccountConnection routes Grok admin connectivity tests by explicit mode first,
