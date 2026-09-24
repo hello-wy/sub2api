@@ -15,8 +15,8 @@ func TestCatalogKeepsNamespacedToolContractsInProse(t *testing.T) {
 		object{"type": "custom", "name": "patch", "format": object{"type": "grammar", "definition": "start: PATCH"}},
 	}}}
 	wire, _ := mustPrepare(t, source, "test", nil)
-	items := wire["input"].([]any)
-	protocol := text(items[1].(object)["content"].([]any)[0].(object)["text"])
+	items := requireValue[[]any](t, wire["input"])
+	protocol := text(requireValue[object](t, requireValue[[]any](t, requireValue[object](t, items[1])["content"])[0])["text"])
 	for _, want := range []string{`Client tool "functions.shell"`, `Field "cmd" (required)`, "Command text.", `"enum":["read","check"]`, `"additionalProperties":false`, "start: PATCH", "exact raw text", "not executable code"} {
 		if !strings.Contains(protocol, want) {
 			t.Fatalf("catalog lost contract detail %q", want)

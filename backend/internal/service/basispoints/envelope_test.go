@@ -34,7 +34,7 @@ func TestTransportEnvelopeRepairsOnlyIllegalEscapes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	args := got["arguments"].(object)
+	args := requireValue[object](t, got["arguments"])
 	// The original valid \f escape retains its JSON meaning; guessing paths would alter arguments.
 	if args["pattern"] != `\d+\s` || args["path"] != "C:\\Projects\file" || args["line"] != "a\nb" || args["literal"] != `\n` {
 		t.Fatalf("escape repair changed valid content: %#v", args)
@@ -71,11 +71,11 @@ func TestFormattedEnvelopeAndOutputOnlyReplay(t *testing.T) {
 	}
 	source["input"] = []any{message("user", "weather"), object{"type": "function_call_output", "call_id": call["call_id"], "output": "18 C"}}
 	replayed, _ := mustPrepare(t, source, "account/key", cache)
-	items := replayed["input"].([]any)
+	items := requireValue[[]any](t, replayed["input"])
 	if !reflect.DeepEqual(items[len(items)-2], native) {
 		t.Fatal("formatting repair must not alter the original replay envelope")
 	}
-	output := items[len(items)-1].(object)
+	output := requireValue[object](t, items[len(items)-1])
 	if output["id"] != "fc_call_native" || output["call_id"] != call["call_id"] || output["output"] != "18 C" {
 		t.Fatalf("incomplete tool output identity: %+v", output)
 	}
@@ -96,8 +96,8 @@ func TestToolOutputIDsAreBoundedAndCallerIDsPreserved(t *testing.T) {
 		source["input"] = []any{message("user", "test"), call, object{"type": "function_call_output", "id": suppliedID, "call_id": call["call_id"], "output": "done"}}
 		first, _ := mustPrepare(t, source, "account/key", cache)
 		second, _ := mustPrepare(t, source, "account/key", cache)
-		items := first["input"].([]any)
-		id := text(items[len(items)-1].(object)["id"])
+		items := requireValue[[]any](t, first["input"])
+		id := text(requireValue[object](t, items[len(items)-1])["id"])
 		if id == "" || len(id) > 64 || (suppliedID != "" && id != suppliedID) || !reflect.DeepEqual(first, second) {
 			t.Fatal("tool output ID must be bounded, stable and preserve supplied IDs")
 		}

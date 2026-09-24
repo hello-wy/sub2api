@@ -43,14 +43,15 @@ func (c *ReplayCache) put(scope, id string, item object) {
 	}
 	key := scope + "\x00" + id
 	if old := c.entries[key]; old != nil {
-		c.bytes -= len(old.Value.(replayEntry).raw)
+		previous, _ := old.Value.(replayEntry)
+		c.bytes -= len(previous.raw)
 		c.order.Remove(old)
 	}
 	c.entries[key] = c.order.PushBack(replayEntry{key: key, raw: raw})
 	c.bytes += len(raw)
 	for len(c.entries) > 1024 || c.bytes > 16<<20 {
 		old := c.order.Front()
-		entry := old.Value.(replayEntry)
+		entry, _ := old.Value.(replayEntry)
 		delete(c.entries, entry.key)
 		c.bytes -= len(entry.raw)
 		c.order.Remove(old)
@@ -69,7 +70,8 @@ func (c *ReplayCache) get(scope, id string) object {
 	}
 	c.order.MoveToBack(entry)
 	var item object
-	if decode(entry.Value.(replayEntry).raw, &item) != nil {
+	cached, ok := entry.Value.(replayEntry)
+	if !ok || decode(cached.raw, &item) != nil {
 		return nil
 	}
 	return item
@@ -81,7 +83,7 @@ func (b *Bridge) collectTools(value any, namespace string) ([]any, error) {
 	for _, raw := range items {
 		item, ok := raw.(object)
 		if !ok {
-			return nil, fmt.Errorf("invalid Basispoints client tool")
+			return nil, fmt.Errorf("invalid basispoints client tool")
 		}
 		kind, name := text(item["type"]), text(item["name"])
 		if kind == "namespace" {
@@ -93,10 +95,10 @@ func (b *Bridge) collectTools(value any, namespace string) ([]any, error) {
 			continue
 		}
 		if kind != "function" && kind != "custom" {
-			return nil, fmt.Errorf("Basispoints does not support hosted tool %q; use client function or custom tools", kind)
+			return nil, fmt.Errorf("basispoints does not support hosted tool %q; use client function or custom tools", kind)
 		}
 		if name == "" {
-			return nil, fmt.Errorf("Basispoints client tools require a name")
+			return nil, fmt.Errorf("basispoints client tools require a name")
 		}
 		key := name
 		if namespace != "" {
@@ -130,14 +132,14 @@ func (b *Bridge) translateHistory(input []any) ([]any, error) {
 	for _, raw := range input {
 		item, ok := raw.(object)
 		if !ok {
-			return nil, fmt.Errorf("invalid Basispoints input item")
+			return nil, fmt.Errorf("invalid basispoints input item")
 		}
 		delete(item, "internal_chat_message_metadata_passthrough")
 		switch text(item["type"]) {
 		case "additional_tools":
 			continue
 		case "item_reference":
-			return nil, fmt.Errorf("Basispoints requires full history; item_reference is unsupported")
+			return nil, fmt.Errorf("basispoints requires full history; item_reference is unsupported")
 		case "compaction_trigger":
 			trigger = item
 			continue
@@ -151,7 +153,7 @@ func (b *Bridge) translateHistory(input []any) ([]any, error) {
 			if native := b.replay.get(b.scope, id); native != nil {
 				item = native
 			} else {
-				return nil, fmt.Errorf("Basispoints original tool item is unavailable after a restart, account change or cache eviction; start a new conversation")
+				return nil, fmt.Errorf("basispoints original tool item is unavailable after a restart, account change or cache eviction; start a new conversation")
 			}
 			seenCalls[id] = true
 		case "function_call_output", "custom_tool_call_output":
@@ -159,7 +161,7 @@ func (b *Bridge) translateHistory(input []any) ([]any, error) {
 			if !seenCalls[id] {
 				native := b.replay.get(b.scope, id)
 				if native == nil {
-					return nil, fmt.Errorf("Basispoints original tool item is unavailable for this tool result; start a new conversation")
+					return nil, fmt.Errorf("basispoints original tool item is unavailable for this tool result; start a new conversation")
 				}
 				result = append(result, native)
 				seenCalls[id] = true
@@ -173,7 +175,7 @@ func (b *Bridge) translateHistory(input []any) ([]any, error) {
 				item["id"] = itemID
 			}
 		case "configuration_update":
-			return nil, fmt.Errorf("Basispoints does not support configuration_update; start a new request with the desired effort")
+			return nil, fmt.Errorf("basispoints does not support configuration_update; start a new request with the desired effort")
 		}
 		if content, ok := item["content"].([]any); ok {
 			for _, rawPart := range content {
@@ -185,7 +187,7 @@ func (b *Bridge) translateHistory(input []any) ([]any, error) {
 						return nil, err
 					}
 				default:
-					return nil, fmt.Errorf("Basispoints supports text and HTTPS input_image content only")
+					return nil, fmt.Errorf("basispoints supports text and HTTPS input_image content only")
 				}
 			}
 		}
@@ -206,16 +208,16 @@ func isTool(item object) bool {
 func (b *Bridge) translateCall(native object) (object, error) {
 	name := text(native["name"])
 	if name != "run_officejs" && name != "functions.run_officejs" {
-		return nil, fmt.Errorf("Basispoints returned an unsupported native tool; no tool was executed")
+		return nil, fmt.Errorf("basispoints returned an unsupported native tool; no tool was executed")
 	}
 	var arguments object
 	if value, ok := native["arguments"].(object); ok {
 		arguments = value
 	} else if err := decode([]byte(text(native["arguments"])), &arguments); err != nil {
-		return nil, fmt.Errorf("Basispoints returned invalid tool transport arguments")
+		return nil, fmt.Errorf("basispoints returned invalid tool transport arguments")
 	}
 	if arguments == nil {
-		return nil, fmt.Errorf("Basispoints returned empty tool transport arguments")
+		return nil, fmt.Errorf("basispoints returned empty tool transport arguments")
 	}
 	envelope, err := decodeTransportEnvelope(arguments["code"])
 	if err != nil {
@@ -227,11 +229,11 @@ func (b *Bridge) translateCall(native object) (object, error) {
 	}
 	info, allowed := b.tools[toolName]
 	if !allowed {
-		return nil, fmt.Errorf("Basispoints returned a tool outside the client's catalog")
+		return nil, fmt.Errorf("basispoints returned a tool outside the client's catalog")
 	}
 	id := text(native["call_id"])
 	if id == "" {
-		return nil, fmt.Errorf("Basispoints tool call is missing call_id")
+		return nil, fmt.Errorf("basispoints tool call is missing call_id")
 	}
 	itemID := text(native["id"])
 	if itemID == "" {
@@ -248,16 +250,16 @@ func (b *Bridge) translateCall(native object) (object, error) {
 		value, hasInput := envelope["input"]
 		if alias, hasAlias := envelope["args"]; hasAlias {
 			if hasInput {
-				return nil, fmt.Errorf("Basispoints custom tool envelope contains conflicting input fields")
+				return nil, fmt.Errorf("basispoints custom tool envelope contains conflicting input fields")
 			}
 			value = alias
 		}
 		if _, exists := envelope["arguments"]; exists {
-			return nil, fmt.Errorf("Basispoints custom tools require input text, not arguments")
+			return nil, fmt.Errorf("basispoints custom tools require input text, not arguments")
 		}
 		input, ok := value.(string)
 		if !ok {
-			return nil, fmt.Errorf("Basispoints custom tool input must be a string")
+			return nil, fmt.Errorf("basispoints custom tool input must be a string")
 		}
 		result["type"] = "custom_tool_call"
 		result["id"] = "ctc_" + fingerprint(id)
@@ -269,11 +271,11 @@ func (b *Bridge) translateCall(native object) (object, error) {
 		}
 		if raw, ok := args.(string); ok {
 			if decode([]byte(raw), &args) != nil {
-				return nil, fmt.Errorf("Basispoints function arguments are invalid JSON")
+				return nil, fmt.Errorf("basispoints function arguments are invalid JSON")
 			}
 		}
 		if _, ok := args.(object); !ok {
-			return nil, fmt.Errorf("Basispoints function arguments must be an object")
+			return nil, fmt.Errorf("basispoints function arguments must be an object")
 		}
 		encoded, _ := json.Marshal(args)
 		result["arguments"] = string(encoded)

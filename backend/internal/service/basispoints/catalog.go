@@ -11,7 +11,10 @@ import (
 func describeCatalog(catalog []any) string {
 	var lines []string
 	for _, raw := range catalog {
-		entry := raw.(object)
+		entry, ok := raw.(object)
+		if !ok {
+			continue
+		}
 		line := "Client tool " + quoted(entry["name"]) + " (" + text(entry["type"]) + ")."
 		if description := text(entry["description"]); description != "" {
 			line += " " + description

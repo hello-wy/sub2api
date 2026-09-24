@@ -256,7 +256,7 @@ func TestToolLoopKeepsTurnIdentityUntilNextUserMessage(t *testing.T) {
 	history := []any{message("user", "complete the task")}
 	source["input"] = history
 	first, bridge := mustPrepare(t, source, "account/key", cache)
-	initial := first["metadata"].(object)
+	initial := requireValue[object](t, first["metadata"])
 	if initial["agent_iteration"] != "1" {
 		t.Fatal("first iteration must be one")
 	}
@@ -271,7 +271,7 @@ func TestToolLoopKeepsTurnIdentityUntilNextUserMessage(t *testing.T) {
 		source["input"] = history
 		next, nextBridge := mustPrepare(t, source, "account/key", cache)
 		bridge = nextBridge
-		metadata := next["metadata"].(object)
+		metadata := requireValue[object](t, next["metadata"])
 		if metadata["turn_id"] != initial["turn_id"] || metadata["task_id"] != initial["task_id"] || metadata["agent_iteration"] != fmt.Sprint(i+1) {
 			t.Fatalf("tool loop changed identity or lost its iteration: %+v", metadata)
 		}
@@ -282,7 +282,7 @@ func TestToolLoopKeepsTurnIdentityUntilNextUserMessage(t *testing.T) {
 	}
 	source["input"] = append(history, message("user", "next task"))
 	next, _ := mustPrepare(t, source, "account/key", cache)
-	metadata := next["metadata"].(object)
+	metadata := requireValue[object](t, next["metadata"])
 	if metadata["turn_id"] == initial["turn_id"] || metadata["task_id"] != initial["task_id"] || metadata["agent_iteration"] != "1" {
 		t.Fatalf("a new user turn must reset only the turn and iteration: %+v", metadata)
 	}
@@ -326,8 +326,8 @@ func TestLiteCatalogAndCompactionStayOrdered(t *testing.T) {
 	source := testSource()
 	source["input"] = []any{object{"type": "additional_tools", "tools": []any{object{"type": "function", "name": "shell"}}}, object{"type": "compaction_trigger"}, message("user", "hello")}
 	out, bridge := mustPrepare(t, source, "", nil)
-	items := out["input"].([]any)
-	if text(items[len(items)-1].(object)["type"]) != "compaction_trigger" || len(bridge.tools) != 1 {
+	items := requireValue[[]any](t, out["input"])
+	if text(requireValue[object](t, items[len(items)-1])["type"]) != "compaction_trigger" || len(bridge.tools) != 1 {
 		t.Fatal("Lite tool catalog or terminal compaction was lost")
 	}
 }
@@ -340,4 +340,13 @@ func TestReplayCacheEvictionIsBounded(t *testing.T) {
 	if len(cache.entries) != 1024 || cache.get("scope", "0") != nil || cache.get("scope", "1024") == nil {
 		t.Fatal("replay cache did not evict the oldest entry")
 	}
+}
+
+func requireValue[T any](t *testing.T, input any) T {
+	t.Helper()
+	value, ok := input.(T)
+	if !ok {
+		t.Fatalf("unexpected value type %T", input)
+	}
+	return value
 }
