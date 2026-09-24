@@ -17,7 +17,7 @@ func TestHTTPSImagesPreserveURLsAndText(t *testing.T) {
 		source := testSource()
 		source["input"] = []any{item}
 		wire, _ := mustPrepare(t, source, "scope", nil)
-		items := requireValue[[]any](t, wire["input"])
+		items := wire["input"].([]any)
 		if !reflect.DeepEqual(items[len(items)-1], item) {
 			t.Fatal("image URL, detail or neighboring text was changed")
 		}

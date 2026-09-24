@@ -35,7 +35,7 @@ func TestNetworkReadFailureRetainsTransportError(t *testing.T) {
 	_, bridge := mustPrepare(t, testSource(), "", nil)
 	failure := errors.New("http2: client connection lost")
 	body := bridge.Stream(brokenStream{err: failure})
-	defer func() { _ = body.Close() }()
+	defer body.Close()
 	output, err := io.ReadAll(body)
 	if !errors.Is(err, failure) || len(output) != 0 {
 		t.Fatalf("network failure must reach retry handling, not become a protocol event: %s, %v", output, err)
@@ -83,7 +83,7 @@ func TestEffortAndUnsupportedCapabilities(t *testing.T) {
 	for _, patch := range []object{
 		{"reasoning": object{"effort": "unknown"}},
 		{"reasoning": object{"mode": "pro"}},
-		{"tools": []any{object{"type": "image_generation"}}},
+		{"tools": []any{object{"type": "unknown_hosted_tool"}}},
 		{"tool_choice": "required"},
 		{"previous_response_id": "resp_missing"},
 		{"input": []any{object{"role": "user", "content": []any{object{"type": "input_image", "image_url": "data:image/png;base64,AAAA"}}}}},
@@ -149,7 +149,7 @@ func TestStreamingToolRoundTripPreservesNativeIdentity(t *testing.T) {
 					added++
 				}
 				if text(event["type"]) == "response.output_item.done" {
-					call, _ = event["item"].(object)
+					call = event["item"].(object)
 				}
 				return nil
 			})
@@ -165,10 +165,10 @@ func TestStreamingToolRoundTripPreservesNativeIdentity(t *testing.T) {
 			}
 			source["input"] = []any{message("user", "hello"), call, object{"type": outputType, "call_id": "call_native", "output": "done"}, object{"type": "reasoning", "encrypted_content": "encrypted"}}
 			next, _ := mustPrepare(t, source, "account/key/session", cache)
-			items, _ := next["input"].([]any)
+			items := next["input"].([]any)
 			var restored object
 			for _, raw := range items {
-				item, _ := raw.(object)
+				item := raw.(object)
 				if isTool(item) {
 					restored = item
 				}
@@ -191,7 +191,9 @@ func TestMalformedAndUndeclaredCallsFailWithoutDispatch(t *testing.T) {
 		nativeCall(object{"name": "shell", "tool": "other", "args": object{}}),
 		nativeCall(object{"name": "shell", "arguments": object{}, "args": object{}}),
 		{"type": "function_call", "name": "run_officejs", "arguments": `{"code":"Excel.run(...)"}`},
-		{"type": "function_call", "name": "shell", "arguments": `{}`, "call_id": "call_other"},
+		// A direct native call to a tool outside the client's catalog stays rejected;
+		// direct calls to declared tools are recovered separately in direct_call_test.go.
+		{"type": "function_call", "name": "delete_workbook", "arguments": `{}`, "call_id": "call_other"},
 	} {
 		_, bridge := mustPrepare(t, source, "", nil)
 		body := bridge.Stream(io.NopCloser(strings.NewReader(sse(object{"type": "response.completed", "response": object{"output": []any{native}}}))))
@@ -229,7 +231,7 @@ func TestToolAliasAndObjectArgumentsPreserveCompleteReplay(t *testing.T) {
 			output := object{"type": "function_call_output", "call_id": call["call_id"], "output": "18 C"}
 			source["input"] = []any{message("user", "weather"), call, output}
 			next, _ := mustPrepare(t, source, "account/key", cache)
-			items, _ := next["input"].([]any)
+			items := next["input"].([]any)
 			output["id"] = "fc_" + text(call["call_id"])
 			if !reflect.DeepEqual(items[len(items)-2], native) || !reflect.DeepEqual(items[len(items)-1], output) {
 				t.Fatal("replay lost the original item ID, arguments, references or tool result")
@@ -238,10 +240,10 @@ func TestToolAliasAndObjectArgumentsPreserveCompleteReplay(t *testing.T) {
 	}
 }
 
-func TestMissingOriginalToolItemCannotBeFabricated(t *testing.T) {
+func TestMissingOriginalToolItemCannotBeFabricatedFromOutputOnly(t *testing.T) {
 	source := testSource()
 	source["tools"] = []any{object{"type": "function", "name": "get_weather"}}
-	source["input"] = []any{message("user", "weather"), object{"type": "function_call", "id": "fc_client", "call_id": "call_missing", "name": "get_weather", "arguments": `{}`}, object{"type": "function_call_output", "call_id": "call_missing", "output": "18 C"}}
+	source["input"] = []any{message("user", "weather"), object{"type": "function_call_output", "call_id": "call_missing", "output": "18 C"}}
 	raw, _ := json.Marshal(source)
 	if _, _, err := Prepare(raw, "account/key", new(ReplayCache)); err == nil || !strings.Contains(err.Error(), "original tool item is unavailable") {
 		t.Fatalf("missing native identity must produce an actionable error: %v", err)
@@ -256,7 +258,7 @@ func TestToolLoopKeepsTurnIdentityUntilNextUserMessage(t *testing.T) {
 	history := []any{message("user", "complete the task")}
 	source["input"] = history
 	first, bridge := mustPrepare(t, source, "account/key", cache)
-	initial := requireValue[object](t, first["metadata"])
+	initial := first["metadata"].(object)
 	if initial["agent_iteration"] != "1" {
 		t.Fatal("first iteration must be one")
 	}
@@ -271,7 +273,7 @@ func TestToolLoopKeepsTurnIdentityUntilNextUserMessage(t *testing.T) {
 		source["input"] = history
 		next, nextBridge := mustPrepare(t, source, "account/key", cache)
 		bridge = nextBridge
-		metadata := requireValue[object](t, next["metadata"])
+		metadata := next["metadata"].(object)
 		if metadata["turn_id"] != initial["turn_id"] || metadata["task_id"] != initial["task_id"] || metadata["agent_iteration"] != fmt.Sprint(i+1) {
 			t.Fatalf("tool loop changed identity or lost its iteration: %+v", metadata)
 		}
@@ -282,7 +284,7 @@ func TestToolLoopKeepsTurnIdentityUntilNextUserMessage(t *testing.T) {
 	}
 	source["input"] = append(history, message("user", "next task"))
 	next, _ := mustPrepare(t, source, "account/key", cache)
-	metadata := requireValue[object](t, next["metadata"])
+	metadata := next["metadata"].(object)
 	if metadata["turn_id"] == initial["turn_id"] || metadata["task_id"] != initial["task_id"] || metadata["agent_iteration"] != "1" {
 		t.Fatalf("a new user turn must reset only the turn and iteration: %+v", metadata)
 	}
@@ -326,8 +328,8 @@ func TestLiteCatalogAndCompactionStayOrdered(t *testing.T) {
 	source := testSource()
 	source["input"] = []any{object{"type": "additional_tools", "tools": []any{object{"type": "function", "name": "shell"}}}, object{"type": "compaction_trigger"}, message("user", "hello")}
 	out, bridge := mustPrepare(t, source, "", nil)
-	items := requireValue[[]any](t, out["input"])
-	if text(requireValue[object](t, items[len(items)-1])["type"]) != "compaction_trigger" || len(bridge.tools) != 1 {
+	items := out["input"].([]any)
+	if text(items[len(items)-1].(object)["type"]) != "compaction_trigger" || len(bridge.tools) != 1 {
 		t.Fatal("Lite tool catalog or terminal compaction was lost")
 	}
 }
@@ -340,13 +342,4 @@ func TestReplayCacheEvictionIsBounded(t *testing.T) {
 	if len(cache.entries) != 1024 || cache.get("scope", "0") != nil || cache.get("scope", "1024") == nil {
 		t.Fatal("replay cache did not evict the oldest entry")
 	}
-}
-
-func requireValue[T any](t *testing.T, input any) T {
-	t.Helper()
-	value, ok := input.(T)
-	if !ok {
-		t.Fatalf("unexpected value type %T", input)
-	}
-	return value
 }

@@ -90,7 +90,7 @@ func (b *Bridge) transform(reader io.Reader, writer io.Writer) error {
 		}
 		var payload object
 		if decode(data, &payload) != nil || payload == nil {
-			return fmt.Errorf("invalid basispoints SSE event")
+			return fmt.Errorf("invalid Basispoints SSE event")
 		}
 		kind := text(payload["type"])
 		if kind == "" {
@@ -107,7 +107,7 @@ func (b *Bridge) transform(reader io.Reader, writer io.Writer) error {
 			// Only the terminal response contains the authoritative native item.
 			// Text keeps streaming; tool calls wait until the whole response validates.
 			if len(pendingTools) >= 1024 {
-				return fmt.Errorf("basispoints response contains too many tool items")
+				return fmt.Errorf("Basispoints response contains too many tool items")
 			}
 			pendingTools[text(item["call_id"])+"\x00"+text(item["id"])] = true
 			return nil
@@ -122,7 +122,7 @@ func (b *Bridge) transform(reader io.Reader, writer io.Writer) error {
 					}
 				}
 				if len(pendingTools) != 0 {
-					return fmt.Errorf("basispoints completed response omitted an original tool item")
+					return fmt.Errorf("Basispoints completed response omitted an original tool item")
 				}
 				if err := b.translateResponse(response); err != nil {
 					return err
@@ -205,16 +205,16 @@ func readEvents(reader io.Reader, consume func(string, []byte) error) error {
 		} else if strings.HasPrefix(line, "event:") {
 			event = strings.TrimSpace(strings.TrimPrefix(line, "event:"))
 		} else if strings.HasPrefix(line, "data:") {
-			_, _ = data.WriteString(strings.TrimPrefix(strings.TrimPrefix(line, "data:"), " "))
-			_ = data.WriteByte('\n')
+			data.WriteString(strings.TrimPrefix(strings.TrimPrefix(line, "data:"), " "))
+			data.WriteByte('\n')
 			if data.Len() > 16<<20 {
-				return protocolError{fmt.Errorf("basispoints SSE event exceeds 16 MiB")}
+				return protocolError{fmt.Errorf("Basispoints SSE event exceeds 16 MiB")}
 			}
 		}
 	}
 	if err := scanner.Err(); err != nil {
 		if errors.Is(err, bufio.ErrTooLong) {
-			return protocolError{fmt.Errorf("basispoints SSE line exceeds 16 MiB")}
+			return protocolError{fmt.Errorf("Basispoints SSE line exceeds 16 MiB")}
 		}
 		return err
 	}

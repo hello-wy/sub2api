@@ -49,7 +49,7 @@ func decodeTransportCode(value any) (object, error) {
 		}
 		break
 	}
-	return nil, fmt.Errorf("basispoints tool transport code must contain one JSON client-tool envelope; OfficeJS and multiple calls are unsupported (%s)", transportShape(original))
+	return nil, fmt.Errorf("Basispoints tool transport code must contain one JSON client-tool envelope; OfficeJS and multiple calls are unsupported (%s)", transportShape(original))
 }
 
 // Report only structural facts, never client code, prompts or tool arguments.
@@ -79,9 +79,44 @@ func transportShape(value any) string {
 	var syntax *json.SyntaxError
 	var decoded any
 	if err := json.Unmarshal([]byte(raw), &decoded); errors.As(err, &syntax) {
-		detail += fmt.Sprintf("; json_offset=%d", syntax.Offset)
+		detail += fmt.Sprintf("; json_offset=%d; json_failure=%s", syntax.Offset, jsonFailureKind(raw, syntax))
 	}
 	return detail
+}
+
+// Classify the parser's structural context without returning its message, which
+// can contain a byte from the caller's code. Offsets use the original wire text.
+func jsonFailureKind(raw string, syntax *json.SyntaxError) string {
+	if syntax == nil {
+		return "unknown"
+	}
+	message := syntax.Error()
+	if syntax.Offset > 0 && syntax.Offset <= int64(len(raw)) && raw[syntax.Offset-1] < 0x20 {
+		return "raw_control"
+	}
+	if syntax.Offset > 1 && raw[syntax.Offset-2] == '\\' {
+		return "invalid_escape"
+	}
+	if syntax.Offset > 5 && raw[syntax.Offset-6] == '\\' && raw[syntax.Offset-5] == 'u' {
+		return "invalid_escape"
+	}
+	switch {
+	case strings.Contains(message, "unexpected end of JSON input"):
+		return "unexpected_eof"
+	case strings.Contains(message, "after top-level value"):
+		return "trailing_data"
+	case strings.Contains(message, "in string escape code"), strings.Contains(message, "in \\u hexadecimal character escape"):
+		return "invalid_escape"
+	case strings.Contains(message, "in string literal"):
+		if syntax.Offset > 0 && syntax.Offset <= int64(len(raw)) && raw[syntax.Offset-1] < 0x20 {
+			return "raw_control"
+		}
+		return "invalid_string"
+	case strings.Contains(message, "after object key"), strings.Contains(message, "after array element"):
+		return "missing_separator"
+	default:
+		return "unexpected_token"
+	}
 }
 
 func decodeTransportEnvelope(value any) (object, error) {
@@ -104,24 +139,24 @@ func decodeTransportEnvelope(value any) (object, error) {
 		if raw, ok := args.(string); ok {
 			var parsed object
 			if decode([]byte(raw), &parsed) != nil {
-				return nil, fmt.Errorf("basispoints nested transport arguments must be one JSON object")
+				return nil, fmt.Errorf("Basispoints nested transport arguments must be one JSON object")
 			}
 			args = parsed
 		}
 		outer, ok := args.(object)
 		if !ok {
-			return nil, fmt.Errorf("basispoints nested transport arguments must be an object")
+			return nil, fmt.Errorf("Basispoints nested transport arguments must be an object")
 		}
 		value = outer["code"]
 	}
-	return nil, fmt.Errorf("basispoints tool transport exceeds two nested wrappers")
+	return nil, fmt.Errorf("Basispoints tool transport exceeds two nested wrappers")
 }
 
 func envelopeName(envelope object) (string, error) {
 	name := text(envelope["name"])
 	alias := text(envelope["tool"])
 	if name != "" && alias != "" && name != alias {
-		return "", fmt.Errorf("basispoints tool envelope contains conflicting names")
+		return "", fmt.Errorf("Basispoints tool envelope contains conflicting names")
 	}
 	if name == "" {
 		name = alias
@@ -133,7 +168,7 @@ func envelopeArguments(envelope object) (any, error) {
 	args, exists := envelope["arguments"]
 	alias, hasAlias := envelope["args"]
 	if exists && hasAlias {
-		return nil, fmt.Errorf("basispoints tool envelope contains conflicting argument fields")
+		return nil, fmt.Errorf("Basispoints tool envelope contains conflicting argument fields")
 	}
 	if !exists {
 		args = alias
@@ -150,16 +185,17 @@ func decodeEnvelopeValue(raw string) (any, bool) {
 	if decode([]byte(raw), &value) == nil {
 		return value, true
 	}
-	// Repair only illegal JSON escapes, and only after strict decoding fails.
-	// Valid escapes, quotes and argument values otherwise retain their meaning.
-	fixed := repairIllegalEscapes(raw)
+	// Escape raw line breaks and tabs inside strings, preserving those exact
+	// characters, and repair illegal backslash escapes only after strict decoding
+	// fails. Never infer missing quotes, separators, closing delimiters or values.
+	fixed := repairTransportJSONStrings(raw)
 	if fixed != raw && decode([]byte(fixed), &value) == nil {
 		return value, true
 	}
 	return nil, false
 }
 
-func repairIllegalEscapes(raw string) string {
+func repairTransportJSONStrings(raw string) string {
 	var out strings.Builder
 	out.Grow(len(raw))
 	quoted := false
@@ -168,8 +204,21 @@ func repairIllegalEscapes(raw string) string {
 		if ch == '"' {
 			quoted = !quoted
 		}
+		if quoted {
+			switch ch {
+			case '\n':
+				out.WriteString(`\n`)
+				continue
+			case '\r':
+				out.WriteString(`\r`)
+				continue
+			case '\t':
+				out.WriteString(`\t`)
+				continue
+			}
+		}
 		if ch != '\\' || !quoted || i+1 >= len(raw) {
-			_ = out.WriteByte(ch)
+			out.WriteByte(ch)
 			continue
 		}
 		next := raw[i+1]
@@ -182,12 +231,12 @@ func repairIllegalEscapes(raw string) string {
 				}
 			}
 		}
-		_ = out.WriteByte('\\')
+		out.WriteByte('\\')
 		if valid {
-			_ = out.WriteByte(next)
+			out.WriteByte(next)
 			i++
 		} else {
-			_ = out.WriteByte('\\')
+			out.WriteByte('\\')
 		}
 	}
 	return out.String()
