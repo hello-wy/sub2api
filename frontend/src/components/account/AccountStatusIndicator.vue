@@ -163,6 +163,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'
 import type { Account } from '@/types'
+import { ticketVerificationBlocked } from '@/utils/codexTicketStatus'
 import { formatCountdown, formatDateTime, formatDateTimeToMinute, formatCountdownWithSuffix, formatTime } from '@/utils/format'
 
 const { t } = useI18n()
@@ -278,9 +279,23 @@ const isTempUnschedulable = computed(() => {
   return new Date(props.account.temp_unschedulable_until) > new Date()
 })
 
+// STATE is authoritative for accounts that explicitly enabled it. The local
+// expiry check also prevents a stale list snapshot from looking healthy.
+const isStateUnavailable = computed(() => {
+  const ticket = props.account.codex_ticket
+  if (!ticket?.enabled) return false
+  return (
+    !ticket.global_enabled ||
+    ticket.ticket_usable !== true ||
+    ticketVerificationBlocked(ticket) ||
+    !ticket.expires_at ||
+    Date.parse(ticket.expires_at) <= Date.now()
+  )
+})
+
 // Computed: has error status
 const hasError = computed(() => {
-  return props.account.status === 'error'
+  return props.account.status === 'error' || isStateUnavailable.value
 })
 
 const isQuotaExceeded = computed(() => {
@@ -337,6 +352,9 @@ const statusClass = computed(() => {
 
 // Computed: status text
 const statusText = computed(() => {
+  if (isStateUnavailable.value) {
+    return t('admin.accounts.status.stateUnavailable')
+  }
   if (hasError.value) {
     return t('admin.accounts.status.error')
   }

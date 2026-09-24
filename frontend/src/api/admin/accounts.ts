@@ -30,7 +30,6 @@ import type {
   OllamaCloudUsageState,
   GrokMediaEligibilityMode,
   GrokMediaEligibilityState,
-  OpenAIRiskControlCheckResponse,
   OpenCodeGoUsageSettings,
   OpenCodeGoUsageState
 } from '@/types'
@@ -433,14 +432,6 @@ export async function clearRateLimit(id: number): Promise<Account> {
  */
 export async function recoverState(id: number): Promise<Account> {
   const { data } = await apiClient.post<Account>(`/admin/accounts/${id}/recover-state`)
-  return data
-}
-
-/** Check an OpenAI OAuth account against the upstream turn-state signal. */
-export async function checkOpenAIRiskControl(id: number): Promise<OpenAIRiskControlCheckResponse> {
-  const { data } = await apiClient.post<OpenAIRiskControlCheckResponse>(
-    `/admin/accounts/${id}/risk-control-check`
-  )
   return data
 }
 
@@ -1182,7 +1173,6 @@ export const accountsAPI = {
   getBatchTodayStats,
   clearRateLimit,
   recoverState,
-  checkOpenAIRiskControl,
   resetAccountQuota,
   getTempUnschedulableStatus,
   resetTempUnschedulable,

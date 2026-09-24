@@ -54,7 +54,7 @@
           </form>
           <div class="mt-3 flex flex-wrap items-center gap-3">
             <button v-if="hasRecoverableIPChannelState(channel)" type="button" class="text-sm text-emerald-600 hover:underline" :disabled="locked" :data-testid="`recover-channel-${channel.id}`" :title="t('admin.accounts.ipChannels.recoverHint')" @click="recoverChannel(channel)">{{ t('admin.accounts.ipChannels.recover') }}</button>
-            <button v-if="account?.platform === 'openai' && account?.type === 'oauth' && !account?.parent_account_id" type="button" class="text-sm text-primary-600 hover:underline" :disabled="locked" :data-testid="`state-channel-${channel.id}`" @click="ticketChannel = channel">{{ t('admin.accounts.stateTicket.channelEntry') }}</button>
+            <button v-if="account?.platform === 'openai' && ['oauth', 'setup-token'].includes(account?.type || '') && !account?.parent_account_id" type="button" class="text-sm text-primary-600 hover:underline" :disabled="locked" :data-testid="`state-channel-${channel.id}`" @click="ticketChannel = channel">{{ t('admin.accounts.stateTicket.channelEntry') }}</button>
             <button type="button" class="text-sm text-primary-600 hover:underline" :disabled="busy" @click="statsChannel = channel">{{ t('admin.accounts.ipChannels.stats') }}</button>
             <button type="button" class="text-sm text-primary-600 hover:underline" :disabled="locked || !channel.schedulable" @click="emit('test', channel.id)">{{ t('admin.accounts.ipChannels.test') }}</button>
             <button type="button" class="text-sm text-primary-600 hover:underline" :disabled="locked" @click="emit('schedule', channel.id)">{{ t('admin.accounts.ipChannels.schedule') }}</button>

@@ -467,6 +467,20 @@ export default {
         maxVersionPlaceholder: '例如 2.5.0',
         maxVersionHint: '拒绝高于此版本的 Claude Code 客户端请求（semver 格式）。留空则不限制最高版本。'
       },
+      stateTicket: {
+        title: 'STATE 实验设置',
+        description: '配置 STATE 票据的全局门禁和采集代理。账号仍需在账号管理中单独启用。',
+        enabled: '启用全局 STATE 票据',
+        enabledHint: '关闭时不会采集或注入 STATE；账号级配置会保留，重新开启后继续生效。',
+        harvestProxy: '全局采集代理池',
+        harvestProxyPlaceholder: '例如 http://用户名:密码@host:port 或 socks5h://host:port',
+        harvestProxyHint: '仅用于获取 STATE。留空保存会保留已有代理；请使用可信且可轮换的代理池。',
+        currentProxy: '当前代理：{address}',
+        clearProxy: '清除当前代理池',
+        saved: '全局 STATE 设置已保存',
+        loadFailed: '无法读取全局 STATE 设置，请重试',
+        saveFailed: '全局 STATE 设置保存失败，请检查代理格式后重试',
+      },
       scheduling: {
         title: '网关调度设置',
         description: '控制 API Key 的调度行为',

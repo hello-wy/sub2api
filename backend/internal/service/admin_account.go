@@ -547,10 +547,6 @@ func (s *adminServiceImpl) CreateAccount(ctx context.Context, input *CreateAccou
 	}
 
 	s.rememberCodexGateway(ctx, account)
-	if isOpenAIRiskControlEligible(account) && s.openaiRiskControl != nil {
-		s.openaiRiskControl.ScheduleOpenAIRiskControlProbe(account.ID, openAIRiskControlTriggerAccountCreated)
-	}
-
 	// OAuth 账号：创建后异步设置隐私。
 	// 使用 Ensure（幂等）而非 Force：新建账号 Extra 为空时效果相同，但更安全。
 	if account.Type == AccountTypeOAuth {

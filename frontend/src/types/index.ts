@@ -1295,7 +1295,6 @@ export interface Account {
       last_result_at?: string
       error_code?: string
     }
-    openai_risk_control?: OpenAIRiskControlSnapshot
   } & Record<string, unknown>)
   proxy_id: number | null
   proxy_fallback_origin_id?: number | null
@@ -1398,22 +1397,6 @@ export interface Account {
   parent_privacy_mode?: string
   parent_subscription_expires_at?: string
   parent_chatgpt_account_id?: string
-}
-
-export type OpenAIRiskControlStatus = 'normal' | 'suspected' | 'abnormal' | 'missing'
-
-export interface OpenAIRiskControlSnapshot {
-  status: OpenAIRiskControlStatus
-  suspected: boolean
-  state_length?: number
-  http_status: number
-  checked_at: string
-  reason: 'turn_state_length_312' | 'turn_state_normal_length' | 'turn_state_abnormal_length' | 'turn_state_missing'
-}
-
-export interface OpenAIRiskControlCheckResponse {
-  account: Account
-  result: OpenAIRiskControlSnapshot
 }
 
 // The admin account list may return this compact shape when lite=1. Detail

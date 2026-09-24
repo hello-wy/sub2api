@@ -155,7 +155,6 @@ type AccountTestService struct {
 	modelMetadataRegistryAt   time.Time
 	pluginManager             *PluginManager
 	openaiGatewayService      *OpenAIGatewayService
-	openaiRiskControlService  *OpenAIRiskControlService
 	agentIdentityTaskMu       sync.Mutex
 	agentIdentityWS           agentIdentityWSConnectionInvalidator
 	// grokWSDialer is optional; realtime account tests use the default OpenAI-style
@@ -209,12 +208,6 @@ func (s *AccountTestService) SetPluginManager(pluginManager *PluginManager) {
 func (s *AccountTestService) SetOpenAIGatewayService(gateway *OpenAIGatewayService) {
 	if s != nil {
 		s.openaiGatewayService = gateway
-	}
-}
-
-func (s *AccountTestService) SetOpenAIRiskControlService(riskControl *OpenAIRiskControlService) {
-	if s != nil {
-		s.openaiRiskControlService = riskControl
 	}
 }
 

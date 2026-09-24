@@ -474,6 +474,20 @@ export default {
         maxVersionHint:
           'Reject Claude Code clients above this version (semver format). Leave empty to allow any version.'
       },
+      stateTicket: {
+        title: 'STATE Experiment Settings',
+        description: 'Configure the global STATE ticket gate and acquisition proxy. Accounts still opt in individually from Account Management.',
+        enabled: 'Enable global STATE tickets',
+        enabledHint: 'When disabled, STATE is not acquired or injected. Account-level settings remain saved and resume when re-enabled.',
+        harvestProxy: 'Global acquisition proxy pool',
+        harvestProxyPlaceholder: 'For example http://user:password@host:port or socks5h://host:port',
+        harvestProxyHint: 'Used only to acquire STATE. Leave empty to keep the existing proxy; use a trusted rotatable proxy pool.',
+        currentProxy: 'Current proxy: {address}',
+        clearProxy: 'Clear current proxy pool',
+        saved: 'Global STATE settings saved',
+        loadFailed: 'Could not load global STATE settings. Please retry.',
+        saveFailed: 'Could not save global STATE settings. Check the proxy format and retry.',
+      },
       scheduling: {
         title: 'Gateway Scheduling Settings',
         description: 'Control API Key scheduling behavior',

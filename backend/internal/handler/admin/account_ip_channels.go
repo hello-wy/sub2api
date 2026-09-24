@@ -79,14 +79,13 @@ func channelConcurrencyValue(counts map[int64]int, id int64) *int {
 	return &v
 }
 
-// Display uses the already-loaded ticket summary, including automatic
-// all-model admission. It must not advertise waiting accounts as usable, or
-// impose all-model gating on legacy manually configured target-model tickets.
+// Display uses the already-loaded STATE summary as the authoritative health
+// signal for every account that explicitly enabled STATE.
 func channelBusinessHealthy(account *service.Account, ticket *service.CodexAccountTicketStatus) bool {
 	if account == nil || !account.IsSchedulable() || account.Proxy == nil || !account.Proxy.IsActive() || account.Proxy.IsExpired(time.Now()) {
 		return false
 	}
-	if ticket != nil && ticket.RequireVerified {
+	if ticket != nil && ticket.Enabled {
 		return ticket.TicketUsable && ticket.GlobalEnabled && !ticket.AuthenticationBlocked && ticket.ExpiresAt != nil && ticket.ExpiresAt.After(time.Now())
 	}
 	return true

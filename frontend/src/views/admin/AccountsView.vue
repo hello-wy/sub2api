@@ -159,15 +159,15 @@
                 </Teleport>
               </div>
             </template>
+            <template #afterCreate>
+              <button type="button" class="btn btn-secondary" :disabled="!selIds.length" @click="stateBatchAccountIds = [...selIds]">
+                {{ t('admin.accounts.stateTicket.batch.title') }}
+              </button>
+              <button type="button" class="btn btn-secondary" @click="showTicketDefaults = true">
+                {{ t('admin.accounts.stateTicket.defaults') }}
+              </button>
+            </template>
           </AccountTableActions>
-          <div class="flex flex-wrap gap-2">
-            <button type="button" class="btn btn-secondary" :disabled="!selIds.length" @click="stateBatchAccountIds = [...selIds]">
-              {{ t('admin.accounts.stateTicket.batch.title') }}
-            </button>
-            <button type="button" class="btn btn-secondary" @click="showTicketDefaults = true">
-              {{ t('admin.accounts.stateTicket.defaults') }}
-            </button>
-          </div>
         </div>
         <div
           v-if="hasPendingListSync"
@@ -294,13 +294,22 @@
           <template #cell-capacity="{ row }">
             <AccountCapacityCell :account="row" @manage="openIPChannels(row)" />
           </template>
+          <template #cell-codex_ticket="{ row }">
+            <AccountTicketCell :account="row" :now="stateTicketNow" @configure="configureStateTicket(row)" />
+          </template>
           <template #cell-status="{ row }">
             <div class="flex items-center gap-1.5">
-              <AccountStatusIndicator :account="row" @show-temp-unsched="handleShowTempUnsched" />
+              <button
+                v-if="row.ip_channels?.length"
+                type="button"
+                class="badge text-xs"
+                :class="row.channel_status === 'normal' ? 'badge-success' : row.channel_status === 'partial' ? 'badge-warning' : 'badge-danger'"
+                @click="openIPChannels(row)"
+              >
+                {{ t(`admin.accounts.ipChannels.aggregate.${row.channel_status || 'unavailable'}`) }}
+              </button>
+              <AccountStatusIndicator v-else :account="row" @show-temp-unsched="handleShowTempUnsched" />
             </div>
-          </template>
-          <template #cell-risk_control_status="{ row }">
-            <OpenAIRiskControlStatus :account="row" />
           </template>
           <template #cell-schedulable="{ row }">
             <button @click="handleToggleSchedulable(row)" :disabled="togglingSchedulable === row.id" class="relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:focus:ring-offset-dark-800" :class="[row.schedulable ? 'bg-primary-500 hover:bg-primary-600' : 'bg-gray-200 hover:bg-gray-300 dark:bg-dark-600 dark:hover:bg-dark-500']" :title="row.schedulable ? t('admin.accounts.schedulableEnabled') : t('admin.accounts.schedulableDisabled')">
@@ -513,12 +522,35 @@
     <EditAccountModal :show="showEdit" :account="edAcc" :proxies="proxies" :groups="groups" @close="showEdit = false" @updated="handleAccountUpdated" />
     <CodexTicketBatchModal v-if="stateBatchAccountIds" :show="true" :account-ids="stateBatchAccountIds" @close="stateBatchAccountIds = null" @updated="reload" />
     <AccountTicketDefaultsDialog :show="showTicketDefaults" @close="showTicketDefaults = false" />
+    <BaseDialog
+      :show="showStateTicket && !!stateTicketAccount"
+      :title="t('admin.accounts.stateTicket.channelTitle', { name: stateTicketAccount?.name || '' })"
+      :close-on-click-outside="!stateTicketBusy && !discardStateTicket"
+      :close-on-escape="!stateTicketBusy && !discardStateTicket"
+      @close="closeStateTicket"
+    >
+      <CodexAccountTicketSettings
+        v-if="stateTicketAccount"
+        :account-id="stateTicketAccount.id"
+        :visible="showStateTicket"
+        @busy-change="stateTicketBusy = $event"
+        @dirty-change="stateTicketDirty = $event"
+      />
+    </BaseDialog>
+    <ConfirmDialog
+      :show="discardStateTicket"
+      :title="t('admin.accounts.stateTicket.discardTitle')"
+      :message="t('admin.accounts.stateTicket.discardMessage')"
+      danger
+      @confirm="discardStateTicketChanges"
+      @cancel="discardStateTicket = false"
+    />
     <AccountIPChannelsModal :show="showIPChannels" :account="ipChannelAccount" :proxies="proxies" @close="showIPChannels = false" @updated="reload" />
     <ReAuthAccountModal :show="showReAuth" :account="reAuthAcc" @close="closeReAuthModal" @reauthorized="handleAccountUpdated" />
     <AccountTestModal :show="showTest" :account="testingAcc" @close="closeTestModal" />
     <AccountStatsModal :show="showStats" :account="statsAcc" @close="closeStatsModal" />
     <ScheduledTestsPanel :show="showSchedulePanel" :account-id="scheduleAcc?.id ?? null" :model-options="scheduleModelOptions" @close="closeSchedulePanel" />
-    <AccountActionMenu :show="menu.show" :account="menu.acc" :anchor-rect="menu.anchorRect" @close="menu.show = false" @test="handleTest" @stats="handleViewStats" @schedule="handleSchedule" @duplicate="handleDuplicateAccount" @reauth="handleReAuth" @refresh-token="handleRefresh" @recover-state="handleRecoverState" @reset-quota="handleResetQuota" @set-privacy="handleSetPrivacy" @create-spark-shadow="handleCreateSparkShadow" @risk-control-check="handleRiskControlCheck" />
+    <AccountActionMenu :show="menu.show" :account="menu.acc" :anchor-rect="menu.anchorRect" @close="menu.show = false" @test="handleTest" @stats="handleViewStats" @schedule="handleSchedule" @duplicate="handleDuplicateAccount" @reauth="handleReAuth" @refresh-token="handleRefresh" @recover-state="handleRecoverState" @reset-quota="handleResetQuota" @set-privacy="handleSetPrivacy" @create-spark-shadow="handleCreateSparkShadow" />
     <SyncFromCrsModal :show="showSync" @close="showSync = false" @synced="reload" />
     <ImportDataModal :show="showImportData" @close="showImportData = false" @imported="handleDataImported" />
     <BulkEditAccountModal
@@ -564,10 +596,13 @@ import TablePageLayout from '@/components/layout/TablePageLayout.vue'
 import DataTable from '@/components/common/DataTable.vue'
 import HelpTooltip from '@/components/common/HelpTooltip.vue'
 import Pagination from '@/components/common/Pagination.vue'
+import BaseDialog from '@/components/common/BaseDialog.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import { CreateAccountModal, EditAccountModal, BulkEditAccountModal, SyncFromCrsModal, TempUnschedStatusModal } from '@/components/account'
 import CodexTicketBatchModal from '@/components/account/CodexTicketBatchModal.vue'
 import AccountTicketDefaultsDialog from '@/components/account/AccountTicketDefaultsDialog.vue'
+import AccountTicketCell from '@/components/account/AccountTicketCell.vue'
+import CodexAccountTicketSettings from '@/components/account/CodexAccountTicketSettings.vue'
 import AccountIPChannelsModal from '@/components/account/AccountIPChannelsModal.vue'
 import AccountTableActions from '@/components/admin/account/AccountTableActions.vue'
 import AccountTableFilters from '@/components/admin/account/AccountTableFilters.vue'
@@ -580,7 +615,6 @@ import AccountStatsModal from '@/components/admin/account/AccountStatsModal.vue'
 import ScheduledTestsPanel from '@/components/admin/account/ScheduledTestsPanel.vue'
 import type { SelectOption } from '@/components/common/Select.vue'
 import AccountStatusIndicator from '@/components/account/AccountStatusIndicator.vue'
-import OpenAIRiskControlStatus from '@/components/account/OpenAIRiskControlStatus.vue'
 import AccountUsageCell from '@/components/account/AccountUsageCell.vue'
 import AccountTodayStatsCell from '@/components/account/AccountTodayStatsCell.vue'
 import AccountGroupsCell from '@/components/account/AccountGroupsCell.vue'
@@ -657,9 +691,39 @@ const showCreate = ref(false)
 const showEdit = ref(false)
 const showTicketDefaults = ref(false)
 const stateBatchAccountIds = ref<number[] | null>(null)
+const stateTicketAccount = ref<AccountListItem | null>(null)
+const showStateTicket = ref(false)
+const stateTicketBusy = ref(false)
+const stateTicketDirty = ref(false)
+const discardStateTicket = ref(false)
 const showIPChannels = ref(false)
 const ipChannelAccount = ref<AccountListItem | null>(null)
 const openIPChannels = (account: AccountListItem) => { ipChannelAccount.value = account; showIPChannels.value = true }
+const configureStateTicket = (account: AccountListItem) => {
+  if (account.ip_channels?.length) {
+    openIPChannels(account)
+    return
+  }
+  stateTicketAccount.value = account
+  showStateTicket.value = true
+}
+const closeStateTicket = () => {
+  if (stateTicketBusy.value) return
+  if (stateTicketDirty.value) {
+    discardStateTicket.value = true
+    return
+  }
+  showStateTicket.value = false
+  stateTicketAccount.value = null
+  void reload()
+}
+const discardStateTicketChanges = () => {
+  discardStateTicket.value = false
+  stateTicketDirty.value = false
+  showStateTicket.value = false
+  stateTicketAccount.value = null
+  void reload()
+}
 const showSync = ref(false)
 const showImportData = ref(false)
 const showExportDataDialog = ref(false)
@@ -694,10 +758,13 @@ const exportingData = ref(false)
 const probingUpstreamBilling = reactive(new Set<number>())
 const upstreamBillingProbeGloballyEnabled = ref<boolean | undefined>(undefined)
 const upstreamBillingNow = ref(Date.now())
+const stateTicketNow = ref(Date.now())
+let stateTicketRefreshController: AbortController | null = null
 const upstreamBillingRateETag = ref<string | null>(null)
 const upstreamBillingRateRefreshing = ref(false)
 let upstreamBillingRateAbortController: AbortController | null = null
 useIntervalFn(() => { upstreamBillingNow.value = Date.now() }, 60_000)
+useIntervalFn(() => { stateTicketNow.value = Date.now() }, 1_000)
 
 // Account tools dropdown
 const showAccountToolsDropdown = ref(false)
@@ -1433,6 +1500,9 @@ const isAnyModalOpen = computed(() => {
   return (
     showCreate.value ||
     showEdit.value ||
+    showStateTicket.value ||
+    !!stateBatchAccountIds.value ||
+    showTicketDefaults.value ||
     showSync.value ||
     showImportData.value ||
     showExportDataDialog.value ||
@@ -1460,6 +1530,9 @@ const inAutoRefreshSilentWindow = () => {
 const shouldReplaceAutoRefreshRow = (current: Account, next: Account) => {
   return (
     current.updated_at !== next.updated_at ||
+    JSON.stringify(current.codex_ticket) !== JSON.stringify(next.codex_ticket) ||
+    current.channel_status !== next.channel_status ||
+    JSON.stringify(current.ip_channels) !== JSON.stringify(next.ip_channels) ||
     current.current_concurrency !== next.current_concurrency ||
     current.current_window_cost !== next.current_window_cost ||
     current.active_sessions !== next.active_sessions ||
@@ -1551,6 +1624,65 @@ const refreshAccountsIncrementally = async () => {
     autoRefreshFetching.value = false
   }
 }
+
+// STATE acquisition continues while full table refresh is paused. Keep the
+// visible health verdict aligned with the server without moving rows or
+// changing the current selection.
+const refreshVisibleStateTickets = async () => {
+  if (stateTicketRefreshController || loading.value || autoRefreshEnabled.value || document.hidden || isAnyModalOpen.value) return
+  if (!accounts.value.some(account => account.codex_ticket?.enabled || account.ip_channels?.some(channel => channel.codex_ticket?.enabled))) return
+
+  const controller = new AbortController()
+  stateTicketRefreshController = controller
+  const contextKey = upstreamBillingRateContextKey()
+  const rowIDs = accounts.value.map(account => account.id)
+  try {
+    const result = await adminAPI.accounts.listWithEtag(
+      pagination.page,
+      pagination.page_size,
+      { ...toRaw(params), lite: '1' },
+      { signal: controller.signal }
+    )
+    if (
+      controller.signal.aborted ||
+      loading.value ||
+      contextKey !== upstreamBillingRateContextKey() ||
+      !sameAccountIDOrder(rowIDs, accounts.value.map(account => account.id)) ||
+      !result.data
+    ) return
+
+    const snapshots = new Map(result.data.items.map(account => [account.id, account]))
+    accounts.value = accounts.value.map(account => {
+      const snapshot = snapshots.get(account.id)
+      if (!snapshot) return account
+      const channels = new Map(snapshot.ip_channels?.map(channel => [channel.id, channel]))
+      return {
+        ...account,
+        codex_ticket: snapshot.codex_ticket,
+        channel_status: snapshot.channel_status,
+        ip_channels: account.ip_channels?.map(channel => channels.has(channel.id)
+          ? {
+              ...channel,
+              codex_ticket: channels.get(channel.id)!.codex_ticket,
+              healthy: channels.get(channel.id)!.healthy,
+              status: channels.get(channel.id)!.status,
+              schedulable: channels.get(channel.id)!.schedulable,
+              enabled: channels.get(channel.id)!.enabled,
+              logical_enabled: channels.get(channel.id)!.logical_enabled,
+              error_message: channels.get(channel.id)!.error_message
+            }
+          : channel)
+      }
+    })
+    stateTicketNow.value = Date.now()
+  } catch (error) {
+    if (!controller.signal.aborted) console.error('Failed to refresh account STATE status:', error)
+  } finally {
+    if (stateTicketRefreshController === controller) stateTicketRefreshController = null
+  }
+}
+
+useIntervalFn(() => { void refreshVisibleStateTickets() }, 15_000, { immediate: false })
 
 const handleManualRefresh = async () => {
   await Promise.all([load(), loadUpstreamBillingProbeGlobalState()])
@@ -1861,8 +1993,8 @@ const allColumns = computed(() => {
     { key: 'id', label: t('admin.accounts.columns.id'), sortable: true },
     { key: 'platform_type', label: t('admin.accounts.columns.platformType'), sortable: false },
     { key: 'capacity', label: t('admin.accounts.columns.capacity'), sortable: false },
+    { key: 'codex_ticket', label: t('admin.accounts.columns.stateTicket'), sortable: false },
     { key: 'status', label: t('admin.accounts.columns.status'), sortable: true },
-    { key: 'risk_control_status', label: t('admin.accounts.columns.riskControlStatus'), sortable: false },
     { key: 'schedulable', label: t('admin.accounts.columns.schedulable'), sortable: true },
     { key: 'today_stats', label: t('admin.accounts.columns.todayStats'), sortable: false }
   ]
@@ -2491,31 +2623,6 @@ const handleRecoverState = async (a: Account) => {
     appStore.showError(error?.message || t('admin.accounts.recoverStateFailed'))
   }
 }
-const riskControlCheckingIDs = new Set<number>()
-const handleRiskControlCheck = async (a: Account) => {
-  if (riskControlCheckingIDs.has(a.id)) return
-  riskControlCheckingIDs.add(a.id)
-  try {
-    const { account, result } = await adminAPI.accounts.checkOpenAIRiskControl(a.id)
-    patchAccountInList(account)
-    enterAutoRefreshSilentWindow()
-    const params = { length: result.state_length ?? '-', status: result.http_status }
-    if (result.status === 'suspected') {
-      appStore.showWarning(t('admin.accounts.riskControl.suspectedResult', params))
-    } else if (result.status === 'normal') {
-      appStore.showSuccess(t('admin.accounts.riskControl.normalResult', params))
-    } else if (result.status === 'missing') {
-      appStore.showWarning(t('admin.accounts.riskControl.missingResult', params))
-    } else {
-      appStore.showWarning(t('admin.accounts.riskControl.abnormalResult', params))
-    }
-  } catch (error: any) {
-    console.error('Failed to check OpenAI risk control state:', error)
-    appStore.showError(error?.response?.data?.message || error?.message || t('admin.accounts.riskControl.checkFailed'))
-  } finally {
-    riskControlCheckingIDs.delete(a.id)
-  }
-}
 const handleResetQuota = async (a: Account) => {
   try {
     const updated = await adminAPI.accounts.resetAccountQuota(a.id)
@@ -2706,6 +2813,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   upstreamBillingRateAbortController?.abort()
+  stateTicketRefreshController?.abort()
   if (usageBatchFlushTimer !== null) {
     clearTimeout(usageBatchFlushTimer)
     usageBatchFlushTimer = null

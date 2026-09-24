@@ -51,6 +51,62 @@ function makeAccount(overrides: Partial<Account>): Account {
 }
 
 describe('AccountStatusIndicator', () => {
+  it('已启用 STATE 但票据不可用时显示异常', () => {
+    const wrapper = mount(AccountStatusIndicator, {
+      props: {
+        account: makeAccount({
+          platform: 'openai',
+          codex_ticket: {
+            enabled: true,
+            global_enabled: true,
+            model: 'gpt-6-astra',
+            ticket_plan: 'pro',
+            target_length: 292,
+            proxy_configured: true,
+            proxy_display: 'proxy.example',
+            fixed_proxy_configured: true,
+            state: 'waiting',
+            remaining_seconds: 0,
+            last_error: '',
+            attempts: 0,
+            watchdog: { enabled: true, trigger_count: 0 }
+          }
+        })
+      },
+      global: { stubs: { Icon: true } }
+    })
+
+    expect(wrapper.find('.badge-danger').text()).toBe('admin.accounts.status.stateUnavailable')
+  })
+
+  it('未启用 STATE 时保留账号原有正常状态', () => {
+    const wrapper = mount(AccountStatusIndicator, {
+      props: {
+        account: makeAccount({
+          platform: 'openai',
+          codex_ticket: {
+            enabled: false,
+            global_enabled: false,
+            model: 'gpt-6-astra',
+            ticket_plan: 'pro',
+            target_length: 292,
+            proxy_configured: false,
+            proxy_display: '',
+            fixed_proxy_configured: false,
+            state: 'disabled',
+            remaining_seconds: 0,
+            last_error: '',
+            attempts: 0,
+            watchdog: { enabled: false, trigger_count: 0 }
+          }
+        })
+      },
+      global: { stubs: { Icon: true } }
+    })
+
+    expect(wrapper.find('.badge-success').text()).toBe('admin.accounts.status.active')
+  })
+
   it('Claude 5 模型限流时显示 Opus 和 Sonnet 的短别名', () => {
     const wrapper = mount(AccountStatusIndicator, {
       props: {

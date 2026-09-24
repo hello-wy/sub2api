@@ -50,7 +50,8 @@ func TestIPChannelAggregateReflectsRequiredTicketReadiness(t *testing.T) {
 		{"all waiting", "unavailable", pending, pending},
 		{"one ready", "partial", ready, pending},
 		{"both ready", "normal", ready, ready},
-		{"manual target-only ticket", "normal", &service.CodexAccountTicketStatus{Enabled: true, State: "waiting"}, &service.CodexAccountTicketStatus{Enabled: true, State: "waiting"}},
+		{"enabled target-only ticket unavailable", "unavailable", &service.CodexAccountTicketStatus{Enabled: true, State: "waiting"}, &service.CodexAccountTicketStatus{Enabled: true, State: "waiting"}},
+		{"state disabled", "normal", &service.CodexAccountTicketStatus{Enabled: false, State: "disabled"}, &service.CodexAccountTicketStatus{Enabled: false, State: "disabled"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			summaries.statuses[1], summaries.statuses[2] = tc.first, tc.second

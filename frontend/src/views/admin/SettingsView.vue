@@ -4441,6 +4441,8 @@
 
         <!-- Tab: Gateway — Claude Code, Scheduling -->
         <div v-show="activeTab === 'gateway'" class="space-y-6">
+          <CodexTicketGlobalSettings />
+
           <!-- Claude Code Settings -->
           <div class="card">
             <div
@@ -9426,6 +9428,7 @@ import ImageUpload from "@/components/common/ImageUpload.vue";
 import BackupSettings from "@/views/admin/BackupView.vue";
 import EmailTemplateEditor from "@/views/admin/settings/EmailTemplateEditor.vue";
 import OpenAIFastPolicyUserSelector from "@/views/admin/settings/OpenAIFastPolicyUserSelector.vue";
+import CodexTicketGlobalSettings from "@/components/admin/settings/CodexTicketGlobalSettings.vue";
 import { useClipboard } from "@/composables/useClipboard";
 import {
   useStepUp,
