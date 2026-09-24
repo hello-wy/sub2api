@@ -81,8 +81,8 @@ func TestFormattedEnvelopeAndOutputOnlyReplay(t *testing.T) {
 	}
 }
 
-func TestToolOutputIDsAreBoundedAndCallerIDsPreserved(t *testing.T) {
-	for _, suppliedID := range []string{"", "caller_output_id"} {
+func TestToolOutputIDsAreBoundedAndValidCallerIDsPreserved(t *testing.T) {
+	for _, suppliedID := range []string{"", "caller_output_id", "ctco_client_result", "fc_valid_result", "fc_" + strings.Repeat("x", 61), "fc_" + strings.Repeat("x", 62)} {
 		cache := new(ReplayCache)
 		source := testSource()
 		source["tools"] = []any{object{"type": "function", "name": "shell"}}
@@ -98,8 +98,9 @@ func TestToolOutputIDsAreBoundedAndCallerIDsPreserved(t *testing.T) {
 		second, _ := mustPrepare(t, source, "account/key", cache)
 		items := first["input"].([]any)
 		id := text(items[len(items)-1].(object)["id"])
-		if id == "" || len(id) > 64 || (suppliedID != "" && id != suppliedID) || !reflect.DeepEqual(first, second) {
-			t.Fatal("tool output ID must be bounded, stable and preserve supplied IDs")
+		validCallerID := strings.HasPrefix(suppliedID, "fc_") && len(suppliedID) <= 64
+		if !strings.HasPrefix(id, "fc_") || len(id) > 64 || (validCallerID && id != suppliedID) || !reflect.DeepEqual(first, second) {
+			t.Fatal("tool output ID must be valid, bounded, stable and preserve valid supplied IDs")
 		}
 	}
 }

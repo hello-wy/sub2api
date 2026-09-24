@@ -51,8 +51,15 @@ func newExcelBPSRequest(ctx context.Context, body []byte, token, accountID strin
 // only the selected account's bearer and ChatGPT account ID belong on this host.
 func (s *OpenAIGatewayService) forwardExcelBPS(ctx context.Context, c *gin.Context, account *Account, body []byte, start time.Time) (*OpenAIForwardResult, error) {
 	fail := func(status int, code, message string) (*OpenAIForwardResult, error) {
+		// A compact keepalive may already have committed SSE headers. Otherwise
+		// finish a single JSON response so the handler cannot append another error.
+		committed := StopOpenAICompactSSEKeepaliveCommitted(c)
 		MarkResponseCommitted(c)
-		c.JSON(status, gin.H{"error": gin.H{"type": "invalid_request_error", "code": code, "message": message}})
+		if committed {
+			writeOpenAICompactSSEFailureMessage(c, status, code, message)
+		} else {
+			c.JSON(status, gin.H{"error": gin.H{"type": "invalid_request_error", "code": code, "message": message}})
+		}
 		return nil, fmt.Errorf("excel BPS: %s", code)
 	}
 	originalModel := gjson.GetBytes(body, "model").String()
@@ -124,13 +131,31 @@ func (s *OpenAIGatewayService) forwardExcelBPS(ctx context.Context, c *gin.Conte
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		raw, _ := io.ReadAll(io.LimitReader(resp.Body, 512<<10))
-		message, detail, requestID := excelBPSErrorDiagnostics(raw, resp.Header.Get("x-request-id"), token, account)
-		setOpsUpstreamError(c, resp.StatusCode, message, detail)
+		// Preserve the original rejection for Ops without exposing it to clients.
+		// BPS errors can echo request fields, so redact before storing diagnostics.
+		safeBody := sanitizeUpstreamErrorMessage(string(raw))
+		if token != "" {
+			safeBody = strings.ReplaceAll(safeBody, token, "[REDACTED]")
+		}
+		upstreamMessage := truncateString(strings.TrimSpace(extractUpstreamErrorMessage([]byte(safeBody))), 2048)
+		if upstreamMessage == "" {
+			upstreamMessage = fmt.Sprintf("Excel BPS returned HTTP %d", resp.StatusCode)
+		}
+		upstreamDetail := ""
+		if s.cfg != nil && s.cfg.Gateway.LogUpstreamErrorBody {
+			maxBytes := s.cfg.Gateway.LogUpstreamErrorBodyMaxBytes
+			if maxBytes <= 0 {
+				maxBytes = 2048
+			}
+			upstreamDetail, _ = sanitizeErrorBodyForStorage(safeBody, maxBytes)
+		}
+		setOpsUpstreamError(c, resp.StatusCode, upstreamMessage, upstreamDetail)
 		appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
-			Platform: account.Platform, AccountID: account.ID,
+			Platform: account.Platform, AccountID: account.ID, AccountName: account.Name,
 			ProxyID: opsUpstreamProxyID(account), ProxyName: opsUpstreamProxyName(account),
-			UpstreamStatusCode: resp.StatusCode, UpstreamRequestID: requestID,
-			UpstreamURL: basispoints.ResponsesURL, Kind: "http_error", Message: message, Detail: detail,
+			UpstreamStatusCode: resp.StatusCode, UpstreamRequestID: resp.Header.Get("x-request-id"),
+			UpstreamURL: basispoints.ResponsesURL, Kind: "http_error",
+			Message: upstreamMessage, Detail: upstreamDetail, UpstreamResponseBody: upstreamDetail,
 		})
 		code := gjson.GetBytes(raw, "error.code").String()
 		if code == "basispoints_model_access_changed" {

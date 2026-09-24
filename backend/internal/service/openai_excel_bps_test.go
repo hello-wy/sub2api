@@ -15,6 +15,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 func excelAccount() *Account {
@@ -63,6 +64,84 @@ func TestExcelBPSModelDeniedDoesNotFailover(t *testing.T) {
 	require.Equal(t, 403, rec.Code)
 	require.Contains(t, rec.Body.String(), "basispoints_model_access_changed")
 	require.NotContains(t, rec.Body.String(), "SECRET_UPSTREAM")
+	require.True(t, IsResponseCommitted(c))
+}
+
+func TestExcelBPSHTTPErrorRecordsUpstreamRejection(t *testing.T) {
+	for _, logBody := range []bool{false, true} {
+		t.Run(fmt.Sprint(logBody), func(t *testing.T) {
+			upstream := &httpUpstreamRecorder{resp: &http.Response{
+				StatusCode: http.StatusBadRequest,
+				Header:     http.Header{"X-Request-Id": {"bps-upstream-request"}},
+				Body:       io.NopCloser(strings.NewReader(`{"error":{"code":"invalid_value","param":"input[2].id","message":"Expected an ID that begins with fc. token=test-token"},"access_token":"other-secret"}`)),
+			}}
+			svc := openAIClientToolsTestService(upstream)
+			svc.cfg.Gateway.LogUpstreamErrorBody = logBody
+			rec := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(rec)
+			c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
+			account := excelAccount()
+			_, err := svc.Forward(context.Background(), c, account, []byte(`{"model":"gpt-6-astra","stream":true,"input":"continue"}`))
+			require.Error(t, err)
+			var failover *UpstreamFailoverError
+			require.NotErrorAs(t, err, &failover)
+			require.Len(t, upstream.requests, 1)
+			require.True(t, account.Schedulable)
+			require.True(t, IsResponseCommitted(c))
+			require.Equal(t, http.StatusBadRequest, rec.Code)
+			require.True(t, json.Valid(rec.Body.Bytes()))
+			require.NotContains(t, rec.Body.String(), "Expected an ID")
+			require.Equal(t, http.StatusBadRequest, c.GetInt(OpsUpstreamStatusCodeKey))
+			require.Contains(t, c.GetString(OpsUpstreamErrorMessageKey), "Expected an ID")
+			events, exists := c.Get(OpsUpstreamErrorsKey)
+			require.True(t, exists)
+			attempts := events.([]*OpsUpstreamErrorEvent)
+			require.Len(t, attempts, 1)
+			require.Equal(t, "bps-upstream-request", attempts[0].UpstreamRequestID)
+			require.Equal(t, basispoints.ResponsesURL, attempts[0].UpstreamURL)
+			require.Equal(t, account.ID, attempts[0].AccountID)
+			require.Equal(t, "direct/no_proxy", attempts[0].ProxyName)
+			if logBody {
+				require.Equal(t, "invalid_value", gjson.Get(attempts[0].Detail, "error.code").String())
+				require.Equal(t, "input[2].id", gjson.Get(attempts[0].Detail, "error.param").String())
+				require.Equal(t, c.GetString(OpsUpstreamErrorDetailKey), attempts[0].Detail)
+			} else {
+				require.Empty(t, attempts[0].Detail)
+				require.Empty(t, attempts[0].UpstreamResponseBody)
+				require.Empty(t, c.GetString(OpsUpstreamErrorDetailKey))
+			}
+			encoded, err := json.Marshal(attempts)
+			require.NoError(t, err)
+			require.NotContains(t, string(encoded), "test-token")
+			require.NotContains(t, string(encoded), "other-secret")
+		})
+	}
+}
+
+func TestExcelBPSHTTPErrorAfterCompactKeepalive(t *testing.T) {
+	upstream := &httpUpstreamRecorder{resp: &http.Response{
+		StatusCode: http.StatusBadRequest, Header: http.Header{},
+		Body: io.NopCloser(strings.NewReader(`{"error":{"message":"invalid input"}}`)),
+	}}
+	svc := openAIClientToolsTestService(upstream)
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses/compact", nil)
+	MarkOpenAICompactClientStream(c)
+	stop := StartOpenAICompactSSEKeepalive(c, time.Hour)
+	defer stop()
+	value, exists := c.Get(openAICompactSSEKeepaliveKey)
+	require.True(t, exists)
+	require.True(t, value.(*openAICompactSSEKeepalive).beat())
+	_, err := svc.Forward(context.Background(), c, excelAccount(), []byte(`{"model":"gpt-6-astra","input":"continue"}`))
+	require.Error(t, err)
+	require.True(t, IsResponseCommitted(c))
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Equal(t, 1, strings.Count(rec.Body.String(), "event: response.failed\n"))
+	require.NotContains(t, rec.Body.String(), `{"error":`)
+	streamError, exists := GetOpsStreamError(c)
+	require.True(t, exists)
+	require.Equal(t, "basispoints_upstream_error", streamError.ErrType)
 }
 func TestExcelBPSThreadScopeSeparatesParallelChildren(t *testing.T) {
 	c, _ := gin.CreateTestContext(httptest.NewRecorder())

@@ -328,13 +328,16 @@ func (b *Bridge) translateHistory(input []any) ([]any, error) {
 			if err := validateHistoryContent(item["output"]); err != nil {
 				return nil, err
 			}
-			if text(item["id"]) == "" {
-				itemID := "fc_" + id
-				if len(itemID) > 64 {
-					itemID = "fc_" + fingerprint(id)
-				}
-				item["id"] = itemID
+			// Codex custom results carry ctco_ IDs. After lowering to a function
+			// result, BPS requires an fc_ item ID even when the client supplied one.
+			itemID := text(item["id"])
+			if itemID == "" {
+				itemID = "fc_" + id
 			}
+			if !strings.HasPrefix(itemID, "fc_") || len(itemID) > 64 {
+				itemID = "fc_" + fingerprint(itemID)
+			}
+			item["id"] = itemID
 		case "configuration_update":
 			return nil, fmt.Errorf("basispoints does not support configuration_update; start a new request with the desired effort")
 		}

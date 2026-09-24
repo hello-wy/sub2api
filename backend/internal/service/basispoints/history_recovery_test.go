@@ -62,6 +62,51 @@ func TestHistoryRecoveryPreservesCompleteCallsWithoutCurrentCatalog(t *testing.T
 	}
 }
 
+func TestCodexToolOutputIDRoundTrip(t *testing.T) {
+	for _, kind := range []string{"function", "custom"} {
+		t.Run(kind, func(t *testing.T) {
+			cache := new(ReplayCache)
+			source := testSource()
+			source["tools"] = []any{object{"type": kind, "name": "execute"}}
+			_, bridge := mustPrepare(t, source, "scope", cache)
+			envelope := object{"name": "execute", "arguments": object{}}
+			if kind == "custom" {
+				envelope = object{"name": "execute", "input": "exact tool input"}
+			}
+			call, err := bridge.translateCall(nativeCall(envelope))
+			if err != nil {
+				t.Fatal(err)
+			}
+			output := object{
+				"type": kind + "_tool_call_output", "id": "ctco_client_result",
+				"call_id": call["call_id"], "output": "recorded tool result",
+			}
+			if kind == "function" {
+				output["type"] = "function_call_output"
+				output["id"] = "fco_client_result"
+			}
+			source["input"] = []any{message("user", "continue"), call, output}
+			var firstID string
+			for _, replay := range []*ReplayCache{cache, new(ReplayCache)} {
+				body, _ := mustPrepare(t, source, "scope", replay)
+				items := body["input"].([]any)
+				result := items[len(items)-1].(object)
+				id := text(result["id"])
+				if !strings.HasPrefix(id, "fc_") || len(id) > 64 || id == items[len(items)-2].(object)["id"] {
+					t.Fatalf("invalid or colliding BPS output ID: %q", id)
+				}
+				if result["type"] != "function_call_output" || result["call_id"] != call["call_id"] || result["output"] != output["output"] {
+					t.Fatal("tool result type, correlation or content changed")
+				}
+				if firstID != "" && id != firstID {
+					t.Fatal("output ID changed after replay cache loss")
+				}
+				firstID = id
+			}
+		})
+	}
+}
+
 func TestHistoryRecoveryRejectsIncompleteCalls(t *testing.T) {
 	for _, patch := range []object{
 		{"call_id": ""}, {"name": ""}, {"namespace": 42}, {"arguments": nil},
