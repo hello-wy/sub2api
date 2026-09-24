@@ -1761,6 +1761,15 @@
           </button>
         </div>
         <p v-if="excelBPSEnabled" class="mt-2 text-xs text-amber-600 dark:text-amber-400">{{ t('admin.accounts.openai.excelBPSNotice') }}</p>
+        <div v-if="excelBPSEnabled" class="mt-3">
+          <label class="flex items-center gap-2">
+            <input v-model="excelBPSCacheCreationAsInput" type="checkbox"
+              data-testid="excel-bps-cache-creation-as-input"
+              class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-dark-500" />
+            <span class="text-sm">{{ t('admin.accounts.openai.excelBPSCacheCreationAsInput') }}</span>
+          </label>
+          <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ t('admin.accounts.openai.excelBPSCacheCreationAsInputDesc') }}</p>
+        </div>
       </div>
 
       <!-- OpenAI 自动透传开关（OAuth/API Key） -->
@@ -3708,6 +3717,7 @@ const customBaseUrl = ref('')
 
 // OpenAI 自动透传开关（OAuth/API Key）
 const excelBPSEnabled = ref(false)
+const excelBPSCacheCreationAsInput = ref(false)
 const openaiPassthroughEnabled = ref(false)
 // OpenAI Codex namespace 工具摊平兼容开关（仅 OAuth），缺省关闭即原样保留
 const openaiFlattenNamespacesEnabled = ref(false)
@@ -4198,6 +4208,7 @@ const syncFormFromAccount = (newAccount: Account | null) => {
 
   // Load OpenAI passthrough toggle (OpenAI OAuth/SetupToken/API Key)
   excelBPSEnabled.value = false
+  excelBPSCacheCreationAsInput.value = false
   openaiPassthroughEnabled.value = false
   openaiFlattenNamespacesEnabled.value = false
   openAILongContextBillingEnabled.value = false
@@ -4217,6 +4228,7 @@ const syncFormFromAccount = (newAccount: Account | null) => {
   webSearchEmulationMode.value = 'default'
   if (newAccount.platform === 'openai' && (newAccount.type === 'oauth' || newAccount.type === 'setup-token' || newAccount.type === 'apikey')) {
     excelBPSEnabled.value = newAccount.type === 'oauth' && extra?.openai_excel_bps === true
+    excelBPSCacheCreationAsInput.value = excelBPSEnabled.value && extra?.openai_excel_bps_cache_creation_as_input === true
     openaiPassthroughEnabled.value = extra?.openai_passthrough === true || extra?.openai_oauth_passthrough === true
     openaiFlattenNamespacesEnabled.value =
       newAccount.type === 'oauth' && extra?.openai_responses_flatten_namespaces === true
@@ -5701,6 +5713,11 @@ const handleSubmit = async () => {
         newExtra.openai_excel_bps = true
       } else {
         delete newExtra.openai_excel_bps
+      }
+      if (newExtra.openai_excel_bps === true && excelBPSCacheCreationAsInput.value) {
+        newExtra.openai_excel_bps_cache_creation_as_input = true
+      } else {
+        delete newExtra.openai_excel_bps_cache_creation_as_input
       }
       if (props.account.type === 'oauth' || props.account.type === 'setup-token') {
         newExtra.openai_oauth_responses_websockets_v2_mode = openaiOAuthResponsesWebSocketV2Mode.value

@@ -628,6 +628,8 @@ export default {
         apiKeyHint: 'Your OpenAI API Key',
         oauthPassthrough: 'Auto passthrough (auth only)',
         excelBPS: 'Excel / BPS protocol',
+        excelBPSCacheCreationAsInput: 'Bill cache creation as regular input',
+        excelBPSCacheCreationAsInputDesc: 'Disabled by default. Count cache creation tokens as regular input usage and bill them at the input rate. Cache reads keep their existing rate. This changes local billing only, not upstream caching.',
         excelBPSDesc: 'Forward Responses through Excel using this account’s existing ChatGPT OAuth credentials. No GitHub login or sidecar. Disable to restore Codex routing.',
         excelBPSNotice: 'Start a new Codex conversation after saving. Uses HTTP/SSE regardless of WS mode or passthrough. Supports Responses, client tools and HTTPS images; base64 images are unsupported. max / ultra use xhigh. Model access depends on the upstream.',
         oauthPassthroughDesc:
