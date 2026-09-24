@@ -1412,6 +1412,8 @@ func openAIStreamFailedEventSemanticStatus(payload []byte, message string) int {
 		return http.StatusTooManyRequests
 	case strings.Contains(errType, "invalid_request"):
 		return http.StatusBadRequest
+	case isOpenAIAuthenticationErrorCode(code):
+		return http.StatusUnauthorized
 	case strings.Contains(combined, "authentication") || strings.Contains(combined, "unauthorized") || strings.Contains(combined, "invalid_api_key"):
 		return http.StatusUnauthorized
 	case strings.Contains(combined, "permission") || strings.Contains(combined, "forbidden") || strings.Contains(combined, "access denied"):

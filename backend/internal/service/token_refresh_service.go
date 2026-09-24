@@ -1220,6 +1220,9 @@ func (s *TokenRefreshService) postRefreshStateSyncWithCleanup(parent context.Con
 }
 
 func (s *TokenRefreshService) postRefreshStateSync(ctx context.Context, account *Account) {
+	if s == nil || account == nil {
+		return
+	}
 	// 对所有 OAuth 账号调用缓存失效（InvalidateToken 内部根据平台判断是否需要处理）
 	if s.cacheInvalidator != nil && account.Type == AccountTypeOAuth {
 		if err := s.cacheInvalidator.InvalidateToken(ctx, account); err != nil {
@@ -1233,7 +1236,22 @@ func (s *TokenRefreshService) postRefreshStateSync(ctx context.Context, account 
 	}
 	// 同步更新调度器缓存，确保调度获取的 Account 对象包含最新的 credentials
 	if s.schedulerCache != nil {
-		if err := s.schedulerCache.SetAccount(ctx, account); err != nil {
+		cacheAccount := account
+		if s.accountRepo != nil {
+			persisted, err := s.accountRepo.GetByID(ctx, account.ID)
+			if err != nil || persisted == nil {
+				if err == nil {
+					err = ErrAccountNotFound
+				}
+				slog.Warn("token_refresh.sync_scheduler_cache_durable_read_failed",
+					"account_id", account.ID,
+					"error", err,
+				)
+				return
+			}
+			cacheAccount = persisted
+		}
+		if err := s.schedulerCache.SetAccount(ctx, cacheAccount); err != nil {
 			slog.Warn("token_refresh.sync_scheduler_cache_failed",
 				"account_id", account.ID,
 				"error", err,

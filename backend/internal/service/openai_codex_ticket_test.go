@@ -397,7 +397,8 @@ func TestCodexTicketSyntheticClientCannotFallBackToDirectOrRedirect(t *testing.T
 	client, err := newCodexTicketChainedClient("http://pool.invalid:8080", "")
 	require.NoError(t, err)
 	defer client.CloseIdleConnections()
-	transport := client.Transport.(*http.Transport)
+	transport, ok := client.Transport.(*http.Transport)
+	require.True(t, ok)
 	require.True(t, transport.DisableKeepAlives)
 	require.ErrorIs(t, client.CheckRedirect(nil, nil), http.ErrUseLastResponse)
 }

@@ -147,13 +147,13 @@ func (r *intelligentTestRepository) Capabilities(ctx context.Context, user int64
 		for tests.Next() {
 			p, err := scanPublicIntelligent(tests)
 			if err != nil {
-				tests.Close()
+				_ = tests.Close()
 				return nil, 0, err
 			}
 			out[i].Tests = append(out[i].Tests, *p)
 		}
 		err = tests.Err()
-		tests.Close()
+		_ = tests.Close()
 		if err != nil {
 			return nil, 0, err
 		}

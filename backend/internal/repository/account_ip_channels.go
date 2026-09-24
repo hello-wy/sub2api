@@ -280,7 +280,10 @@ func (r *accountRepository) JoinAccountIPChannels(ctx context.Context, ids []int
 	}
 	var rootID int64
 	err := r.WithAccountIPChannelTransaction(ctx, 0, func(ctx context.Context, repo service.AccountRepository, _ []service.AccountIPChannel) error {
-		txRepo := repo.(*accountRepository)
+		txRepo, ok := repo.(*accountRepository)
+		if !ok {
+			return errors.New("account IP channel transaction repository type mismatch")
+		}
 		// Expand existing memberships so a second import cannot split a logical account.
 		members, err := txRepo.GetAccountIPChannels(ctx, ids)
 		if err != nil {
@@ -364,7 +367,10 @@ func (r *accountRepository) AddAccountIPChannels(ctx context.Context, id int64, 
 func (r *accountRepository) AddAccountIPChannelsWithTicketDefaults(ctx context.Context, id int64, proxyIDs []int64, concurrency, priority *int, defaults *service.GroupCodexTicketDefaults) ([]int64, error) {
 	var createdIDs []int64
 	err := r.WithAccountIPChannelTransaction(ctx, id, func(ctx context.Context, repo service.AccountRepository, members []service.AccountIPChannel) error {
-		txRepo := repo.(*accountRepository)
+		txRepo, ok := repo.(*accountRepository)
+		if !ok {
+			return errors.New("account IP channel transaction repository type mismatch")
+		}
 		root, err := repo.GetByID(ctx, id)
 		if err != nil {
 			return err
@@ -495,7 +501,10 @@ func (r *accountRepository) PatchAccountIPChannel(ctx context.Context, id, chann
 			} else if len(shadows) > 0 {
 				return infraerrors.Conflict("IP_CHANNEL_SPARK_PARENT", "含 Spark 影子账号的父账号暂不能加入 IP 通道")
 			}
-			txRepo := repo.(*accountRepository)
+			txRepo, ok := repo.(*accountRepository)
+			if !ok {
+				return errors.New("account IP channel transaction repository type mismatch")
+			}
 			if _, err = txRepo.sql.ExecContext(ctx, `INSERT INTO account_ip_logical_accounts(account_id,enabled) VALUES($1,$2)`, id, a.Schedulable); err != nil {
 				return err
 			}
@@ -508,7 +517,10 @@ func (r *accountRepository) PatchAccountIPChannel(ctx context.Context, id, chann
 		if err != nil {
 			return err
 		}
-		txRepo := repo.(*accountRepository)
+		txRepo, ok := repo.(*accountRepository)
+		if !ok {
+			return errors.New("account IP channel transaction repository type mismatch")
+		}
 		if patch.ProxyID != nil {
 			if err = requireDrainedIPChannel(c); err != nil {
 				return err
@@ -573,7 +585,10 @@ func (r *accountRepository) RemoveAccountIPChannel(ctx context.Context, id, chan
 		if err = requireDrainedIPChannel(c); err != nil {
 			return err
 		}
-		txRepo := repo.(*accountRepository)
+		txRepo, ok := repo.(*accountRepository)
+		if !ok {
+			return errors.New("account IP channel transaction repository type mismatch")
+		}
 		if _, err = txRepo.sql.ExecContext(ctx, `UPDATE account_ip_channels SET retired_at=NOW() WHERE account_id=$1`, channelID); err != nil {
 			return err
 		}
@@ -601,7 +616,10 @@ func (r *accountRepository) SetLogicalAccountSchedulable(ctx context.Context, id
 		return false, nil
 	}
 	err = r.WithAccountIPChannelTransaction(ctx, id, func(ctx context.Context, repo service.AccountRepository, members []service.AccountIPChannel) error {
-		txRepo := repo.(*accountRepository)
+		txRepo, ok := repo.(*accountRepository)
+		if !ok {
+			return errors.New("account IP channel transaction repository type mismatch")
+		}
 		if enabled {
 			for _, c := range members {
 				if c.Account.IsModelMismatchQuarantined() {

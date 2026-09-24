@@ -75,13 +75,13 @@ SELECT id,revision,source FROM bounded WHERE bytes<=%d ORDER BY id DESC`, public
 	for rows.Next() {
 		var item candidate
 		if err := rows.Scan(&item.id, &item.revision, &item.source); err != nil {
-			rows.Close()
+			_ = rows.Close()
 			return err
 		}
 		candidates = append(candidates, item)
 	}
 	err = rows.Err()
-	rows.Close()
+	_ = rows.Close()
 	if err != nil {
 		return err
 	}

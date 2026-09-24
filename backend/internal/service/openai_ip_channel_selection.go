@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"sort"
 	"sync"
 	"time"
@@ -63,7 +64,11 @@ func (scope *openAIIPChannelSelectionScope) acquire(ctx context.Context, id int6
 		return nil, false, nil
 	}
 	ctx = scope.service.withOpenAIQuotaAutoPauseContext(ctx)
-	groups, err := scope.service.accountRepo.(openAIIPChannelReader).GetAccountIPChannels(ctx, []int64{id})
+	reader, ok := scope.service.accountRepo.(openAIIPChannelReader)
+	if !ok {
+		return nil, true, errors.New("account repository does not support IP channel selection")
+	}
+	groups, err := reader.GetAccountIPChannels(ctx, []int64{id})
 	if err != nil {
 		return nil, true, err
 	}

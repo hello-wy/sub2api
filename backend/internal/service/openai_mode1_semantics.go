@@ -102,8 +102,10 @@ func mode1CanonicalizeCodexRequest(body map[string]any) {
 		if item["role"] == "tool" && strings.TrimSpace(firstNonEmptyString(item["call_id"], item["tool_call_id"], item["id"])) != "" {
 			if _, lossless := extractLosslessTextFromContent(item["content"]); lossless {
 				if result, changed := normalizeCodexToolRoleMessages([]any{item}); changed {
-					item = result[0].(map[string]any)
-					input[i] = item
+					if normalized, ok := result[0].(map[string]any); ok {
+						item = normalized
+						input[i] = item
+					}
 				}
 			}
 		}

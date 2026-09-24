@@ -314,6 +314,9 @@ func extractUpstreamErrorMessage(body []byte) string {
 }
 
 func extractUpstreamErrorCode(body []byte) string {
+	if code := strings.TrimSpace(gjson.GetBytes(body, "response.error.code").String()); code != "" {
+		return code
+	}
 	if code := strings.TrimSpace(gjson.GetBytes(body, "error.code").String()); code != "" {
 		return code
 	}

@@ -532,6 +532,14 @@ func (s *adminServiceImpl) CreateAccount(ctx context.Context, input *CreateAccou
 	if err := s.ValidateAccountGroupBindings(ctx, groupIDs); err != nil {
 		return nil, err
 	}
+	if (s.settingService != nil && s.settingService.hasSettingRepository()) || len(groupIDs) > 0 {
+		defaults, err := s.resolveCodexTicketGroupDefaults(ctx, groupIDs)
+		if err != nil {
+			return nil, err
+		}
+		account.InitialCodexTicketDefaults = defaults
+		PrepareNewAccountCodexTicketDefaults(account)
+	}
 	if err := s.normalizeAccountCodexGateway(account); err != nil {
 		return nil, err
 	}
@@ -547,28 +555,35 @@ func (s *adminServiceImpl) CreateAccount(ctx context.Context, input *CreateAccou
 	}
 
 	s.rememberCodexGateway(ctx, account)
+	if account.InitialCodexTicketDefaults != nil && account.InitialCodexTicketDefaults.Enabled {
+		s.scheduleInheritedCodexTicket(ctx, account.ID)
+	}
 	// OAuth 账号：创建后异步设置隐私。
 	// 使用 Ensure（幂等）而非 Force：新建账号 Extra 为空时效果相同，但更安全。
 	if account.Type == AccountTypeOAuth {
 		switch account.Platform {
 		case PlatformOpenAI:
-			go func() {
-				defer func() {
-					if r := recover(); r != nil {
-						slog.Error("create_account_openai_privacy_panic", "account_id", account.ID, "recover", r)
-					}
+			RunAccountImportSideEffect(ctx, func() {
+				go func() {
+					defer func() {
+						if r := recover(); r != nil {
+							slog.Error("create_account_openai_privacy_panic", "account_id", account.ID, "recover", r)
+						}
+					}()
+					s.EnsureOpenAIPrivacy(context.Background(), account)
 				}()
-				s.EnsureOpenAIPrivacy(context.Background(), account)
-			}()
+			})
 		case PlatformAntigravity:
-			go func() {
-				defer func() {
-					if r := recover(); r != nil {
-						slog.Error("create_account_antigravity_privacy_panic", "account_id", account.ID, "recover", r)
-					}
+			RunAccountImportSideEffect(ctx, func() {
+				go func() {
+					defer func() {
+						if r := recover(); r != nil {
+							slog.Error("create_account_antigravity_privacy_panic", "account_id", account.ID, "recover", r)
+						}
+					}()
+					s.EnsureAntigravityPrivacy(context.Background(), account)
 				}()
-				s.EnsureAntigravityPrivacy(context.Background(), account)
-			}()
+			})
 		}
 	}
 

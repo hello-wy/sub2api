@@ -186,7 +186,10 @@ func NewHTTPUpstream(cfg *config.Config) service.HTTPUpstream {
 }
 
 func NewControlledHTTPUpstream(cfg *config.Config, traffic *service.AccountTrafficService) service.HTTPUpstream {
-	s := NewHTTPUpstream(cfg).(*httpUpstreamService)
+	s, ok := NewHTTPUpstream(cfg).(*httpUpstreamService)
+	if !ok {
+		return NewHTTPUpstream(cfg)
+	}
 	s.traffic = traffic
 	return s
 }

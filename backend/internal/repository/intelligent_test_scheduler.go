@@ -150,13 +150,13 @@ ORDER BY a.id LIMIT 100 FOR SHARE OF a`, pq.Array(selected), kind)
 	for rows.Next() {
 		var id int64
 		if err := rows.Scan(&id); err != nil {
-			rows.Close()
+			_ = rows.Close()
 			return false, err
 		}
 		eligible = append(eligible, id)
 	}
 	err = rows.Err()
-	rows.Close()
+	_ = rows.Close()
 	if err != nil {
 		return false, err
 	}

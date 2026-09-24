@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"sort"
 	"time"
 )
@@ -46,7 +47,11 @@ func (scope *openAIIPChannelSelectionScope) acquireBalanced(ctx context.Context)
 	for _, a := range accounts {
 		ids = append(ids, a.ID)
 	}
-	families, err := s.accountRepo.(openAIIPChannelReader).GetAccountIPChannels(ctx, ids)
+	reader, ok := s.accountRepo.(openAIIPChannelReader)
+	if !ok {
+		return nil, 0, true, errors.New("account repository does not support IP channel selection")
+	}
+	families, err := reader.GetAccountIPChannels(ctx, ids)
 	if err != nil {
 		return nil, 0, true, err
 	}

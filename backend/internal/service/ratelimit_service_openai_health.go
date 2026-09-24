@@ -113,9 +113,21 @@ func (s *RateLimitService) applyOpenAIOAuth429(ctx context.Context, account *Acc
 	if account == nil || account.IsShadow() {
 		return
 	}
+	if s.runtimeBlocker != nil {
+		if checker, ok := s.runtimeBlocker.(interface {
+			ShouldRetryOpenAIOAuth429(*Account, http.Header, []byte) bool
+		}); ok && checker.ShouldRetryOpenAIOAuth429(account, headers, body) {
+			return
+		}
+	}
 	persistOpenAI429PlanType(ctx, s.accountRepo, account, body)
 	s.persistOpenAICodexSnapshot(ctx, account, headers)
-	_, resetAt := classifyOpenAIOAuth429(headers, body)
+	disposition, resetAt := classifyOpenAIOAuth429(headers, body)
+	if disposition == openAIOAuth429Transient {
+		if _, enabled := s.get429FallbackCooldown(ctx, account); !enabled {
+			return
+		}
+	}
 	now := time.Now()
 	until := now.Add(openAIOAuth429FallbackCooldown)
 	if cooldown, enabled := s.get429FallbackCooldown(ctx, account); enabled && cooldown > openAIOAuth429FallbackCooldown {

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -48,10 +49,10 @@ func (s *adminServiceImpl) resolveCodexTicketGroupDefaults(ctx context.Context, 
 	// saving this setting never rewrites existing accounts.
 	if s.settingService != nil {
 		global, err := s.settingService.GetNewAccountCodexTicketDefaults(ctx)
-		if err != nil {
+		if err != nil && !errors.Is(err, errNewAccountCodexTicketDefaultsUnavailable) {
 			return nil, err
 		}
-		if global.Enabled {
+		if err == nil && global.Enabled {
 			return &GroupCodexTicketDefaults{Enabled: true, TicketPlan: global.TicketPlan, Model: global.Model, RequireVerified: true}, nil
 		}
 	}

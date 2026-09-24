@@ -10,7 +10,10 @@ import (
 
 func (r *accountRepository) RestoreAccountIPChannels(ctx context.Context, root *service.Account, channels []service.AccountIPChannelBackup, logicalEnabled, rootRetired bool) error {
 	return r.WithAccountIPChannelTransaction(ctx, 0, func(ctx context.Context, repository service.AccountRepository, _ []service.AccountIPChannel) error {
-		repo := repository.(*accountRepository)
+		repo, ok := repository.(*accountRepository)
+		if !ok {
+			return errors.New("account IP channel transaction repository type mismatch")
+		}
 		if len(channels) == 0 || len(channels) > 50 {
 			return errors.New("invalid IP channel count")
 		}

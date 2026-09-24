@@ -18,7 +18,8 @@ func TestOrderedAccountSlotsConcurrentFillAndRefill(t *testing.T) {
 	client := redis.NewClient(&redis.Options{Addr: server.Addr()})
 	t.Cleanup(func() { _ = client.Close() })
 	cache := NewConcurrencyCache(client, 15, 900)
-	ordered := cache.(service.OrderedAccountSlotCache)
+	ordered, ok := cache.(service.OrderedAccountSlotCache)
+	require.True(t, ok)
 	ctx := context.Background()
 	channels := []service.AccountWithConcurrency{{ID: 31, MaxConcurrency: 20}, {ID: 32, MaxConcurrency: 20}, {ID: 33, MaxConcurrency: 20}}
 	type reservation struct {
@@ -65,8 +66,10 @@ func TestOrderedAccountSlotsCountLiveAndRetryIdempotently(t *testing.T) {
 	client := redis.NewClient(&redis.Options{Addr: server.Addr()})
 	t.Cleanup(func() { _ = client.Close() })
 	cache := NewConcurrencyCache(client, 15, 900)
-	ordered := cache.(service.OrderedAccountSlotCache)
-	live := cache.(service.LiveConcurrencyCache)
+	ordered, ok := cache.(service.OrderedAccountSlotCache)
+	require.True(t, ok)
+	live, ok := cache.(service.LiveConcurrencyCache)
+	require.True(t, ok)
 	ctx := context.Background()
 	channels := []service.AccountWithConcurrency{{ID: 41, MaxConcurrency: 1}, {ID: 42, MaxConcurrency: 1}}
 	ok, err := live.AcquireLiveLease(ctx, 41, 1, 50, 10, 60, "live", false)
@@ -90,7 +93,8 @@ func TestOrderedAccountSlotsExpireAndUnlimited(t *testing.T) {
 	client := redis.NewClient(&redis.Options{Addr: server.Addr()})
 	t.Cleanup(func() { _ = client.Close() })
 	cache := NewConcurrencyCache(client, 15, 900)
-	ordered := cache.(service.OrderedAccountSlotCache)
+	ordered, ok := cache.(service.OrderedAccountSlotCache)
+	require.True(t, ok)
 	ctx := context.Background()
 	now := time.Now().Unix()
 	require.NoError(t, client.ZAdd(ctx, accountSlotKey(71), redis.Z{Score: float64(now - 901), Member: "expired"}).Err())

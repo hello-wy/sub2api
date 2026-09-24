@@ -189,12 +189,14 @@ func TestOrderedIPSelectionExpandsTopKAndLogicalSticky(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, int64(301), selection.Account.ID)
 	selection.ReleaseFunc()
-	svc.cache.(*schedulerTestGatewayCache).sessionBindings["sticky"] = 303
+	selectionCache, ok := svc.cache.(*schedulerTestGatewayCache)
+	require.True(t, ok)
+	selectionCache.sessionBindings["sticky"] = 303
 	selection, decision, err := scheduler.Select(context.Background(), OpenAIAccountScheduleRequest{Platform: PlatformOpenAI, RequestedModel: "gpt-6-astra", SessionHash: "sticky", StickyAccountID: 303})
 	require.NoError(t, err)
 	require.Equal(t, openAIAccountScheduleLayerLoadBalance, decision.Layer)
 	require.Equal(t, int64(301), selection.Account.ID)
-	require.Equal(t, int64(301), svc.cache.(*schedulerTestGatewayCache).sessionBindings[svc.openAISessionCacheKey("sticky")])
+	require.Equal(t, int64(301), selectionCache.sessionBindings[svc.openAISessionCacheKey("sticky")])
 	selection.ReleaseFunc()
 }
 
@@ -316,7 +318,9 @@ func TestOrderedIPSelectionStickyCanUseSiblingWhenBoundIPPaused(t *testing.T) {
 	for _, legacy := range []bool{false, true} {
 		svc, repo, _ := newOrderedIPTestService()
 		repo.accounts[2].Schedulable = false
-		svc.cache.(*schedulerTestGatewayCache).sessionBindings[svc.openAISessionCacheKey("paused-sticky")] = 303
+		selectionCache, ok := svc.cache.(*schedulerTestGatewayCache)
+		require.True(t, ok)
+		selectionCache.sessionBindings[svc.openAISessionCacheKey("paused-sticky")] = 303
 		var selection *AccountSelectionResult
 		var err error
 		if legacy {

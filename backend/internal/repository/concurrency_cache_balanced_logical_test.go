@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"testing"
@@ -24,7 +25,8 @@ func TestBalancedLogicalAccountSlotsAlternateAndFillIPs(t *testing.T) {
 	client := redis.NewClient(&redis.Options{Addr: server.Addr()})
 	t.Cleanup(func() { _ = client.Close() })
 	cache := NewConcurrencyCache(client, 15, 900)
-	balanced := cache.(service.BalancedLogicalAccountSlotCache)
+	balanced, ok := cache.(service.BalancedLogicalAccountSlotCache)
+	require.True(t, ok)
 	ctx := context.Background()
 	groups := logicalFixture()
 	for i, want := range []int64{11, 21, 11, 21, 12, 22, 12, 22, 23, 23} {
@@ -57,7 +59,8 @@ func TestBalancedLogicalAccountSlotsRotateAtZeroLoad(t *testing.T) {
 	client := redis.NewClient(&redis.Options{Addr: server.Addr()})
 	t.Cleanup(func() { _ = client.Close() })
 	cache := NewConcurrencyCache(client, 15, 900)
-	balanced := cache.(service.BalancedLogicalAccountSlotCache)
+	balanced, ok := cache.(service.BalancedLogicalAccountSlotCache)
+	require.True(t, ok)
 	for i := 0; i < 20; i++ {
 		request := fmt.Sprintf("short-%d", i)
 		id, acquired, err := balanced.AcquireBalancedLogicalAccountSlot(context.Background(), logicalFixture(), request)
@@ -91,7 +94,12 @@ func TestBalancedLogicalAccountSlotsMultiInstanceAtomicity(t *testing.T) {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			cache := NewConcurrencyCache(client, 15, 900).(service.BalancedLogicalAccountSlotCache)
+			cacheValue := NewConcurrencyCache(client, 15, 900)
+			cache, ok := cacheValue.(service.BalancedLogicalAccountSlotCache)
+			if !ok {
+				results <- result{err: errors.New("balanced concurrency cache type mismatch")}
+				return
+			}
 			id, acquired, err := cache.AcquireBalancedLogicalAccountSlot(context.Background(), groups, fmt.Sprintf("concurrent-%d", i))
 			results <- result{id, acquired, err}
 		}(i)
@@ -117,11 +125,13 @@ func TestBalancedLogicalAccountSlotsCountDisabledAndLiveChannels(t *testing.T) {
 	groups[0].Channels = groups[0].Channels[1:]
 	_, err := cache.AcquireAccountSlot(ctx, 11, 2, "draining-disabled")
 	require.NoError(t, err)
-	live := cache.(service.LiveConcurrencyCache)
-	ok, err := live.AcquireLiveLease(ctx, 11, 2, 100, 10, 200, "live", false)
-	require.NoError(t, err)
+	live, ok := cache.(service.LiveConcurrencyCache)
 	require.True(t, ok)
-	balanced := cache.(service.BalancedLogicalAccountSlotCache)
+	liveOK, err := live.AcquireLiveLease(ctx, 11, 2, 100, 10, 200, "live", false)
+	require.NoError(t, err)
+	require.True(t, liveOK)
+	balanced, ok := cache.(service.BalancedLogicalAccountSlotCache)
+	require.True(t, ok)
 	for i, want := range []int64{21, 21, 12} {
 		id, acquired, err := balanced.AcquireBalancedLogicalAccountSlot(ctx, groups, fmt.Sprintf("new-%d", i))
 		require.NoError(t, err)

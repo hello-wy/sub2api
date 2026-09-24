@@ -11,6 +11,12 @@ import (
 
 const SettingKeyOpenAINewAccountCodexTicketDefaults = "openai_new_account_codex_ticket_defaults"
 
+var errNewAccountCodexTicketDefaultsUnavailable = errors.New("new-account STATE defaults service unavailable")
+
+func (s *SettingService) hasSettingRepository() bool {
+	return s != nil && s.settingRepo != nil
+}
+
 // This controls future account creation only. It never enables the harvester,
 // reconfigures an existing account, or claims that a ticket is already valid.
 type NewAccountCodexTicketDefaults struct {
@@ -29,10 +35,20 @@ func normalizeNewAccountCodexTicketDefaults(value NewAccountCodexTicketDefaults)
 }
 
 func (s *SettingService) GetNewAccountCodexTicketDefaults(ctx context.Context) (*NewAccountCodexTicketDefaults, error) {
-	if s == nil || s.settingRepo == nil {
-		return nil, errors.New("new-account STATE defaults service unavailable")
+	if !s.hasSettingRepository() {
+		return nil, errNewAccountCodexTicketDefaultsUnavailable
 	}
-	values, err := s.settingRepo.GetMultiple(ctx, []string{SettingKeyOpenAINewAccountCodexTicketDefaults})
+	values, err := func() (values map[string]string, err error) {
+		defer func() {
+			if recover() != nil {
+				err = errNewAccountCodexTicketDefaultsUnavailable
+			}
+		}()
+		return s.settingRepo.GetMultiple(ctx, []string{SettingKeyOpenAINewAccountCodexTicketDefaults})
+	}()
+	if errors.Is(err, errNewAccountCodexTicketDefaultsUnavailable) {
+		return nil, err
+	}
 	if err != nil {
 		return nil, errors.New("unable to read new-account STATE defaults")
 	}
@@ -56,8 +72,8 @@ func (s *SettingService) GetNewAccountCodexTicketDefaults(ctx context.Context) (
 }
 
 func (s *SettingService) UpdateNewAccountCodexTicketDefaults(ctx context.Context, input NewAccountCodexTicketDefaults) (*NewAccountCodexTicketDefaults, error) {
-	if s == nil || s.settingRepo == nil {
-		return nil, errors.New("new-account STATE defaults service unavailable")
+	if !s.hasSettingRepository() {
+		return nil, errNewAccountCodexTicketDefaultsUnavailable
 	}
 	value, err := normalizeNewAccountCodexTicketDefaults(input)
 	if err != nil {

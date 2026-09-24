@@ -1174,16 +1174,28 @@ func (s *AntigravityGatewayService) updateAccountModelRateLimitInCache(ctx conte
 	if s.schedulerSnapshot == nil || account == nil || modelKey == "" {
 		return
 	}
-
-	// 更新账号对象的 Extra 字段
-	if account.Extra == nil {
-		account.Extra = make(map[string]any)
+	cacheAccount := account
+	if s.accountRepo != nil {
+		persisted, err := s.accountRepo.GetByID(ctx, account.ID)
+		if err != nil || persisted == nil {
+			if err == nil {
+				err = ErrAccountNotFound
+			}
+			logger.LegacyPrintf("service.antigravity_gateway", "[antigravity-Forward] durable_account_read_failed account=%d model=%s err=%v", account.ID, modelKey, err)
+			return
+		}
+		cacheAccount = persisted
 	}
 
-	limits, _ := account.Extra["model_rate_limits"].(map[string]any)
+	// 更新账号对象的 Extra 字段
+	if cacheAccount.Extra == nil {
+		cacheAccount.Extra = make(map[string]any)
+	}
+
+	limits, _ := cacheAccount.Extra["model_rate_limits"].(map[string]any)
 	if limits == nil {
 		limits = make(map[string]any)
-		account.Extra["model_rate_limits"] = limits
+		cacheAccount.Extra["model_rate_limits"] = limits
 	}
 
 	limits[modelKey] = map[string]any{
@@ -1192,7 +1204,7 @@ func (s *AntigravityGatewayService) updateAccountModelRateLimitInCache(ctx conte
 	}
 
 	// 更新 Redis 快照
-	if err := s.schedulerSnapshot.UpdateAccountInCache(ctx, account); err != nil {
+	if err := s.schedulerSnapshot.UpdateAccountInCache(ctx, cacheAccount); err != nil {
 		logger.LegacyPrintf("service.antigravity_gateway", "[antigravity-Forward] cache_update_failed account=%d model=%s err=%v", account.ID, modelKey, err)
 	}
 }

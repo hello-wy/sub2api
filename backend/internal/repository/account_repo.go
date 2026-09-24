@@ -2778,9 +2778,15 @@ func (r *accountRepository) UpdateExtra(ctx context.Context, id int64, updates m
 	if service.ShouldEnsureCodexFingerprintSeedForExtraUpdates(updates) {
 		extraExpression = ensureCodexFingerprintSeedSQL(extraExpression)
 	}
-	extraExpression = preserveProtectionExtraSQL(ctx, extraExpression)
-	extraExpression = preserveModelMismatchExtraSQL(extraExpression)
-	extraExpression = preserveCodexTicketExtraSQL(extraExpression)
+	if extraUpdatesTouchProtection(updates) {
+		extraExpression = preserveProtectionExtraSQL(ctx, extraExpression)
+	}
+	if extraUpdatesTouchModelMismatch(updates) {
+		extraExpression = preserveModelMismatchExtraSQL(extraExpression)
+	}
+	if extraUpdatesTouchCodexTicket(updates) {
+		extraExpression = preserveCodexTicketExtraSQL(extraExpression)
+	}
 	result, err := client.ExecContext(
 		ctx,
 		"UPDATE accounts SET extra = "+extraExpression+", updated_at = NOW() WHERE id = $2 AND deleted_at IS NULL",
@@ -2984,6 +2990,30 @@ func shouldEnqueueSchedulerOutboxForExtraUpdates(updates map[string]any) bool {
 			continue
 		}
 		return true
+	}
+	return false
+}
+
+func extraUpdatesTouchProtection(updates map[string]any) bool {
+	for key := range updates {
+		switch strings.TrimSpace(key) {
+		case "anti_degradation", "protection_scope", "anti_degrade", "codex_fingerprint_mode", "enable_tls_fingerprint", "tls_fingerprint_builtin", "tls_fingerprint_profile_id", "proxy_mode":
+			return true
+		}
+	}
+	return false
+}
+
+func extraUpdatesTouchModelMismatch(updates map[string]any) bool {
+	_, ok := updates[service.AccountModelMismatchExtraKey]
+	return ok
+}
+
+func extraUpdatesTouchCodexTicket(updates map[string]any) bool {
+	for key := range updates {
+		if service.IsOpenAICodexTicketExtraKey(key) {
+			return true
+		}
 	}
 	return false
 }
