@@ -637,7 +637,7 @@ func (r *accountRepository) AccountIPChannelHistoryIDs(ctx context.Context, ids 
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	grouped := map[int64][]int64{}
 	for rows.Next() {
 		var id, member int64

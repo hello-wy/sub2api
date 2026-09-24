@@ -41,7 +41,9 @@ func TestIntelligentReasoningSelectedEffortReachesHTTPProtocol(t *testing.T) {
 					require.NotContains(t, received, "reasoning_effort")
 					require.Empty(t, record.ConfigSnapshot.Execution.SentReasoningEffort)
 				} else if protocol == APIProtocolResponses {
-					require.Equal(t, effort, received["reasoning"].(map[string]any)["effort"])
+					reasoning, ok := received["reasoning"].(map[string]any)
+					require.True(t, ok)
+					require.Equal(t, effort, reasoning["effort"])
 					require.NotContains(t, received, "reasoning_effort")
 				} else {
 					require.Equal(t, effort, received["reasoning_effort"])
@@ -75,7 +77,9 @@ func TestIntelligentReasoningCNAdaptiveAndGrokUseNativeFields(t *testing.T) {
 			record := &IntelligentTestRecord{AccountID: 81, Input: "Solve this question", ConfigSnapshot: &IntelligentTestConfig{Model: "grok-4.6", ReasoningEffort: "xhigh"}}
 			require.NoError(t, svc.RunIntelligentTest(context.Background(), record))
 			if platform == PlatformGrok {
-				require.Equal(t, "xhigh", received["reasoning"].(map[string]any)["effort"])
+				reasoning, ok := received["reasoning"].(map[string]any)
+				require.True(t, ok)
+				require.Equal(t, "xhigh", reasoning["effort"])
 			} else {
 				require.Equal(t, "xhigh", received["reasoning_effort"])
 			}
@@ -105,7 +109,9 @@ func TestIntelligentReasoningProtectionDoesNotOverrideSelectedEffort(t *testing.
 	for i, effort := range []string{"none", "minimal", "low", "high", "xhigh"} {
 		record := &IntelligentTestRecord{AccountID: account.ID, Input: "draw a pelican", ConfigSnapshot: &IntelligentTestConfig{Model: "gpt-5.3-codex", ReasoningEffort: effort}}
 		require.NoError(t, svc.RunIntelligentTest(context.Background(), record))
-		require.Equal(t, effort, received[i]["reasoning"].(map[string]any)["effort"])
+		reasoning, ok := received[i]["reasoning"].(map[string]any)
+		require.True(t, ok)
+		require.Equal(t, effort, reasoning["effort"])
 		require.Equal(t, effort, record.ConfigSnapshot.Execution.SentReasoningEffort)
 		require.True(t, record.AntiDegradation)
 	}

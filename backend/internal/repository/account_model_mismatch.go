@@ -29,7 +29,7 @@ func rejectQuarantinedBulkResume(ctx context.Context, exec sqlExecutor, ids []in
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		var quarantined bool
 		if err := rows.Scan(&quarantined); err != nil {
@@ -60,14 +60,14 @@ func (r *accountRepository) modelMismatchFamily(ctx context.Context, id int64) (
 	var rootID int64
 	if !rows.Next() {
 		err = rows.Err()
-		rows.Close()
+		_ = rows.Close()
 		if err != nil {
 			return 0, nil, err
 		}
 		return 0, nil, service.ErrAccountNotFound
 	}
 	err = rows.Scan(&rootID)
-	rows.Close()
+	_ = rows.Close()
 	if err != nil {
 		return 0, nil, err
 	}
@@ -75,7 +75,7 @@ func (r *accountRepository) modelMismatchFamily(ctx context.Context, id int64) (
 	if err != nil {
 		return 0, nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	ids := []int64{}
 	for rows.Next() {
 		var member int64

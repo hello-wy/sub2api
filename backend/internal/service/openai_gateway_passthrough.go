@@ -1461,10 +1461,7 @@ func openAIStreamCredentialAuthFailure(payload []byte) bool {
 		}
 	}
 	for _, path := range []string{"response.error.code", "error.code", "code"} {
-		switch strings.ToLower(strings.TrimSpace(gjson.GetBytes(payload, path).String())) {
-		case "invalid_api_key", "api_key_disabled", "unauthorized", "authentication_error",
-			"invalid_token", "access_token_invalid", "token_revoked", "token_invalidated",
-			"invalid_credentials", "credential_invalid":
+		if isOpenAIAuthenticationErrorCode(gjson.GetBytes(payload, path).String()) {
 			return true
 		}
 	}

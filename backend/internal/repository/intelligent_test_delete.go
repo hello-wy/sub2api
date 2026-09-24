@@ -22,7 +22,7 @@ func (r *intelligentTestRepository) DeleteRecords(ctx context.Context, actor int
 		var id int64
 		var status string
 		if err := rows.Scan(&id, &status); err != nil {
-			rows.Close()
+			_ = rows.Close()
 			return 0, err
 		}
 		active = active || status == "queued" || status == "running"

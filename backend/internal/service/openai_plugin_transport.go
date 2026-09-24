@@ -162,36 +162,3 @@ func resolveAccountTLSProfile(service *TLSFingerprintProfileService, account *Ac
 	profile, _ := resolveMode1TLSProfile(account)
 	return profile
 }
-
-// doOpenAIOfficialProbeUpstream keeps diagnostic probes on the official URL
-// while still honoring the configured OAuth transport plugin, proxy and TLS
-// fingerprint. Unlike normal account tests, it intentionally does not apply an
-// account-level custom Codex gateway.
-func (s *AccountTestService) doOpenAIOfficialProbeUpstream(
-	request *http.Request,
-	proxyURL string,
-	account *Account,
-) (*http.Response, error) {
-	if s.pluginManager != nil {
-		response, handled, err := s.pluginManager.RoundTripOpenAIOAuth(request.Context(), request, proxyURL, account)
-		if handled {
-			return response, err
-		}
-	}
-	if s.tlsFPProfileService == nil {
-		return s.httpUpstream.DoWithTLS(
-			request,
-			proxyURL,
-			account.ID,
-			account.Concurrency,
-			nil,
-		)
-	}
-	return s.httpUpstream.DoWithTLS(
-		request,
-		proxyURL,
-		account.ID,
-		account.Concurrency,
-		s.tlsFPProfileService.ResolveTLSProfile(account),
-	)
-}

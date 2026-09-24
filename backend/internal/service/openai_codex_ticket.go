@@ -94,19 +94,6 @@ func (s *OpenAIGatewayService) openAICodexTicketConfig() config.OpenAICodexTicke
 	return cfg
 }
 
-func (s *OpenAIGatewayService) openAICodexTicketGatedModel(model string) bool {
-	model = normalizeOpenAICodexTicketModel(model)
-	if model == "" || !s.openAICodexTicketEnabled() {
-		return false
-	}
-	for _, item := range []string{openAICodexTicketDefaultModel, openAICodexTicketDefaultSolModel} {
-		if normalizeOpenAICodexTicketModel(item) == model {
-			return true
-		}
-	}
-	return false
-}
-
 // OpenAICodexTicketStatus 是给管理端看的门票摘要，不含 state blob。
 type OpenAICodexTicketStatus struct {
 	Model            string     `json:"model"`
@@ -136,10 +123,6 @@ func OpenAICodexTicketStatuses(account *Account, cfg config.OpenAICodexTicketCon
 	return []OpenAICodexTicketStatus{status}
 }
 
-func (s *OpenAIGatewayService) openAICodexTicketEnabled() bool {
-	return s.openAICodexTicketEnabledContext(context.Background())
-}
-
 func (s *OpenAIGatewayService) openAICodexTicketEnabledContext(ctx context.Context) bool {
 	if s == nil {
 		return false
@@ -161,10 +144,6 @@ func (s *OpenAIGatewayService) openAICodexTicketRuntimeEnabled(ctx context.Conte
 		return enabled, err
 	}
 	return fallback, nil
-}
-
-func (s *OpenAIGatewayService) openAICodexTicketHarvestProxyURL() string {
-	return s.openAICodexTicketHarvestProxyURLContext(context.Background())
 }
 
 func (s *OpenAIGatewayService) openAICodexTicketHarvestProxyURLContext(ctx context.Context) string {
@@ -389,10 +368,6 @@ func (s *OpenAIGatewayService) openAICodexTicketBlocksAccount(ctx context.Contex
 	return !codexAccountTicketEligible(live) || !s.lookupOpenAICodexTicket(live, liveConfig.Model).validFor(live, liveConfig, time.Now())
 }
 
-func (s *OpenAIGatewayService) fireOpenAICodexTicketProbe(ctx context.Context, account *Account, token, model, proxyURL string, attemptTimeout time.Duration) (state string, status int, err error) {
-	return s.fireCodexAccountTicketProbe(ctx, account, token, model, proxyURL, "", attemptTimeout)
-}
-
 func (s *OpenAIGatewayService) fireCodexAccountTicketProbe(ctx context.Context, account *Account, token, model, proxyURL, injectedState string, attemptTimeout time.Duration) (state string, status int, err error) {
 	if s.openaiCodexTicketProbe != nil {
 		state, status, err := s.openaiCodexTicketProbe(ctx, account, token, model, proxyURL, injectedState, attemptTimeout)
@@ -584,20 +559,6 @@ func (s *OpenAIGatewayService) refreshOpenAICodexTickets(ctx context.Context) {
 			continue
 		}
 		s.startCodexAccountTicketJob(ctx, account.ID, false)
-	}
-}
-
-// Compatibility helper for tests and internal callers: one bounded, opted-in account job.
-func (s *OpenAIGatewayService) probeOnceOpenAICodexTicket(ctx context.Context, account *Account, model string) {
-	if account == nil || codexAccountTicketConfigOf(account).Model != model {
-		return
-	}
-	job := s.startCodexAccountTicketJob(ctx, account.ID, false)
-	if job != nil {
-		select {
-		case <-job.done:
-		case <-ctx.Done():
-		}
 	}
 }
 

@@ -73,7 +73,7 @@ end
 return {0,redis.call('EXISTS',KEYS[1]),0,''}
 `)
 
-func codexTicketHarvestState(values []interface{}, err error) (service.CodexTicketHarvestState, error) {
+func codexTicketHarvestState(values []any, err error) (service.CodexTicketHarvestState, error) {
 	if err != nil {
 		return service.CodexTicketHarvestState{}, err
 	}

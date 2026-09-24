@@ -42,7 +42,7 @@ func preserveLockedAccountProtection(ctx context.Context, client *dbent.Client, 
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	if !rows.Next() {
 		if err := rows.Err(); err != nil {
 			return err
@@ -99,7 +99,7 @@ func validateLockedBulkProxyMode(ctx context.Context, exec sqlExecutor, ids []in
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		var a service.Account
 		var raw []byte

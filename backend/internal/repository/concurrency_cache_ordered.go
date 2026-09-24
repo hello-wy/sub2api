@@ -51,7 +51,7 @@ func (c *concurrencyCache) AcquireOrderedAccountSlot(ctx context.Context, accoun
 		return 0, nil
 	}
 	keys := make([]string, 0, 2*len(accounts))
-	args := []interface{}{c.slotTTLSeconds, requestID}
+	args := []any{c.slotTTLSeconds, requestID}
 	seen := make(map[int64]bool, len(accounts))
 	for _, account := range accounts {
 		if account.ID <= 0 || seen[account.ID] {

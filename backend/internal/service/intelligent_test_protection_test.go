@@ -59,7 +59,8 @@ func TestIntelligentProtectedResponsesUsesStableDeviceAndIndependentSessions(t *
 		require.Equal(t, header.Get("session-id"), header.Get("session_id"))
 		require.Equal(t, header.Get("session-id"), header.Get("conversation_id"))
 		require.NotEmpty(t, header.Get("thread-id"))
-		metadata := bodies[i]["client_metadata"].(map[string]any)
+		metadata, ok := bodies[i]["client_metadata"].(map[string]any)
+		require.True(t, ok)
 		require.Equal(t, expectedDevice, metadata["x-codex-installation-id"])
 		require.Equal(t, header.Get("session-id"), metadata["session_id"])
 		require.Equal(t, header.Get("thread-id"), metadata["thread_id"])
@@ -80,7 +81,9 @@ func TestIntelligentProtectedResponsesUsesStableDeviceAndIndependentSessions(t *
 	require.NoError(t, svc.TestAccountConnection(c, account.ID, "gpt-5.2", "", AccountTestModeDefault))
 	require.Len(t, headers, 3)
 	require.Equal(t, expectedDevice, headers[2].Get("x-codex-installation-id"))
-	require.Equal(t, expectedDevice, bodies[2]["client_metadata"].(map[string]any)["x-codex-installation-id"])
+	metadata, ok := bodies[2]["client_metadata"].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, expectedDevice, metadata["x-codex-installation-id"])
 }
 
 func TestIntelligentProtectionRejectsLostPrompt(t *testing.T) {
