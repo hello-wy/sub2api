@@ -231,7 +231,7 @@ func repairTransportJSONStrings(raw string) string {
 				}
 			}
 		}
-		_ = _ = out.WriteByte('\\')
+		_ = out.WriteByte('\\')
 		if valid {
 			_ = out.WriteByte(next)
 			i++
