@@ -258,7 +258,7 @@ func TestToolLoopKeepsTurnIdentityUntilNextUserMessage(t *testing.T) {
 	history := []any{message("user", "complete the task")}
 	source["input"] = history
 	first, bridge := mustPrepare(t, source, "account/key", cache)
-	initial := first["metadata"].(object)
+	initial, _ := first["metadata"].(object)
 	if initial["agent_iteration"] != "1" {
 		t.Fatal("first iteration must be one")
 	}
@@ -273,7 +273,7 @@ func TestToolLoopKeepsTurnIdentityUntilNextUserMessage(t *testing.T) {
 		source["input"] = history
 		next, nextBridge := mustPrepare(t, source, "account/key", cache)
 		bridge = nextBridge
-		metadata := next["metadata"].(object)
+		metadata, _ := next["metadata"].(object)
 		if metadata["turn_id"] != initial["turn_id"] || metadata["task_id"] != initial["task_id"] || metadata["agent_iteration"] != fmt.Sprint(i+1) {
 			t.Fatalf("tool loop changed identity or lost its iteration: %+v", metadata)
 		}
@@ -284,7 +284,7 @@ func TestToolLoopKeepsTurnIdentityUntilNextUserMessage(t *testing.T) {
 	}
 	source["input"] = append(history, message("user", "next task"))
 	next, _ := mustPrepare(t, source, "account/key", cache)
-	metadata := next["metadata"].(object)
+	metadata, _ := next["metadata"].(object)
 	if metadata["turn_id"] == initial["turn_id"] || metadata["task_id"] != initial["task_id"] || metadata["agent_iteration"] != "1" {
 		t.Fatalf("a new user turn must reset only the turn and iteration: %+v", metadata)
 	}

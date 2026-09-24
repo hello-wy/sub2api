@@ -207,18 +207,18 @@ func repairTransportJSONStrings(raw string) string {
 		if quoted {
 			switch ch {
 			case '\n':
-				out.WriteString(`\n`)
+				_, _ = out.WriteString(`\n`)
 				continue
 			case '\r':
-				out.WriteString(`\r`)
+				_, _ = out.WriteString(`\r`)
 				continue
 			case '\t':
-				out.WriteString(`\t`)
+				_, _ = out.WriteString(`\t`)
 				continue
 			}
 		}
 		if ch != '\\' || !quoted || i+1 >= len(raw) {
-			out.WriteByte(ch)
+			_ = out.WriteByte(ch)
 			continue
 		}
 		next := raw[i+1]
@@ -231,9 +231,9 @@ func repairTransportJSONStrings(raw string) string {
 				}
 			}
 		}
-		out.WriteByte('\\')
+		_ = out.WriteByte('\\')
 		if valid {
-			out.WriteByte(next)
+			_ = out.WriteByte(next)
 			i++
 		} else {
 			out.WriteByte('\\')
