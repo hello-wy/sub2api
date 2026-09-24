@@ -34,7 +34,7 @@ func TestExcelBPSInlineImageForwardAndFetch(t *testing.T) {
 				router.GET(basispoints.ImageRelayPath+":token", svc.ServeExcelBPSImage)
 				server := httptest.NewTLSServer(router)
 				defer server.Close()
-				svc.cfg.Gateway.ExcelBPSImageBaseURL = server.URL
+				svc.settingService = NewSettingService(&excelBPSImageSettingsRepo{values: map[string]string{SettingKeyExcelBPSImageRelayEnabled: "true", SettingKeyExcelBPSImageBaseURL: server.URL}}, svc.cfg)
 				body := []byte(fmt.Sprintf(`{"model":"gpt-6-astra","stream":%v,"input":[{"role":"user","content":[{"type":"input_text","text":"describe"},{"type":"input_image","image_url":%q,"detail":"high"}]}]}`, stream, dataURL))
 				rec := httptest.NewRecorder()
 				c, _ := gin.CreateTestContext(rec)
@@ -78,7 +78,7 @@ func TestExcelBPSImageRelayValidationDoesNotCallUpstream(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			upstream := &httpUpstreamRecorder{}
 			svc := openAIClientToolsTestService(upstream)
-			svc.cfg.Gateway.ExcelBPSImageBaseURL = tt.baseURL
+			svc.settingService = NewSettingService(&excelBPSImageSettingsRepo{values: map[string]string{SettingKeyExcelBPSImageRelayEnabled: fmt.Sprint(tt.baseURL != ""), SettingKeyExcelBPSImageBaseURL: tt.baseURL}}, svc.cfg)
 			rec := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(rec)
 			c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)

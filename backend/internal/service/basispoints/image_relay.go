@@ -56,16 +56,34 @@ type relayImage struct {
 	expires     time.Time
 }
 
-func NewImageRelay(baseURL string) (*ImageRelay, error) {
+func ValidateImageRelayOrigin(baseURL string) error {
 	parsed, err := url.Parse(baseURL)
 	if err != nil || parsed.Scheme != "https" || parsed.Hostname() == "" || parsed.User != nil || parsed.Opaque != "" || parsed.RawQuery != "" || parsed.ForceQuery || strings.Contains(baseURL, "#") || (parsed.Path != "" && parsed.Path != "/") {
-		return nil, fmt.Errorf("BPS image relay requires an HTTPS public origin without credentials, path, query or fragment")
+		return fmt.Errorf("BPS image relay requires an HTTPS public origin without credentials, path, query or fragment")
+	}
+	return nil
+}
+
+func NewImageRelay(baseURL string) (*ImageRelay, error) {
+	if err := ValidateImageRelayOrigin(baseURL); err != nil {
+		return nil, err
 	}
 	relay := &ImageRelay{baseURL: strings.TrimRight(baseURL, "/"), entries: make(map[string]*relayImage)}
 	if _, err := rand.Read(relay.key[:]); err != nil {
 		return nil, fmt.Errorf("initialize BPS image relay")
 	}
 	return relay, nil
+}
+
+// SetPublicOrigin changes new links without discarding in-flight images.
+func (r *ImageRelay) SetPublicOrigin(baseURL string) error {
+	if err := ValidateImageRelayOrigin(baseURL); err != nil {
+		return err
+	}
+	r.mu.Lock()
+	r.baseURL = strings.TrimRight(baseURL, "/")
+	r.mu.Unlock()
+	return nil
 }
 
 // Rewrite covers user/assistant content and function/custom tool image results.
@@ -75,6 +93,9 @@ func (r *ImageRelay) Rewrite(raw []byte, scope string) ([]byte, error) {
 	if r == nil {
 		return raw, nil
 	}
+	r.mu.Lock()
+	baseURL := r.baseURL
+	r.mu.Unlock()
 	var source object
 	if err := decode(raw, &source); err != nil || source == nil {
 		return nil, fmt.Errorf("invalid Basispoints request JSON")
@@ -115,7 +136,7 @@ func (r *ImageRelay) Rewrite(raw []byte, scope string) ([]byte, error) {
 				_, _ = mac.Write([]byte{0})
 				_, _ = mac.Write(data)
 				token := base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
-				part["image_url"] = r.baseURL + ImageRelayPath + token
+				part["image_url"] = baseURL + ImageRelayPath + token
 				if err := validateImage(part); err != nil {
 					return nil, err
 				}

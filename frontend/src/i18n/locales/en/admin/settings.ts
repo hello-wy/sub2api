@@ -44,6 +44,16 @@ export default {
         },
       },
       features: {
+        excelBpsImages: {
+          title: 'Excel / BPS Image Relay',
+          description: 'Automatically convert uploaded base64 images and tool screenshots to temporary HTTPS links hosted by this server.',
+          enabled: 'Enable image relay',
+          enabledHint: 'Changes apply immediately after saving, without restarting. Disabling stops conversion and blocks temporary image access.',
+          baseUrl: 'Public HTTPS address',
+          baseUrlHint: 'Enter the public HTTPS origin of this service, without /v1 or another path. The account must still have the Excel / BPS protocol enabled.',
+          retentionHint: 'Supports PNG, JPEG, GIF and WebP. Maximum 20 MiB per image and 20 images / 32 MiB per request. Images expire 30 minutes after their last submission. Anyone with a valid link can read the image.',
+          invalidBaseUrl: 'Enter a valid HTTPS origin without a path, credentials, query or fragment.',
+        },
         channelMonitor: {
           title: 'Channel Monitor',
           description: 'Choose either V1 active probes or V2 passive usage monitoring. When disabled, both background jobs stop and the user entry is hidden.',

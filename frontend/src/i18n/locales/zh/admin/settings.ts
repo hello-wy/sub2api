@@ -44,6 +44,16 @@ export default {
         },
       },
       features: {
+        excelBpsImages: {
+          title: 'Excel / BPS 图片中转',
+          description: '将上传的 base64 图片和工具截图自动转为当前服务器的临时 HTTPS 链接.',
+          enabled: '启用图片中转',
+          enabledHint: '保存后立即生效, 无需重启服务. 关闭后停止转换并禁止访问临时图片.',
+          baseUrl: '公网 HTTPS 访问地址',
+          baseUrlHint: '填写可从公网访问当前服务的 HTTPS 域名, 不要附加 /v1 或其他路径. 账号仍需开启 Excel / BPS 协议.',
+          retentionHint: '支持 PNG, JPEG, GIF 和 WebP. 单张最多 20 MiB, 每请求最多 20 张且合计 32 MiB. 图片在最后一次提交后 30 分钟删除, 链接持有者可在有效期内读取.',
+          invalidBaseUrl: '请填写有效的 HTTPS 访问地址, 不包含路径, 账号密码, 查询参数或片段.',
+        },
         channelMonitor: {
           title: '渠道监控',
           description: '启用后在 V1 主动探测与 V2 被动用量监控中二选一。关闭后两种模式的后台任务均停止，用户端入口隐藏。',

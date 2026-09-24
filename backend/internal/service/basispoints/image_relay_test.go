@@ -289,3 +289,41 @@ func TestImageRelayConcurrentReuse(t *testing.T) {
 	wg.Wait()
 	require.Len(t, r.entries, 1)
 }
+
+func TestImageRelayConcurrentOriginUpdatesPreserveImages(t *testing.T) {
+	r, err := NewImageRelay("https://images.example")
+	require.NoError(t, err)
+	raw := relayTestRequest(t, relayTestPNG(t))
+	initial, err := r.Rewrite(raw, "scope")
+	require.NoError(t, err)
+	initialURL := relayTestURL(t, initial)
+	require.Error(t, r.SetPublicOrigin("http://invalid.example"))
+	unchanged, err := r.Rewrite(raw, "scope")
+	require.NoError(t, err)
+	require.Equal(t, initialURL, relayTestURL(t, unchanged))
+	var wg sync.WaitGroup
+	for i := 0; i < 32; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			if err := r.SetPublicOrigin(fmt.Sprintf("https://images-%d.example", i)); err != nil {
+				t.Error(err)
+				return
+			}
+			out, err := r.Rewrite(raw, "scope")
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			for _, imageURL := range []string{initialURL, relayTestURL(t, out)} {
+				w := httptest.NewRecorder()
+				r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, imageURL, nil))
+				if w.Code != http.StatusOK {
+					t.Errorf("GET returned %d", w.Code)
+				}
+			}
+		}(i)
+	}
+	wg.Wait()
+	require.Len(t, r.entries, 1)
+}

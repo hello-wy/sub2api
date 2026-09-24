@@ -22,18 +22,24 @@ import (
 
 var excelBPSReplay basispoints.ReplayCache
 
-func (s *OpenAIGatewayService) excelBPSImageRelay() (*basispoints.ImageRelay, error) {
-	s.excelBPSImagesOnce.Do(func() {
-		if s.cfg != nil && s.cfg.Gateway.ExcelBPSImageBaseURL != "" {
-			s.excelBPSImages, s.excelBPSImagesErr = basispoints.NewImageRelay(s.cfg.Gateway.ExcelBPSImageBaseURL)
-		}
-	})
-	return s.excelBPSImages, s.excelBPSImagesErr
+func (s *OpenAIGatewayService) excelBPSImageRelay(ctx context.Context) (*basispoints.ImageRelay, error) {
+	settings, err := s.settingService.GetExcelBPSImageRelaySettings(ctx)
+	if err != nil || !settings.Enabled {
+		return nil, err
+	}
+	s.excelBPSImagesMu.Lock()
+	defer s.excelBPSImagesMu.Unlock()
+	if s.excelBPSImages == nil {
+		s.excelBPSImages, err = basispoints.NewImageRelay(settings.BaseURL)
+	} else {
+		err = s.excelBPSImages.SetPublicOrigin(settings.BaseURL)
+	}
+	return s.excelBPSImages, err
 }
 
 // ServeExcelBPSImage allows the upstream to retrieve an unguessable temporary URL.
 func (s *OpenAIGatewayService) ServeExcelBPSImage(c *gin.Context) {
-	relay, _ := s.excelBPSImageRelay()
+	relay, _ := s.excelBPSImageRelay(c.Request.Context())
 	relay.ServeHTTP(c.Writer, c.Request)
 }
 
@@ -115,7 +121,7 @@ func (s *OpenAIGatewayService) forwardExcelBPS(ctx context.Context, c *gin.Conte
 		}
 	}
 	scope := fmt.Sprintf("account:%d/key:%d/thread:%s", account.ID, getAPIKeyIDFromContext(c), identity)
-	relay, err := s.excelBPSImageRelay()
+	relay, err := s.excelBPSImageRelay(ctx)
 	if err != nil {
 		return fail(503, "basispoints_image_relay_unavailable", err.Error())
 	}

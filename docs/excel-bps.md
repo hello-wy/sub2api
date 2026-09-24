@@ -22,11 +22,11 @@
 
 ## Base64 图片中转
 
-1. 为当前 Sub2API 实例配置公网可访问且证书有效的 HTTPS 域名. 将该域名的 `/api/bps-images/` 路径转发到接收 BPS 请求的同一实例.
-2. 设置 `GATEWAY_EXCEL_BPS_IMAGE_BASE_URL=https://your-api.example.com`, 或在配置文件中设置 `gateway.excel_bps_image_base_url`. 只填写 HTTPS origin, 不附加 `/v1`, 查询参数或账号密码. 留空时禁用中转.
-3. 使用 Docker Compose 时, 在 `.env` 中设置该变量, 并执行 `docker compose up -d --no-deps sub2api` 重新创建应用容器. 仓库内四种 Compose 配置均透传该变量.
+1. 打开管理员后台的 `系统设置 > 功能开关 > Excel / BPS 图片中转`.
+2. 开启 `启用图片中转`, 在 `公网 HTTPS 访问地址` 中填写当前服务的公网地址, 例如 `https://your-api.example.com`. 只填写 HTTPS origin, 不附加 `/v1`, 查询参数或账号密码.
+3. 点击页面底部的保存按钮. 配置存入数据库并立即生效, 无需修改 Compose `.env` 或重建应用容器. 默认关闭; 关闭并保存后立即停止转换和临时图片访问, 已填地址保留.
 4. 保持账号的 Excel / BPS 协议开关开启. 客户端继续发送 `input_image.image_url=data:image/png;base64,...`, 无需调用额外上传接口.
-5. 允许上游免登录 GET/HEAD 临时图片路径, 禁止 CDN 缓存, 并在 Nginx/CDN 访问日志中屏蔽该路径的 token. 应用日志和 BPS 上游错误日志会自动脱敏 token.
+5. 确保域名证书有效且 `/api/bps-images/` 转发到接收 BPS 请求的同一实例. 允许上游免登录 GET/HEAD 临时图片路径, 禁止 CDN 缓存, 并在 Nginx/CDN 访问日志中屏蔽该路径的 token. 应用日志和 BPS 上游错误日志会自动脱敏 token.
 
 - 自动转换用户消息中的图片和 `function_call_output` / `custom_tool_call_output` 中的截图. 原有 HTTPS URL, 相邻文本及工具参数保持原值.
 - 仅接收 PNG, JPEG, GIF 和 WebP. 校验 base64, 图片格式, 声明 MIME 和图片尺寸. 每张最多 20 MiB, 每个请求最多 20 张且解码后合计不超过 32 MiB, 单张最多 64 Mi 像素. 网关已有请求体限制仍生效.
@@ -35,7 +35,7 @@
 - 链接持有者可在有效期内读取图片. 服务重启后链接失效; 客户端在下一次请求中重发原始 base64 图片即可重新生成. 多实例部署必须将图片下载请求固定到创建链接的实例.
 - 服务端不会读取客户端文件路径, 不开放匿名上传接口, 不将原始图片写入数据库或对象存储.
 
-验证范围: 自动化测试覆盖真实 HTTPS 测试服务器取图, BPS 请求转换, 普通/compact 与流式/非流式分支, 工具截图, 并发, 过期, 容量, 非法输入, 日志脱敏和环境变量透传. 真实 BPS 模型视觉结果需要部署后使用具有相应权限的账号验收.
+验证范围: 自动化测试覆盖真实 HTTPS 测试服务器取图, BPS 请求转换, 普通/compact 与流式/非流式分支, 工具截图, 并发, 过期, 容量, 非法输入, 日志脱敏, 后台表单, 设置持久化, 部分更新和即时生效. 真实 BPS 模型视觉结果需要部署后使用具有相应权限的账号验收.
 
 原始协议来自 hloolx/codex2api：9d02d3f5 → c125e560 → 20ff3e86 → d39f7e36 → 4dea83ec（含中间依赖修复）。另外对照 JaxsonWang/cpa-plugin-oai-basispoints 05b2d97 的工具目录、信封和回放实现。出处见 `backend/internal/service/basispoints/NOTICE.md`。
 

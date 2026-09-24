@@ -276,6 +276,8 @@ func (s *SettingService) InitializeDefaultSettings(ctx context.Context) error {
 		SettingKeyOpenAIAdvancedSchedulerWeightSessionSticky:         "",
 
 		SettingKeyAllowUserViewErrorRequests: "false",
+		SettingKeyExcelBPSImageRelayEnabled:  "false",
+		SettingKeyExcelBPSImageBaseURL:       "",
 	}
 
 	return s.settingRepo.SetMultiple(ctx, defaults)
@@ -1029,6 +1031,8 @@ func (s *SettingService) parseSettings(settings map[string]string) *SystemSettin
 	result.DailyCheckinCycleDays = dailyCheckinSettings.CycleDays
 
 	result.AllowUserViewErrorRequests = settings[SettingKeyAllowUserViewErrorRequests] == "true" // default false
+	result.ExcelBPSImageRelayEnabled = settings[SettingKeyExcelBPSImageRelayEnabled] == "true"
+	result.ExcelBPSImageBaseURL = settings[SettingKeyExcelBPSImageBaseURL]
 
 	// Publish Grok default model_mapping options for accounts with empty mapping.
 	xai.SetRuntimeModelMappingOptions(xai.ModelMappingOptions{
