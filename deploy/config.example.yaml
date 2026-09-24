@@ -207,6 +207,9 @@ security:
 # 网关配置
 # =============================================================================
 gateway:
+  # Public HTTPS origin for temporary Excel / BPS inline-image URLs; empty disables hosting.
+  # Route /api/bps-images/ to this same instance without login or CDN caching.
+  excel_bps_image_base_url: ""
   # Timeout for waiting upstream response headers (seconds)
   # 等待上游响应头超时时间（秒）
   response_header_timeout: 600
