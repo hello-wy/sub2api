@@ -7,11 +7,13 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/pkg/openai"
 	"github.com/Wei-Shaw/sub2api/internal/service/basispoints"
+	"github.com/Wei-Shaw/sub2api/internal/util/logredact"
 	"github.com/gin-gonic/gin"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
@@ -49,6 +51,7 @@ func newExcelBPSRequest(ctx context.Context, body []byte, token, accountID strin
 // only the selected account's bearer and ChatGPT account ID belong on this host.
 func (s *OpenAIGatewayService) forwardExcelBPS(ctx context.Context, c *gin.Context, account *Account, body []byte, start time.Time) (*OpenAIForwardResult, error) {
 	fail := func(status int, code, message string) (*OpenAIForwardResult, error) {
+		MarkResponseCommitted(c)
 		c.JSON(status, gin.H{"error": gin.H{"type": "invalid_request_error", "code": code, "message": message}})
 		return nil, fmt.Errorf("excel BPS: %s", code)
 	}
@@ -121,6 +124,14 @@ func (s *OpenAIGatewayService) forwardExcelBPS(ctx context.Context, c *gin.Conte
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		raw, _ := io.ReadAll(io.LimitReader(resp.Body, 512<<10))
+		message, detail, requestID := excelBPSErrorDiagnostics(raw, resp.Header.Get("x-request-id"), token, account)
+		setOpsUpstreamError(c, resp.StatusCode, message, detail)
+		appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
+			Platform: account.Platform, AccountID: account.ID,
+			ProxyID: opsUpstreamProxyID(account), ProxyName: opsUpstreamProxyName(account),
+			UpstreamStatusCode: resp.StatusCode, UpstreamRequestID: requestID,
+			UpstreamURL: basispoints.ResponsesURL, Kind: "http_error", Message: message, Detail: detail,
+		})
 		code := gjson.GetBytes(raw, "error.code").String()
 		if code == "basispoints_model_access_changed" {
 			return fail(resp.StatusCode, code, "This model is not available on the account's Excel BPS endpoint")
@@ -183,6 +194,7 @@ func (s *OpenAIGatewayService) forwardExcelBPS(ctx context.Context, c *gin.Conte
 			result.ClientDisconnect = true
 			return result, ctx.Err()
 		}
+		MarkResponseCommitted(c)
 		if stream {
 			_, _ = c.Writer.WriteString("event: response.failed\ndata: {\"type\":\"response.failed\",\"response\":{\"status\":\"failed\",\"error\":{\"code\":\"basispoints_stream_incomplete\",\"message\":\"Upstream stream ended before completion\"}}}\n\n")
 			c.Writer.Flush()
@@ -190,6 +202,9 @@ func (s *OpenAIGatewayService) forwardExcelBPS(ctx context.Context, c *gin.Conte
 			c.JSON(502, gin.H{"error": gin.H{"code": "basispoints_stream_incomplete", "message": "Excel BPS stream ended before completion"}})
 		}
 		return result, fmt.Errorf("excel BPS stream incomplete")
+	}
+	if terminal != "response.completed" {
+		MarkResponseCommitted(c)
 	}
 	if !stream {
 		if terminal != "response.completed" {
@@ -203,4 +218,47 @@ func (s *OpenAIGatewayService) forwardExcelBPS(ctx context.Context, c *gin.Conte
 	}
 	s.bindHTTPResponseAccount(ctx, c, account, result.ResponseID)
 	return result, nil
+}
+
+// Capture only error metadata, never echoed input, headers or arbitrary response
+// bodies. Redact before truncation so a length limit cannot split a credential.
+var excelBPSBearerPattern = regexp.MustCompile(`(?i)\bBearer\s+[^\s"',;<>]+`)
+var excelBPSURLCredentialsPattern = regexp.MustCompile(`(https?://)[^/\s@]+@`)
+
+func excelBPSErrorDiagnostics(raw []byte, requestID, token string, account *Account) (string, string, string) {
+	secrets := []string{token}
+	for _, key := range []string{"access_token", "refresh_token", "id_token", "api_key", "session_key", "cookie"} {
+		if value := account.GetCredential(key); value != "" {
+			secrets = append(secrets, value)
+		}
+	}
+	if account.Proxy != nil && account.Proxy.Password != "" {
+		secrets = append(secrets, account.Proxy.Password)
+	}
+	clean := func(value string, limit int) string {
+		for _, secret := range secrets {
+			if secret != "" {
+				value = strings.ReplaceAll(value, secret, "[redacted]")
+			}
+		}
+		value = excelBPSBearerPattern.ReplaceAllString(value, "Bearer [redacted]")
+		value = excelBPSURLCredentialsPattern.ReplaceAllString(value, "${1}[redacted]@")
+		value = logredact.RedactText(value, "authorization", "api_key", "apikey", "token", "secret", "key", "cookie", "ticket", "recovery_ticket")
+		return truncateString(value, limit)
+	}
+	message := "Excel BPS rejected the request"
+	fields := map[string]string{}
+	if json.Valid(raw) {
+		for _, key := range []string{"message", "code", "type", "param"} {
+			value := gjson.GetBytes(raw, "error."+key)
+			if value.Type == gjson.String {
+				fields[key] = clean(value.String(), 1024)
+			}
+		}
+	}
+	if fields["message"] != "" {
+		message = fields["message"]
+	}
+	detail, _ := json.Marshal(map[string]any{"error": fields})
+	return message, string(detail), clean(requestID, 256)
 }
