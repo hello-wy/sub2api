@@ -1020,7 +1020,7 @@ func (s *AccountTestService) testExcelBPSAccountConnection(c *gin.Context, accou
 		switch event["type"] {
 		case "response.output_text.delta":
 			if delta, ok := event["delta"].(string); ok {
-				answer.WriteString(delta)
+				_, _ = answer.WriteString(delta)
 				s.sendEvent(c, TestEvent{Type: "content", Text: delta})
 			}
 		case "response.completed":

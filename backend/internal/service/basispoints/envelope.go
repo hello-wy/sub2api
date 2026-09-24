@@ -231,12 +231,12 @@ func repairTransportJSONStrings(raw string) string {
 				}
 			}
 		}
-		_ = out.WriteByte('\\')
+		_ = _ = out.WriteByte('\\')
 		if valid {
 			_ = out.WriteByte(next)
 			i++
 		} else {
-			out.WriteByte('\\')
+			_ = out.WriteByte('\\')
 		}
 	}
 	return out.String()

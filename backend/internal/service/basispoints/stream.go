@@ -205,8 +205,8 @@ func readEvents(reader io.Reader, consume func(string, []byte) error) error {
 		} else if strings.HasPrefix(line, "event:") {
 			event = strings.TrimSpace(strings.TrimPrefix(line, "event:"))
 		} else if strings.HasPrefix(line, "data:") {
-			data.WriteString(strings.TrimPrefix(strings.TrimPrefix(line, "data:"), " "))
-			data.WriteByte('\n')
+			_, _ = data.WriteString(strings.TrimPrefix(strings.TrimPrefix(line, "data:"), " "))
+			_ = data.WriteByte('\n')
 			if data.Len() > 16<<20 {
 				return protocolError{fmt.Errorf("basispoints SSE event exceeds 16 MiB")}
 			}

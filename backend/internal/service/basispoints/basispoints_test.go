@@ -328,8 +328,8 @@ func TestLiteCatalogAndCompactionStayOrdered(t *testing.T) {
 	source := testSource()
 	source["input"] = []any{object{"type": "additional_tools", "tools": []any{object{"type": "function", "name": "shell"}}}, object{"type": "compaction_trigger"}, message("user", "hello")}
 	out, bridge := mustPrepare(t, source, "", nil)
-	items := out["input"].([]any)
-	if text(items[len(items)-1].(object)["type"]) != "compaction_trigger" || len(bridge.tools) != 1 {
+	items, _ := out["input"].([]any)
+	if text(func() object { v, _ := items[len(items)-1].(object); return v }()["type"]) != "compaction_trigger" || len(bridge.tools) != 1 {
 		t.Fatal("Lite tool catalog or terminal compaction was lost")
 	}
 }
