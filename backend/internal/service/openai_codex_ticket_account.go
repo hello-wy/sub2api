@@ -917,9 +917,9 @@ func validateCodexTicketCompletedModelEvidence(body io.Reader, model string, evi
 		}
 		if strings.HasPrefix(line, "data:") {
 			if data.Len() > 0 {
-				data.WriteByte('\n')
+				_ = data.WriteByte('\n')
 			}
-			data.WriteString(strings.TrimSpace(strings.TrimPrefix(line, "data:")))
+			_, _ = data.WriteString(strings.TrimSpace(strings.TrimPrefix(line, "data:")))
 		}
 	}
 	if okay, err := validate(); err != nil || okay {

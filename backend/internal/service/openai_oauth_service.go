@@ -14,10 +14,12 @@ import (
 
 // OpenAIOAuthService handles OpenAI OAuth authentication flows
 type OpenAIOAuthService struct {
-	sessionStore         *openai.SessionStore
-	proxyRepo            ProxyRepository
-	oauthClient          OpenAIOAuthClient
-	privacyClientFactory PrivacyClientFactory // 用于调用 chatgpt.com/backend-api（ImpersonateChrome）
+	sessionStore          *openai.SessionStore
+	proxyRepo             ProxyRepository
+	oauthClient           OpenAIOAuthClient
+	privacyClientFactory  PrivacyClientFactory // 用于调用 chatgpt.com/backend-api（ImpersonateChrome）
+	credentialCoordinator OpenAIOAuthCredentialCoordinator
+	accountRepo           AccountRepository
 }
 
 // NewOpenAIOAuthService creates a new OpenAI OAuth service
@@ -33,6 +35,11 @@ func NewOpenAIOAuthService(proxyRepo ProxyRepository, oauthClient OpenAIOAuthCli
 // 用于调用 chatgpt.com/backend-api 获取账号信息（plan_type 等）。
 func (s *OpenAIOAuthService) SetPrivacyClientFactory(factory PrivacyClientFactory) {
 	s.privacyClientFactory = factory
+}
+
+func (s *OpenAIOAuthService) SetAccountRepository(repo AccountRepository) {
+	s.credentialCoordinator, _ = repo.(OpenAIOAuthCredentialCoordinator)
+	s.accountRepo = repo
 }
 
 // OpenAIAuthURLResult contains the authorization URL and session info
@@ -337,6 +344,33 @@ func resolveChatGPTSubscriptionAccountID(tokenInfo *OpenAITokenInfo, orgID strin
 
 // RefreshAccountToken refreshes token for an OpenAI OAuth account
 func (s *OpenAIOAuthService) RefreshAccountToken(ctx context.Context, account *Account) (*OpenAITokenInfo, error) {
+	if account != nil && account.ID > 0 && account.Platform == PlatformOpenAI && account.Type == AccountTypeOAuth && s.credentialCoordinator != nil && !inOpenAIOAuthCoordinator(ctx) {
+		durable, err := s.credentialCoordinator.RefreshOpenAIOAuthCredentials(ctx, account, func(attemptCtx context.Context, fresh *Account) (map[string]any, error) {
+			info, err := s.refreshAccountTokenUncoordinated(attemptCtx, fresh)
+			if err != nil {
+				return nil, err
+			}
+			credentials := MergeCredentials(fresh.Credentials, s.BuildAccountCredentials(info))
+			return NormalizeOpenAIPersonalAccessTokenCredentials(fresh, info, credentials), nil
+		})
+		if err != nil {
+			return nil, err
+		}
+		account.Credentials = shallowCopyMap(durable.Credentials)
+		return openAITokenInfoFromAccount(durable), nil
+	}
+	if account != nil && account.GetCredential(OpenAIOAuthCredentialGroupKey) != "" {
+		return nil, infraerrors.New(http.StatusServiceUnavailable, "OPENAI_CREDENTIAL_COORDINATOR_REQUIRED", "shared OAuth credential coordinator is unavailable")
+	}
+	return s.refreshAccountTokenUncoordinated(ctx, account)
+}
+
+func (s *OpenAIOAuthService) refreshAccountTokenUncoordinated(ctx context.Context, account *Account) (*OpenAITokenInfo, error) {
+	routed, err := ResolveAccountIPUpstreamRoute(ctx, s.accountRepo, account)
+	if err != nil {
+		return nil, err
+	}
+	account = routed
 	if account.Platform != PlatformOpenAI {
 		return nil, infraerrors.New(http.StatusBadRequest, "OPENAI_OAUTH_INVALID_ACCOUNT", "account is not an OpenAI account")
 	}

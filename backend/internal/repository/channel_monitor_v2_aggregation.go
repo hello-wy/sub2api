@@ -146,6 +146,9 @@ func (r *channelMonitorV2Repository) RecomputeRange(ctx context.Context, start, 
 	if _, err = tx.ExecContext(ctx, channelMonitorV2ErrorAggregationSQL, start, end); err != nil {
 		return fmt.Errorf("aggregate channel monitor v2 errors: %w", err)
 	}
+	if _, err = tx.ExecContext(ctx, channelMonitorV2OutcomeAggregationSQL, start, end); err != nil {
+		return fmt.Errorf("aggregate completed request outcomes: %w", err)
+	}
 	if err = r.recomputeFixedRollups(ctx, tx, start, end); err != nil {
 		return err
 	}
@@ -319,6 +322,30 @@ INSERT INTO channel_monitor_v2_error_metrics_1m (bucket_start, platform, group_i
 SELECT bucket_start, platform, group_id, model, category, 1, COUNT(*) FROM classified GROUP BY 1,2,3,4,5
 ON CONFLICT (bucket_start, platform, group_id, model, error_category, taxonomy_version)
 DO UPDATE SET error_requests = EXCLUDED.error_requests`
+
+const channelMonitorV2OutcomeAggregationSQL = `
+WITH source AS (
+ SELECT date_trunc('minute',completed_at) bucket_start,platform,group_id,model,user_id,success,error_category
+ FROM channel_monitor_request_outcomes WHERE completed_at >= $1 AND completed_at < $2
+), metrics AS (
+ INSERT INTO channel_monitor_v2_metrics_1m(bucket_start,platform,group_id,model,success_requests,error_requests,computed_at)
+ SELECT bucket_start,platform,group_id,model,COUNT(*) FILTER(WHERE success),COUNT(*) FILTER(WHERE NOT success),NOW()
+ FROM source GROUP BY 1,2,3,4
+ ON CONFLICT(bucket_start,platform,group_id,model) DO UPDATE SET
+ success_requests=channel_monitor_v2_metrics_1m.success_requests+EXCLUDED.success_requests,
+ error_requests=channel_monitor_v2_metrics_1m.error_requests+EXCLUDED.error_requests
+), users AS (
+ INSERT INTO channel_monitor_v2_user_metrics_1m(bucket_start,platform,group_id,model,user_id,success_requests,error_requests,computed_at)
+ SELECT bucket_start,platform,group_id,model,user_id,COUNT(*) FILTER(WHERE success),COUNT(*) FILTER(WHERE NOT success),NOW()
+ FROM source WHERE user_id IS NOT NULL GROUP BY 1,2,3,4,5
+ ON CONFLICT(bucket_start,platform,group_id,model,user_id) DO UPDATE SET
+ success_requests=channel_monitor_v2_user_metrics_1m.success_requests+EXCLUDED.success_requests,
+ error_requests=channel_monitor_v2_user_metrics_1m.error_requests+EXCLUDED.error_requests
+)
+INSERT INTO channel_monitor_v2_error_metrics_1m(bucket_start,platform,group_id,model,error_category,taxonomy_version,error_requests)
+ SELECT bucket_start,platform,group_id,model,error_category,1,COUNT(*) FROM source WHERE NOT success GROUP BY 1,2,3,4,5
+ ON CONFLICT(bucket_start,platform,group_id,model,error_category,taxonomy_version) DO UPDATE SET
+ error_requests=channel_monitor_v2_error_metrics_1m.error_requests+EXCLUDED.error_requests`
 
 // Floor matches channelMonitorV2RetentionMax (90d). Keep the INTERVAL literal in
 // sync when changing channelMonitorV2RetentionRollup1d.

@@ -202,13 +202,11 @@ func previewMode1(a *Account) AntiDegradePreview {
 		out.Reason = "可升级至兼容保护 v3：改用初代标准传输，保留身份种子与原始还原快照"
 		out.Changes = append(out.Changes, AntiDegradeChange{Key: "policy_version", From: 2, To: mode1PolicyVersion, Note: "显式升级；还原恢复首次启用前的配置"})
 	}
-	for _, ch := range []AntiDegradeChange{
+	out.Changes = append(out.Changes, []AntiDegradeChange{
 		{Key: "extra.codex_fingerprint_mode", From: string(a.GetCodexFingerprintMode()), To: "device", Note: "稳定设备身份，保留不同对话的 session/thread"},
 		{Key: "transport", From: a.Extra["tls_fingerprint_builtin"], To: "standard", Note: "沿用初代标准传输，不强制实验性 TLS ClientHello"},
 		{Key: "concurrency", From: a.Concurrency, To: mode1InitialLimit(a), Note: "运行时持续执行上限，已有更低上限保留"},
-	} {
-		out.Changes = append(out.Changes, ch)
-	}
+	}...)
 	if !out.IdentityReady {
 		out.Changes = append(out.Changes, AntiDegradeChange{Key: "identity", To: "生成账号独立随机 UUID 种子并持久保存"})
 	}

@@ -23,7 +23,7 @@ func (r *intelligentTestRepository) Enqueue(ctx context.Context, actor int64, re
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 	out, err := r.enqueueIntelligentTestsTx(ctx, tx, actor, req)
 	if err != nil {
 		return nil, err
@@ -176,7 +176,7 @@ func (r *intelligentTestRepository) Claim(ctx context.Context) (*service.Intelli
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 	if _, err := tx.ExecContext(ctx, `SELECT pg_advisory_xact_lock(247001)`); err != nil {
 		return nil, err
 	}

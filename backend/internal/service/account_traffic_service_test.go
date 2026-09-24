@@ -40,7 +40,7 @@ func TestAccountTrafficDisabledDoesNotTouchCache(t *testing.T) {
 		return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader("ok"))}, nil
 	})
 	require.NoError(t, err)
-	resp.Body.Close()
+	require.NoError(t, resp.Body.Close())
 	require.Equal(t, 1, called)
 	require.Zero(t, cache.calls)
 	require.Zero(t, cache.finishes)

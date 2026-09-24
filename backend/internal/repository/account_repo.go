@@ -125,6 +125,9 @@ func newAccountRepositoryWithSQL(client *dbent.Client, sqlq sqlExecutor, schedul
 }
 
 func (r *accountRepository) Create(ctx context.Context, account *service.Account) error {
+	if account != nil && account.Platform == service.PlatformOpenAI && account.Type == service.AccountTypeOAuth && account.GetCredential(service.OpenAIOAuthCredentialGroupKey) != "" {
+		return r.createOpenAISharedAccount(ctx, account)
+	}
 	if err := createAccountRecord(ctx, r.client, account); err != nil {
 		return err
 	}
@@ -137,6 +140,15 @@ func (r *accountRepository) Create(ctx context.Context, account *service.Account
 func createAccountRecord(ctx context.Context, client *dbent.Client, account *service.Account) error {
 	if account == nil {
 		return service.ErrAccountNilInput
+	}
+	if err := inheritOpenAIHealthForNewAccount(ctx, client, account); err != nil {
+		return err
+	}
+	account.Extra = service.RedactOpenAICodexTicketExtra(account.Extra)
+	service.PrepareNewAccountCodexTicketDefaults(account)
+	service.PrepareNewAccountProtection(account)
+	if account.IsModelMismatchQuarantined() {
+		account.Schedulable = false
 	}
 
 	builder := client.Account.Create().
@@ -527,9 +539,26 @@ func (r *accountRepository) updateLockedAccount(
 		return nil, err
 	}
 	account.Extra = extra
+	if account.Platform == service.PlatformOpenAI && account.Type == service.AccountTypeOAuth {
+		if err := lockOpenAICredentials(ctx, client, account.ID, ""); err != nil {
+			return nil, err
+		}
+		credentials, err := preserveOpenAISharedCredentials(ctx, client, account.ID, account.Credentials)
+		if err != nil {
+			return nil, err
+		}
+		account.Credentials = credentials
+	}
+	if err := preserveLockedAccountProtection(ctx, client, account); err != nil {
+		return nil, err
+	}
+	if err := preserveLockedOpenAIOAuthHealth(ctx, client, account); err != nil {
+		return nil, err
+	}
+	extra = normalizeJSONMap(account.Extra)
 
 	schedulable := account.Schedulable
-	if account.Status == service.StatusError {
+	if account.Status == service.StatusError || account.IsModelMismatchQuarantined() {
 		schedulable = false
 	}
 
@@ -1013,22 +1042,22 @@ func (r *accountRepository) accountListFilteredQuery(platform, accountType, stat
 		q = q.Where(dbaccount.TypeEQ(accountType))
 	}
 	if status != "" {
+		if status != service.AccountModelMismatchExtraKey {
+			q = q.Where(dbpredicate.Account(func(s *entsql.Selector) {
+				s.Where(entsql.ExprP("NOT " + accountModelMismatchSQLFor(s.C(dbaccount.FieldExtra))))
+			}))
+		}
 		switch status {
+		case service.AccountModelMismatchExtraKey:
+			q = q.Where(dbpredicate.Account(func(s *entsql.Selector) {
+				s.Where(entsql.ExprP(accountModelMismatchEvidenceSQLFor(s.C(dbaccount.FieldExtra))))
+			}))
 		case service.StatusActive:
 			q = q.Where(
 				dbaccount.StatusEQ(status),
 				dbaccount.SchedulableEQ(true),
-				dbaccount.Or(
-					dbaccount.RateLimitResetAtIsNil(),
-					dbaccount.RateLimitResetAtLTE(time.Now()),
-				),
-				dbpredicate.Account(func(s *entsql.Selector) {
-					col := s.C("temp_unschedulable_until")
-					s.Where(entsql.Or(
-						entsql.IsNull(col),
-						entsql.LTE(col, entsql.Expr("NOW()")),
-					))
-				}),
+				rateLimitSchedulablePredicate(context.Background()),
+				tempUnschedulablePredicate(context.Background()),
 			)
 		case "rate_limited":
 			q = q.Where(
@@ -1047,27 +1076,15 @@ func (r *accountRepository) accountListFilteredQuery(platform, accountType, stat
 				dbaccount.StatusEQ(service.StatusActive),
 				dbpredicate.Account(func(s *entsql.Selector) {
 					col := s.C("temp_unschedulable_until")
-					s.Where(entsql.And(
-						entsql.Not(entsql.IsNull(col)),
-						entsql.GT(col, entsql.Expr("NOW()")),
-					))
+					s.Where(entsql.ExprP(effectiveTempUnschedulableSQL(context.Background(), col, s.C("temp_unschedulable_reason"), "NOW()")))
 				}),
 			)
 		case "unschedulable":
 			q = q.Where(
 				dbaccount.StatusEQ(service.StatusActive),
 				dbaccount.SchedulableEQ(false),
-				dbaccount.Or(
-					dbaccount.RateLimitResetAtIsNil(),
-					dbaccount.RateLimitResetAtLTE(time.Now()),
-				),
-				dbpredicate.Account(func(s *entsql.Selector) {
-					col := s.C("temp_unschedulable_until")
-					s.Where(entsql.Or(
-						entsql.IsNull(col),
-						entsql.LTE(col, entsql.Expr("NOW()")),
-					))
-				}),
+				rateLimitSchedulablePredicate(context.Background()),
+				tempUnschedulablePredicate(context.Background()),
 			)
 		default:
 			q = q.Where(dbaccount.StatusEQ(status))
@@ -1495,8 +1512,7 @@ func (r *accountRepository) SetGrokCredentialErrorIfMatch(
 			AND a.platform = $5
 			AND a.type = $6
 			AND a.schedulable IS TRUE
-			AND (a.temp_unschedulable_until IS NULL OR a.temp_unschedulable_until <= NOW())
-			AND (a.rate_limit_reset_at IS NULL OR a.rate_limit_reset_at <= NOW())
+			AND `+noEffectiveTempUnschedulableSQL(ctx, "a.temp_unschedulable_until", "a.temp_unschedulable_reason", "NOW()")+` AND `+noEffectiveRateLimitSQL(ctx, "a.rate_limit_reset_at", "NOW()")+`
 			AND (a.overload_until IS NULL OR a.overload_until <= NOW())
 			AND (a.auto_pause_on_expired IS NOT TRUE OR a.expires_at IS NULL OR a.expires_at > NOW())
 			AND a.credentials = $7::jsonb
@@ -1988,7 +2004,7 @@ func (r *accountRepository) BindGroups(ctx context.Context, accountID int64, gro
 }
 
 func (r *accountRepository) ListSchedulable(ctx context.Context) ([]service.Account, error) {
-	accounts, err := r.schedulableAccountsQuery(time.Now()).All(ctx)
+	accounts, err := r.schedulableAccountsQuery(ctx, time.Now()).All(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -1996,7 +2012,7 @@ func (r *accountRepository) ListSchedulable(ctx context.Context) ([]service.Acco
 }
 
 func (r *accountRepository) ListSchedulableAccountLoads(ctx context.Context) ([]service.AccountWithConcurrency, error) {
-	accounts, err := r.schedulableAccountsQuery(time.Now()).
+	accounts, err := r.schedulableAccountsQuery(ctx, time.Now()).
 		Select(
 			dbaccount.FieldID,
 			dbaccount.FieldConcurrency,
@@ -2022,15 +2038,15 @@ func (r *accountRepository) ListSchedulableAccountLoads(ctx context.Context) ([]
 	return loads, nil
 }
 
-func (r *accountRepository) schedulableAccountsQuery(now time.Time) *dbent.AccountQuery {
+func (r *accountRepository) schedulableAccountsQuery(ctx context.Context, now time.Time) *dbent.AccountQuery {
 	return r.client.Account.Query().
 		Where(
 			dbaccount.StatusEQ(service.StatusActive),
 			dbaccount.SchedulableEQ(true),
-			tempUnschedulablePredicate(),
+			tempUnschedulablePredicate(ctx),
 			notExpiredPredicate(now),
 			dbaccount.Or(dbaccount.OverloadUntilIsNil(), dbaccount.OverloadUntilLTE(now)),
-			dbaccount.Or(dbaccount.RateLimitResetAtIsNil(), dbaccount.RateLimitResetAtLTE(now)),
+			rateLimitSchedulablePredicate(ctx),
 		).
 		Order(dbent.Asc(dbaccount.FieldPriority))
 }
@@ -2085,10 +2101,9 @@ func (r *accountRepository) ListSchedulableCapacityByGroupIDs(ctx context.Contex
 			AND a.deleted_at IS NULL
 			AND a.status = $2
 			AND a.schedulable = TRUE
-			AND (a.temp_unschedulable_until IS NULL OR a.temp_unschedulable_until <= $3)
+			AND `+noEffectiveTempUnschedulableSQL(ctx, "a.temp_unschedulable_until", "a.temp_unschedulable_reason", "$3")+` AND `+noEffectiveRateLimitSQL(ctx, "a.rate_limit_reset_at", "$3")+`
 			AND (a.expires_at IS NULL OR a.expires_at > $3 OR a.auto_pause_on_expired = FALSE)
 			AND (a.overload_until IS NULL OR a.overload_until <= $3)
-			AND (a.rate_limit_reset_at IS NULL OR a.rate_limit_reset_at <= $3)
 		ORDER BY ag.group_id ASC, ag.priority ASC, a.priority ASC, a.id ASC
 	`, pq.Array(groupIDs), service.StatusActive, time.Now())
 	if err != nil {
@@ -2133,10 +2148,10 @@ func (r *accountRepository) ListSchedulableByPlatform(ctx context.Context, platf
 			dbaccount.PlatformEQ(platform),
 			dbaccount.StatusEQ(service.StatusActive),
 			dbaccount.SchedulableEQ(true),
-			tempUnschedulablePredicate(),
+			tempUnschedulablePredicate(ctx),
 			notExpiredPredicate(now),
 			dbaccount.Or(dbaccount.OverloadUntilIsNil(), dbaccount.OverloadUntilLTE(now)),
-			dbaccount.Or(dbaccount.RateLimitResetAtIsNil(), dbaccount.RateLimitResetAtLTE(now)),
+			rateLimitSchedulablePredicate(ctx),
 		).
 		Order(dbent.Asc(dbaccount.FieldPriority)).
 		All(ctx)
@@ -2167,10 +2182,10 @@ func (r *accountRepository) ListSchedulableByPlatforms(ctx context.Context, plat
 			dbaccount.PlatformIn(platforms...),
 			dbaccount.StatusEQ(service.StatusActive),
 			dbaccount.SchedulableEQ(true),
-			tempUnschedulablePredicate(),
+			tempUnschedulablePredicate(ctx),
 			notExpiredPredicate(now),
 			dbaccount.Or(dbaccount.OverloadUntilIsNil(), dbaccount.OverloadUntilLTE(now)),
-			dbaccount.Or(dbaccount.RateLimitResetAtIsNil(), dbaccount.RateLimitResetAtLTE(now)),
+			rateLimitSchedulablePredicate(ctx),
 		).
 		Order(dbent.Asc(dbaccount.FieldPriority)).
 		All(ctx)
@@ -2188,10 +2203,10 @@ func (r *accountRepository) ListSchedulableUngroupedByPlatform(ctx context.Conte
 			dbaccount.StatusEQ(service.StatusActive),
 			dbaccount.SchedulableEQ(true),
 			dbaccount.Not(dbaccount.HasAccountGroups()),
-			tempUnschedulablePredicate(),
+			tempUnschedulablePredicate(ctx),
 			notExpiredPredicate(now),
 			dbaccount.Or(dbaccount.OverloadUntilIsNil(), dbaccount.OverloadUntilLTE(now)),
-			dbaccount.Or(dbaccount.RateLimitResetAtIsNil(), dbaccount.RateLimitResetAtLTE(now)),
+			rateLimitSchedulablePredicate(ctx),
 		).
 		Order(dbent.Asc(dbaccount.FieldPriority)).
 		All(ctx)
@@ -2212,10 +2227,10 @@ func (r *accountRepository) ListSchedulableUngroupedByPlatforms(ctx context.Cont
 			dbaccount.StatusEQ(service.StatusActive),
 			dbaccount.SchedulableEQ(true),
 			dbaccount.Not(dbaccount.HasAccountGroups()),
-			tempUnschedulablePredicate(),
+			tempUnschedulablePredicate(ctx),
 			notExpiredPredicate(now),
 			dbaccount.Or(dbaccount.OverloadUntilIsNil(), dbaccount.OverloadUntilLTE(now)),
-			dbaccount.Or(dbaccount.RateLimitResetAtIsNil(), dbaccount.RateLimitResetAtLTE(now)),
+			rateLimitSchedulablePredicate(ctx),
 		).
 		Order(dbent.Asc(dbaccount.FieldPriority)).
 		All(ctx)
@@ -2527,8 +2542,7 @@ func (r *accountRepository) SetGrokCredentialTempUnschedulableIfMatch(
 			AND a.platform = $5
 			AND a.type = $6
 			AND a.schedulable IS TRUE
-			AND (a.temp_unschedulable_until IS NULL OR a.temp_unschedulable_until <= NOW())
-			AND (a.rate_limit_reset_at IS NULL OR a.rate_limit_reset_at <= NOW())
+			AND `+noEffectiveTempUnschedulableSQL(ctx, "a.temp_unschedulable_until", "a.temp_unschedulable_reason", "NOW()")+` AND `+noEffectiveRateLimitSQL(ctx, "a.rate_limit_reset_at", "NOW()")+`
 			AND (a.overload_until IS NULL OR a.overload_until <= NOW())
 			AND (a.auto_pause_on_expired IS NOT TRUE OR a.expires_at IS NULL OR a.expires_at > NOW())
 			AND a.credentials = $7::jsonb
@@ -2673,10 +2687,7 @@ func (r *accountRepository) UpdateSessionWindowEnd(ctx context.Context, id int64
 }
 
 func (r *accountRepository) SetSchedulable(ctx context.Context, id int64, schedulable bool) error {
-	_, err := r.client.Account.Update().
-		Where(dbaccount.IDEQ(id)).
-		SetSchedulable(schedulable).
-		Save(ctx)
+	_, err := r.sql.ExecContext(ctx, "UPDATE accounts SET schedulable=$2 AND NOT ("+accountModelMismatchSQL+"), updated_at=NOW() WHERE id=$1 AND deleted_at IS NULL", id, schedulable)
 	if err != nil {
 		return err
 	}
@@ -2767,6 +2778,9 @@ func (r *accountRepository) UpdateExtra(ctx context.Context, id int64, updates m
 	if service.ShouldEnsureCodexFingerprintSeedForExtraUpdates(updates) {
 		extraExpression = ensureCodexFingerprintSeedSQL(extraExpression)
 	}
+	extraExpression = preserveProtectionExtraSQL(ctx, extraExpression)
+	extraExpression = preserveModelMismatchExtraSQL(extraExpression)
+	extraExpression = preserveCodexTicketExtraSQL(extraExpression)
 	result, err := client.ExecContext(
 		ctx,
 		"UPDATE accounts SET extra = "+extraExpression+", updated_at = NOW() WHERE id = $2 AND deleted_at IS NULL",
@@ -3016,6 +3030,7 @@ func (r *accountRepository) BulkUpdate(ctx context.Context, ids []int64, updates
 
 	idx := 1
 	ollamaProxyIdentityChanged := ""
+	concurrencyExpression := ""
 	if updates.Name != nil {
 		setClauses = append(setClauses, "name = $"+itoa(idx))
 		args = append(args, *updates.Name)
@@ -3035,7 +3050,8 @@ func (r *accountRepository) BulkUpdate(ctx context.Context, ids []int64, updates
 		}
 	}
 	if updates.Concurrency != nil {
-		setClauses = append(setClauses, "concurrency = $"+itoa(idx))
+		concurrencyExpression = protectedConcurrencySQL("$" + itoa(idx) + "::integer")
+		setClauses = append(setClauses, "concurrency = "+concurrencyExpression)
 		args = append(args, *updates.Concurrency)
 		idx++
 	}
@@ -3064,7 +3080,7 @@ func (r *accountRepository) BulkUpdate(ctx context.Context, ids []int64, updates
 		idx++
 	}
 	if updates.Schedulable != nil {
-		setClauses = append(setClauses, "schedulable = $"+itoa(idx))
+		setClauses = append(setClauses, "schedulable = $"+itoa(idx)+" AND NOT ("+accountModelMismatchSQL+")")
 		args = append(args, *updates.Schedulable)
 		idx++
 	}
@@ -3212,6 +3228,12 @@ func (r *accountRepository) BulkUpdate(ctx context.Context, ids []int64, updates
 		if updates.EnsureCodexFingerprintSeed {
 			extraExpression = ensureCodexFingerprintSeedSQL(extraExpression)
 		}
+		extraExpression = preserveProtectionExtraSQL(ctx, extraExpression)
+		extraExpression = preserveModelMismatchExtraSQL(extraExpression)
+		extraExpression = preserveCodexTicketExtraSQL(extraExpression)
+		if concurrencyExpression != "" {
+			extraExpression = "CASE WHEN " + accountProtectionEnabledSQL + " THEN jsonb_set((" + extraExpression + "), '{anti_degrade,max_concurrency}', to_jsonb((" + concurrencyExpression + ")::integer), true) ELSE (" + extraExpression + ") END"
+		}
 		setClauses = append(setClauses, "extra = "+extraExpression)
 	}
 
@@ -3246,6 +3268,19 @@ func (r *accountRepository) BulkUpdate(ctx context.Context, ids []int64, updates
 			defer func() { _ = tx.Rollback() }()
 			ctx = dbent.NewTxContext(ctx, tx)
 			exec = tx.Client()
+		}
+	}
+	if updates.Schedulable != nil && *updates.Schedulable {
+		if err := rejectQuarantinedBulkResume(ctx, exec, ids); err != nil {
+			return 0, err
+		}
+	}
+	if mode, _ := updates.Extra[service.ProxyModeExtraKey].(string); !service.ProtectionManagedWrite(ctx) && strings.EqualFold(strings.TrimSpace(mode), service.ProxyModeRandom) {
+		if dbent.TxFromContext(ctx) == nil {
+			return 0, errors.New("random proxy bulk changes require a transaction")
+		}
+		if err := validateLockedBulkProxyMode(ctx, exec, ids, updates.Extra); err != nil {
+			return 0, err
 		}
 	}
 
@@ -3322,10 +3357,10 @@ func (r *accountRepository) queryAccountsByGroup(ctx context.Context, groupID in
 		if !opts.ignoreTransientState {
 			now := time.Now()
 			preds = append(preds,
-				tempUnschedulablePredicate(),
+				tempUnschedulablePredicate(ctx),
 				notExpiredPredicate(now),
 				dbaccount.Or(dbaccount.OverloadUntilIsNil(), dbaccount.OverloadUntilLTE(now)),
-				dbaccount.Or(dbaccount.RateLimitResetAtIsNil(), dbaccount.RateLimitResetAtLTE(now)),
+				rateLimitSchedulablePredicate(ctx),
 			)
 		}
 	}
@@ -3427,13 +3462,16 @@ func (r *accountRepository) accountsToService(ctx context.Context, accounts []*d
 	return outAccounts, nil
 }
 
-func tempUnschedulablePredicate() dbpredicate.Account {
+func tempUnschedulablePredicate(ctx context.Context) dbpredicate.Account {
 	return dbpredicate.Account(func(s *entsql.Selector) {
 		col := s.C("temp_unschedulable_until")
-		s.Where(entsql.Or(
-			entsql.IsNull(col),
-			entsql.LTE(col, entsql.Expr("NOW()")),
-		))
+		s.Where(entsql.ExprP(noEffectiveTempUnschedulableSQL(ctx, col, s.C("temp_unschedulable_reason"), "NOW()")))
+	})
+}
+
+func rateLimitSchedulablePredicate(ctx context.Context) dbpredicate.Account {
+	return dbpredicate.Account(func(s *entsql.Selector) {
+		s.Where(entsql.ExprP(noEffectiveRateLimitSQL(ctx, s.C("rate_limit_reset_at"), "NOW()")))
 	})
 }
 

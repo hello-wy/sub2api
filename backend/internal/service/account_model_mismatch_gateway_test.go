@@ -96,7 +96,8 @@ func TestModelMismatchPendingObservesRecoveryFromAnotherInstance(t *testing.T) {
 	repo := &modelMismatchMarkerStub{ids: []int64{9706, 9707}, latest: &Account{ID: 9706, Schedulable: false, Extra: map[string]any{AccountModelMismatchExtraKey: map[string]any{"expected_model": "gpt-6-astra", "actual_model": "gpt-5.6-luna"}}}}
 	require.True(t, quarantineAccountModelMismatch(context.Background(), repo, &Account{ID: 9706}, "gpt-6-astra", "gpt-5.6-luna", "req"))
 	value, _ := pendingAccountModelMismatches.Load(int64(9706))
-	state := value.(*pendingAccountModelMismatch)
+	state, ok := value.(*pendingAccountModelMismatch)
+	require.True(t, ok)
 	state.checkedAt = time.Time{}
 	require.True(t, hasPendingAccountModelMismatch(&Account{ID: 9707, Schedulable: true}), "stale Redis must not reopen the account")
 	repo.latest = &Account{ID: 9706, Schedulable: false} // source IP remains independently disabled
@@ -113,7 +114,8 @@ func TestModelMismatchPendingRetriesPersistenceWithoutReopening(t *testing.T) {
 	repo.err = nil
 	repo.ids = []int64{9710, 9711}
 	value, _ := pendingAccountModelMismatches.Load(int64(9710))
-	state := value.(*pendingAccountModelMismatch)
+	state, ok := value.(*pendingAccountModelMismatch)
+	require.True(t, ok)
 	state.checkedAt = time.Time{}
 	require.True(t, hasPendingAccountModelMismatch(account))
 	require.True(t, state.persisted)

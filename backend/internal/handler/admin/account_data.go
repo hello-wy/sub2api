@@ -20,7 +20,7 @@ import (
 const (
 	dataType       = "sub2api-data"
 	legacyDataType = "sub2api-bundle"
-	dataVersion    = 1
+	dataVersion    = 2
 	dataPageCap    = 1000
 )
 
@@ -57,19 +57,37 @@ type DataProxy struct {
 // 排除(影子不持凭据、通用凭据型导入强制 credentials 非空无法重建父子链接),不在此表达。
 // 影子的独立调度配置(priority/并发/分组/status 管理员可单独调)亦不在本备份范围,属已知局限
 // (外审第6轮裁决:保持排除 + 前端警告,而非升级格式做完整往返)。
+type DataIPChannel struct {
+	ProxyKey    string         `json:"proxy_key"`
+	IsRoot      bool           `json:"is_root"`
+	Concurrency int            `json:"concurrency"`
+	Priority    int            `json:"priority"`
+	LoadFactor  *int           `json:"load_factor,omitempty"`
+	Enabled     bool           `json:"enabled"`
+	Status      string         `json:"status"`
+	Extra       map[string]any `json:"extra,omitempty"`
+}
+
+type DataIPChannelGroup struct {
+	LogicalEnabled bool            `json:"logical_enabled"`
+	RootRetired    bool            `json:"root_retired"`
+	Items          []DataIPChannel `json:"items"`
+}
+
 type DataAccount struct {
-	Name               string         `json:"name"`
-	Notes              *string        `json:"notes,omitempty"`
-	Platform           string         `json:"platform"`
-	Type               string         `json:"type"`
-	Credentials        map[string]any `json:"credentials"`
-	Extra              map[string]any `json:"extra,omitempty"`
-	ProxyKey           *string        `json:"proxy_key,omitempty"`
-	Concurrency        int            `json:"concurrency"`
-	Priority           int            `json:"priority"`
-	RateMultiplier     *float64       `json:"rate_multiplier,omitempty"`
-	ExpiresAt          *int64         `json:"expires_at,omitempty"`
-	AutoPauseOnExpired *bool          `json:"auto_pause_on_expired,omitempty"`
+	Name               string              `json:"name"`
+	IPChannels         *DataIPChannelGroup `json:"ip_channels,omitempty"`
+	Notes              *string             `json:"notes,omitempty"`
+	Platform           string              `json:"platform"`
+	Type               string              `json:"type"`
+	Credentials        map[string]any      `json:"credentials"`
+	Extra              map[string]any      `json:"extra,omitempty"`
+	ProxyKey           *string             `json:"proxy_key,omitempty"`
+	Concurrency        int                 `json:"concurrency"`
+	Priority           int                 `json:"priority"`
+	RateMultiplier     *float64            `json:"rate_multiplier,omitempty"`
+	ExpiresAt          *int64              `json:"expires_at,omitempty"`
+	AutoPauseOnExpired *bool               `json:"auto_pause_on_expired,omitempty"`
 }
 
 type DataImportRequest struct {

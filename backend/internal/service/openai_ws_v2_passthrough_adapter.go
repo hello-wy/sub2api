@@ -685,9 +685,13 @@ func (s *OpenAIGatewayService) proxyResponsesWebSocketV2Passthrough(
 	if account == nil {
 		return errors.New("account is nil")
 	}
+	if err := s.checkOpenAICodexTicketNativeTurn(ctx, account); err != nil {
+		return err
+	}
 	if err := validateOpenAIWSBearerToken(account, token); err != nil {
 		return err
 	}
+	ctx = WithOpenAIUpstreamAccessToken(ctx, token)
 	if isOpenAIResponsesLiteWebSocketPayload(firstClientMessage) {
 		liteFirstMessage, _, liteErr := normalizeOpenAIResponsesLitePayloadForAccount(firstClientMessage, account)
 		if liteErr != nil {
@@ -921,6 +925,13 @@ func (s *OpenAIGatewayService) proxyResponsesWebSocketV2Passthrough(
 	if !ok {
 		return errors.New("openai ws passthrough upstream connection does not support frame relay")
 	}
+	upstreamFrameConn, trafficWrapErr := wrapAccountTrafficFrameConn(ctx, s.httpUpstream, account, upstreamFrameConn)
+	if trafficWrapErr != nil {
+		return trafficWrapErr
+	}
+	if controlled, ok := upstreamFrameConn.(*accountTrafficFrameConn); ok {
+		defer controlled.finish(0)
+	}
 	relayUpstreamFrameConn := &openAIWSPassthroughFirstOutputFrameConn{
 		inner:             upstreamFrameConn,
 		activeReadTimeout: s.openAIWSPassthroughIdleTimeout(),
@@ -1045,6 +1056,9 @@ func (s *OpenAIGatewayService) proxyResponsesWebSocketV2Passthrough(
 			}
 			requestModelForThisFrame := ""
 			if isResponseCreate {
+				if err := s.checkOpenAICodexTicketNativeTurn(ctx, account); err != nil {
+					return payload, nil, err
+				}
 				requestModelForThisFrame = usageMeta.requestModelForFrame(payload)
 				if requestModelForThisFrame == "" {
 					requestModelForThisFrame = capturedSessionModel

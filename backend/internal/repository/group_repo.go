@@ -937,6 +937,7 @@ func (r *groupRepository) ExistsByIDs(ctx context.Context, ids []int64) (map[int
 
 func (r *groupRepository) GetAccountCount(ctx context.Context, groupID int64) (total int64, active int64, err error) {
 	var rateLimited int64
+	groupAccountAvailableSQL, groupAccountTemporarilyLimitedSQL := groupAccountAvailabilitySQL(ctx)
 	err = scanSingleRow(ctx, r.sql,
 		fmt.Sprintf(`SELECT
 			COUNT(*) FILTER (WHERE a.deleted_at IS NULL),
@@ -1088,29 +1089,29 @@ type groupAccountCounts struct {
 	RateLimited int64
 }
 
-const (
+func groupAccountAvailabilitySQL(ctx context.Context) (string, string) {
 	// 分组页的"可用"账号数必须与账号仓储的 ListSchedulableByGroupID 过滤口径一致。
-	groupAccountAvailableSQL = `a.deleted_at IS NULL
+	available := `a.deleted_at IS NULL
 				AND a.status = 'active'
 				AND a.schedulable = true
 				AND (a.expires_at IS NULL OR a.expires_at > NOW() OR a.auto_pause_on_expired = FALSE)
-				AND (a.rate_limit_reset_at IS NULL OR a.rate_limit_reset_at <= NOW())
 				AND (a.overload_until IS NULL OR a.overload_until <= NOW())
-				AND (a.temp_unschedulable_until IS NULL OR a.temp_unschedulable_until <= NOW())`
+				AND ` + noEffectiveTempUnschedulableSQL(ctx, "a.temp_unschedulable_until", "a.temp_unschedulable_reason", "NOW()") + ` AND ` + noEffectiveRateLimitSQL(ctx, "a.rate_limit_reset_at", "NOW()")
 
 	// 这里沿用历史字段名 RateLimitedAccountCount，但统计的是会让账号暂时退出调度的时间窗口。
-	groupAccountTemporarilyLimitedSQL = `a.deleted_at IS NULL
+	limited := `a.deleted_at IS NULL
 				AND a.status = 'active'
 				AND a.schedulable = true
 				AND (a.expires_at IS NULL OR a.expires_at > NOW() OR a.auto_pause_on_expired = FALSE)
 				AND (
-					a.rate_limit_reset_at > NOW() OR
 					a.overload_until > NOW() OR
-					a.temp_unschedulable_until > NOW()
+					` + effectiveTempUnschedulableSQL(ctx, "a.temp_unschedulable_until", "a.temp_unschedulable_reason", "NOW()") + ` OR ` + effectiveRateLimitSQL(ctx, "a.rate_limit_reset_at", "NOW()") + `
 				)`
-)
+	return available, limited
+}
 
 func (r *groupRepository) loadAccountCounts(ctx context.Context, groupIDs []int64) (counts map[int64]groupAccountCounts, err error) {
+	groupAccountAvailableSQL, groupAccountTemporarilyLimitedSQL := groupAccountAvailabilitySQL(ctx)
 	counts = make(map[int64]groupAccountCounts, len(groupIDs))
 	if len(groupIDs) == 0 {
 		return counts, nil

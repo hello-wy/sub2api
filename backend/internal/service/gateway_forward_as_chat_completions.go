@@ -32,7 +32,9 @@ func (s *GatewayService) ForwardAsChatCompletions(
 	account *Account,
 	body []byte,
 	parsed *ParsedRequest,
-) (*ForwardResult, error) {
+) (mismatchResult *ForwardResult, mismatchErr error) {
+	defer func() { quarantineForwardResultModelMismatch(ctx, s.accountRepo, account, mismatchResult) }()
+	beginUpstreamResponseModelObservation(c)
 	startTime := time.Now()
 
 	// 1. Parse Chat Completions request

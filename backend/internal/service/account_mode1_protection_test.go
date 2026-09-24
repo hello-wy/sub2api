@@ -154,14 +154,14 @@ func TestMode1HTTPAndAccountTestUseSameTLSWithoutFallback(t *testing.T) {
 	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, "https://localhost/responses", nil)
 	r, err := gw.doOpenAIUpstream(req, "", a)
 	require.NoError(t, err)
-	r.Body.Close()
+	require.NoError(t, r.Body.Close())
 	require.Equal(t, 100, u.cap)
 	require.NotNil(t, u.profile)
 	profileKey := u.profile.CacheKey()
 	tester := &AccountTestService{httpUpstream: u}
 	r, err = tester.doOpenAIAccountTestUpstream(req, "", a, false)
 	require.NoError(t, err)
-	r.Body.Close()
+	require.NoError(t, r.Body.Close())
 	require.Equal(t, profileKey, u.profile.CacheKey())
 	u.err = errors.New("TLS failed")
 	_, err = gw.doOpenAIUpstream(req, "", a)
@@ -171,7 +171,7 @@ func TestMode1HTTPAndAccountTestUseSameTLSWithoutFallback(t *testing.T) {
 	u.err = nil
 	r, err = gw.doOpenAIUpstream(req, "", a)
 	require.NoError(t, err)
-	r.Body.Close()
+	require.NoError(t, r.Body.Close())
 	require.Equal(t, 1, u.normal)
 	require.Equal(t, 100, u.cap)
 }

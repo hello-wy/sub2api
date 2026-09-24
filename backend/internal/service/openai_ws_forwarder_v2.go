@@ -34,10 +34,19 @@ func (s *OpenAIGatewayService) forwardOpenAIWSV2(
 	attempt int,
 	lastFailureReason string,
 	agentTaskRecoveryTried *bool,
-) (*OpenAIForwardResult, error) {
+) (trafficResult *OpenAIForwardResult, trafficErr error) {
 	if s == nil || account == nil {
 		return nil, wrapOpenAIWSFallback("invalid_state", errors.New("service or account is nil"))
 	}
+	ctx = WithOpenAIUpstreamAccessToken(ctx, token)
+	if err := s.checkOpenAICodexTicketNativeTurn(ctx, account); err != nil {
+		return nil, err
+	}
+	ctx, permit, admissionErr := beginAccountTrafficTurn(ctx, s.httpUpstream, account)
+	if admissionErr != nil {
+		return nil, admissionErr
+	}
+	defer func() { finishAccountTrafficTurn(permit, trafficErr) }()
 	responseModelObserver := &upstreamResponseModelObserver{}
 
 	wsURL, err := s.buildOpenAIResponsesWSURLForContext(ctx, account)

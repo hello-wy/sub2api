@@ -5,7 +5,9 @@ import (
 	"database/sql"
 	"time"
 
+	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/Wei-Shaw/sub2api/internal/service"
+	"github.com/lib/pq"
 )
 
 // --- Plan Repository ---
@@ -151,6 +153,44 @@ func (r *scheduledTestResultRepository) PruneOldResults(ctx context.Context, pla
 		)
 	`, planID, keepCount)
 	return err
+}
+
+func (r *scheduledTestResultRepository) DeleteByPlanAndIDs(ctx context.Context, planID int64, ids []int64) (int64, error) {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	rows, err := tx.QueryContext(ctx, `SELECT id FROM scheduled_test_results WHERE plan_id=$1 AND id=ANY($2) ORDER BY id FOR UPDATE`, planID, pq.Array(ids))
+	if err != nil {
+		return 0, err
+	}
+	count := 0
+	for rows.Next() {
+		count++
+	}
+	err = rows.Err()
+	if closeErr := rows.Close(); err == nil {
+		err = closeErr
+	}
+	if err != nil {
+		return 0, err
+	}
+	if count != len(ids) {
+		return 0, infraerrors.NotFound("TEST_RESULT_NOT_FOUND", "测试记录不存在或不属于当前计划，请刷新后重试")
+	}
+	result, err := tx.ExecContext(ctx, `DELETE FROM scheduled_test_results WHERE plan_id=$1 AND id=ANY($2)`, planID, pq.Array(ids))
+	if err != nil {
+		return 0, err
+	}
+	deleted, err := result.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+	if err := tx.Commit(); err != nil {
+		return 0, err
+	}
+	return deleted, nil
 }
 
 // --- scan helpers ---

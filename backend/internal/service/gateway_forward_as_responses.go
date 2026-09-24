@@ -34,7 +34,9 @@ func (s *GatewayService) ForwardAsResponses(
 	account *Account,
 	body []byte,
 	parsed *ParsedRequest,
-) (*ForwardResult, error) {
+) (mismatchResult *ForwardResult, mismatchErr error) {
+	defer func() { quarantineForwardResultModelMismatch(ctx, s.accountRepo, account, mismatchResult) }()
+	beginUpstreamResponseModelObservation(c)
 	startTime := time.Now()
 
 	normalizedBody, normalized, err := normalizeOpenAIResponsesLegacyIngress(body)

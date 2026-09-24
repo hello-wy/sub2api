@@ -50,12 +50,14 @@ const (
 
 // TestEvent represents a SSE event for account testing
 type TestEvent struct {
-	Type     string `json:"type"`
-	Text     string `json:"text,omitempty"`
-	Model    string `json:"model,omitempty"`
-	Status   string `json:"status,omitempty"`
-	Code     string `json:"code,omitempty"`
-	ImageURL string `json:"image_url,omitempty"`
+	Type      string `json:"type"`
+	AccountID int64  `json:"account_id,omitempty"`
+	ProxyID   *int64 `json:"proxy_id,omitempty"`
+	Text      string `json:"text,omitempty"`
+	Model     string `json:"model,omitempty"`
+	Status    string `json:"status,omitempty"`
+	Code      string `json:"code,omitempty"`
+	ImageURL  string `json:"image_url,omitempty"`
 	// AudioURL / VideoURL are data: or https URLs for in-browser media players.
 	AudioURL string `json:"audio_url,omitempty"`
 	VideoURL string `json:"video_url,omitempty"`
@@ -393,14 +395,55 @@ func createTestPayload(modelID string) (map[string]any, error) {
 // mode is optional - "compact" routes OpenAI accounts to the /responses/compact probe path
 // opts is optional media (image/audio data URLs for real generation / STT).
 func (s *AccountTestService) TestAccountConnection(c *gin.Context, accountID int64, modelID string, prompt string, mode string, opts ...AccountTestOptions) error {
-	ctx := c.Request.Context()
+	originalRequest := c.Request
+	defer func() { c.Request = originalRequest }()
 	testOpts := firstAccountTestOptions(opts)
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("X-Accel-Buffering", "no")
+	if err := ValidateAccountTestOptions(testOpts); err != nil {
+		return s.sendErrorAndEnd(c, err.Error())
+	}
+	timeout := testOpts.TimeoutSeconds
+	if timeout == 0 {
+		timeout = 120
+	}
+	ctx, cancel := context.WithTimeout(c.Request.Context(), time.Duration(timeout)*time.Second)
+	defer cancel()
+	ctx = context.WithValue(ctx, manualAccountTestContextKey{}, &manualAccountTestContext{prompt: strings.TrimSpace(prompt), reasoningEffort: testOpts.ReasoningEffort, cancel: cancel})
+	c.Request = c.Request.WithContext(ctx)
 
 	// Get account
 	account, err := s.accountRepo.GetByID(ctx, accountID)
-	if err != nil {
+	if err != nil || account == nil {
 		return s.sendErrorAndEnd(c, "Account not found")
 	}
+	snapshot := *account
+	account = &snapshot
+	if err := s.validateTestIPChannel(ctx, account); err != nil {
+		return s.sendErrorAndEnd(c, err.Error())
+	}
+	manual := manualAccountTest(ctx)
+	manual.accountID = account.ID
+	if account.Proxy != nil {
+		manual.proxyID = account.ProxyID
+	}
+	modelID = strings.TrimSpace(modelID)
+	if err := validateManualTestReasoning(account, resolveIntelligentTestModel(account, modelID), mode, testOpts); err != nil {
+		return s.sendErrorAndEnd(c, err.Error())
+	}
+	if err := accountTestCooldown(ctx, account, resolveIntelligentTestModel(account, modelID), time.Now()); err != nil {
+		var wait *TestAdmissionWaitError
+		if errors.As(err, &wait) {
+			return s.sendErrorAndEnd(c, fmt.Sprintf("%s；请在 %s 后重新测试", wait.Reason, wait.Until.Local().Format("2006-01-02 15:04:05")))
+		}
+		return s.sendErrorAndEnd(c, err.Error())
+	}
+	release, err := s.acquireTestAccountSlot(ctx, account)
+	if err != nil {
+		return s.sendErrorAndEnd(c, err.Error())
+	}
+	defer release()
 
 	// Synthetic UI load-test accounts exercise the real SSE parsing and modal
 	// interactions, but intentionally do not send their placeholder credentials
@@ -865,11 +908,10 @@ func (s *AccountTestService) testOpenAIAccountConnection(c *gin.Context, account
 	if credentialAccount.IsOpenAIOAuthLike() {
 		isOAuth = true
 		// Agent Identity signs each request and does not retain the OAuth token.
-		if !credentialAccount.IsOpenAIAgentIdentity() {
-			authToken = credentialAccount.GetOpenAIAccessToken()
-		}
-		if authToken == "" && !credentialAccount.IsOpenAIAgentIdentity() {
-			return s.sendErrorAndEnd(c, "No access token available")
+		var tokenErr error
+		authToken, tokenErr = s.openAIAccountTestToken(ctx, credentialAccount)
+		if tokenErr != nil {
+			return s.sendErrorAndEnd(c, tokenErr.Error())
 		}
 
 		// OAuth uses ChatGPT internal API
@@ -1008,16 +1050,16 @@ func (s *AccountTestService) testOpenAIAccountConnection(c *gin.Context, account
 		if resp.StatusCode == http.StatusTooManyRequests {
 			s.reconcileOpenAI429State(ctx, account, resp.Header, body)
 		}
-		// 401 Unauthorized: 标记账号为永久错误
-		if resp.StatusCode == http.StatusUnauthorized && s.accountRepo != nil {
-			errMsg := fmt.Sprintf("Authentication failed (401): %s", string(body))
-			_ = s.accountRepo.SetError(ctx, account.ID, errMsg)
+		if resp.StatusCode == http.StatusUnauthorized {
+			s.recordOpenAIAccountTest401(openAIAccountTestAuthContext(req), credentialAccount, resp.Header, body)
 		}
 		return s.sendErrorAndEnd(c, fmt.Sprintf("API returned %d: %s", resp.StatusCode, string(body)))
 	}
 
 	// Process SSE stream
-	return s.processOpenAIStream(c, resp.Body)
+	return s.processOpenAIStream(c, resp.Body, func(payload []byte) {
+		s.observeOpenAIAccountTest401(openAIAccountTestAuthContext(req), credentialAccount, resp.Header, payload)
+	})
 }
 
 // testGrokAccountConnection routes Grok admin connectivity tests by explicit mode first,
@@ -2249,11 +2291,10 @@ func (s *AccountTestService) testOpenAICompactConnection(c *gin.Context, account
 	switch {
 	case credentialAccount.IsOpenAIOAuthLike():
 		isOAuth = true
-		if !credentialAccount.IsOpenAIAgentIdentity() {
-			authToken = credentialAccount.GetOpenAIAccessToken()
-		}
-		if authToken == "" && !credentialAccount.IsOpenAIAgentIdentity() {
-			return s.sendErrorAndEnd(c, "No access token available")
+		var tokenErr error
+		authToken, tokenErr = s.openAIAccountTestToken(ctx, credentialAccount)
+		if tokenErr != nil {
+			return s.sendErrorAndEnd(c, tokenErr.Error())
 		}
 		apiURL = chatgptCodexAPIURL
 	case account.Type == AccountTypeAPIKey:
@@ -2333,6 +2374,8 @@ func (s *AccountTestService) testOpenAICompactConnection(c *gin.Context, account
 
 	// 账号级请求头覆写：测试请求与真实转发保持一致的最终头
 	account.ApplyHeaderOverrides(req.Header)
+	ctx = openAIAccountTestAuthContext(req)
+	req = req.WithContext(ctx)
 
 	proxyURL := ""
 	if account.ProxyID != nil && account.Proxy != nil {
@@ -2389,12 +2432,12 @@ func (s *AccountTestService) testOpenAICompactConnection(c *gin.Context, account
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		if resp.StatusCode == http.StatusUnauthorized && s.accountRepo != nil {
-			errMsg := fmt.Sprintf("Authentication failed (401): %s", string(body))
-			_ = s.accountRepo.SetError(ctx, account.ID, errMsg)
+		if resp.StatusCode == http.StatusUnauthorized {
+			s.recordOpenAIAccountTest401(ctx, credentialAccount, resp.Header, body)
 		}
 		return s.sendErrorAndEnd(c, fmt.Sprintf("API returned %d: %s", resp.StatusCode, string(body)))
 	}
+	s.observeOpenAIAccountTestBody401(ctx, credentialAccount, resp.Header, body)
 
 	if !compactionFound {
 		return s.sendErrorAndEnd(c, "Upstream returned 2xx without a compaction output item (native remote compaction v2 unsupported on this chain)")
@@ -3007,7 +3050,7 @@ func (s *AccountTestService) processOpenAIChatCompletionsStream(c *gin.Context, 
 }
 
 // processOpenAIStream processes the SSE stream from OpenAI Responses API
-func (s *AccountTestService) processOpenAIStream(c *gin.Context, body io.Reader) error {
+func (s *AccountTestService) processOpenAIStream(c *gin.Context, body io.Reader, observers ...func([]byte)) error {
 	reader := bufio.NewReader(body)
 	seenCompleted := false
 	seenContent := false
@@ -3031,6 +3074,11 @@ func (s *AccountTestService) processOpenAIStream(c *gin.Context, body io.Reader)
 		}
 
 		jsonStr := sseDataPrefix.ReplaceAllString(line, "")
+		for _, observe := range observers {
+			if observe != nil {
+				observe([]byte(jsonStr))
+			}
+		}
 		if jsonStr == "[DONE]" {
 			if seenCompleted {
 				s.sendEvent(c, TestEvent{Type: "test_complete", Success: true})
@@ -3195,12 +3243,9 @@ func (s *AccountTestService) testOpenAIImageOAuth(c *gin.Context, ctx context.Co
 		}
 		credentialAccount = resolved
 	}
-	authToken := ""
-	if !credentialAccount.IsOpenAIAgentIdentity() {
-		authToken = credentialAccount.GetOpenAIAccessToken()
-	}
-	if authToken == "" && !credentialAccount.IsOpenAIAgentIdentity() {
-		return s.sendErrorAndEnd(c, "No access token available")
+	authToken, tokenErr := s.openAIAccountTestToken(ctx, credentialAccount)
+	if tokenErr != nil {
+		return s.sendErrorAndEnd(c, tokenErr.Error())
 	}
 
 	// Set SSE headers
@@ -3297,6 +3342,7 @@ func (s *AccountTestService) testOpenAIImageOAuth(c *gin.Context, ctx context.Co
 		return s.sendErrorAndEnd(c, fmt.Sprintf("Failed to read image response: %s", err.Error()))
 	}
 	body = redactAgentIdentitySensitiveBodyForAccount(ctx, s.accountRepo, credentialAccount, body)
+	s.observeOpenAIAccountTestBody401(openAIAccountTestAuthContext(req), credentialAccount, resp.Header, body)
 
 	var results []openAIResponsesImageResult
 	if direct {
@@ -3345,6 +3391,11 @@ func (s *AccountTestService) sendEvent(c *gin.Context, event TestEvent) {
 			return
 		}
 	}
+	if event.Type == "test_start" && c.Request != nil {
+		if run := manualAccountTest(c.Request.Context()); run != nil {
+			event.AccountID, event.ProxyID = run.accountID, run.proxyID
+		}
+	}
 	if event.Type == "test_complete" {
 		if suppress, ok := c.Get(accountTestSuppressCompletionContextKey); ok {
 			if suppressCompletion, _ := suppress.(bool); suppressCompletion {
@@ -3355,6 +3406,11 @@ func (s *AccountTestService) sendEvent(c *gin.Context, event TestEvent) {
 	eventJSON, _ := json.Marshal(event)
 	if _, err := fmt.Fprintf(c.Writer, "data: %s\n\n", eventJSON); err != nil {
 		log.Printf("failed to write SSE event: %v", err)
+		if c.Request != nil {
+			if run := manualAccountTest(c.Request.Context()); run != nil {
+				run.cancel()
+			}
+		}
 		return
 	}
 	c.Writer.Flush()

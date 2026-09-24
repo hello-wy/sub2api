@@ -102,7 +102,7 @@ func (r *intelligentTestRepository) enqueueDueIntelligentSchedule(ctx context.Co
 	if err != nil {
 		return false, err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 	// Use the manual queue's lock before any setting row locks. A busy replica
 	// can simply let the next tick handle this schedule.
 	var acquired bool

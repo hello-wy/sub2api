@@ -175,7 +175,7 @@ VALUES(990,10,'pelican','success',23,$1,'private prompt','{}','{}',true,1,NOW())
 	require.NoError(t, err)
 	tx, err := db.BeginTx(ctx, nil)
 	require.NoError(t, err)
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 	var id, lockPID int64
 	require.NoError(t, tx.QueryRowContext(ctx, `SELECT id FROM account_tests WHERE id=990 FOR UPDATE`).Scan(&id))
 	require.NoError(t, tx.QueryRowContext(ctx, `SELECT pg_backend_pid()`).Scan(&lockPID))

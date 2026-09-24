@@ -11,7 +11,7 @@ func (r *intelligentTestRepository) DeleteRecords(ctx context.Context, actor int
 	if err != nil {
 		return 0, err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 	rows, err := tx.QueryContext(ctx, `SELECT id,status FROM account_tests WHERE id=ANY($1) ORDER BY id FOR UPDATE`, pq.Array(ids))
 	if err != nil {
 		return 0, err

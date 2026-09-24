@@ -100,7 +100,7 @@ func observeIntelligentRequestReasoning(req *http.Request) {
 	if err != nil {
 		return
 	}
-	defer body.Close()
+	defer func() { _ = body.Close() }()
 	var payload map[string]any
 	if json.NewDecoder(io.LimitReader(body, 1<<20)).Decode(&payload) != nil {
 		return

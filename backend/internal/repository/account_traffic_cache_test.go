@@ -19,7 +19,7 @@ func trafficFixture(t *testing.T) (*miniredis.Miniredis, *accountTrafficCache, s
 	server := miniredis.RunT(t)
 	server.SetTime(time.Date(2026, 9, 14, 12, 0, 0, 0, time.UTC))
 	client := redis.NewClient(&redis.Options{Addr: server.Addr()})
-	t.Cleanup(func() { client.Close() })
+	t.Cleanup(func() { _ = client.Close() })
 	p := service.DefaultAccountTrafficPolicy()
 	p.StrictRPMEnabled = true
 	p.RPM = 3
@@ -73,7 +73,7 @@ func TestAccountTrafficConcurrentInstancesCannotExceedCeiling(t *testing.T) {
 	plan.Policy.RPM = 1
 	plan.Policy.Burst = 1
 	otherClient := redis.NewClient(&redis.Options{Addr: server.Addr()})
-	defer otherClient.Close()
+	defer func() { _ = otherClient.Close() }()
 	other := &accountTrafficCache{rdb: otherClient}
 	var admitted atomic.Int32
 	var wg sync.WaitGroup

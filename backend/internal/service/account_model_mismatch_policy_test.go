@@ -100,7 +100,9 @@ func TestModelMismatchDisabledPolicyRetryDoesNotLeaveAQuarantine(t *testing.T) {
 	repo.err = nil
 	repo.quarantine = false
 	value, _ := pendingAccountModelMismatches.Load(account.ID)
-	value.(*pendingAccountModelMismatch).checkedAt = time.Time{}
+	state, ok := value.(*pendingAccountModelMismatch)
+	require.True(t, ok)
+	state.checkedAt = time.Time{}
 	require.False(t, hasPendingAccountModelMismatch(account))
 	require.Equal(t, 2, repo.calls)
 }

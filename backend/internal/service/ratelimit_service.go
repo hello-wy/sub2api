@@ -330,11 +330,31 @@ func (s *RateLimitService) CheckErrorPolicy(ctx context.Context, account *Accoun
 // HandleUpstreamError 处理上游错误响应，标记账号状态
 // 返回是否应该停止该账号的调度
 func (s *RateLimitService) HandleUpstreamError(ctx context.Context, account *Account, statusCode int, headers http.Header, responseBody []byte, requestedModel ...string) (shouldDisable bool) {
+	if statusCode == http.StatusTooManyRequests && !Context429Enforcement(ctx) {
+		s.recordUpstream429Observation(ctx, account, headers, responseBody)
+		return false
+	}
+	if statusCode == http.StatusTooManyRequests && account != nil && account.Platform == PlatformOpenAI && account.Type == AccountTypeOAuth && !account.IsShadow() {
+		s.applyOpenAIOAuth429(ctx, account, headers, responseBody)
+		if model := tempUnschedulableModel(ctx, requestedModel); model != "" && s.tryTempUnschedulable(ctx, account, statusCode, responseBody, model) {
+			return true
+		}
+		return false
+	}
 	ctx = withTempUnschedulableModel(ctx, requestedModel)
 	// Team 联动熔断必须先于池模式/自定义错误码/临时不可调度的各类早退；
 	// 同请求内与 fastpath 调用点的重复触发由方法内去重吸收。
 	s.maybeHandleOpenAITeamLinkedError(ctx, account, statusCode, responseBody)
 	customErrorCodesEnabled := account.IsCustomErrorCodesEnabled()
+	if account.Platform == PlatformOpenAI && statusCode == http.StatusUnauthorized {
+		authAccount := account
+		if resolved, err := resolveCredentialAccount(ctx, s.accountRepo, account); err == nil && resolved != nil {
+			authAccount = resolved
+		}
+		if handled, blocked := s.handleOpenAIOAuth401(ctx, authAccount, extractUpstreamErrorCode(responseBody), ""); handled {
+			return blocked
+		}
+	}
 
 	// 池模式默认不标记本地账号状态；但管理员显式配置的临时不可调度规则优先。
 	// 401 保留现有认证错误语义，不在这里改变池模式的认证处理。
@@ -430,6 +450,9 @@ func (s *RateLimitService) HandleUpstreamError(ctx context.Context, account *Acc
 		}
 		// OpenAI: token_invalidated / token_revoked 表示 token 被永久作废（非过期），直接标记 error
 		openai401Code := extractUpstreamErrorCode(responseBody)
+		if handled, blocked := s.handleOpenAIOAuth401(ctx, authAccount, openai401Code, upstreamMsg); handled {
+			return blocked
+		}
 		if authAccount.Platform == PlatformOpenAI && (openai401Code == "token_invalidated" || openai401Code == "token_revoked") {
 			msg := "Token revoked (401): account authentication permanently revoked"
 			if upstreamMsg != "" {
@@ -1149,6 +1172,9 @@ func (s *RateLimitService) handleAntigravity403(ctx context.Context, account *Ac
 
 // handleCustomErrorCode 处理自定义错误码，停止账号调度
 func (s *RateLimitService) handleCustomErrorCode(ctx context.Context, account *Account, statusCode int, errorMsg string) {
+	if statusCode == http.StatusTooManyRequests && !Context429Enforcement(ctx) {
+		return
+	}
 	msg := "Custom error code " + strconv.Itoa(statusCode) + ": " + errorMsg
 	s.notifyAccountSchedulingBlocked(account, time.Time{}, "custom_error_code")
 	if err := s.accountRepo.SetError(ctx, account.ID, msg); err != nil {
@@ -1161,6 +1187,14 @@ func (s *RateLimitService) handleCustomErrorCode(ctx context.Context, account *A
 // handle429 处理429限流错误
 // 解析响应头获取重置时间，标记账号为限流状态
 func (s *RateLimitService) handle429(ctx context.Context, account *Account, headers http.Header, responseBody []byte) {
+	if !Context429Enforcement(ctx) {
+		s.recordUpstream429Observation(ctx, account, headers, responseBody)
+		return
+	}
+	if account != nil && account.Platform == PlatformOpenAI && account.Type == AccountTypeOAuth && !account.IsShadow() {
+		s.applyOpenAIOAuth429(ctx, account, headers, responseBody)
+		return
+	}
 	// OpenAI OAuth stays on the same account for the gateway's bounded retry
 	// window. Persisting a rate-limit reset on the first 429 would make the next
 	// retry ineligible and silently turn same-account recovery into a switch.
@@ -1313,6 +1347,10 @@ func (s *RateLimitService) handle429(ctx context.Context, account *Account, head
 }
 
 func (s *RateLimitService) apply429FallbackRateLimit(ctx context.Context, account *Account, reason string) {
+	if !Context429Enforcement(ctx) {
+		s.recordUpstream429Observation(ctx, account, nil, nil)
+		return
+	}
 	cooldown, enabled := s.get429FallbackCooldown(ctx, account)
 	if !enabled {
 		slog.Info("rate_limit_429_fallback_ignored", "account_id", account.ID, "platform", account.Platform, "reason", reason)
@@ -1482,6 +1520,10 @@ func shouldPersistAnthropicWindowLimit(account *Account, limit *anthropicWindowL
 }
 
 func (s *RateLimitService) persistAnthropicExhaustedWindowLimit(ctx context.Context, account *Account, headers http.Header) bool {
+	if !Context429Enforcement(ctx) {
+		s.recordUpstream429Observation(ctx, account, headers, nil)
+		return true
+	}
 	if s == nil || s.accountRepo == nil || account == nil {
 		return false
 	}
@@ -1526,6 +1568,10 @@ const (
 // says that the organization cannot use Fable; marking the whole account rate
 // limited would unnecessarily stop Sonnet, Opus, and Haiku scheduling.
 func (s *RateLimitService) persistAnthropicFableCreditsRequired(ctx context.Context, account *Account, headers http.Header, responseBody []byte, requestedModel string) bool {
+	if !Context429Enforcement(ctx) {
+		s.recordUpstream429Observation(ctx, account, headers, responseBody)
+		return true
+	}
 	if s == nil || s.accountRepo == nil || account == nil {
 		return false
 	}
@@ -1610,6 +1656,10 @@ func parseAnthropicAggregateReset(headers http.Header, now time.Time) (time.Time
 // (or a) trigger of this 429, so the caller must not fall through to logic that
 // would mark the whole account as rate limited.
 func (s *RateLimitService) persistAnthropicFableWindowLimit(ctx context.Context, account *Account, headers http.Header) bool {
+	if !Context429Enforcement(ctx) {
+		s.recordUpstream429Observation(ctx, account, headers, nil)
+		return true
+	}
 	if s == nil || s.accountRepo == nil || account == nil {
 		return false
 	}
@@ -2178,6 +2228,32 @@ func (s *RateLimitService) RecoverAccountAfterSuccessfulTest(ctx context.Context
 	return s.RecoverAccountState(ctx, accountID, AccountRecoveryOptions{})
 }
 
+// RecoverLogicalAccountState recovers every route in a fixed-IP logical account.
+func (s *RateLimitService) RecoverLogicalAccountState(ctx context.Context, accountID int64, options AccountRecoveryOptions) (*SuccessfulTestRecoveryResult, error) {
+	repo, ok := s.accountRepo.(AccountIPChannelRepository)
+	if !ok {
+		return s.RecoverAccountState(ctx, accountID, options)
+	}
+	groups, err := repo.GetAccountIPChannels(ctx, []int64{accountID})
+	if err != nil {
+		return nil, err
+	}
+	members := groups[accountID]
+	if len(members) == 0 || members[0].LogicalAccountID != accountID {
+		return s.RecoverAccountState(ctx, accountID, options)
+	}
+	total := &SuccessfulTestRecoveryResult{}
+	for _, member := range members {
+		result, err := s.RecoverAccountState(ctx, member.Account.ID, options)
+		if err != nil {
+			return nil, fmt.Errorf("recover IP channel %d: %w", member.Account.ID, err)
+		}
+		total.ClearedError = total.ClearedError || result.ClearedError
+		total.ClearedRateLimit = total.ClearedRateLimit || result.ClearedRateLimit
+	}
+	return total, nil
+}
+
 func (s *RateLimitService) ClearTempUnschedulable(ctx context.Context, accountID int64) error {
 	if err := s.accountRepo.ClearTempUnschedulable(ctx, accountID); err != nil {
 		return err
@@ -2295,6 +2371,10 @@ func (s *RateLimitService) HandleTempUnschedulable(ctx context.Context, account 
 }
 
 func (s *RateLimitService) HandleOpenAIImageRateLimit(ctx context.Context, account *Account, statusCode int, headers http.Header, responseBody []byte) bool {
+	if statusCode == http.StatusTooManyRequests && !Context429Enforcement(ctx) {
+		s.recordUpstream429Observation(ctx, account, headers, responseBody)
+		return true
+	}
 	if s == nil || account == nil || s.accountRepo == nil {
 		return false
 	}
@@ -2322,6 +2402,10 @@ func (s *RateLimitService) HandleOpenAIImageRateLimit(ctx context.Context, accou
 // Spark 的 x-codex-* 使用率和 reset 时间只代表 Spark 模型维度，不能写入账号级
 // RateLimitResetAt，否则同一 OAuth 账号上的其他模型也会被错误停调。
 func (s *RateLimitService) HandleOpenAICodexSparkRateLimit(ctx context.Context, account *Account, requestedModel string, statusCode int, headers http.Header, responseBody []byte) bool {
+	if statusCode == http.StatusTooManyRequests && !Context429Enforcement(ctx) {
+		s.recordUpstream429Observation(ctx, account, headers, responseBody)
+		return true
+	}
 	if s == nil || account == nil || s.accountRepo == nil || statusCode != http.StatusTooManyRequests || !isOpenAIOAuthAccount(account) {
 		return false
 	}

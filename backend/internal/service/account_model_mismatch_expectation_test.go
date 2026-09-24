@@ -52,7 +52,8 @@ func TestModelMismatchPendingRetryKeepsCredentialCASAndClearsStaleGate(t *testin
 	require.False(t, quarantineAccountModelMismatch(context.Background(), repo, account, "gpt-6-astra", "gpt-5.6-luna", "old-probe"))
 	value, exists := pendingAccountModelMismatches.Load(account.ID)
 	require.True(t, exists)
-	state := value.(*pendingAccountModelMismatch)
+	state, ok := value.(*pendingAccountModelMismatch)
+	require.True(t, ok)
 	state.checkedAt = time.Time{}
 	fresh := *account
 	fresh.Credentials = map[string]any{"access_token": "new-at", "refresh_token": "new-rt"}
@@ -92,7 +93,8 @@ func TestModelMismatchPendingRetryKeepsFixedRouteExpectation(t *testing.T) {
 	require.False(t, quarantineAccountModelMismatch(ctx, repo, account, "gpt-6-astra", "gpt-5.6-luna", "old-fixed-probe"))
 	value, exists := pendingAccountModelMismatches.Load(account.ID)
 	require.True(t, exists)
-	state := value.(*pendingAccountModelMismatch)
+	state, ok := value.(*pendingAccountModelMismatch)
+	require.True(t, ok)
 	state.checkedAt = time.Time{}
 	fresh := cloneStateTicketAccount(account)
 	fresh.Proxy.Host = "replacement.fixed.invalid"

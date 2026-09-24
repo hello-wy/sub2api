@@ -153,7 +153,7 @@ func (s *GroupStatusService) ProbeConfigs(ctx context.Context) ([]GroupProbeConf
 	if e != nil {
 		return nil, e
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	items := []GroupProbeConfig{}
 	for rows.Next() {
 		c, e := scanGroupProbeConfig(rows)
@@ -249,7 +249,7 @@ func (s *GroupStatusService) claimProbe(ctx context.Context, id int64, scheduled
 	if e != nil {
 		return nil, GroupProbeConfig{}, e
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 	c, e := scanGroupProbeConfig(tx.QueryRowContext(ctx, `SELECT `+groupProbeConfigColumns+` FROM group_probe_configs WHERE group_id=$1 FOR UPDATE`, id))
 	if errors.Is(e, sql.ErrNoRows) {
 		return nil, c, ErrGroupProbeNotConfigured
@@ -462,7 +462,7 @@ func (s *GroupStatusService) ProbeHistory(ctx context.Context, id int64) ([]Grou
 	if e != nil {
 		return nil, e
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	items := []GroupProbeRun{}
 	for rows.Next() {
 		var r GroupProbeRun

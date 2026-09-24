@@ -333,7 +333,7 @@ func (s *GroupStatusService) latestProbes(ctx context.Context, groupIDs []int64,
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		var id int64
 		v := &GroupProbeSummary{}

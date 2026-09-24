@@ -3,7 +3,6 @@ package repository
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"net/url"
 	"os"
 	"strings"
@@ -241,5 +240,5 @@ func TestIntelligentRepositoryIntegration(t *testing.T) {
 	var accountsBefore int
 	require.NoError(t, db.QueryRow(`SELECT COUNT(*) FROM accounts`).Scan(&accountsBefore))
 	require.Equal(t, 3, accountsBefore)
-	t.Log(fmt.Sprintf("verified %d durable records, %d audit entries; isolated schema only", records.Total, audits))
+	t.Logf("verified %d durable records, %d audit entries; isolated schema only", records.Total, audits)
 }

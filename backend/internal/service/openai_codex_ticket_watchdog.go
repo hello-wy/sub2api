@@ -387,7 +387,7 @@ func (b *codexTicketWatchdogBody) observeJSON(raw []byte) {
 		return
 	}
 	status := response.Get("status").String()
-	if status != "completed" && !(completedEvent && status == "") {
+	if status != "completed" && (!completedEvent || status != "") {
 		return
 	}
 	actual := response.Get("model")

@@ -305,6 +305,7 @@ func (h *OpenAIGatewayHandler) recordGrokVoiceUsage(
 	} else {
 		result.RequestID = service.StableGrokAudioBillingRequestID(result.RequestID)
 	}
+	bindGroupOutcomeBillingID(c, result.RequestID)
 	userAgent := c.GetHeader("User-Agent")
 	clientIP := ip.GetClientIP(c)
 	sessionID := service.ExtractClientSessionID(c)

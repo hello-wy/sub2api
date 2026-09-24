@@ -145,7 +145,7 @@ func PrepareIntelligentSVGPreview(output string) (string, bool, error) {
 		if name == "style" {
 			var css strings.Builder
 			for _, child := range node.children {
-				css.WriteString(child.text)
+				_, _ = css.WriteString(child.text)
 			}
 			rawCSS := css.String()
 			if len(rawCSS) >= 32<<10 || strings.Contains(rawCSS, "@") {
@@ -391,11 +391,12 @@ func svgPathHasDrawing(path string) bool {
 			path = path[len(number):]
 		}
 		first = false
-		if command == 'M' {
+		switch command {
+		case 'M':
 			command = 'L'
-		} else if command == 'm' {
+		case 'm':
 			command = 'l'
-		} else {
+		default:
 			drawing = true
 		}
 	}

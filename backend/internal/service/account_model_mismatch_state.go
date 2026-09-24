@@ -58,7 +58,10 @@ func (a *Account) IsLegacyModelMismatchQuarantined() bool {
 	if !a.HasLegacyModelMismatch() {
 		return false
 	}
-	marker := a.Extra[AccountModelMismatchExtraKey].(map[string]any)
+	marker, ok := a.Extra[AccountModelMismatchExtraKey].(map[string]any)
+	if !ok {
+		return true
+	}
 	quarantined, explicit := marker["quarantined"].(bool)
 	return !explicit || quarantined
 }

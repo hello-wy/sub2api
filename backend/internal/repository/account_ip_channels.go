@@ -28,7 +28,7 @@ func (r *accountRepository) AccountIPChannelSiblingIDs(ctx context.Context, id i
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	ids := []int64{}
 	for rows.Next() {
 		var memberID int64
@@ -74,13 +74,13 @@ func (r *accountRepository) ListLogicalAccounts(ctx context.Context, params pagi
 	for rows.Next() {
 		var id int64
 		if err = rows.Scan(&id); err != nil {
-			rows.Close()
+			_ = rows.Close()
 			return nil, nil, err
 		}
 		logicalIDs = append(logicalIDs, id)
 	}
 	err = rows.Err()
-	rows.Close()
+	_ = rows.Close()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -111,7 +111,7 @@ func (r *accountRepository) GetAccountIPChannels(ctx context.Context, ids []int6
 		var c service.AccountIPChannel
 		var id int64
 		if err = rows.Scan(&id, &c.LogicalAccountID, &c.Enabled, &c.DisabledAt, &c.LogicalEnabled); err != nil {
-			rows.Close()
+			_ = rows.Close()
 			return nil, err
 		}
 		c.Account = &service.Account{ID: id}
@@ -119,7 +119,7 @@ func (r *accountRepository) GetAccountIPChannels(ctx context.Context, ids []int6
 		memberIDs = append(memberIDs, id)
 	}
 	err = rows.Err()
-	rows.Close()
+	_ = rows.Close()
 	if err != nil {
 		return nil, err
 	}
@@ -547,11 +547,11 @@ func (r *accountRepository) PatchAccountIPChannel(ctx context.Context, id, chann
 			}
 			var globalEnabled bool
 			if !rows.Next() {
-				rows.Close()
+				_ = rows.Close()
 				return service.ErrAccountNotFound
 			}
 			err = rows.Scan(&globalEnabled)
-			rows.Close()
+			_ = rows.Close()
 			if err != nil {
 				return err
 			}

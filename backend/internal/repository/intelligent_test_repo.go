@@ -112,7 +112,7 @@ func (r *intelligentTestRepository) UpdateSetting(ctx context.Context, actor int
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 	// Match enqueue/scheduler lock order so setting changes cannot race with a
 	// scheduled dispatch or deadlock while its configuration is being read.
 	if _, err := tx.ExecContext(ctx, `SELECT pg_advisory_xact_lock(247000)`); err != nil {

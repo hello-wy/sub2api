@@ -33,7 +33,7 @@ func TestAccountProtectionSchedulerRetainsIndependentIntegrityMode(t *testing.T)
 func TestMode1ConcurrencySlotsRemainBoundedAndRelease(t *testing.T) {
 	r := miniredis.RunT(t)
 	client := redis.NewClient(&redis.Options{Addr: r.Addr()})
-	t.Cleanup(func() { client.Close() })
+	t.Cleanup(func() { _ = client.Close() })
 	cache := NewConcurrencyCache(client, 15, 900)
 	a := &service.Account{ID: 1, Concurrency: 4, Extra: map[string]any{"anti_degrade": map[string]any{"enabled": true, "mode": "mode1", "policy_version": 2, "max_concurrency": 99}}}
 	ctx := context.Background()

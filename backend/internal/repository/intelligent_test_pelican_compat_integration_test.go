@@ -24,12 +24,13 @@ func TestIntelligentPelicanLegacySettingsNormalizeReadSaveAndQueue(t *testing.T)
 	require.NoError(t, err)
 	var pelican service.IntelligentTestSetting
 	for _, setting := range settings {
-		if setting.TestType == "pelican" {
+		switch setting.TestType {
+		case "pelican":
 			pelican = setting
 			require.Equal(t, "svg_structure", setting.Config.Evaluator)
 			require.Empty(t, setting.Config.AnswerType)
 			require.Empty(t, setting.Config.ExpectedAnswer)
-		} else if setting.TestType == "candy" {
+		case "candy":
 			require.Equal(t, "exact_answer", setting.Config.Evaluator)
 			require.Equal(t, "12", setting.Config.ExpectedAnswer)
 		}

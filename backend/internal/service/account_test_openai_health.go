@@ -27,7 +27,7 @@ func (s *AccountTestService) openAIAccountTestToken(ctx context.Context, account
 	}
 	token := account.GetOpenAIAccessToken()
 	if token == "" {
-		return "", errors.New("No access token available")
+		return "", errors.New("no access token available")
 	}
 	return token, nil
 }

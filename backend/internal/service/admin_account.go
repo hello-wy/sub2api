@@ -576,6 +576,9 @@ func (s *adminServiceImpl) CreateAccount(ctx context.Context, input *CreateAccou
 }
 
 func (s *adminServiceImpl) UpdateAccount(ctx context.Context, id int64, input *UpdateAccountInput) (*Account, error) {
+	if account, handled, err := s.updateLogicalAccount(ctx, id, input); handled {
+		return account, err
+	}
 	account, err := s.accountRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -719,10 +722,10 @@ func (s *adminServiceImpl) UpdateAccount(ctx context.Context, id int64, input *U
 				normalizedExtra[key] = v
 			}
 		}
+		normalizedExtra = MergeOpenAICodexTicketExtra(normalizedExtra, account.Extra)
+		normalizedExtra = preserveMode1ManagedExtra(ctx, account, normalizedExtra)
 		normalizedExtra = prepareCodexFingerprintExtraForUpdate(account, normalizedExtra)
-		// 在服务层先保留受管保护字段，保证内存仓储/导入路径与生产数据库
-		// 行锁合并路径具有同样的安全不变量；repository 会再次在锁内复核。
-		normalizedExtra = PreserveAccountProtection(ctx, account, normalizedExtra)
+		normalizedExtra = NormalizeProxyModeExtra(normalizedExtra)
 		account.Extra = normalizedExtra
 		if account.Platform == PlatformAntigravity && wasOveragesEnabled && !account.IsOveragesEnabled() {
 			delete(account.Extra, "antigravity_credits_overages") // 清理旧版 overages 运行态
@@ -1026,6 +1029,9 @@ func (s *adminServiceImpl) BulkUpdateAccounts(ctx context.Context, input *BulkUp
 			return nil, err
 		}
 		input.AccountIDs = accountIDs
+	}
+	if result, handled, err := s.bulkUpdateLogicalAccounts(ctx, input); handled {
+		return result, err
 	}
 
 	result := &BulkUpdateAccountsResult{
@@ -1350,6 +1356,28 @@ func (s *adminServiceImpl) resolveBulkUpdateTargetIDs(ctx context.Context, filte
 }
 
 func (s *adminServiceImpl) DeleteAccount(ctx context.Context, id int64) error {
+	if !isAccountIPChannelWrite(ctx) {
+		if repo, ok := s.accountRepo.(AccountIPChannelRepository); ok {
+			members, err := repo.GetAccountIPChannels(ctx, []int64{id})
+			if err != nil {
+				return err
+			}
+			if len(members[id]) > 0 {
+				return repo.WithAccountIPChannelTransaction(ctx, id, func(txctx context.Context, txRepo AccountRepository, channels []AccountIPChannel) error {
+					copyService := *s
+					copyService.accountRepo = txRepo
+					for _, channel := range channels {
+						if channel.Account.ID != id {
+							if err := copyService.DeleteAccount(WithAccountIPChannelWrite(txctx), channel.Account.ID); err != nil {
+								return err
+							}
+						}
+					}
+					return copyService.DeleteAccount(WithAccountIPChannelWrite(txctx), id)
+				})
+			}
+		}
+	}
 	// 级联删除 spark 影子账号（先删影子，再删母账号）
 	shadows, err := s.accountRepo.ListShadowsByParent(ctx, id)
 	if err != nil {
@@ -1376,6 +1404,15 @@ func (s *adminServiceImpl) RefreshAccountCredentials(ctx context.Context, id int
 }
 
 func (s *adminServiceImpl) ClearAccountError(ctx context.Context, id int64) (*Account, error) {
+	if handled, err := s.applyLogicalAccountRuntimeAction(ctx, id, func(inner *adminServiceImpl, ctx context.Context, memberID int64) error {
+		_, err := inner.ClearAccountError(ctx, memberID)
+		return err
+	}); handled {
+		if err != nil {
+			return nil, err
+		}
+		return s.GetAccount(ctx, id)
+	}
 	if err := s.accountRepo.ClearError(ctx, id); err != nil {
 		return nil, err
 	}
@@ -1712,6 +1749,11 @@ func (e *MixedChannelError) Error() string {
 }
 
 func (s *adminServiceImpl) ResetAccountQuota(ctx context.Context, id int64) error {
+	if handled, err := s.applyLogicalAccountRuntimeAction(ctx, id, func(inner *adminServiceImpl, ctx context.Context, memberID int64) error {
+		return inner.ResetAccountQuota(ctx, memberID)
+	}); handled {
+		return err
+	}
 	account, err := s.accountRepo.GetByID(ctx, id)
 	if err != nil {
 		return err

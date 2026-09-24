@@ -32,7 +32,8 @@ func (s *OpenAIGatewayService) ForwardAsAnthropic(
 	body []byte,
 	promptCacheKey string,
 	defaultMappedModel string,
-) (*OpenAIForwardResult, error) {
+) (mismatchResult *OpenAIForwardResult, mismatchErr error) {
+	defer func() { s.quarantineForwardResultModelMismatch(ctx, account, mismatchResult) }()
 	requestedModel := strings.TrimSpace(gjson.GetBytes(body, "model").String())
 	billingPreflightModel := resolveOpenAIForwardModel(account, requestedModel, defaultMappedModel)
 	if err := s.validatePricingBeforeForward(ctx, c, requestedModel, billingPreflightModel); err != nil {
@@ -397,6 +398,9 @@ func (s *OpenAIGatewayService) ForwardAsAnthropic(
 	}
 	if compatTurnState != "" && upstreamReq.Header.Get("x-codex-turn-state") == "" {
 		upstreamReq.Header.Set("x-codex-turn-state", compatTurnState)
+	}
+	if err := s.applyOpenAICodexTicketToRequest(ctx, account, upstreamModel, upstreamReq); err != nil {
+		return nil, err
 	}
 
 	// 7. Send request

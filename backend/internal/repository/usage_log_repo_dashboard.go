@@ -166,25 +166,49 @@ func (r *usageLogRepository) fillDashboardEntityStats(ctx context.Context, stats
 	}
 
 	accountStatsQuery := `
+		WITH routes AS (
+			SELECT COALESCE(ic.logical_account_id, a.id) AS logical_id,
+				ic.account_id IS NOT NULL AS is_ip_channel, a.status,
+				a.status = $1 AND a.schedulable
+				AND (NOT a.auto_pause_on_expired OR a.expires_at IS NULL OR a.expires_at > $3)
+				AND (a.rate_limit_reset_at IS NULL OR a.rate_limit_reset_at <= $3)
+				AND (a.overload_until IS NULL OR a.overload_until <= $3)
+				AND (a.temp_unschedulable_until IS NULL OR a.temp_unschedulable_until <= $3)
+				AND (ic.account_id IS NULL OR (p.id IS NOT NULL AND p.status = $1 AND p.deleted_at IS NULL AND (p.expires_at IS NULL OR p.expires_at > $3))) AS healthy,
+				a.rate_limit_reset_at > $3 AS rate_limited,
+				a.overload_until > $3 AS overloaded
+			FROM accounts a
+			LEFT JOIN account_ip_channels ic ON ic.account_id = a.id
+			LEFT JOIN proxies p ON p.id = a.proxy_id
+			WHERE a.deleted_at IS NULL AND (ic.account_id IS NULL OR ic.retired_at IS NULL)
+		), logical AS (
+			SELECT logical_id, BOOL_OR(healthy) AS healthy,
+				BOOL_OR(status = $2) AS has_error,
+				BOOL_OR(rate_limited) AS rate_limited, BOOL_OR(overloaded) AS overloaded
+			FROM routes GROUP BY logical_id
+		)
 		SELECT
 			COUNT(*) as total_accounts,
-			COUNT(CASE WHEN status = $1 AND schedulable = true THEN 1 END) as normal_accounts,
-			COUNT(CASE WHEN status = $2 THEN 1 END) as error_accounts,
-			COUNT(CASE WHEN rate_limited_at IS NOT NULL AND rate_limit_reset_at > $3 THEN 1 END) as ratelimit_accounts,
-			COUNT(CASE WHEN overload_until IS NOT NULL AND overload_until > $4 THEN 1 END) as overload_accounts
-		FROM accounts
-		WHERE deleted_at IS NULL
+			COUNT(*) FILTER (WHERE healthy) AS normal_accounts,
+			COUNT(*) FILTER (WHERE has_error) AS error_accounts,
+			COUNT(*) FILTER (WHERE rate_limited) AS ratelimit_accounts,
+			COUNT(*) FILTER (WHERE overloaded) AS overload_accounts,
+			(SELECT COUNT(*) FROM routes WHERE is_ip_channel) AS total_ip_channels,
+			(SELECT COUNT(*) FROM routes WHERE is_ip_channel AND healthy) AS available_ip_channels
+		FROM logical
 	`
 	if err := scanSingleRow(
 		ctx,
 		r.sql,
 		accountStatsQuery,
-		[]any{service.StatusActive, service.StatusError, now, now},
+		[]any{service.StatusActive, service.StatusError, now},
 		&stats.TotalAccounts,
 		&stats.NormalAccounts,
 		&stats.ErrorAccounts,
 		&stats.RateLimitAccounts,
 		&stats.OverloadAccounts,
+		&stats.TotalIPChannels,
+		&stats.AvailableIPChannels,
 	); err != nil {
 		return err
 	}
@@ -203,7 +227,10 @@ func (r *usageLogRepository) fillDashboardUsageStatsAggregated(ctx context.Conte
 			COALESCE(SUM(total_cost), 0) as total_cost,
 			COALESCE(SUM(actual_cost), 0) as total_actual_cost,
 			COALESCE(SUM(account_cost), 0) as total_account_cost,
-			COALESCE(SUM(total_duration_ms), 0) as total_duration_ms
+			COALESCE(SUM(total_duration_ms) FILTER (WHERE duration_samples IS NOT NULL), 0) as total_duration_ms,
+			COALESCE(SUM(duration_samples), 0) AS duration_samples,
+			COALESCE(MIN(bucket_date)::text, '') AS usage_period_start,
+			COALESCE(MAX(bucket_date)::text, '') AS usage_period_end
 		FROM usage_dashboard_daily
 	`
 	var totalDurationMs int64
@@ -221,12 +248,15 @@ func (r *usageLogRepository) fillDashboardUsageStatsAggregated(ctx context.Conte
 		&stats.TotalActualCost,
 		&stats.TotalAccountCost,
 		&totalDurationMs,
+		&stats.DurationSamples,
+		&stats.UsagePeriodStart,
+		&stats.UsagePeriodEnd,
 	); err != nil {
 		return err
 	}
 	stats.TotalTokens = stats.TotalInputTokens + stats.TotalOutputTokens + stats.TotalCacheCreationTokens + stats.TotalCacheReadTokens
-	if stats.TotalRequests > 0 {
-		stats.AverageDurationMs = float64(totalDurationMs) / float64(stats.TotalRequests)
+	if stats.DurationSamples > 0 {
+		stats.AverageDurationMs = float64(totalDurationMs) / float64(stats.DurationSamples)
 	}
 
 	todayStatsQuery := `
@@ -292,7 +322,7 @@ func (r *usageLogRepository) fillDashboardUsageStatsFromUsageLogs(ctx context.Co
 				total_cost,
 				actual_cost,
 				COALESCE(account_stats_cost, total_cost) * COALESCE(account_rate_multiplier, 1) AS account_cost,
-				COALESCE(duration_ms, 0) AS duration_ms
+				duration_ms
 			FROM usage_logs
 			WHERE created_at >= LEAST($1::timestamptz, $3::timestamptz)
 				AND created_at < GREATEST($2::timestamptz, $4::timestamptz)
@@ -307,6 +337,7 @@ func (r *usageLogRepository) fillDashboardUsageStatsFromUsageLogs(ctx context.Co
 			COALESCE(SUM(actual_cost) FILTER (WHERE created_at >= $1::timestamptz AND created_at < $2::timestamptz), 0) AS total_actual_cost,
 			COALESCE(SUM(account_cost) FILTER (WHERE created_at >= $1::timestamptz AND created_at < $2::timestamptz), 0) AS total_account_cost,
 			COALESCE(SUM(duration_ms) FILTER (WHERE created_at >= $1::timestamptz AND created_at < $2::timestamptz), 0) AS total_duration_ms,
+			COUNT(duration_ms) FILTER (WHERE created_at >= $1::timestamptz AND created_at < $2::timestamptz) AS duration_samples,
 			COUNT(*) FILTER (WHERE created_at >= $3::timestamptz AND created_at < $4::timestamptz) AS today_requests,
 			COALESCE(SUM(input_tokens) FILTER (WHERE created_at >= $3::timestamptz AND created_at < $4::timestamptz), 0) AS today_input_tokens,
 			COALESCE(SUM(output_tokens) FILTER (WHERE created_at >= $3::timestamptz AND created_at < $4::timestamptz), 0) AS today_output_tokens,
@@ -314,10 +345,13 @@ func (r *usageLogRepository) fillDashboardUsageStatsFromUsageLogs(ctx context.Co
 			COALESCE(SUM(cache_read_tokens) FILTER (WHERE created_at >= $3::timestamptz AND created_at < $4::timestamptz), 0) AS today_cache_read_tokens,
 			COALESCE(SUM(total_cost) FILTER (WHERE created_at >= $3::timestamptz AND created_at < $4::timestamptz), 0) AS today_cost,
 			COALESCE(SUM(actual_cost) FILTER (WHERE created_at >= $3::timestamptz AND created_at < $4::timestamptz), 0) AS today_actual_cost,
-			COALESCE(SUM(account_cost) FILTER (WHERE created_at >= $3::timestamptz AND created_at < $4::timestamptz), 0) AS today_account_cost
+			COALESCE(SUM(account_cost) FILTER (WHERE created_at >= $3::timestamptz AND created_at < $4::timestamptz), 0) AS today_account_cost,
+			MIN(created_at) FILTER (WHERE created_at >= $1::timestamptz AND created_at < $2::timestamptz),
+			MAX(created_at) FILTER (WHERE created_at >= $1::timestamptz AND created_at < $2::timestamptz)
 		FROM scoped
 	`
 	var totalDurationMs int64
+	var firstUsage, lastUsage sql.NullTime
 	if err := scanSingleRow(
 		ctx,
 		r.sql,
@@ -332,6 +366,7 @@ func (r *usageLogRepository) fillDashboardUsageStatsFromUsageLogs(ctx context.Co
 		&stats.TotalActualCost,
 		&stats.TotalAccountCost,
 		&totalDurationMs,
+		&stats.DurationSamples,
 		&stats.TodayRequests,
 		&stats.TodayInputTokens,
 		&stats.TodayOutputTokens,
@@ -340,12 +375,18 @@ func (r *usageLogRepository) fillDashboardUsageStatsFromUsageLogs(ctx context.Co
 		&stats.TodayCost,
 		&stats.TodayActualCost,
 		&stats.TodayAccountCost,
+		&firstUsage,
+		&lastUsage,
 	); err != nil {
 		return err
 	}
 	stats.TotalTokens = stats.TotalInputTokens + stats.TotalOutputTokens + stats.TotalCacheCreationTokens + stats.TotalCacheReadTokens
-	if stats.TotalRequests > 0 {
-		stats.AverageDurationMs = float64(totalDurationMs) / float64(stats.TotalRequests)
+	if stats.DurationSamples > 0 {
+		stats.AverageDurationMs = float64(totalDurationMs) / float64(stats.DurationSamples)
+	}
+	if firstUsage.Valid && lastUsage.Valid {
+		stats.UsagePeriodStart = firstUsage.Time.In(timezone.Location()).Format("2006-01-02")
+		stats.UsagePeriodEnd = lastUsage.Time.In(timezone.Location()).Format("2006-01-02")
 	}
 
 	stats.TodayTokens = stats.TodayInputTokens + stats.TodayOutputTokens + stats.TodayCacheCreationTokens + stats.TodayCacheReadTokens

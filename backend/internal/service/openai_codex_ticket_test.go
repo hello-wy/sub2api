@@ -289,7 +289,7 @@ func TestCodexTicketCompletionAndTransparentObserver(t *testing.T) {
 			p := make([]byte, 3)
 			for {
 				n, err := observer.Read(p)
-				got.Write(p[:n])
+				_, _ = got.Write(p[:n])
 				if err == io.EOF {
 					break
 				}

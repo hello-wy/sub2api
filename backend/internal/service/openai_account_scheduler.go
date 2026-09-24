@@ -534,6 +534,9 @@ func (s *defaultOpenAIAccountScheduler) selectBySessionHash(
 			return nil, false, nil
 		}
 	}
+	if selection, handled, escaped, err := s.selectOrderedIPSticky(ctx, req, accountID); handled {
+		return selection, escaped, err
+	}
 
 	account, err := s.service.getSchedulableAccount(ctx, accountID)
 	if err != nil || account == nil {
@@ -2188,7 +2191,21 @@ func (s *OpenAIGatewayService) selectAccountWithScheduler(
 	previousResponseCanMove bool,
 	useUpstreamTokenCost bool,
 ) (*AccountSelectionResult, OpenAIAccountScheduleDecision, error) {
+	var channelErr error
+	excludedIDs, channelErr = expandIPChannelExclusions(ctx, s.accountRepo, excludedIDs)
+	if channelErr != nil {
+		return nil, OpenAIAccountScheduleDecision{}, channelErr
+	}
+	excludedIDs = applyAccountIPRequestBinding(ctx, excludedIDs)
 	selection, decision, err := s.selectAccountWithSchedulerOnce(ctx, groupID, previousResponseID, sessionHash, requestedModel, excludedIDs, requiredTransport, requiredCapability, requiredImageCapability, requireCompact, platform, previousResponseCanMove, useUpstreamTokenCost)
+	if err == nil && selection != nil && (selection.Acquired || selection.ipChannelSelection == nil) {
+		if bindingErr := rememberAccountIPRequestBinding(ctx, s.accountRepo, selection); bindingErr != nil {
+			if selection.ReleaseFunc != nil {
+				selection.ReleaseFunc()
+			}
+			return nil, decision, bindingErr
+		}
+	}
 	if err == nil || openAIProxyStreamQuarantineBypassed(ctx) {
 		return selection, decision, err
 	}
@@ -2204,7 +2221,16 @@ func (s *OpenAIGatewayService) selectAccountWithScheduler(
 		return selection, decision, err
 	}
 	s.logOpenAIProxyStreamQuarantineFailOpen(requestedModel, blocked)
-	return s.selectAccountWithSchedulerOnce(withOpenAIProxyStreamQuarantineBypass(ctx), groupID, previousResponseID, sessionHash, requestedModel, excludedIDs, requiredTransport, requiredCapability, requiredImageCapability, requireCompact, platform, previousResponseCanMove, useUpstreamTokenCost)
+	selection, decision, err = s.selectAccountWithSchedulerOnce(withOpenAIProxyStreamQuarantineBypass(ctx), groupID, previousResponseID, sessionHash, requestedModel, excludedIDs, requiredTransport, requiredCapability, requiredImageCapability, requireCompact, platform, previousResponseCanMove, useUpstreamTokenCost)
+	if err == nil && selection != nil && (selection.Acquired || selection.ipChannelSelection == nil) {
+		if bindingErr := rememberAccountIPRequestBinding(ctx, s.accountRepo, selection); bindingErr != nil {
+			if selection.ReleaseFunc != nil {
+				selection.ReleaseFunc()
+			}
+			return nil, decision, bindingErr
+		}
+	}
+	return selection, decision, err
 }
 
 type openAIGroupPrivacyRequirementContextKey struct{}

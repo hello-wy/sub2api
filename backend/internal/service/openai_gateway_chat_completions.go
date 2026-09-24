@@ -75,7 +75,8 @@ func (s *OpenAIGatewayService) forwardAsChatCompletions(
 	promptCacheKey string,
 	defaultMappedModel string,
 	compatPromptCacheTenantIsolated bool,
-) (*OpenAIForwardResult, error) {
+) (mismatchResult *OpenAIForwardResult, mismatchErr error) {
+	defer func() { s.quarantineForwardResultModelMismatch(ctx, account, mismatchResult) }()
 	rememberOpenCodeInboundBody(c, body)
 	beginUpstreamResponseModelObservation(c)
 	ClearActualOpenAIUpstreamEndpoint(c)

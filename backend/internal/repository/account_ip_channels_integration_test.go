@@ -194,7 +194,9 @@ func TestAccountIPChannelsPostgresExpiredProxyDoesNotRotate(t *testing.T) {
 	root, err := r.JoinAccountIPChannels(ctx, []int64{a[0].ID, a[1].ID})
 	require.NoError(t, err)
 	proxyRepo := &proxyRepository{client: c, sql: r.sql}
-	_, err = proxyRepo.sweepOneExpiredProxy(ctx, *a[0].ProxyID, a[1].ProxyID, true)
+	proxy, err := proxyRepo.GetByID(ctx, *a[0].ProxyID)
+	require.NoError(t, err)
+	_, err = proxyRepo.sweepOneExpiredProxy(ctx, *proxy, time.Now(), a[1].ProxyID, true)
 	require.NoError(t, err)
 	fresh, err := r.GetByID(ctx, root)
 	require.NoError(t, err)

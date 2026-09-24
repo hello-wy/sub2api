@@ -775,6 +775,7 @@ func logResponseModelBillingApplied(component string, account *Account, requestI
 
 // recordUsageCore 是 RecordUsage 的核心实现。
 func (s *GatewayService) recordUsageCore(ctx context.Context, input *recordUsageCoreInput) error {
+	quarantineForwardResultModelMismatch(ctx, s.accountRepo, input.Account, input.Result)
 	result := input.Result
 	apiKey := input.APIKey
 	user := input.User

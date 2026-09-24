@@ -329,7 +329,7 @@ func parseIntelligentSSE(raw string) (output, errorMessage, model string, comple
 		kind, _ := generic["type"].(string)
 		if strings.HasSuffix(kind, ".delta") {
 			if delta, _ := generic["delta"].(string); delta != "" {
-				text.WriteString(delta)
+				_, _ = text.WriteString(delta)
 			}
 		}
 		if kind == "response.completed" || kind == "response.done" {
@@ -340,7 +340,7 @@ func parseIntelligentSSE(raw string) (output, errorMessage, model string, comple
 				}
 				if terminal := intelligentTerminalText(response); terminal != "" {
 					text.Reset()
-					text.WriteString(terminal)
+					_, _ = text.WriteString(terminal)
 				}
 			}
 		}
@@ -355,7 +355,7 @@ func parseIntelligentSSE(raw string) (output, errorMessage, model string, comple
 		}
 		switch e.Type {
 		case "content":
-			text.WriteString(e.Text)
+			_, _ = text.WriteString(e.Text)
 		case "error":
 			errorMessage = e.Error
 		case "test_start":
@@ -379,7 +379,7 @@ func intelligentTerminalText(response map[string]any) string {
 		for _, rawPart := range content {
 			part, _ := rawPart.(map[string]any)
 			if value, _ := part["text"].(string); value != "" {
-				text.WriteString(value)
+				_, _ = text.WriteString(value)
 			}
 		}
 	}

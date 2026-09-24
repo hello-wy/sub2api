@@ -28,7 +28,11 @@ func persistAccountModelMismatch(ctx context.Context, repo AccountRepository, id
 		return recorder.RecordAccountModelMismatch(ctx, id, expected, actual, requestID, gate)
 	}
 	gate(nil)
-	err := repo.(AccountModelMismatchMarker).MarkAccountModelMismatch(ctx, id, expected, actual, requestID)
+	marker, ok := repo.(AccountModelMismatchMarker)
+	if !ok {
+		return false, errors.New("account repository does not support model mismatch quarantine")
+	}
+	err := marker.MarkAccountModelMismatch(ctx, id, expected, actual, requestID)
 	return true, err
 }
 
@@ -87,7 +91,10 @@ func CapturePendingAccountModelMismatchReset(accountIDs ...int64) func() {
 	states := make(map[int64]any, len(accountIDs))
 	for _, id := range accountIDs {
 		if state, ok := pendingAccountModelMismatches.Load(id); ok {
-			pending := state.(*pendingAccountModelMismatch)
+			pending, valid := state.(*pendingAccountModelMismatch)
+			if !valid {
+				continue
+			}
 			pending.mu.Lock()
 			if !pending.inFlight {
 				states[id] = state
@@ -113,7 +120,10 @@ func hasPendingAccountModelMismatch(account *Account) bool {
 	if !blocked {
 		return false
 	}
-	state := value.(*pendingAccountModelMismatch)
+	state, ok := value.(*pendingAccountModelMismatch)
+	if !ok {
+		return false
+	}
 	state.mu.Lock()
 	if state.inFlight || account.IsModelMismatchQuarantined() || time.Since(state.checkedAt) < 5*time.Second {
 		state.mu.Unlock()

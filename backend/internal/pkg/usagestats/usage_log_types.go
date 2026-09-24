@@ -43,11 +43,13 @@ type DashboardStats struct {
 	ActiveAPIKeys int64 `json:"active_api_keys"` // 状态为 active 的 API Key 数
 
 	// 账户统计
-	TotalAccounts     int64 `json:"total_accounts"`
-	NormalAccounts    int64 `json:"normal_accounts"`    // 正常账户数 (schedulable=true, status=active)
-	ErrorAccounts     int64 `json:"error_accounts"`     // 异常账户数 (status=error)
-	RateLimitAccounts int64 `json:"ratelimit_accounts"` // 限流账户数
-	OverloadAccounts  int64 `json:"overload_accounts"`  // 过载账户数
+	TotalAccounts       int64 `json:"total_accounts"`
+	TotalIPChannels     int64 `json:"total_ip_channels"`
+	AvailableIPChannels int64 `json:"available_ip_channels"`
+	NormalAccounts      int64 `json:"normal_accounts"`    // 正常账户数 (schedulable=true, status=active)
+	ErrorAccounts       int64 `json:"error_accounts"`     // 异常账户数 (status=error)
+	RateLimitAccounts   int64 `json:"ratelimit_accounts"` // 限流账户数
+	OverloadAccounts    int64 `json:"overload_accounts"`  // 过载账户数
 
 	// 累计 Token 使用统计
 	TotalRequests            int64   `json:"total_requests"`
@@ -73,6 +75,9 @@ type DashboardStats struct {
 
 	// 系统运行统计
 	AverageDurationMs float64 `json:"average_duration_ms"` // 平均响应时间
+	DurationSamples   int64   `json:"duration_samples"`
+	UsagePeriodStart  string  `json:"usage_period_start"`
+	UsagePeriodEnd    string  `json:"usage_period_end"`
 
 	// 性能指标
 	Rpm int64 `json:"rpm"` // 近5分钟平均每分钟请求数
@@ -361,6 +366,7 @@ type AccountUsageSummary struct {
 	AvgDailyRequests  float64 `json:"avg_daily_requests"`
 	AvgDailyTokens    float64 `json:"avg_daily_tokens"`
 	AvgDurationMs     float64 `json:"avg_duration_ms"`
+	DurationSamples   int64   `json:"-"`
 	Today             *struct {
 		Date     string  `json:"date"`
 		Cost     float64 `json:"cost"`

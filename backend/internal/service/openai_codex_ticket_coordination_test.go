@@ -160,7 +160,7 @@ func (c *codexPolicyReleaseFixture) FinishCodexTicketHarvest(ctx context.Context
 }
 
 func TestCodexTicketLeaseReleaseRetainsJob429Policy(t *testing.T) {
-	old := Context429Enforcement(nil)
+	old := Context429Enforcement(context.TODO())
 	t.Cleanup(func() { Set429EnforcementEnabled(old) })
 	Set429EnforcementEnabled(false)
 	a := stateTicketTestAccount(7995)

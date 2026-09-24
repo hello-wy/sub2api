@@ -19,6 +19,7 @@ const (
 	schedulerOutboxWatermarkKey    = "sched:outbox:watermark"
 	schedulerAccountPrefix         = "sched:acc:"
 	schedulerAccountMetaPrefix     = "sched:meta:"
+	schedulerAccountRevisionPrefix = "sched:rev:"
 	schedulerAccountLastUsedPrefix = "sched:acc:last_used:"
 	schedulerActivePrefix          = "sched:active:"
 	schedulerReadyPrefix           = "sched:ready:"
@@ -59,6 +60,20 @@ for index = 1, #ARGV do
     end
 end
 return updated
+`)
+
+// Serialize the account payload and metadata under the durable row revision so
+// delayed snapshot rebuilds cannot undo a newer quarantine or recovery.
+var writeSchedulerAccountScript = redis.NewScript(`
+local candidate = tonumber(ARGV[3])
+local current = tonumber(redis.call('GET', KEYS[3]))
+if current ~= nil and candidate < current then
+    return 0
+end
+redis.call('SET', KEYS[1], ARGV[1])
+redis.call('SET', KEYS[2], ARGV[2])
+redis.call('SET', KEYS[3], ARGV[3])
+return 1
 `)
 
 var (
@@ -604,7 +619,7 @@ func (c *schedulerCache) DeleteAccount(ctx context.Context, accountID int64) err
 		return nil
 	}
 	id := strconv.FormatInt(accountID, 10)
-	return c.rdb.Del(ctx, schedulerAccountKey(id), schedulerAccountMetaKey(id), schedulerLastUsedKey(id)).Err()
+	return c.rdb.Del(ctx, schedulerAccountKey(id), schedulerAccountMetaKey(id), schedulerAccountRevisionKey(id), schedulerLastUsedKey(id)).Err()
 }
 
 func (c *schedulerCache) UpdateLastUsed(ctx context.Context, updates map[int64]time.Time) error {
@@ -636,7 +651,7 @@ func (c *schedulerCache) UpdateLastUsed(ctx context.Context, updates map[int64]t
 				"error", err,
 			)
 			idText := strconv.FormatInt(id, 10)
-			pipe.Del(ctx, schedulerAccountKey(idText), schedulerAccountMetaKey(idText), schedulerLastUsedKey(idText))
+			pipe.Del(ctx, schedulerAccountKey(idText), schedulerAccountMetaKey(idText), schedulerAccountRevisionKey(idText), schedulerLastUsedKey(idText))
 			queued++
 			continue
 		}
@@ -718,6 +733,10 @@ func schedulerAccountKey(id string) string {
 
 func schedulerAccountMetaKey(id string) string {
 	return schedulerAccountMetaPrefix + id
+}
+
+func schedulerAccountRevisionKey(id string) string {
+	return schedulerAccountRevisionPrefix + id
 }
 
 func schedulerLastUsedKey(id string) string {
@@ -807,8 +826,13 @@ func (c *schedulerCache) writeAccountIDs(ctx context.Context, accounts []service
 		}
 
 		id := strconv.FormatInt(account.ID, 10)
-		pipe.Set(ctx, schedulerAccountKey(id), fullPayload, 0)
-		pipe.Set(ctx, schedulerAccountMetaKey(id), metaPayload, 0)
+		revision := int64(0)
+		if !account.UpdatedAt.IsZero() {
+			revision = account.UpdatedAt.UnixMicro()
+		}
+		writeSchedulerAccountScript.Eval(ctx, pipe,
+			[]string{schedulerAccountKey(id), schedulerAccountMetaKey(id), schedulerAccountRevisionKey(id)},
+			fullPayload, metaPayload, revision)
 		// Keep the hot LastUsedAt side key untouched: a lagging snapshot rebuild
 		// must not overwrite a newer scheduler update.
 		accountIDs = append(accountIDs, account.ID)
@@ -873,6 +897,7 @@ func buildSchedulerMetadataAccount(account service.Account) service.Account {
 		Priority:                account.Priority,
 		RateMultiplier:          account.RateMultiplier,
 		Status:                  account.Status,
+		UpdatedAt:               account.UpdatedAt,
 		LastUsedAt:              account.LastUsedAt,
 		ExpiresAt:               account.ExpiresAt,
 		AutoPauseOnExpired:      account.AutoPauseOnExpired,
@@ -974,6 +999,9 @@ func filterSchedulerExtra(extra map[string]any) map[string]any {
 		return nil
 	}
 	keys := []string{
+		service.AccountModelMismatchExtraKey,
+		"account_traffic_control",
+		"codex_ticket_config",
 		// Anthropic shared-window and Fable-only threshold checks run on this
 		// projection. UpdateExtra refreshes both payloads without a bucket rebuild.
 		"session_window_utilization",

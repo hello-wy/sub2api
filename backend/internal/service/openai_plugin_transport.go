@@ -17,7 +17,7 @@ func requestModelFromBody(req *http.Request) string {
 	if err != nil {
 		return ""
 	}
-	defer body.Close()
+	defer func() { _ = body.Close() }()
 	raw, err := io.ReadAll(io.LimitReader(body, 1<<20))
 	if err != nil {
 		return ""
@@ -38,6 +38,17 @@ func (s *OpenAIGatewayService) SetPluginManager(manager *PluginManager) {
 // doOpenAIUpstream 只在 OpenAI OAuth 能力绑定已启用时把真实请求交给插件。
 // 插件返回标准 http.Response，响应解析、错误映射、SSE 和计费仍由现有核心链处理。
 func (s *OpenAIGatewayService) doOpenAIUpstream(request *http.Request, proxyURL string, account *Account) (*http.Response, error) {
+	request = WithAccountTrafficRequest(request, account)
+	response, err := accountTrafficController(s.httpUpstream).DoHTTP(request, func(controlled *http.Request) (*http.Response, error) {
+		return s.doOpenAIUpstreamWithoutTraffic(controlled, proxyURL, account)
+	})
+	if err == nil {
+		s.observeCodexTicketResponse(request, response)
+	}
+	return response, err
+}
+
+func (s *OpenAIGatewayService) doOpenAIUpstreamWithoutTraffic(request *http.Request, proxyURL string, account *Account) (*http.Response, error) {
 	if err := applyCodexRequestEndpoint(request, s.accountRepo, s.cfg, account); err != nil {
 		return nil, err
 	}
@@ -60,6 +71,18 @@ func (s *OpenAIGatewayService) doOpenAIUpstream(request *http.Request, proxyURL 
 // doOpenAIAccountTestUpstream 让 OpenAI OAuth 账号测试与真实转发使用同一插件路径。
 // API Key 和未命中插件的账号保持各自原有的 HTTPUpstream 行为。
 func (s *AccountTestService) doOpenAIAccountTestUpstream(
+	request *http.Request,
+	proxyURL string,
+	account *Account,
+	useTLSFallback bool,
+) (response *http.Response, err error) {
+	request = WithAccountTrafficRequest(request, account)
+	return accountTrafficController(s.httpUpstream).DoHTTP(request, func(controlled *http.Request) (*http.Response, error) {
+		return s.doOpenAIAccountTestUpstreamWithoutTraffic(controlled, proxyURL, account, useTLSFallback)
+	})
+}
+
+func (s *AccountTestService) doOpenAIAccountTestUpstreamWithoutTraffic(
 	request *http.Request,
 	proxyURL string,
 	account *Account,

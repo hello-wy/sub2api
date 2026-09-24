@@ -94,6 +94,24 @@ const ProxyModeExtraKey = "proxy_mode"
 
 const ProxyModeRandom = "random"
 
+// NormalizeProxyModeExtra accepts only the supported random mode; malformed
+// values are removed before persistence so service and database invariants agree.
+func NormalizeProxyModeExtra(extra map[string]any) map[string]any {
+	if extra == nil {
+		return nil
+	}
+	raw, ok := extra[ProxyModeExtraKey]
+	if !ok {
+		return extra
+	}
+	if mode, ok := raw.(string); ok && strings.EqualFold(strings.TrimSpace(mode), ProxyModeRandom) {
+		extra[ProxyModeExtraKey] = ProxyModeRandom
+		return extra
+	}
+	delete(extra, ProxyModeExtraKey)
+	return extra
+}
+
 func (a *Account) IsRandomProxy() bool {
 	if a == nil || a.Extra == nil {
 		return false
@@ -2416,7 +2434,7 @@ func (a *Account) IsAnthropicOAuthOrSetupToken() bool {
 // Codex/STATE 保护也需要读取同一配置，不能因为历史注释只覆盖 Anthropic
 // 而把账号的显式 TLS 策略判定成关闭。
 func (a *Account) IsTLSFingerprintEnabled() bool {
-	if a == nil || !(a.IsAnthropicOAuthOrSetupToken() || a.IsOpenAIOAuthLike()) {
+	if a == nil || (!a.IsAnthropicOAuthOrSetupToken() && !a.IsOpenAIOAuthLike()) {
 		return false
 	}
 	if a.Extra == nil {
