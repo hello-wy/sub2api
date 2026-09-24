@@ -17,9 +17,10 @@ func TestBuildExcelBPSAccountTestBodyUsesResponsesContract(t *testing.T) {
 	if body["model"] != "gpt-6-astra" || body["stream"] != true || body["store"] != false {
 		t.Fatalf("unexpected body: %#v", body)
 	}
-	input := body["input"].([]any)
-	item := input[0].(map[string]any)
-	content := item["content"].([]any)[0].(map[string]any)
+	input, _ := body["input"].([]any)
+	item, _ := input[0].(map[string]any)
+	contentItems, _ := item["content"].([]any)
+	content, _ := contentItems[0].(map[string]any)
 	if content["text"] != "糖果题" {
 		t.Fatalf("prompt was not preserved: %#v", content)
 	}
