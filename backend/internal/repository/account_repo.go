@@ -2788,7 +2788,7 @@ func (r *accountRepository) UpdateExtra(ctx context.Context, id int64, updates m
 	}
 	result, err := client.ExecContext(
 		ctx,
-		"UPDATE accounts SET extra = "+extraExpression+", updated_at = NOW() WHERE id = $2 AND deleted_at IS NULL",
+		"UPDATE accounts SET extra = "+extraExpression+", updated_at = GREATEST(clock_timestamp(), updated_at + interval '1 microsecond') WHERE id = $2 AND deleted_at IS NULL",
 		string(payload), id,
 	)
 
