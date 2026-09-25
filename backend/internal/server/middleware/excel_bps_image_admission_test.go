@@ -340,7 +340,7 @@ func TestExcelBPSImageAdmissionUnknownBodyStopsBeforeBudgetOverflow(t *testing.T
 	defer second.release()
 	var reads atomic.Int32
 	body := &bpsImageBudgetedBody{
-		ReadCloser: &bpsImageCountingBody{reads: &reads, reader: strings.NewReader("content")},
+		ReadCloser:  &bpsImageCountingBody{reads: &reads, reader: strings.NewReader("content")},
 		reservation: second,
 		maxBody:     bpsImageMaxBodyBytes,
 	}
