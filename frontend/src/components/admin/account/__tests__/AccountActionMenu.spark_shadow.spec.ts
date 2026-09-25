@@ -150,22 +150,7 @@ describe('AccountActionMenu — spark shadow 按钮可见性', () => {
     const body = getBodyText()
     expect(body).toContain('admin.accounts.reAuthorize')
     expect(body).toContain('admin.accounts.setPrivacy')
-    expect(body).toContain('admin.accounts.riskControl.checkAction')
     wrapper.unmount()
-  })
-
-  it('API Key 与影子账号不显示风控检测', () => {
-    for (const account of [
-      makeAccount({ platform: 'openai', type: 'apikey', parent_account_id: null }),
-      makeAccount({ platform: 'openai', type: 'oauth', parent_account_id: 42 })
-    ]) {
-      const wrapper = mount(AccountActionMenu, {
-        props: { show: true, account, anchorRect },
-        attachTo: document.body,
-      })
-      expect(getBodyText()).not.toContain('admin.accounts.riskControl.checkAction')
-      wrapper.unmount()
-    }
   })
 
   it('点击按钮触发 create-spark-shadow 事件并携带 account', async () => {

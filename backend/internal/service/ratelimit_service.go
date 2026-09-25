@@ -31,7 +31,6 @@ type RateLimitService struct {
 	settingService        *SettingService
 	tokenCacheInvalidator TokenCacheInvalidator
 	runtimeBlocker        AccountRuntimeBlocker
-	openaiRiskControl     OpenAIRiskControlAutoProber
 	// ollamaCloudUsageProbe is the optional Ollama Cloud usage probe scheduler
 	// injected via SetOllamaCloudUsageProbeScheduler. See
 	// ratelimit_service_ollama_429.go for how real-Ollama 429s schedule an async
@@ -135,10 +134,6 @@ func (s *RateLimitService) SetTokenCacheInvalidator(invalidator TokenCacheInvali
 
 func (s *RateLimitService) SetAccountRuntimeBlocker(blocker AccountRuntimeBlocker) {
 	s.runtimeBlocker = blocker
-}
-
-func (s *RateLimitService) SetOpenAIRiskControlAutoProber(prober OpenAIRiskControlAutoProber) {
-	s.openaiRiskControl = prober
 }
 
 func (s *RateLimitService) IsOpenAIAdvancedSchedulerStickyWeightedEnabled(ctx context.Context) bool {
@@ -336,9 +331,6 @@ func (s *RateLimitService) CheckErrorPolicy(ctx context.Context, account *Accoun
 // 返回是否应该停止该账号的调度
 func (s *RateLimitService) HandleUpstreamError(ctx context.Context, account *Account, statusCode int, headers http.Header, responseBody []byte, requestedModel ...string) (shouldDisable bool) {
 	ctx = withTempUnschedulableModel(ctx, requestedModel)
-	if s.openaiRiskControl != nil {
-		s.openaiRiskControl.ObserveOpenAIRiskControlError(account, statusCode)
-	}
 	// Team 联动熔断必须先于池模式/自定义错误码/临时不可调度的各类早退；
 	// 同请求内与 fastpath 调用点的重复触发由方法内去重吸收。
 	s.maybeHandleOpenAITeamLinkedError(ctx, account, statusCode, responseBody)

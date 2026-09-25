@@ -385,6 +385,7 @@ export default {
     cost: 'Cost',
     firstToken: 'First Token',
     duration: 'Duration',
+    tps: 'TPS',
     latency: 'Latency',
     latencyFirstToken: 'First',
     latencyDuration: 'Total',
