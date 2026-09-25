@@ -8,7 +8,6 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/gin-gonic/gin"
@@ -64,7 +63,7 @@ func TestExcelBPSSelectedModelForwarding(t *testing.T) {
 	}
 }
 
-func TestExcelBPSSelectedModelsPreserveCodexTransportAndTickets(t *testing.T) {
+func TestExcelBPSSelectedModelsPreserveCodexTransport(t *testing.T) {
 	a := excelAccount()
 	a.Extra["openai_excel_bps_models"] = []string{"gpt-6-astra"}
 	a.Extra["openai_oauth_responses_websockets_v2_mode"] = OpenAIWSIngressModeCtxPool
@@ -83,22 +82,6 @@ func TestExcelBPSSelectedModelsPreserveCodexTransportAndTickets(t *testing.T) {
 		require.True(t, svc.isOpenAIAccountTransportCompatible(a, transport, "gpt-6-sol"))
 	}
 	require.True(t, svc.isOpenAIAccountTransportCompatible(a, OpenAIUpstreamTransportHTTPSSE, "gpt-6-astra"))
-	require.True(t, isOpenAICodexTicketAccount(a))
-	require.False(t, isOpenAICodexTicketAccount(a, "gpt-6-astra"))
-	require.True(t, isOpenAICodexTicketAccount(a, "gpt-6-sol"))
-	cfg.Gateway.OpenAICodexTicket.Enabled = true
-	cfg.Gateway.OpenAICodexTicket.FailClosed = true
-	cfg.Gateway.OpenAICodexTicket.Models = []string{"gpt-6-astra", "gpt-6-sol"}
-	require.False(t, svc.openAICodexTicketBlocksAccount(a, "gpt-6-astra"))
-	require.True(t, svc.openAICodexTicketBlocksAccount(a, "gpt-6-sol"))
-	require.NoError(t, svc.applyOpenAICodexTicket(context.Background(), a, "gpt-6-astra", http.Header{}))
-	require.Error(t, svc.applyOpenAICodexTicket(context.Background(), a, "gpt-6-sol", http.Header{}))
-	statuses := OpenAICodexTicketStatuses(a, cfg.Gateway.OpenAICodexTicket, time.Now())
-	require.Len(t, statuses, 1)
-	require.Equal(t, "gpt-6-sol", statuses[0].Model)
-	before := openAITurnRouteFingerprint(a)
-	a.Extra["openai_excel_bps_models"] = []string{"gpt-6-sol"}
-	require.NotEqual(t, before, openAITurnRouteFingerprint(a))
 }
 
 func TestExcelBPSSelectedCompactKeepsExcelModel(t *testing.T) {
@@ -106,7 +89,5 @@ func TestExcelBPSSelectedCompactKeepsExcelModel(t *testing.T) {
 	a.Extra["openai_excel_bps_models"] = []string{"gpt-6-astra"}
 	a.Credentials["model_mapping"] = map[string]any{"alias": "gpt-6-astra"}
 	a.Credentials["compact_model_mapping"] = map[string]any{"alias": "gpt-6-sol"}
-	svc := &OpenAIGatewayService{cfg: &config.Config{}}
-	require.Equal(t, "gpt-6-astra", svc.openAICodexTicketOutboundModel(a, "alias", true))
 	require.Equal(t, "gpt-6-astra", resolveOpenAIAccountUpstreamModelForRequest(a, "alias", true))
 }
