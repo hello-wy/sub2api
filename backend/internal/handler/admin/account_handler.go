@@ -1315,36 +1315,6 @@ func (h *AccountHandler) Test(c *gin.Context) {
 	}
 }
 
-// CheckOpenAIRiskControl checks the official upstream x-codex-turn-state for
-// one OpenAI OAuth account and persists only the derived observation.
-// POST /api/v1/admin/accounts/:id/risk-control-check
-func (h *AccountHandler) CheckOpenAIRiskControl(c *gin.Context) {
-	accountID, err := strconv.ParseInt(c.Param("id"), 10, 64)
-	if err != nil {
-		response.BadRequest(c, "Invalid account ID")
-		return
-	}
-	if h.accountTestService == nil {
-		response.Error(c, http.StatusServiceUnavailable, "Account test service unavailable")
-		return
-	}
-
-	snapshot, err := h.accountTestService.ProbeOpenAIRiskControl(c.Request.Context(), accountID)
-	if err != nil {
-		response.ErrorFrom(c, err)
-		return
-	}
-	account, err := h.adminService.GetAccount(c.Request.Context(), accountID)
-	if err != nil {
-		response.ErrorFrom(c, err)
-		return
-	}
-	response.Success(c, gin.H{
-		"account": h.buildAccountResponseWithRuntime(c.Request.Context(), account),
-		"result":  snapshot,
-	})
-}
-
 // RecoverState handles unified recovery of recoverable account runtime state.
 // POST /api/v1/admin/accounts/:id/recover-state
 func (h *AccountHandler) RecoverState(c *gin.Context) {

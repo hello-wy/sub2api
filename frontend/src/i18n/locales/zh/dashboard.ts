@@ -390,6 +390,7 @@ export default {
     cost: '费用',
     firstToken: '首 Token',
     duration: '耗时',
+    tps: 'TPS',
     latency: '延迟',
     latencyFirstToken: '首字',
     latencyDuration: '总耗时',

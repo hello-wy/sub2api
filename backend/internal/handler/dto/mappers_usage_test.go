@@ -28,6 +28,20 @@ func TestUsageLogFromService_IncludesOpenAIWSMode(t *testing.T) {
 	require.False(t, UsageLogFromServiceAdmin(httpLog).OpenAIWSMode)
 }
 
+func TestUsageLogFromService_IncludesTokensPerSecond(t *testing.T) {
+	t.Parallel()
+
+	duration := 2500
+	log := &service.UsageLog{OutputTokens: 50, DurationMs: &duration}
+
+	userDTO := UsageLogFromService(log)
+	adminDTO := UsageLogFromServiceAdmin(log)
+	require.NotNil(t, userDTO.TokensPerSecond)
+	require.InDelta(t, 20, *userDTO.TokensPerSecond, 0.0001)
+	require.NotNil(t, adminDTO.TokensPerSecond)
+	require.InDelta(t, 20, *adminDTO.TokensPerSecond, 0.0001)
+}
+
 func TestUsageLogFromService_PreservesNativeCompactionAndStream(t *testing.T) {
 	t.Parallel()
 

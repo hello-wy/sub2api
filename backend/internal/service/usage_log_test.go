@@ -110,3 +110,27 @@ func TestUsageLogSyncRequestTypeAndLegacyFieldsNilReceiver(t *testing.T) {
 	var log *UsageLog
 	log.SyncRequestTypeAndLegacyFields()
 }
+
+func TestUsageLogTokensPerSecond(t *testing.T) {
+	t.Parallel()
+
+	duration := 2500
+	log := &UsageLog{OutputTokens: 50, DurationMs: &duration}
+	got := log.TokensPerSecond()
+	require.NotNil(t, got)
+	require.InDelta(t, 20, *got, 0.0001)
+}
+
+func TestUsageLogTokensPerSecondReturnsNilWithoutUsableRate(t *testing.T) {
+	t.Parallel()
+
+	zero := 0
+	for _, log := range []*UsageLog{
+		nil,
+		{OutputTokens: 10},
+		{OutputTokens: 0, DurationMs: &zero},
+		{OutputTokens: 10, DurationMs: &zero},
+	} {
+		require.Nil(t, log.TokensPerSecond())
+	}
+}
