@@ -91,7 +91,7 @@ func TestExcelBPSCacheCreationAsInputBilling(t *testing.T) {
 						extra["openai_excel_bps_cache_creation_as_input"] = tt.option
 					}
 					original := OpenAIUsage{InputTokens: tt.input, CacheCreationInputTokens: tt.creation, CacheReadInputTokens: tt.read, OutputTokens: tt.output}
-					result := &OpenAIForwardResult{RequestID: "resp_bps_billing", Usage: original, Model: "gpt-6-astra", Stream: stream, Duration: time.Second}
+					result := &OpenAIForwardResult{RequestID: "resp_bps_billing", UpstreamEndpoint: "/basispoints/api/responses", Usage: original, Model: "gpt-6-astra", Stream: stream, Duration: time.Second}
 					input := &OpenAIRecordUsageInput{
 						Result: result, APIKey: &APIKey{ID: 1001}, User: &User{ID: 2001},
 						Account: &Account{ID: 3001, Platform: PlatformOpenAI, Type: AccountTypeOAuth, Extra: extra},
@@ -137,4 +137,29 @@ func TestExcelBPSCacheCreationAsInputBilling(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestExcelBPSSelectedModelBillingPreservesCodexCacheCreation(t *testing.T) {
+	usageRepo := &openAIRecordUsageLogRepoStub{inserted: true}
+	billingRepo := &openAIRecordUsageBillingRepoStub{}
+	svc := newOpenAIRecordUsageServiceWithBillingRepoForTest(usageRepo, billingRepo, &openAIRecordUsageUserRepoStub{}, &openAIRecordUsageSubRepoStub{}, nil)
+	svc.billingService = NewBillingService(svc.cfg, &PricingService{pricingData: map[string]*LiteLLMModelPricing{
+		"gpt-6-sol": {InputCostPerToken: 5e-6, OutputCostPerToken: 30e-6, CacheCreationInputTokenCost: 6.25e-6, CacheCreationInputTokenCostExplicit: true, CacheReadInputTokenCost: 0.5e-6},
+	}})
+	account := excelAccount()
+	account.Extra["openai_excel_bps_models"] = []string{"gpt-6-astra"}
+	account.Extra["openai_excel_bps_cache_creation_as_input"] = true
+	require.False(t, account.IsExcelBPSEnabledForModel("gpt-6-sol"))
+	original := OpenAIUsage{InputTokens: 1000, CacheCreationInputTokens: 200, CacheReadInputTokens: 100, OutputTokens: 50}
+	result := &OpenAIForwardResult{RequestID: "resp_codex_billing", Model: "gpt-6-sol", UpstreamEndpoint: "/v1/responses", Usage: original}
+	require.NoError(t, svc.RecordUsage(context.Background(), &OpenAIRecordUsageInput{
+		Result: result, APIKey: &APIKey{ID: 1001}, User: &User{ID: 2001}, Account: account,
+	}))
+	require.Equal(t, original, result.Usage)
+	require.NotNil(t, usageRepo.lastLog)
+	require.Equal(t, 700, usageRepo.lastLog.InputTokens)
+	require.Equal(t, 200, usageRepo.lastLog.CacheCreationTokens)
+	require.Equal(t, 100, usageRepo.lastLog.CacheReadTokens)
+	require.InDelta(t, 200*6.25e-6, usageRepo.lastLog.CacheCreationCost, 1e-12)
+	require.Equal(t, 200, billingRepo.lastCmd.CacheCreationTokens)
 }

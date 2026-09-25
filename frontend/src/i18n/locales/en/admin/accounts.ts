@@ -631,7 +631,11 @@ export default {
         excelBPSCacheCreationAsInput: 'Bill cache creation as regular input',
         excelBPSCacheCreationAsInputDesc: 'Disabled by default. Count cache creation tokens as regular input usage and bill them at the input rate. Cache reads keep their existing rate. This changes local billing only, not upstream caching.',
         excelBPSDesc: 'Forward Responses through Excel using this account’s existing ChatGPT OAuth credentials. No GitHub login or sidecar. Disable to restore Codex routing.',
-        excelBPSNotice: 'Start a new Codex conversation after saving. Uses HTTP/SSE regardless of WS mode or passthrough. Supports Responses, client tools and HTTPS images; base64 images are unsupported. max / ultra use xhigh. Model access depends on the upstream.',
+        excelBPSAllModels: 'Enable for all models (legacy behavior)',
+        excelBPSModels: 'Select models for Excel / BPS',
+        excelBPSAstraOnly: 'Astra only',
+        excelBPSModelsHint: 'Matches model names after account mapping. Selected models use Excel / BPS; other models retain their Codex, WS and passthrough settings. An empty selection disables BPS routing.',
+        excelBPSNotice: 'Start a new Codex conversation after saving. Selected models use HTTP/SSE regardless of WS mode or passthrough. Supports Responses, client tools and HTTPS images; base64 images are unsupported. max / ultra use xhigh. Model access depends on the upstream.',
         oauthPassthroughDesc:
           'When enabled, this OpenAI account uses automatic passthrough: the gateway forwards request/response as-is and only swaps auth, while keeping billing/concurrency/audit and necessary safety filtering.',
         flattenNamespaces: 'Flatten Codex namespace tools (compatibility)',
