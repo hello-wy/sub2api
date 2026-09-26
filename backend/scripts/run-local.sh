@@ -56,5 +56,11 @@ export REDIS_DB="$(env_value REDIS_DB)"
 export JWT_SECRET="$(require_env_value JWT_SECRET)"
 export TOTP_ENCRYPTION_KEY="$(require_env_value TOTP_ENCRYPTION_KEY)"
 
+# Keep the development instance separate from Docker/API proxies on :8080.
+# Match frontend/vite.config.ts; explicit environment overrides still win.
+export SERVER_HOST="${SERVER_HOST:-127.0.0.1}"
+export SERVER_PORT="${SERVER_PORT:-8083}"
+printf 'Local backend: http://%s:%s\n' "${SERVER_HOST}" "${SERVER_PORT}"
+
 cd "${backend_dir}"
 exec go run -tags embed ./cmd/server

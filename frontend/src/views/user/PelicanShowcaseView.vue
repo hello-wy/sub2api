@@ -1,6 +1,6 @@
 <template>
   <AppLayout>
-    <div class="space-y-6 pb-6">
+    <div class="h-full space-y-4 overflow-y-auto pb-6">
       <!-- Toolbar: group filter + the gallery rules + refresh -->
       <section class="flex flex-col gap-3 pt-3 md:flex-row md:items-center md:justify-between md:pt-4">
         <div
@@ -54,16 +54,18 @@
       </section>
 
       <!-- First load -->
-      <div v-if="loading && !view" class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-        <div
-          v-for="i in 8"
-          :key="i"
-          class="card overflow-hidden"
-        >
-          <div class="aspect-[4/3] animate-pulse bg-gray-100 dark:bg-dark-900/40" />
-          <div class="space-y-2 p-4">
-            <div class="h-4 w-2/3 animate-pulse rounded bg-gray-200 dark:bg-dark-700" />
-            <div class="h-3 w-1/3 animate-pulse rounded bg-gray-100 dark:bg-dark-700/60" />
+      <div v-if="loading && !view" class="card overflow-hidden">
+        <div class="border-b border-gray-100 px-4 py-3 dark:border-dark-700/70">
+          <div class="h-4 w-32 animate-pulse rounded bg-gray-200 dark:bg-dark-700" />
+          <div class="mt-2 h-3 w-48 animate-pulse rounded bg-gray-100 dark:bg-dark-700/60" />
+        </div>
+        <div class="showcase-grid p-3 sm:p-4">
+          <div v-for="i in PAGE_SIZE" :key="i" class="overflow-hidden rounded-lg border border-gray-100 dark:border-dark-700/70">
+            <div class="aspect-[4/3] animate-pulse bg-gray-100 dark:bg-dark-900/40" />
+            <div class="space-y-1.5 p-2">
+              <div class="h-3 w-2/3 animate-pulse rounded bg-gray-200 dark:bg-dark-700" />
+              <div class="h-2.5 w-full animate-pulse rounded bg-gray-100 dark:bg-dark-700/60" />
+            </div>
           </div>
         </div>
       </div>
@@ -85,18 +87,19 @@
       <section
         v-for="group in shownGroups"
         :key="group.id"
-        class="space-y-4"
+        class="card overflow-hidden"
+        :aria-labelledby="`showcase-group-title-${group.id}`"
         :data-testid="`showcase-group-${group.id}`"
       >
-        <header class="flex min-w-0 items-center gap-3">
+        <header class="flex min-w-0 items-center gap-2.5 border-b border-gray-100 bg-gray-50/70 px-3 py-3 dark:border-dark-700/70 dark:bg-dark-800/60 sm:px-4">
           <span
-            class="grid h-9 w-9 flex-shrink-0 place-items-center rounded-xl ring-1 ring-black/5 dark:ring-white/10"
+            class="grid h-8 w-8 flex-shrink-0 place-items-center rounded-lg ring-1 ring-black/5 dark:ring-white/10"
             :class="platformBadgeLightClass(group.platform)"
           >
             <PlatformIcon :platform="group.platform as GroupPlatform" size="sm" />
           </span>
           <div class="min-w-0">
-            <h2 class="truncate text-base font-semibold text-gray-900 dark:text-white">{{ group.name }}</h2>
+            <h2 :id="`showcase-group-title-${group.id}`" class="truncate text-sm font-semibold text-gray-900 dark:text-white">{{ group.name }}</h2>
             <p class="text-xs text-gray-500 dark:text-gray-400">
               {{ platformLabel(group.platform) }}
               · {{ t('pelicanShowcase.itemCount', { count: group.items.length }) }}
@@ -109,12 +112,12 @@
 
         <div
           v-if="!group.items.length"
-          class="rounded-2xl border border-dashed border-gray-300 px-4 py-10 text-center text-sm text-gray-500 dark:border-dark-600 dark:text-gray-400"
+          class="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400"
         >
           {{ t('pelicanShowcase.groupEmpty') }}
         </div>
-        <template v-else>
-          <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+        <div v-else class="space-y-3 p-3 sm:p-4">
+          <div class="showcase-grid">
             <PelicanShowcaseCard
               v-for="item in visibleItems(group)"
               :key="item.id"
@@ -130,7 +133,7 @@
               {{ t('pelicanShowcase.loadMore') }}
             </button>
           </div>
-        </template>
+        </div>
       </section>
     </div>
 
@@ -231,7 +234,7 @@ import { formatDateTimeToMinute, formatRelativeTime } from '@/utils/format'
 import { extractPelicanHtml } from '@/utils/pelicanHtml'
 import { platformBadgeLightClass, platformLabel } from '@/utils/platformColors'
 
-const PAGE_SIZE = 8
+const PAGE_SIZE = 10
 const MAX_CONCURRENT_BODIES = 4
 
 type TabKey = number | 'all'
@@ -379,3 +382,9 @@ onBeforeUnmount(() => {
   loadController?.abort()
 })
 </script>
+
+<style scoped>
+.showcase-grid {
+  @apply grid grid-cols-2 gap-2.5 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-10;
+}
+</style>

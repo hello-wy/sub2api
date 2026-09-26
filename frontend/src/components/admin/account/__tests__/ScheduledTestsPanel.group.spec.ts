@@ -3,9 +3,9 @@ import { flushPromises, mount } from '@vue/test-utils'
 import ScheduledTestsPanel from '../ScheduledTestsPanel.vue'
 import { adminAPI } from '@/api/admin'
 
-vi.mock('vue-i18n', async () => ({ ...await vi.importActual<typeof import('vue-i18n')>('vue-i18n'), useI18n: () => ({ t: (key: string) => key }) }))
+vi.mock('vue-i18n', async () => ({ ...await vi.importActual<typeof import('vue-i18n')>('vue-i18n'), useI18n: () => ({ t: (key: string, named?: Record<string, unknown>) => named ? key + ' ' + JSON.stringify(named) : key }) }))
 vi.mock('@/stores/app', () => ({ useAppStore: () => ({ showError: vi.fn(), showSuccess: vi.fn() }) }))
-vi.mock('@/api/admin', () => ({ adminAPI: { scheduledTests: { listByAccount: vi.fn(), listByGroup: vi.fn(), listGroupTestKeys: vi.fn(), triggerGroupPlan: vi.fn(), listResults: vi.fn(), getResult: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() } } }))
+vi.mock('@/api/admin', () => ({ adminAPI: { scheduledTests: { listByAccount: vi.fn(), listByGroup: vi.fn(), listGroupTestKeys: vi.fn(), triggerGroupPlan: vi.fn(), cancelGroupPlan: vi.fn(), listResults: vi.fn(), getResult: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() } } }))
 
 const config = { question_kind: 'pelican' as const, prompt: 'draw a pelican', reasoning_effort: 'medium', parallel_count: 1 }
 const plan = { id: 8, account_id: 0, group_id: 17, api_key_id: 23, model_id: 'public-model', cron_expression: '0 * * * *', enabled: true, max_results: 20, auto_recover: false, pelican_config: config }
@@ -38,7 +38,7 @@ describe('group scheduled Pelican plans', () => {
     wrapper.unmount()
   })
 
-  it('edits credentials, pauses, queues execution and loads preview content', async () => {
+  it('edits credentials, pauses, starts execution and loads preview content', async () => {
     vi.mocked(adminAPI.scheduledTests.listByGroup).mockResolvedValue([plan] as any)
     vi.mocked(adminAPI.scheduledTests.update).mockResolvedValue(plan as any)
     const result = { id: 19, plan_id: 8, response_text: '<svg></svg>' }
@@ -80,4 +80,131 @@ describe('group scheduled Pelican plans', () => {
     expect(adminAPI.scheduledTests.listByGroup).not.toHaveBeenCalledWith(17)
     wrapper.unmount()
   })
+
+  it('starts immediately and refreshes running, retrying and completed states every second', async () => {
+    vi.mocked(adminAPI.scheduledTests.listByGroup).mockResolvedValue([plan] as any)
+    let start!: () => void
+    vi.mocked(adminAPI.scheduledTests.triggerGroupPlan).mockImplementationOnce(() => new Promise<void>(resolve => { start = resolve }))
+    const wrapper = mountPanel(); await flushPromises()
+    await wrapper.get('[data-testid="trigger-group-test"]').trigger('click')
+    expect(wrapper.get('[data-testid="group-test-status-8"]').text()).toContain('groupStatusStarting')
+    expect(wrapper.get('[data-testid="trigger-group-test"]').attributes('disabled')).toBeDefined()
+    const execution = { status: 'running', attempt: 1, max_attempts: 3, total: 1, completed: 0, succeeded: 0, failed: 0, started_at: new Date().toISOString() }
+    const running = { ...plan, running_until: new Date(Date.now() + 900000).toISOString(), execution }
+    vi.mocked(adminAPI.scheduledTests.listByGroup).mockResolvedValue([running] as any)
+    start(); await flushPromises()
+    expect(wrapper.get('[data-testid="group-test-status-8"]').text()).toContain('groupStatusRunning')
+
+    vi.mocked(adminAPI.scheduledTests.listByGroup).mockResolvedValue([{ ...running, execution: { ...execution, status: 'retrying', completed: 1, failed: 1, last_error: 'upstream unavailable', retry_at: new Date(Date.now() + 5000).toISOString() } }] as any)
+    await vi.advanceTimersByTimeAsync(1000); await flushPromises()
+    const status = wrapper.get('[data-testid="group-test-status-8"]').text()
+    expect(status).toContain('groupStatusRetrying')
+    expect(status).toContain('upstream unavailable')
+    expect(status).toContain('"seconds":4')
+    expect(wrapper.get('[data-testid="trigger-group-test"]').attributes('disabled')).toBeDefined()
+    expect((wrapper.vm as any).loading).toBe(false)
+
+    vi.mocked(adminAPI.scheduledTests.listByGroup).mockResolvedValue([{ ...plan, running_until: null, execution: { ...execution, status: 'success', attempt: 2, completed: 1, succeeded: 1, finished_at: new Date().toISOString() } }] as any)
+    const result = { id: 41, plan_id: 8, status: 'success', started_at: new Date().toISOString(), latency_ms: 25 }
+    vi.mocked(adminAPI.scheduledTests.listResults).mockResolvedValue([result] as any)
+    await vi.advanceTimersByTimeAsync(1000); await flushPromises()
+    expect(wrapper.get('[data-testid="group-test-status-8"]').text()).toContain('groupStatusSuccess')
+    expect(wrapper.get('[data-testid="trigger-group-test"]').attributes('disabled')).toBeUndefined()
+    expect((wrapper.vm as any).results[0].id).toBe(41)
+    wrapper.unmount()
+    const requests = vi.mocked(adminAPI.scheduledTests.listByGroup).mock.calls.length
+    await vi.advanceTimersByTimeAsync(5000)
+    expect(adminAPI.scheduledTests.listByGroup).toHaveBeenCalledTimes(requests)
+  })
+
+  it('shows stream phases while the gateway response is still in progress', async () => {
+    const execution = { status: 'running', phase: 'waiting', attempt: 1, max_attempts: 3, total: 1, completed: 0, succeeded: 0, failed: 0, started_at: new Date().toISOString() }
+    const running = { ...plan, running_until: new Date(Date.now() + 900000).toISOString(), execution }
+    vi.mocked(adminAPI.scheduledTests.listByGroup).mockResolvedValue([running] as any)
+    const wrapper = mountPanel(); await flushPromises()
+    expect(wrapper.get('[data-testid="group-test-status-8"]').text()).toContain('groupPhaseWaiting')
+    for (const [phase, label] of [['receiving', 'groupPhaseReceiving'], ['thinking', 'groupPhaseThinking'], ['generating', 'groupPhaseGenerating'], ['saving', 'groupPhaseSaving']]) {
+      vi.mocked(adminAPI.scheduledTests.listByGroup).mockResolvedValue([{ ...running, execution: { ...execution, phase } }] as any)
+      await vi.advanceTimersByTimeAsync(1000); await flushPromises()
+      const status = wrapper.get('[data-testid="group-test-status-8"]').text()
+      expect(status).toContain(label)
+      expect(status).not.toContain('groupStatusRunning')
+      expect(status).not.toContain('groupStatusSuccess')
+      expect(wrapper.get('[data-testid="trigger-group-test"]').attributes('disabled')).toBeDefined()
+    }
+    vi.mocked(adminAPI.scheduledTests.listByGroup).mockResolvedValue([{ ...running, execution: { ...execution, phase: 'generating', status: 'retrying' } }] as any)
+    await vi.advanceTimersByTimeAsync(1000); await flushPromises()
+    expect(wrapper.get('[data-testid="group-test-status-8"]').text()).toContain('groupStatusRetrying')
+    wrapper.unmount()
+  })
+
+  it('interrupts a running execution and keeps restart disabled until it stops', async () => {
+    const runningUntil = new Date(Date.now() + 900000).toISOString()
+    const execution = { status: 'running', phase: 'generating', attempt: 1, max_attempts: 3, total: 1, completed: 0, succeeded: 0, failed: 0, started_at: new Date().toISOString() }
+    const running = { ...plan, running_until: runningUntil, execution }
+    vi.mocked(adminAPI.scheduledTests.listByGroup).mockResolvedValue([running] as any)
+    let acknowledge!: () => void
+    vi.mocked(adminAPI.scheduledTests.cancelGroupPlan).mockImplementationOnce(() => new Promise<void>(resolve => { acknowledge = resolve }))
+    const wrapper = mountPanel(); await flushPromises()
+    await wrapper.get('[data-testid="cancel-group-test"]').trigger('click')
+    expect(adminAPI.scheduledTests.cancelGroupPlan).toHaveBeenCalledWith(8, runningUntil)
+    expect(wrapper.get('[data-testid="group-test-status-8"]').text()).toContain('groupStatusCancelling')
+    expect(wrapper.get('[data-testid="cancel-group-test"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.get('[data-testid="trigger-group-test"]').attributes('disabled')).toBeDefined()
+    await wrapper.get('[data-testid="cancel-group-test"]').trigger('click')
+    expect(adminAPI.scheduledTests.cancelGroupPlan).toHaveBeenCalledTimes(1)
+    vi.mocked(adminAPI.scheduledTests.listByGroup).mockResolvedValue([{ ...running, execution: { ...execution, status: 'cancelling', cancel_requested: true } }] as any)
+    acknowledge(); await flushPromises()
+    expect(wrapper.get('[data-testid="group-test-status-8"]').text()).toContain('groupStatusCancelling')
+    vi.mocked(adminAPI.scheduledTests.listByGroup).mockResolvedValue([{ ...plan, running_until: null, execution: { ...execution, status: 'interrupted', cancel_requested: true, finished_at: new Date().toISOString() } }] as any)
+    await vi.advanceTimersByTimeAsync(1000); await flushPromises()
+    expect(wrapper.get('[data-testid="group-test-status-8"]').text()).toContain('groupStatusInterrupted')
+    expect(wrapper.find('[data-testid="cancel-group-test"]').exists()).toBe(false)
+    expect(wrapper.get('[data-testid="trigger-group-test"]').attributes('disabled')).toBeUndefined()
+    expect(adminAPI.scheduledTests.update).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
+  it('allows interruption during retry and recovers the button after a failed request', async () => {
+    const running = { ...plan, running_until: new Date(Date.now() + 900000).toISOString(), execution: { status: 'retrying', attempt: 1, max_attempts: 3, total: 1, completed: 1, succeeded: 0, failed: 1, started_at: new Date().toISOString() } }
+    vi.mocked(adminAPI.scheduledTests.listByGroup).mockResolvedValue([running] as any)
+    vi.mocked(adminAPI.scheduledTests.cancelGroupPlan).mockRejectedValueOnce(new Error('offline'))
+    const wrapper = mountPanel(); await flushPromises()
+    await wrapper.get('[data-testid="cancel-group-test"]').trigger('click'); await flushPromises()
+    expect(wrapper.get('[data-testid="cancel-group-test"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.get('[data-testid="group-test-status-8"]').text()).toContain('groupStatusRetrying')
+    wrapper.unmount()
+  })
+
+  it('does not overlap background polls or restore stale results after switching groups', async () => {
+    vi.mocked(adminAPI.scheduledTests.listByGroup).mockResolvedValue([plan] as any)
+    const wrapper = mountPanel(); await flushPromises()
+    let resolveOld!: (plans: any[]) => void
+    vi.mocked(adminAPI.scheduledTests.listByGroup).mockImplementationOnce(() => new Promise(resolve => { resolveOld = resolve }))
+    await vi.advanceTimersByTimeAsync(1000)
+    const calls = vi.mocked(adminAPI.scheduledTests.listByGroup).mock.calls.length
+    await vi.advanceTimersByTimeAsync(4000)
+    expect(adminAPI.scheduledTests.listByGroup).toHaveBeenCalledTimes(calls)
+    vi.mocked(adminAPI.scheduledTests.listByGroup).mockResolvedValue([])
+    await wrapper.setProps({ groupId: 18 }); await flushPromises()
+    resolveOld([plan]); await flushPromises()
+    expect((wrapper.vm as any).plans).toEqual([])
+    expect((wrapper.vm as any).results).toEqual([])
+    wrapper.unmount()
+  })
+
+  it('keeps a collapsed plan collapsed during polling and recovers from failed status reads', async () => {
+    vi.mocked(adminAPI.scheduledTests.listByGroup).mockResolvedValue([plan] as any)
+    const wrapper = mountPanel(); await flushPromises()
+    await (wrapper.vm as any).toggleExpand(8)
+    vi.mocked(adminAPI.scheduledTests.listByGroup).mockRejectedValueOnce(new Error('offline'))
+    await vi.advanceTimersByTimeAsync(1000); await flushPromises()
+    expect(wrapper.find('[data-testid="group-status-reconnect"]').exists()).toBe(true)
+    expect((wrapper.vm as any).plans).toHaveLength(1)
+    await vi.advanceTimersByTimeAsync(1000); await flushPromises()
+    expect(wrapper.find('[data-testid="group-status-reconnect"]').exists()).toBe(false)
+    expect((wrapper.vm as any).expandedPlanId).toBeNull()
+    wrapper.unmount()
+  })
+
 })

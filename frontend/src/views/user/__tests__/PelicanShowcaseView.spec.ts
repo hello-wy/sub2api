@@ -28,7 +28,7 @@ const showcase = (overrides: Partial<ShowcaseData> = {}): ShowcaseData => ({
   max_items: 20,
   retention_days: 7,
   groups: [
-    { id: 1, name: 'Claude Max', platform: 'anthropic', items: Array.from({ length: 10 }, (_, i) => item(100 + i, 1)) },
+    { id: 1, name: 'Claude Max', platform: 'anthropic', items: Array.from({ length: 12 }, (_, i) => item(100 + i, 1)) },
     { id: 2, name: 'GPT Plus', platform: 'openai', items: [item(200, 2)] },
     { id: 3, name: 'Empty', platform: 'gemini', items: [] },
   ],
@@ -100,13 +100,13 @@ describe('PelicanShowcaseView', () => {
     expect(wrapper.get('[data-testid="showcase-keep-rule"]').text()).toContain('"count":20')
     expect(wrapper.get('[data-testid="showcase-retention-rule"]').text()).toContain('"days":7')
     expect(wrapper.findAll('[role="tab"]').map((tab) => tab.text())).toEqual([
-      'pelicanShowcase.allGroups', 'Claude Max10', 'GPT Plus1', 'Empty0',
+      'pelicanShowcase.allGroups', 'Claude Max12', 'GPT Plus1', 'Empty0',
     ])
     expect(wrapper.get('[data-testid="showcase-group-3"]').text()).toContain('pelicanShowcase.groupEmpty')
 
     const cards = wrapper.findAll('[data-testid="pelican-showcase-card"]')
-    expect(cards).toHaveLength(9) // 8 of the first group, then the second group's only item
-    expect(getShowcaseItem).toHaveBeenCalledTimes(9)
+    expect(cards).toHaveLength(11) // 10 of the first group, then the second group's only item
+    expect(getShowcaseItem).toHaveBeenCalledTimes(11)
     const frame = cards[0].get('iframe')
     expect(frame.attributes('sandbox')).toBe('allow-scripts')
     expect(frame.attributes('referrerpolicy')).toBe('no-referrer')
@@ -118,7 +118,7 @@ describe('PelicanShowcaseView', () => {
 
     await wrapper.get('[data-testid="showcase-more-1"]').trigger('click')
     await flushPromises()
-    expect(wrapper.get('[data-testid="showcase-group-1"]').findAll('[data-testid="pelican-showcase-card"]')).toHaveLength(10)
+    expect(wrapper.get('[data-testid="showcase-group-1"]').findAll('[data-testid="pelican-showcase-card"]')).toHaveLength(12)
     expect(wrapper.find('[data-testid="showcase-more-1"]').exists()).toBe(false)
 
     await wrapper.get('[data-testid="showcase-tab-2"]').trigger('click')
@@ -131,7 +131,7 @@ describe('PelicanShowcaseView', () => {
     getShowcase.mockResolvedValue(showcase())
     wrapper = mountView()
     await flushPromises()
-    expect(wrapper.findAll('[data-testid="pelican-showcase-card"]')).toHaveLength(9)
+    expect(wrapper.findAll('[data-testid="pelican-showcase-card"]')).toHaveLength(11)
     expect(getShowcaseItem).not.toHaveBeenCalled()
   })
 
@@ -148,6 +148,42 @@ describe('PelicanShowcaseView', () => {
     expect(wrapper.findAll('[data-testid="showcase-source"]').map((badge) => badge.text())).toEqual([
       'pelicanShowcase.sourceGroup', 'pelicanShowcase.sourceAccount', 'pelicanShowcase.sourceAccount',
     ])
+  })
+
+  it('scales the full result to the thumbnail width while keeping the enlarged preview unscaled', async () => {
+    let resizeThumbnail: (width: number) => void = () => {}
+    vi.stubGlobal('ResizeObserver', class {
+      constructor(private readonly callback: ResizeObserverCallback) {}
+      observe(target: Element) {
+        resizeThumbnail = (width) => this.callback(
+          [{ target, contentRect: { width } } as ResizeObserverEntry],
+          this as unknown as ResizeObserver,
+        )
+        resizeThumbnail(120)
+      }
+      disconnect() {}
+      unobserve() {}
+    })
+    getShowcase.mockResolvedValue(showcase({
+      groups: [{ id: 2, name: 'GPT Plus', platform: 'openai', items: [item(200, 2)] }],
+    }))
+    wrapper = mountView()
+    await flushPromises()
+
+    const card = wrapper.get('[data-testid="pelican-showcase-card"]')
+    const thumbnail = card.get('iframe').element as HTMLIFrameElement
+    expect(thumbnail.style.width).toBe('800px')
+    expect(thumbnail.style.height).toBe('600px')
+    expect(thumbnail.style.transform).toBe('scale(0.15)')
+
+    resizeThumbnail(160)
+    await flushPromises()
+    expect(thumbnail.style.transform).toBe('scale(0.2)')
+
+    await card.get('button').trigger('click')
+    const preview = wrapper.get('[data-testid="showcase-preview"] iframe').element as HTMLIFrameElement
+    expect(preview.style.transform).toBe('')
+    expect(preview.srcdoc).toBe(thumbnail.srcdoc)
   })
 
   it('shows a readable state for output without HTML and for failed loads', async () => {

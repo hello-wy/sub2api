@@ -21,6 +21,17 @@ type ScheduledTestRunnerService struct {
 	cfg            *config.Config
 	runPelican     func(context.Context, int64, string, *PelicanTestConfig) (*ScheduledTestResult, error)
 
+	groupRunsMu sync.Mutex
+	groupRuns   map[int64]groupPelicanRun
+	runtimeOnce sync.Once
+	runContext  context.Context
+	cancelRuns  context.CancelFunc
+	workers     chan struct{}
+	lifecycleMu sync.Mutex
+	stopping    bool
+	manualWG    sync.WaitGroup
+	retryDelay  func(int) time.Duration
+
 	cron      *cron.Cron
 	startOnce sync.Once
 	stopOnce  sync.Once
@@ -34,7 +45,7 @@ func NewScheduledTestRunnerService(
 	rateLimitSvc *RateLimitService,
 	cfg *config.Config,
 ) *ScheduledTestRunnerService {
-	return &ScheduledTestRunnerService{
+	runner := &ScheduledTestRunnerService{
 		planRepo:       planRepo,
 		scheduledSvc:   scheduledSvc,
 		accountTestSvc: accountTestSvc,
@@ -42,6 +53,10 @@ func NewScheduledTestRunnerService(
 		cfg:            cfg,
 		runPelican:     accountTestSvc.RunPelicanBackground,
 	}
+	runner.initRuntime()
+	scheduledSvc.startGroupPlan = runner.startGroupPlanNow
+	scheduledSvc.cancelGroupPlan = runner.cancelGroupPlanNow
+	return runner
 }
 
 // Start begins the cron ticker (every minute).
@@ -75,6 +90,18 @@ func (s *ScheduledTestRunnerService) Stop() {
 		return
 	}
 	s.stopOnce.Do(func() {
+		s.initRuntime()
+		s.lifecycleMu.Lock()
+		s.stopping = true
+		s.cancelRuns()
+		s.lifecycleMu.Unlock()
+		done := make(chan struct{})
+		go func() { s.manualWG.Wait(); close(done) }()
+		select {
+		case <-done:
+		case <-time.After(3 * time.Second):
+			logger.LegacyPrintf("service.scheduled_test_runner", "manual test shutdown timed out")
+		}
 		if s.cron != nil {
 			ctx := s.cron.Stop()
 			select {
@@ -87,10 +114,16 @@ func (s *ScheduledTestRunnerService) Stop() {
 }
 
 func (s *ScheduledTestRunnerService) runScheduled() {
-	// Delay 10s so execution lands at ~:10 of each minute instead of :00.
-	time.Sleep(10 * time.Second)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 12*time.Minute)
+	s.initRuntime()
+	// Keep scheduled checks offset from minute-boundary traffic; manual runs bypass this.
+	timer := time.NewTimer(10 * time.Second)
+	defer timer.Stop()
+	select {
+	case <-timer.C:
+	case <-s.runContext.Done():
+		return
+	}
+	ctx, cancel := context.WithTimeout(s.runContext, 12*time.Minute)
 	defer cancel()
 
 	now := time.Now()
@@ -109,11 +142,16 @@ func (s *ScheduledTestRunnerService) runScheduled() {
 
 	logger.LegacyPrintf("service.scheduled_test_runner", "[ScheduledTestRunner] found %d due plans", len(plans))
 
-	sem := make(chan struct{}, scheduledTestDefaultMaxWorkers)
+	sem := s.workers
 	var wg sync.WaitGroup
 
 	for _, plan := range plans {
-		sem <- struct{}{}
+		select {
+		case sem <- struct{}{}:
+		case <-ctx.Done():
+			wg.Wait()
+			return
+		}
 		wg.Add(1)
 		go func(p *ScheduledTestPlan) {
 			defer wg.Done()

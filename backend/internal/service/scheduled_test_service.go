@@ -18,11 +18,13 @@ type ScheduledTestService struct {
 	planRepo   ScheduledTestPlanRepository
 	resultRepo ScheduledTestResultRepository
 	// showcase copies successful Pelican HTML results to the user gallery; nil disables it.
-	showcase     *PelicanShowcaseService
-	groupRepo    GroupRepository
-	keyRepo      APIKeyRepository
-	gatewayMu    sync.RWMutex
-	groupGateway http.Handler
+	showcase        *PelicanShowcaseService
+	groupRepo       GroupRepository
+	keyRepo         APIKeyRepository
+	gatewayMu       sync.RWMutex
+	groupGateway    http.Handler
+	startGroupPlan  func(context.Context, *ScheduledTestPlan) error
+	cancelGroupPlan func(int64, time.Time)
 }
 
 // NewScheduledTestService creates a new ScheduledTestService.

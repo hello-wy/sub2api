@@ -110,6 +110,14 @@ func newExcelBPSRequest(ctx context.Context, body []byte, token, accountID strin
 // BPS deliberately bypasses Codex ticket/cookie injection and OAuth plugins:
 // only the selected account's bearer and ChatGPT account ID belong on this host.
 func (s *OpenAIGatewayService) forwardExcelBPS(ctx context.Context, c *gin.Context, account *Account, body []byte, start time.Time) (*OpenAIForwardResult, error) {
+	originalModel := gjson.GetBytes(body, "model").String()
+	return s.forwardExcelBPSMapped(ctx, c, account, body, start, originalModel, account.GetMappedModel(originalModel))
+}
+
+// Compat callers have already resolved account and group mappings. Keep that
+// decision explicit so aliases are not mapped a second time by the BPS bridge.
+func (s *OpenAIGatewayService) forwardExcelBPSMapped(ctx context.Context, c *gin.Context, account *Account, body []byte, start time.Time, originalModel, model string) (*OpenAIForwardResult, error) {
+	c.Header("X-Codex2API-Upstream", "basispoints")
 	fail := func(status int, code, message string) (*OpenAIForwardResult, error) {
 		// A compact keepalive may already have committed SSE headers. Otherwise
 		// finish a single JSON response so the handler cannot append another error.
@@ -122,8 +130,6 @@ func (s *OpenAIGatewayService) forwardExcelBPS(ctx context.Context, c *gin.Conte
 		}
 		return nil, fmt.Errorf("excel BPS: %s", code)
 	}
-	originalModel := gjson.GetBytes(body, "model").String()
-	model := account.GetMappedModel(originalModel)
 	stream := gjson.GetBytes(body, "stream").Bool()
 	var err error
 	body, err = sjson.SetBytes(body, "model", model)
