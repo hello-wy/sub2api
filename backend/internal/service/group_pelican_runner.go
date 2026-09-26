@@ -9,7 +9,12 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/pkg/logger"
 )
 
-const groupPelicanMaxAttempts = 3
+const (
+	groupPelicanMaxAttempts = 3
+	groupPelicanRunTimeout  = 10 * time.Minute
+)
+
+var errGroupPelicanTimeout = errors.New("Group Pelican test exceeded the 10-minute execution limit")
 
 func (s *ScheduledTestRunnerService) initRuntime() {
 	s.runtimeOnce.Do(func() {
@@ -84,7 +89,7 @@ func (s *ScheduledTestRunnerService) saveGroupExecution(planID int64, until time
 // Retry only failed outputs, preserving successful parallel outputs and every
 // attempt's history. The lease spans all retries; progress is shared by replicas.
 func (s *ScheduledTestRunnerService) runClaimedGroupPelican(ctx context.Context, plan *ScheduledTestPlan, started, until time.Time) {
-	timeoutCtx, stopTimeout := context.WithTimeout(ctx, 10*time.Minute)
+	timeoutCtx, stopTimeout := context.WithTimeoutCause(ctx, groupPelicanRunTimeout, errGroupPelicanTimeout)
 	defer stopTimeout()
 	runCtx, cancelRun := context.WithCancelCause(timeoutCtx)
 	defer cancelRun(nil)
@@ -97,6 +102,9 @@ func (s *ScheduledTestRunnerService) runClaimedGroupPelican(ctx context.Context,
 		state.FinishedAt, state.RetryAt, state.Phase = &finished, nil, ""
 		if state.Status == "running" || state.Status == "retrying" {
 			state.Status = "failed"
+			if cause := context.Cause(runCtx); cause != nil {
+				state.LastError = cause.Error()
+			}
 			if ctx.Err() != nil {
 				state.Status = "interrupted"
 			}
@@ -125,7 +133,8 @@ func (s *ScheduledTestRunnerService) runClaimedGroupPelican(ctx context.Context,
 		if err := s.saveGroupExecution(plan.ID, until, state); err != nil {
 			return
 		}
-		attemptCtx, stopAttempt := context.WithTimeout(runCtx, 3*time.Minute)
+		// Generation and retries share the round's deadline. A separate short
+		// deadline would interrupt healthy reasoning/output streams and bill again.
 		type outputEvent struct {
 			index  int
 			phase  string
@@ -152,7 +161,7 @@ func (s *ScheduledTestRunnerService) runClaimedGroupPelican(ctx context.Context,
 		for i := 0; i < pending; i++ {
 			go func(index int) {
 				begin := time.Now()
-				result, err := s.scheduledSvc.runGroupPelican(attemptCtx, plan, func(phase string) {
+				result, err := s.scheduledSvc.runGroupPelican(runCtx, plan, func(phase string) {
 					events <- outputEvent{index: index, phase: phase}
 				})
 				if err != nil || result == nil {
@@ -208,8 +217,7 @@ func (s *ScheduledTestRunnerService) runClaimedGroupPelican(ctx context.Context,
 				persistenceFailed = true
 			}
 		}
-		stopAttempt()
-		if persistenceFailed || runCtx.Err() != nil {
+		if persistenceFailed {
 			return
 		}
 		if state.Failed == 0 {

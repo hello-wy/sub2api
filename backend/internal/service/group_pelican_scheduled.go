@@ -156,11 +156,11 @@ func (s *ScheduledTestService) runGroupPelican(ctx context.Context, plan *Schedu
 	if recorder.overflow || len(output) > 2<<20 {
 		output, message = "", "Output exceeds the test capture limit"
 	} else if message == "" {
-		if ctx.Err() != nil {
-			message = ctx.Err().Error()
-		} else {
-			message = intelligenceTestOutputError(plan.PelicanConfig, output)
-		}
+		// A complete valid stream remains successful if its context expires while
+		// the gateway finishes usage accounting or other response cleanup.
+		message = intelligenceTestOutputError(plan.PelicanConfig, output)
+	} else if message == groupPelicanIncompleteStream && ctx.Err() != nil {
+		message = context.Cause(ctx).Error()
 	}
 	message = strings.ReplaceAll(message, key.Key, "[redacted]")
 	snapshot := *plan.PelicanConfig
@@ -188,6 +188,8 @@ func groupPelicanHTTPError(body []byte) string {
 	}
 	return "request rejected; check the API Key, group restrictions and gateway logs"
 }
+
+const groupPelicanIncompleteStream = "Generation stream ended before completion"
 
 func parseGroupPelicanOutput(body []byte) (string, string) {
 	scanner := bufio.NewScanner(bytes.NewReader(body))
@@ -232,7 +234,7 @@ func parseGroupPelicanOutput(body []byte) (string, string) {
 		return output.String(), "Gateway stream exceeded the capture limit"
 	}
 	if !complete {
-		return output.String(), "Generation stream ended before completion"
+		return output.String(), groupPelicanIncompleteStream
 	}
 	return output.String(), ""
 }

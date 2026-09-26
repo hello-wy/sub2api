@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/stretchr/testify/require"
@@ -159,4 +160,68 @@ func TestGroupPelicanManualStartRejectsCapacityAndShutdown(t *testing.T) {
 	require.False(t, plans.claimed)
 	runner.Stop()
 	require.ErrorContains(t, svc.TriggerGroupPlan(context.Background(), plan.ID), "shutting down")
+}
+
+func TestGroupPelicanSlowStreamKeepsSharedRoundBudget(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		runner, svc, plan, plans, results := groupRunnerFixture()
+		defer runner.Stop()
+		var calls atomic.Int32
+		svc.SetGroupGateway(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			calls.Add(1)
+			time.Sleep(192 * time.Second)
+			if r.Context().Err() != nil {
+				t.Error("a healthy stream was cancelled by a separate attempt deadline")
+				return
+			}
+			fmt.Fprintln(w, `data: {"choices":[{"delta":{"content":"<svg></svg>"},"finish_reason":"stop"}]}`)
+		}))
+		runner.runOnePlan(context.Background(), plan)
+		require.Equal(t, int32(1), calls.Load())
+		require.Len(t, results.results, 1)
+		require.Equal(t, "success", results.results[0].Status)
+		require.Equal(t, "success", plans.states[len(plans.states)-1].Status)
+	})
+}
+
+func TestGroupPelicanRoundDeadlineCancelsUpstreamWithoutRetry(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		runner, svc, plan, plans, results := groupRunnerFixture()
+		defer runner.Stop()
+		var calls atomic.Int32
+		svc.SetGroupGateway(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			calls.Add(1)
+			fmt.Fprintln(w, `data: {"choices":[{"delta":{"content":"<svg>"}}]}`)
+			upstream, release := detachUpstreamContext(r.Context())
+			defer release()
+			<-upstream.Done()
+		}))
+		runner.runOnePlan(context.Background(), plan)
+		require.Equal(t, int32(1), calls.Load(), "an exhausted round cannot issue another billable request")
+		require.Len(t, results.results, 1)
+		require.Equal(t, "failed", results.results[0].Status)
+		require.Equal(t, errGroupPelicanTimeout.Error(), results.results[0].ErrorMessage)
+		last := plans.states[len(plans.states)-1]
+		require.Equal(t, "failed", last.Status)
+		require.Equal(t, errGroupPelicanTimeout.Error(), last.LastError)
+		require.True(t, plans.finished)
+	})
+}
+
+func TestGroupPelicanCompletedOutputNotRetriedAfterCleanupCancellation(t *testing.T) {
+	runner, svc, plan, plans, results := groupRunnerFixture()
+	defer runner.Stop()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	var calls atomic.Int32
+	svc.SetGroupGateway(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		calls.Add(1)
+		fmt.Fprintln(w, `data: {"choices":[{"delta":{"content":"<svg></svg>"},"finish_reason":"stop"}]}`)
+		cancel()
+	}))
+	runner.runOnePlan(ctx, plan)
+	require.Equal(t, int32(1), calls.Load())
+	require.Len(t, results.results, 1)
+	require.Equal(t, "success", results.results[0].Status)
+	require.Equal(t, "success", plans.states[len(plans.states)-1].Status)
 }

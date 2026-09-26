@@ -125,3 +125,61 @@ func TestGroupPelicanRunnerUsesGroupGatewayAndSavesHistory(t *testing.T) {
 	require.Equal(t, "success", results.results[0].Status)
 	require.True(t, plans.finished)
 }
+
+func TestGroupPelicanDeadlineDoesNotOverrideCompletedOutput(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		body    string
+		wantErr string
+	}{
+		{"complete", `data: {"choices":[{"delta":{"content":"<svg></svg>"},"finish_reason":"stop"}]}`, ""},
+		{"invalid output", `data: {"choices":[{"delta":{"content":"not HTML"},"finish_reason":"stop"}]}`, "Model did not return HTML or SVG"},
+		{"incomplete", `data: {"choices":[{"delta":{"content":"<svg></svg>"}}]}`, errGroupPelicanTimeout.Error()},
+		{"upstream error", `data: {"error":{"message":"upstream unavailable"}}`, "upstream unavailable"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, plan, _ := groupPelicanFixture()
+			ctx, cancel := context.WithTimeoutCause(context.Background(), time.Millisecond, errGroupPelicanTimeout)
+			defer cancel()
+			svc.SetGroupGateway(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				fmt.Fprintln(w, tc.body)
+				// The response is already written; the deadline fires during cleanup.
+				<-r.Context().Done()
+			}))
+			result, err := svc.RunGroupPelican(ctx, plan)
+			require.NoError(t, err)
+			require.Equal(t, tc.wantErr, result.ErrorMessage)
+			if tc.wantErr == "" {
+				require.Equal(t, "success", result.Status)
+			} else {
+				require.Equal(t, "failed", result.Status)
+			}
+		})
+	}
+}
+
+func TestGroupPelicanUpstreamPreservesCancellationButBillingStillCompletes(t *testing.T) {
+	for _, stream := range []bool{false, true} {
+		t.Run(fmt.Sprintf("stream=%v", stream), func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+			defer cancel()
+			ctx = context.WithValue(ctx, groupPelicanContextKey{}, int64(17))
+			upstream, release := detachStreamUpstreamContext(ctx, stream)
+			defer release()
+			compat, releaseCompat := detachUpstreamContext(ctx)
+			defer releaseCompat()
+			billing, stopBilling := detachedBillingContext(ctx)
+			defer stopBilling()
+			deadline, _ := ctx.Deadline()
+			for _, requestCtx := range []context.Context{upstream, compat} {
+				actual, ok := requestCtx.Deadline()
+				require.True(t, ok)
+				require.Equal(t, deadline, actual)
+			}
+			cancel()
+			require.ErrorIs(t, upstream.Err(), context.Canceled)
+			require.ErrorIs(t, compat.Err(), context.Canceled)
+			require.NoError(t, billing.Err(), "usage accounting retains its independent deadline")
+		})
+	}
+}
