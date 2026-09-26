@@ -587,7 +587,7 @@ func detachStreamUpstreamContext(ctx context.Context, stream bool) (context.Cont
 	if ctx == nil {
 		return context.Background(), func() {}
 	}
-	if !stream {
+	if !stream || ScheduledPelicanGroupID(ctx) > 0 {
 		return ctx, func() {}
 	}
 	return context.WithoutCancel(ctx), func() {}
@@ -596,6 +596,11 @@ func detachStreamUpstreamContext(ctx context.Context, stream bool) (context.Cont
 func detachUpstreamContext(ctx context.Context) (context.Context, context.CancelFunc) {
 	if ctx == nil {
 		return context.Background(), func() {}
+	}
+	// Background group tests have their own lifecycle, independent of the
+	// browser. Preserve their explicit cancellation and bounded execution.
+	if ScheduledPelicanGroupID(ctx) > 0 {
+		return ctx, func() {}
 	}
 	return context.WithoutCancel(ctx), func() {}
 }
