@@ -1,5 +1,18 @@
 export default {
     scheduledTests: {
+      groupAction: '鹈鹕测试',
+      groupTitle: '分组定时鹈鹕测试 · {name}',
+      groupDescription: '通过本组 API Key 发起测试，经过正常模型映射、账号调度、限额与计费。每次按调度规则选择账号，不会遍历全部账号。',
+      groupShowcaseHint: '成功作品只归入当前分组；需在「功能开关 → 鹈鹕测智展示」中启用展示并勾选本组。',
+      groupTestKey: '测试 API Key',
+      groupKeyRequired: '请选择绑定本组的 API Key',
+      groupNoKeys: '本组暂无可用 API Key。请先创建一个绑定本组的专用测试 Key，再重新打开此窗口。',
+      groupBillingHint: '测试消耗该 Key 所属用户的余额或订阅额度。IP 限制按服务器本机 127.0.0.1 校验；请优先使用专用测试 Key。',
+      groupKeysError: '加载测试 API Key 失败',
+      triggerGroup: '尽快执行一次',
+      groupQueued: '任务已排入队列，将在下一轮调度（约一分钟内）执行',
+      groupTriggerError: '触发测试失败',
+
       title: '定时测试',
       addPlan: '添加计划',
       editPlan: '编辑计划',

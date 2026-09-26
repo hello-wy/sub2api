@@ -400,6 +400,8 @@ func (h *SettingHandler) GetSettings(c *gin.Context) {
 		GrokDefaultBaseURLMode:         settings.GrokDefaultBaseURLMode,
 
 		AvailableChannelsEnabled: settings.AvailableChannelsEnabled,
+		PelicanShowcaseEnabled:   settings.PelicanShowcaseEnabled,
+		PelicanShowcase:          settings.PelicanShowcase,
 		SubscriptionEnabled:      settings.SubscriptionEnabled,
 
 		ModelPlazaEnabled:       settings.ModelPlazaEnabled,
@@ -411,6 +413,11 @@ func (h *SettingHandler) GetSettings(c *gin.Context) {
 
 		AccountSchedulingThresholds: settings.AccountSchedulingThresholds,
 		AllowUserViewErrorRequests:  settings.AllowUserViewErrorRequests,
+		ExcelBPSImageRelayEnabled:   settings.ExcelBPSImageRelayEnabled,
+		ExcelBPSImageBaseURL:        settings.ExcelBPSImageBaseURL,
+		ExcelBPSImageBodyLimitMiB:   settings.ExcelBPSImageBodyLimitMiB,
+		ExcelBPSImageBudgetMiB:      settings.ExcelBPSImageBudgetMiB,
+		ExcelBPSImageMaxRequests:    settings.ExcelBPSImageMaxRequests,
 	}
 
 	// OpenAI fast policy (stored under a dedicated setting key)

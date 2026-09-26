@@ -1,7 +1,7 @@
 <template>
   <div>
     <label class="input-label">
-      {{ t('admin.users.groups') }}
+      {{ label ?? t('admin.users.groups') }}
       <span class="font-normal text-gray-400">{{ t('common.selectedCount', { count: modelValue.length }) }}</span>
     </label>
     <div
@@ -50,7 +50,7 @@
     </div>
     <div
       :class="[
-        'grid max-h-32 grid-cols-2 gap-1 overflow-y-auto p-2',
+        'grid max-h-32 grid-cols-1 gap-1 overflow-y-auto p-2 sm:grid-cols-2',
         isSearchable || tagSummaries.length > 0
           ? 'rounded-b-lg border border-t-0 border-gray-200 bg-gray-50 dark:border-dark-600 dark:bg-dark-800'
           : 'rounded-lg border border-gray-200 bg-gray-50 dark:border-dark-600 dark:bg-dark-800'
@@ -86,7 +86,7 @@
       </label>
       <div
         v-if="filteredGroups.length === 0"
-        class="col-span-2 py-2 text-center text-sm text-gray-500 dark:text-gray-400"
+        class="py-2 text-center text-sm text-gray-500 dark:text-gray-400 sm:col-span-2"
       >
         {{ t('common.noGroupsAvailable') }}
       </div>
@@ -108,6 +108,8 @@ const authStore = useAuthStore()
 interface Props {
   modelValue: number[]
   groups: (Group & { account_count?: number })[]
+  /** Field label; defaults to the generic "Groups". */
+  label?: string
   platform?: GroupPlatform // Optional platform filter
   mixedScheduling?: boolean // For antigravity accounts: allow anthropic/gemini groups
   searchable?: boolean | 'auto'

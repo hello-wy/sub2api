@@ -12,7 +12,15 @@ FRONTEND_CRITICAL_VITEST := \
 	src/components/account/__tests__/CodexGatewayField.spec.ts \
 	src/components/account/__tests__/CreateAccountModal.spec.ts \
 	src/components/account/__tests__/EditAccountModal.spec.ts \
+	src/components/account/__tests__/BulkEditAccountModal.spec.ts \
+	src/components/account/__tests__/AccountTestModal.spec.ts \
+	src/__tests__/integration/usage-reasoning-effort.spec.ts \
 	src/components/admin/account/__tests__/AccountTestModal.spec.ts \
+	src/components/admin/account/__tests__/IQTestModal.spec.ts \
+	src/components/admin/account/__tests__/PelicanRecordsDashboard.spec.ts \
+	src/components/admin/account/__tests__/ScheduledTestsPanel.pelican.spec.ts \
+	src/components/admin/account/__tests__/ScheduledTestsPanel.group.spec.ts \
+	src/components/admin/account/__tests__/AccountActionMenu.position.spec.ts \
 	src/components/admin/account/__tests__/AccountTestModal.codexDiagnostics.spec.ts \
 	src/components/admin/user/__tests__/UserPlatformQuotaModal.spec.ts \
 	src/views/user/__tests__/KeysView.spec.ts \

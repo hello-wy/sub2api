@@ -64,17 +64,49 @@ export async function deletePlan(id: number): Promise<void> {
  * @param limit - Optional max number of results to return
  * @returns List of test results
  */
-export async function listResults(planId: number, limit?: number): Promise<ScheduledTestResult[]> {
+export async function listResults(planId: number, limit?: number, includeContent = true): Promise<ScheduledTestResult[]> {
   const { data } = await apiClient.get<ScheduledTestResult[]>(
     `/admin/scheduled-test-plans/${planId}/results`,
     {
-      params: limit ? { limit } : undefined
+      params: { limit, include_content: includeContent }
     }
   )
   return data ?? []
 }
 
+export async function getResult(planId: number, resultId: number): Promise<ScheduledTestResult> {
+  const { data } = await apiClient.get<ScheduledTestResult>(`/admin/scheduled-test-plans/${planId}/results/${resultId}`)
+  return data
+}
+
+export interface PelicanHistoryResult extends ScheduledTestResult {
+  account_id: number
+  account_name: string
+}
+export async function listPelicanHistory(beforeId = 0): Promise<{ items: PelicanHistoryResult[]; next_cursor: number }> {
+  const { data } = await apiClient.get('/admin/pelican-test-results', { params: { before_id: beforeId } })
+  return data
+}
+
+export interface GroupTestKey { id: number; name: string; user_email: string }
+export async function listByGroup(groupId: number): Promise<ScheduledTestPlan[]> {
+  const { data } = await apiClient.get<ScheduledTestPlan[]>('/admin/groups/' + groupId + '/scheduled-test-plans')
+  return data ?? []
+}
+export async function listGroupTestKeys(groupId: number): Promise<GroupTestKey[]> {
+  const { data } = await apiClient.get<GroupTestKey[]>('/admin/groups/' + groupId + '/scheduled-test-keys')
+  return data ?? []
+}
+export async function triggerGroupPlan(id: number): Promise<void> {
+  await apiClient.post('/admin/scheduled-test-plans/' + id + '/trigger')
+}
+
 export const scheduledTestsAPI = {
+  listByGroup,
+  listGroupTestKeys,
+  triggerGroupPlan,
+  listPelicanHistory,
+  getResult,
   listByAccount,
   create,
   update,

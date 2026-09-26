@@ -1,5 +1,18 @@
 export default {
     scheduledTests: {
+      groupAction: 'Pelican test',
+      groupTitle: 'Scheduled group Pelican tests · {name}',
+      groupDescription: 'Send tests through a key bound to this group, using normal model mapping, account scheduling, limits and billing. Each request selects an account; it does not test every account.',
+      groupShowcaseHint: 'Successful output belongs only to this group. Enable Pelican showcase and select this group under Feature Toggles to publish it.',
+      groupTestKey: 'Test API Key',
+      groupKeyRequired: 'Select an API Key bound to this group',
+      groupNoKeys: 'No active API Key is available for this group. Create a dedicated test key bound to this group, then reopen this dialog.',
+      groupBillingHint: 'Tests consume the key owner’s balance or subscription quota. IP restrictions use the server loopback address 127.0.0.1. A dedicated test key is recommended.',
+      groupKeysError: 'Failed to load test API Keys',
+      triggerGroup: 'Run as soon as possible',
+      groupQueued: 'Test queued for the next scheduler tick (within about one minute)',
+      groupTriggerError: 'Failed to trigger test',
+
       title: 'Scheduled Tests',
       addPlan: 'Add Plan',
       editPlan: 'Edit Plan',

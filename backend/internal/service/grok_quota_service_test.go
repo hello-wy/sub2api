@@ -720,7 +720,9 @@ func TestGrokQuotaServiceProbeUsageReturnsRateLimitedSnapshot(t *testing.T) {
 	}}
 	svc := NewGrokQuotaService(repo, nil, NewGrokTokenProvider(repo, nil), upstream, nil)
 
+	startedAt := time.Now().Truncate(time.Second)
 	result, err := svc.ProbeUsage(context.Background(), 43)
+	finishedAt := time.Now().Truncate(time.Second)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusTooManyRequests, result.StatusCode)
 	require.NotNil(t, result.Snapshot)
@@ -728,7 +730,10 @@ func TestGrokQuotaServiceProbeUsageReturnsRateLimitedSnapshot(t *testing.T) {
 	require.Equal(t, 45, *result.Snapshot.RetryAfterSeconds)
 	require.Equal(t, 1, repo.rateLimitedCalls)
 	require.Equal(t, account.ID, repo.lastRateLimitedID)
-	require.WithinDuration(t, time.Now().Add(45*time.Second), repo.lastRateLimitResetAt, time.Second)
+	// Quota timestamps have second precision; bracket the probe instead of measuring
+	// against a later wall clock that may advance while parallel tests run.
+	require.False(t, repo.lastRateLimitResetAt.Before(startedAt.Add(45*time.Second)))
+	require.False(t, repo.lastRateLimitResetAt.After(finishedAt.Add(45*time.Second)))
 	require.Zero(t, repo.tempUnschedCalls)
 }
 

@@ -20,20 +20,25 @@ func NewScheduledTestHandler(scheduledTestSvc *service.ScheduledTestService) *Sc
 }
 
 type createScheduledTestPlanRequest struct {
-	AccountID      int64  `json:"account_id" binding:"required"`
-	ModelID        string `json:"model_id"`
-	CronExpression string `json:"cron_expression" binding:"required"`
-	Enabled        *bool  `json:"enabled"`
-	MaxResults     int    `json:"max_results"`
-	AutoRecover    *bool  `json:"auto_recover"`
+	PelicanConfig  *service.PelicanTestConfig `json:"pelican_config"`
+	AccountID      int64                      `json:"account_id"`
+	GroupID        int64                      `json:"group_id"`
+	APIKeyID       int64                      `json:"api_key_id"`
+	ModelID        string                     `json:"model_id"`
+	CronExpression string                     `json:"cron_expression" binding:"required"`
+	Enabled        *bool                      `json:"enabled"`
+	MaxResults     int                        `json:"max_results"`
+	AutoRecover    *bool                      `json:"auto_recover"`
 }
 
 type updateScheduledTestPlanRequest struct {
-	ModelID        string `json:"model_id"`
-	CronExpression string `json:"cron_expression"`
-	Enabled        *bool  `json:"enabled"`
-	MaxResults     int    `json:"max_results"`
-	AutoRecover    *bool  `json:"auto_recover"`
+	APIKeyID       *int64                     `json:"api_key_id"`
+	PelicanConfig  *service.PelicanTestConfig `json:"pelican_config"`
+	ModelID        string                     `json:"model_id"`
+	CronExpression string                     `json:"cron_expression"`
+	Enabled        *bool                      `json:"enabled"`
+	MaxResults     int                        `json:"max_results"`
+	AutoRecover    *bool                      `json:"auto_recover"`
 }
 
 // ListByAccount GET /admin/accounts/:id/scheduled-test-plans
@@ -62,6 +67,9 @@ func (h *ScheduledTestHandler) Create(c *gin.Context) {
 
 	plan := &service.ScheduledTestPlan{
 		AccountID:      req.AccountID,
+		GroupID:        req.GroupID,
+		APIKeyID:       req.APIKeyID,
+		PelicanConfig:  req.PelicanConfig,
 		ModelID:        req.ModelID,
 		CronExpression: req.CronExpression,
 		Enabled:        true,
@@ -102,6 +110,16 @@ func (h *ScheduledTestHandler) Update(c *gin.Context) {
 		return
 	}
 
+	if req.APIKeyID != nil {
+		existing.APIKeyID = *req.APIKeyID
+	}
+	if req.PelicanConfig != nil {
+		if existing.PelicanConfig == nil {
+			response.BadRequest(c, "cannot change test type")
+			return
+		}
+		existing.PelicanConfig = req.PelicanConfig
+	}
 	if req.ModelID != "" {
 		existing.ModelID = req.ModelID
 	}
@@ -154,10 +172,90 @@ func (h *ScheduledTestHandler) ListResults(c *gin.Context) {
 		limit = l
 	}
 
-	results, err := h.scheduledTestSvc.ListResults(c.Request.Context(), planID, limit)
+	if limit > 100 {
+		limit = 100
+	}
+	results, err := h.scheduledTestSvc.ListResults(c.Request.Context(), planID, limit, c.Query("include_content") != "false")
 	if err != nil {
 		response.InternalError(c, err.Error())
 		return
 	}
 	c.JSON(http.StatusOK, results)
+}
+
+func (h *ScheduledTestHandler) GetResult(c *gin.Context) {
+	planID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.BadRequest(c, "invalid plan id")
+		return
+	}
+	resultID, err := strconv.ParseInt(c.Param("resultID"), 10, 64)
+	if err != nil {
+		response.BadRequest(c, "invalid result id")
+		return
+	}
+	result, err := h.scheduledTestSvc.GetResult(c.Request.Context(), planID, resultID)
+	if err != nil {
+		response.NotFound(c, "result not found or expired")
+		return
+	}
+	c.JSON(http.StatusOK, result)
+}
+
+// ListPelicanHistory returns account-independent summaries for the record dashboard.
+func (h *ScheduledTestHandler) ListPelicanHistory(c *gin.Context) {
+	beforeID, err := strconv.ParseInt(c.DefaultQuery("before_id", "0"), 10, 64)
+	if err != nil || beforeID < 0 {
+		response.BadRequest(c, "invalid before_id")
+		return
+	}
+	page, err := h.scheduledTestSvc.ListPelicanHistory(c.Request.Context(), beforeID, 100)
+	if err != nil {
+		response.InternalError(c, "Failed to load pelican history")
+		return
+	}
+	c.JSON(http.StatusOK, page)
+}
+
+// ConfigureGroupGateway wires the completed router without a service/handler DI cycle.
+func (h *ScheduledTestHandler) ConfigureGroupGateway(gateway http.Handler) {
+	h.scheduledTestSvc.SetGroupGateway(gateway)
+}
+func (h *ScheduledTestHandler) ListByGroup(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || id <= 0 {
+		response.BadRequest(c, "invalid group id")
+		return
+	}
+	plans, err := h.scheduledTestSvc.ListPlansByGroup(c.Request.Context(), id)
+	if err != nil {
+		response.InternalError(c, "Failed to load group test plans")
+		return
+	}
+	c.JSON(http.StatusOK, plans)
+}
+func (h *ScheduledTestHandler) ListGroupTestKeys(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || id <= 0 {
+		response.BadRequest(c, "invalid group id")
+		return
+	}
+	keys, err := h.scheduledTestSvc.ListGroupTestKeys(c.Request.Context(), id)
+	if err != nil {
+		response.InternalError(c, "Failed to load test API Keys")
+		return
+	}
+	c.JSON(http.StatusOK, keys)
+}
+func (h *ScheduledTestHandler) TriggerGroupPlan(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || id <= 0 {
+		response.BadRequest(c, "invalid plan id")
+		return
+	}
+	if err := h.scheduledTestSvc.TriggerGroupPlan(c.Request.Context(), id); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "queued"})
 }

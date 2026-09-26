@@ -356,6 +356,10 @@ type UpdateSettingsRequest struct {
 	// Available Channels feature switch (user-facing)
 	AvailableChannelsEnabled *bool `json:"available_channels_enabled"`
 
+	// Pelican showcase switch + gallery limits (user-facing)
+	PelicanShowcaseEnabled *bool                          `json:"pelican_showcase_enabled"`
+	PelicanShowcase        *service.PelicanShowcaseConfig `json:"pelican_showcase_config"`
+
 	// Subscription feature switch (user-facing subscription surface; see SettingKeySubscriptionEnabled)
 	SubscriptionEnabled *bool `json:"subscription_enabled"`
 
@@ -395,7 +399,12 @@ type UpdateSettingsRequest struct {
 	AuthSourceGooglePlatformQuotas   map[string]*service.DefaultPlatformQuotaSetting `json:"auth_source_default_google_platform_quotas"`
 	AuthSourceDingTalkPlatformQuotas map[string]*service.DefaultPlatformQuotaSetting `json:"auth_source_default_dingtalk_platform_quotas"`
 
-	AllowUserViewErrorRequests *bool `json:"allow_user_view_error_requests"`
+	AllowUserViewErrorRequests *bool   `json:"allow_user_view_error_requests"`
+	ExcelBPSImageRelayEnabled  *bool   `json:"excel_bps_image_relay_enabled"`
+	ExcelBPSImageBaseURL       *string `json:"excel_bps_image_base_url"`
+	ExcelBPSImageBodyLimitMiB  *int    `json:"excel_bps_image_body_limit_mib"`
+	ExcelBPSImageBudgetMiB     *int    `json:"excel_bps_image_budget_mib"`
+	ExcelBPSImageMaxRequests   *int    `json:"excel_bps_image_max_requests"`
 }
 
 // UpdateSettings 更新系统设置
@@ -504,6 +513,18 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 	var req UpdateSettingsRequest
 	if err := c.ShouldBindBodyWith(&req, binding.JSON); err != nil {
 		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+	if req.ExcelBPSImageBodyLimitMiB != nil && (*req.ExcelBPSImageBodyLimitMiB < 1 || *req.ExcelBPSImageBodyLimitMiB > 128) {
+		response.BadRequest(c, "Image request body limit must be 1-128 MiB")
+		return
+	}
+	if req.ExcelBPSImageBudgetMiB != nil && (*req.ExcelBPSImageBudgetMiB < 512 || *req.ExcelBPSImageBudgetMiB > 2048) {
+		response.BadRequest(c, "Image request budget must be 512-2048 MiB")
+		return
+	}
+	if req.ExcelBPSImageMaxRequests != nil && (*req.ExcelBPSImageMaxRequests < 1 || *req.ExcelBPSImageMaxRequests > 512) {
+		response.BadRequest(c, "Image concurrent requests must be 1-512")
 		return
 	}
 	auditReq := settingsAuditRequest(req)
@@ -1707,6 +1728,36 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		MaxClaudeCodeVersion:                   req.MaxClaudeCodeVersion,
 		AllowUngroupedKeyScheduling:            req.AllowUngroupedKeyScheduling,
 		BackendModeEnabled:                     req.BackendModeEnabled,
+		ExcelBPSImageRelayEnabled: func() bool {
+			if req.ExcelBPSImageRelayEnabled != nil {
+				return *req.ExcelBPSImageRelayEnabled
+			}
+			return previousSettings.ExcelBPSImageRelayEnabled
+		}(),
+		ExcelBPSImageBaseURL: func() string {
+			if req.ExcelBPSImageBaseURL != nil {
+				return *req.ExcelBPSImageBaseURL
+			}
+			return previousSettings.ExcelBPSImageBaseURL
+		}(),
+		ExcelBPSImageBodyLimitMiB: func() int {
+			if req.ExcelBPSImageBodyLimitMiB != nil {
+				return *req.ExcelBPSImageBodyLimitMiB
+			}
+			return previousSettings.ExcelBPSImageBodyLimitMiB
+		}(),
+		ExcelBPSImageBudgetMiB: func() int {
+			if req.ExcelBPSImageBudgetMiB != nil {
+				return *req.ExcelBPSImageBudgetMiB
+			}
+			return previousSettings.ExcelBPSImageBudgetMiB
+		}(),
+		ExcelBPSImageMaxRequests: func() int {
+			if req.ExcelBPSImageMaxRequests != nil {
+				return *req.ExcelBPSImageMaxRequests
+			}
+			return previousSettings.ExcelBPSImageMaxRequests
+		}(),
 		AllowUserViewErrorRequests: func() bool {
 			if req.AllowUserViewErrorRequests != nil {
 				return *req.AllowUserViewErrorRequests
@@ -2009,6 +2060,18 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 				return *req.AvailableChannelsEnabled
 			}
 			return previousSettings.AvailableChannelsEnabled
+		}(),
+		PelicanShowcaseEnabled: func() bool {
+			if req.PelicanShowcaseEnabled != nil {
+				return *req.PelicanShowcaseEnabled
+			}
+			return previousSettings.PelicanShowcaseEnabled
+		}(),
+		PelicanShowcase: func() service.PelicanShowcaseConfig {
+			if req.PelicanShowcase != nil {
+				return *req.PelicanShowcase
+			}
+			return previousSettings.PelicanShowcase
 		}(),
 		SubscriptionEnabled: func() bool {
 			if req.SubscriptionEnabled != nil {
@@ -2471,6 +2534,8 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		GrokDefaultBaseURLMode:         updatedSettings.GrokDefaultBaseURLMode,
 
 		AvailableChannelsEnabled: updatedSettings.AvailableChannelsEnabled,
+		PelicanShowcaseEnabled:   updatedSettings.PelicanShowcaseEnabled,
+		PelicanShowcase:          updatedSettings.PelicanShowcase,
 		SubscriptionEnabled:      updatedSettings.SubscriptionEnabled,
 
 		ModelPlazaEnabled:       updatedSettings.ModelPlazaEnabled,
@@ -2485,6 +2550,11 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		CyberSessionBlockTTLSeconds: updatedSettings.CyberSessionBlockTTLSeconds,
 		AccountSchedulingThresholds: updatedSettings.AccountSchedulingThresholds,
 		AllowUserViewErrorRequests:  updatedSettings.AllowUserViewErrorRequests,
+		ExcelBPSImageRelayEnabled:   updatedSettings.ExcelBPSImageRelayEnabled,
+		ExcelBPSImageBaseURL:        updatedSettings.ExcelBPSImageBaseURL,
+		ExcelBPSImageBodyLimitMiB:   updatedSettings.ExcelBPSImageBodyLimitMiB,
+		ExcelBPSImageBudgetMiB:      updatedSettings.ExcelBPSImageBudgetMiB,
+		ExcelBPSImageMaxRequests:    updatedSettings.ExcelBPSImageMaxRequests,
 	}
 	if fastPolicy, err := h.settingService.GetOpenAIFastPolicySettings(c.Request.Context()); err != nil {
 		slog.Error("openai_fast_policy_settings_get_failed", "error", err)

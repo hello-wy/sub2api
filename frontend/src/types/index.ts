@@ -279,6 +279,8 @@ export interface PublicSettings {
   /** When true, user monitor hides the user ranking tab and /users payload. */
   channel_monitor_hide_user_ranking?: boolean
   available_channels_enabled: boolean
+  /** Opt-in user gallery of scheduled Pelican HTML results (sidebar「鹈鹕测智」). */
+  pelican_showcase_enabled?: boolean
   /** When false, the whole user-facing subscription surface is hidden. Default true. */
   subscription_enabled: boolean
   /** Mirrors payment config BALANCE_PAYMENT_DISABLED; true = balance top-up closed (subscription-only site). */
@@ -2460,7 +2462,19 @@ export interface TotpLogin2FARequest {
 
 // ==================== Scheduled Test Types ====================
 
+export interface PelicanTestConfig {
+  question_kind?: 'candy' | 'pelican'
+  prompt: string
+  reasoning_effort: string
+  parallel_count: number
+  model_id?: string
+}
+
 export interface ScheduledTestPlan {
+  group_id?: number
+  api_key_id?: number
+  pelican_config?: PelicanTestConfig
+  running_until?: string | null
   id: number
   account_id: number
   model_id: string
@@ -2475,6 +2489,7 @@ export interface ScheduledTestPlan {
 }
 
 export interface ScheduledTestResult {
+  pelican_config?: PelicanTestConfig
   id: number
   plan_id: number
   status: string
@@ -2487,7 +2502,10 @@ export interface ScheduledTestResult {
 }
 
 export interface CreateScheduledTestPlanRequest {
-  account_id: number
+  pelican_config?: PelicanTestConfig
+  account_id?: number
+  group_id?: number
+  api_key_id?: number
   model_id: string
   cron_expression: string
   enabled?: boolean
@@ -2496,6 +2514,8 @@ export interface CreateScheduledTestPlanRequest {
 }
 
 export interface UpdateScheduledTestPlanRequest {
+  api_key_id?: number
+  pelican_config?: PelicanTestConfig
   model_id?: string
   cron_expression?: string
   enabled?: boolean

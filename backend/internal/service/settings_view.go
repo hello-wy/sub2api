@@ -223,6 +223,10 @@ type SystemSettings struct {
 	// Available Channels feature (user-facing aggregate view)
 	AvailableChannelsEnabled bool `json:"available_channels_enabled"`
 
+	// Pelican showcase (user-facing gallery of scheduled Pelican HTML results)
+	PelicanShowcaseEnabled bool                  `json:"pelican_showcase_enabled"`
+	PelicanShowcase        PelicanShowcaseConfig `json:"pelican_showcase_config"`
+
 	// Subscription feature switch: gates the whole user-facing subscription surface
 	// (sidebar entries, purchase-page subscription tab, header progress badge,
 	// usage billing-type filter, /subscriptions route). Pairs with PaymentBalanceDisabled
@@ -329,6 +333,11 @@ type SystemSettings struct {
 
 	// 允许终端用户在用量页查看自己的失败请求
 	AllowUserViewErrorRequests bool
+	ExcelBPSImageRelayEnabled  bool
+	ExcelBPSImageBaseURL       string
+	ExcelBPSImageBodyLimitMiB  int
+	ExcelBPSImageBudgetMiB     int
+	ExcelBPSImageMaxRequests   int
 }
 
 type DefaultSubscriptionSetting struct {
@@ -413,6 +422,9 @@ type PublicSettings struct {
 
 	// Available Channels feature (user-facing aggregate view)
 	AvailableChannelsEnabled bool `json:"available_channels_enabled"`
+
+	// Pelican showcase feature (user-facing gallery; limits stay admin-only)
+	PelicanShowcaseEnabled bool `json:"pelican_showcase_enabled"`
 
 	// Subscription feature switch (see SystemSettings.SubscriptionEnabled)
 	SubscriptionEnabled bool `json:"subscription_enabled"`

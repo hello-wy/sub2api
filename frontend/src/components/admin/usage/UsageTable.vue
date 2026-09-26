@@ -231,14 +231,13 @@
           </div>
         </template>
 
-        <!-- 合并首字/总耗时的健康度列：左侧色条上端随首字档、下端随总耗时档，中段(40%-60%)短渐变过渡，便于纵向扫视整体健康状况 -->
+        <!-- 合并首字/总耗时/TPS 的健康度列：左侧色条上中下三段分别随首字、总耗时、TPS 档，段间短渐变过渡，便于纵向扫视整体健康状况 -->
         <template #cell-latency="{ row }">
-          <div class="flex items-stretch gap-2">
+          <div class="flex items-stretch gap-2 text-left">
             <span
+              data-testid="latency-bar"
               class="w-1 shrink-0 rounded-full"
-              :class="row.first_token_ms != null
-                ? ['bg-gradient-to-b from-40% to-60%', LATENCY_BAR_FROM_CLASSES[firstTokenSeverity(row.first_token_ms)], LATENCY_BAR_TO_CLASSES[durationSeverity(row.duration_ms ?? 0)]]
-                : LATENCY_BAR_CLASSES[durationSeverity(row.duration_ms ?? 0)]"
+              :class="latencyBarClasses(row)"
               aria-hidden="true"
             ></span>
             <div class="grid grid-cols-[max-content_max-content] items-baseline gap-x-2 gap-y-0.5 text-xs">
@@ -247,14 +246,17 @@
               <span v-else class="text-gray-400 dark:text-gray-500">-</span>
               <span class="text-gray-400 dark:text-gray-500">{{ t('usage.latencyDuration') }}</span>
               <span class="font-medium tabular-nums" :class="LATENCY_TEXT_CLASSES[durationSeverity(row.duration_ms ?? 0)]">{{ formatDuration(row.duration_ms) }}</span>
+              <span class="text-gray-400 dark:text-gray-500">{{ t('usage.latencyTps') }}</span>
+              <span
+                v-if="formatUsageTokensPerSecond(row)"
+                data-testid="latency-tps"
+                class="font-medium tabular-nums"
+                :class="LATENCY_TEXT_CLASSES[tpsSeverity(getUsageTokensPerSecond(row) ?? 0)]"
+                :title="t('usage.latencyTpsHint')"
+              >{{ formatUsageTokensPerSecond(row) }}</span>
+              <span v-else data-testid="latency-tps" class="text-gray-400 dark:text-gray-500">-</span>
             </div>
           </div>
-        </template>
-
-        <template #cell-tps="{ row }">
-          <span data-testid="usage-tps" class="font-medium tabular-nums text-gray-900 dark:text-white">
-            {{ formatTokensPerSecond(getUsageTokensPerSecond(row)) }}
-          </span>
         </template>
 
         <template #cell-created_at="{ value }">
@@ -546,14 +548,15 @@ import { formatCacheTokens, formatMultiplier } from '@/utils/formatters'
 import { formatTokenPricePerMillion } from '@/utils/usagePricing'
 import { getUsageServiceTierLabel } from '@/utils/usageServiceTier'
 import { resolveUsageRequestType } from '@/utils/usageRequestType'
-import { getUsageTokensPerSecond } from '@/utils/usageThroughput'
+import { formatUsageTokensPerSecond, getUsageTokensPerSecond } from '@/utils/usageThroughput'
 import {
-  LATENCY_BAR_CLASSES,
   LATENCY_BAR_FROM_CLASSES,
   LATENCY_BAR_TO_CLASSES,
+  LATENCY_BAR_VIA_CLASSES,
   LATENCY_TEXT_CLASSES,
   durationSeverity,
   firstTokenSeverity,
+  tpsSeverity,
 } from '@/utils/latencyHealth'
 import {
   BILLING_MODE_TOKEN,
@@ -741,9 +744,16 @@ const formatDuration = (ms: number | null | undefined): string => {
   return `${Math.floor(totalSec / 3600)}h ${Math.floor((totalSec % 3600) / 60)}m`
 }
 
-const formatTokensPerSecond = (tps: number | null | undefined): string => {
-  if (tps == null || !Number.isFinite(tps) || tps <= 0) return '-'
-  return new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(tps)
+// 延迟色条三段依次对应首字/总耗时/TPS 三行（30%/50%/70% 分别落在三行内）；无首字或无 TPS 的段沿用总耗时档
+const latencyBarClasses = (row: AdminUsageLog): string[] => {
+  const duration = durationSeverity(row.duration_ms ?? 0)
+  const tps = getUsageTokensPerSecond(row)
+  return [
+    'bg-gradient-to-b from-30% via-50% to-70%',
+    LATENCY_BAR_FROM_CLASSES[row.first_token_ms != null ? firstTokenSeverity(row.first_token_ms) : duration],
+    LATENCY_BAR_VIA_CLASSES[duration],
+    LATENCY_BAR_TO_CLASSES[tps != null ? tpsSeverity(tps) : duration],
+  ]
 }
 
 // Cost tooltip functions

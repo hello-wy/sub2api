@@ -13,6 +13,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/pkg/logger"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/openai"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/openai_compat"
+	"github.com/Wei-Shaw/sub2api/internal/service/basispoints"
 	"github.com/gin-gonic/gin"
 	"github.com/tidwall/gjson"
 )
@@ -56,6 +57,20 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 			},
 		})
 		return nil, errors.New("codex_cli_only restriction: only codex official clients are allowed")
+	}
+
+	modelForBPS := gjson.GetBytes(body, "model").String()
+	if c.GetBool(bpsAccountProbeRequiredContextKey) &&
+		(!account.IsExcelBPSEnabledForModel(modelForBPS) || basispoints.NativeFallbackReason(body) != "") {
+		return nil, errors.New("bps probe path is unavailable")
+	}
+	if account.IsExcelBPSEnabledForModel(modelForBPS) {
+		reason := basispoints.NativeFallbackReason(body)
+		if reason == "" {
+			return s.forwardExcelBPS(ctx, c, account, body, startTime)
+		}
+		c.Header("X-Codex2API-Upstream", "codex")
+		c.Header("X-Codex2API-Basispoints-Bypass", reason)
 	}
 
 	normalizedBody, normalized, err := normalizeOpenAICodexCompactReasoningEffortForAccount(c, account, body)
