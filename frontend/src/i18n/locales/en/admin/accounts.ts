@@ -637,7 +637,7 @@ export default {
         excelBPSModels: 'Select models for Excel / BPS',
         excelBPSAstraOnly: 'Astra only',
         excelBPSModelsHint: 'Matches model names after account mapping. Selected models use Excel / BPS; other models retain their Codex, WS and passthrough settings. An empty selection disables BPS routing.',
-        excelBPSNotice: 'Start a new Codex conversation after saving. Selected models use HTTP/SSE regardless of WS mode or passthrough. Supports Responses, client tools and HTTPS images; base64 images are unsupported. max / ultra use xhigh. Model access depends on the upstream.',
+        excelBPSNotice: 'Start a new Codex conversation after saving. Selected models use HTTP/SSE regardless of WS mode or passthrough. Supports Responses, client tools and HTTPS images. Base64 images require the Excel / BPS image relay in system settings. max / ultra use xhigh. Model access depends on the upstream.',
         oauthPassthroughDesc:
           'When enabled, this OpenAI account uses automatic passthrough: the gateway forwards request/response as-is and only swaps auth, while keeping billing/concurrency/audit and necessary safety filtering.',
         flattenNamespaces: 'Flatten Codex namespace tools (compatibility)',

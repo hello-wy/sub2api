@@ -790,22 +790,16 @@ func (s *AccountTestService) testOpenAIAccountConnection(c *gin.Context, account
 	ctx := c.Request.Context()
 	mode = normalizeAccountTestMode(mode)
 
-	// Excel/BPS accounts must use the same gateway path as user Responses
-	// requests. The legacy account-test probe hard-codes ChatGPT Codex and
-	// silently bypasses the account's protocol toggle, producing misleading
-	// quality-test results.
 	if mode == AccountTestModeBPSTools {
 		return s.testExcelBPSToolRoundtrip(c, account, modelID)
 	}
-	if account.IsExcelBPSEnabled() && s.openaiGatewayService != nil {
-		return s.testExcelBPSAccountConnection(c, account, modelID, prompt)
-	}
 
 	// Default to openai.DefaultTestModel for OpenAI testing
-	testModelID := modelID
+	testModelID := strings.TrimSpace(modelID)
 	if testModelID == "" {
 		testModelID = openai.DefaultTestModel
 	}
+	requestedModelID := testModelID
 
 	// Align test routing with gateway behavior: OpenAI accounts apply normal
 	// account model mapping. Native remote compaction v2 rides the ordinary
@@ -826,6 +820,12 @@ func (s *AccountTestService) testOpenAIAccountConnection(c *gin.Context, account
 			return s.testOpenAIImageAPIKey(c, ctx, account, testModelID, imagePrompt)
 		}
 		return s.testOpenAIImageOAuth(c, ctx, account, testModelID, imagePrompt)
+	}
+
+	// Text tests follow the selected model's gateway protocol. Native compact
+	// and image probes retain their dedicated request and validation contracts.
+	if account.IsExcelBPSEnabledForModel(requestedModelID) && s.openaiGatewayService != nil {
+		return s.testExcelBPSAccountConnection(c, account, requestedModelID, prompt)
 	}
 
 	credentialAccount := account
@@ -995,10 +995,10 @@ func (s *AccountTestService) testExcelBPSAccountConnection(c *gin.Context, accou
 	if model == "" {
 		model = openai.DefaultTestModel
 	}
-	model = account.GetMappedModel(model)
-	prompt = promptOrDefault(prompt)
-	s.sendEvent(c, TestEvent{Type: "test_start", Model: model})
+	s.sendEvent(c, TestEvent{Type: "test_start", Model: account.GetMappedModel(model)})
 
+	// Forward performs account model mapping; passing an already mapped model
+	// would apply chained mappings twice and could select the wrong protocol.
 	body, err := buildExcelBPSAccountTestBody(model, prompt)
 	if err != nil {
 		return s.sendErrorAndEnd(c, "Failed to create Excel BPS test payload")
@@ -1046,10 +1046,14 @@ func (s *AccountTestService) testExcelBPSAccountConnection(c *gin.Context, accou
 }
 
 func buildExcelBPSAccountTestBody(model, prompt string) ([]byte, error) {
+	prompt = strings.TrimSpace(prompt)
+	if prompt == "" {
+		prompt = "hi"
+	}
 	return json.Marshal(map[string]any{
 		"model": model, "stream": true, "store": false,
 		"input": []any{map[string]any{"type": "message", "role": "user", "content": []any{
-			map[string]any{"type": "input_text", "text": promptOrDefault(prompt)},
+			map[string]any{"type": "input_text", "text": prompt},
 		}}},
 		"reasoning": map[string]any{"effort": "medium"},
 	})

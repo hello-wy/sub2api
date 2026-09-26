@@ -755,7 +755,7 @@ export default {
         excelBPSModels: '勾选使用 Excel / BPS 的模型',
         excelBPSAstraOnly: '仅选 Astra',
         excelBPSModelsHint: '按账号映射后的模型名称匹配。仅勾选模型走 Excel / BPS；未选模型保留原 Codex、WS 和自动透传设置。不勾选任何模型时不使用 BPS。',
-        excelBPSNotice: '保存后新开 Codex 会话。所选模型强制 HTTP/SSE，忽略 WS mode 与自动透传；仅支持 Responses、客户端工具和 HTTPS 图片链接，不支持 base64 图片。max / ultra 按 xhigh 发送，模型权限以上游为准。',
+        excelBPSNotice: '保存后新开 Codex 会话。所选模型强制 HTTP/SSE，忽略 WS mode 与自动透传；支持 Responses、客户端工具和 HTTPS 图片链接。base64 图片需在系统设置中启用 Excel / BPS 图片中转。max / ultra 按 xhigh 发送，模型权限以上游为准。',
         oauthPassthroughDesc:
           '开启后，该 OpenAI 账号将自动透传请求与响应，仅替换认证并保留计费/并发/审计及必要安全过滤；如遇兼容性问题可随时关闭回滚。',
         flattenNamespaces: '摊平 Codex namespace 工具（兼容）',

@@ -16,7 +16,7 @@ import (
 func TestExcelBPSImageRouteAllowsUnauthenticatedFetchOnly(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	cfg := &config.Config{}
-	serviceGateway := service.NewOpenAIGatewayService(nil, nil, nil, nil, nil, nil, nil, nil, cfg, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+	serviceGateway := service.NewOpenAIGatewayService(nil, nil, nil, nil, nil, nil, nil, cfg, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	gateway := handler.NewOpenAIGatewayHandler(serviceGateway, nil, nil, nil, nil, nil, nil, nil, cfg)
 	h := &handler.Handlers{OpenAIGateway: gateway, Gateway: &handler.GatewayHandler{}}
 	router := gin.New()

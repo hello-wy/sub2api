@@ -328,12 +328,12 @@ type SystemSettings struct {
 	AccountSchedulingThresholds map[string]int `json:"account_scheduling_thresholds"`
 
 	// 允许终端用户在用量页查看自己的失败请求
-	AllowUserViewErrorRequests  bool
-	ExcelBPSImageRelayEnabled   bool
-	ExcelBPSImageBaseURL        string
-	ExcelBPSImageBodyLimitMiB   int
-	ExcelBPSImageBudgetMiB      int
-	ExcelBPSImageMaxRequests    int
+	AllowUserViewErrorRequests bool
+	ExcelBPSImageRelayEnabled  bool
+	ExcelBPSImageBaseURL       string
+	ExcelBPSImageBodyLimitMiB  int
+	ExcelBPSImageBudgetMiB     int
+	ExcelBPSImageMaxRequests   int
 }
 
 type DefaultSubscriptionSetting struct {
