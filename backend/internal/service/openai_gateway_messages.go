@@ -217,6 +217,17 @@ func (s *OpenAIGatewayService) ForwardAsAnthropic(
 		return nil, fmt.Errorf("marshal responses request: %w", err)
 	}
 
+	if useExcelBPSForCompat(c, account, billingModel, body, responsesBody) {
+		result, forwardErr := s.forwardExcelBPSCompat(ctx, c, account, body, responsesBody, startTime, excelBPSCompatOptions{
+			model: originalModel, billingModel: billingModel, promptCacheKey: promptCacheKey,
+			stream: clientStream, anthropic: true,
+		})
+		if forwardErr == nil && result != nil && promptCacheKey != "" && anthropicDigestChain != "" {
+			s.bindOpenAICompatAnthropicDigestPromptCacheKey(account, apiKeyID, anthropicDigestChain, promptCacheKey, anthropicMatchedDigestChain)
+		}
+		return result, forwardErr
+	}
+
 	if account.UsesOpenAICodexProtocol() && account.Platform != PlatformGrok {
 		var reqBody map[string]any
 		if err := json.Unmarshal(responsesBody, &reqBody); err != nil {

@@ -284,6 +284,13 @@ func (s *OpenAIGatewayService) forwardAsChatCompletions(
 		}
 	}
 
+	if useExcelBPSForCompat(c, account, billingModel, body, responsesBody) {
+		return s.forwardExcelBPSCompat(ctx, c, account, body, responsesBody, startTime, excelBPSCompatOptions{
+			model: originalModel, billingModel: billingModel, promptCacheKey: promptCacheKey,
+			stream: clientStream, includeUsage: chatReq.StreamOptions != nil && chatReq.StreamOptions.IncludeUsage,
+		})
+	}
+
 	logFields := []zap.Field{
 		zap.Int64("account_id", account.ID),
 		zap.String("original_model", originalModel),
