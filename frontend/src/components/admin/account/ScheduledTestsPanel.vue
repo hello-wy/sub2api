@@ -9,6 +9,8 @@
     <div class="space-y-4">
       <p v-if="pelicanConfig && !groupId" class="text-xs text-gray-500">{{ t('admin.accounts.pelicanTest.scheduleHint') }}</p>
       <p v-if="groupId && !loading && !loadingKeys && !testKeys.length" class="rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-900/20 dark:text-amber-300" data-testid="group-test-no-keys">{{ t('admin.scheduledTests.groupNoKeys') }}</p>
+      <p v-if="groupId" class="text-xs leading-relaxed text-gray-500 dark:text-gray-400">{{ t('admin.scheduledTests.groupRetryHint') }}</p>
+      <p v-if="groupId && refreshError" role="alert" class="text-xs text-amber-700 dark:text-amber-300" data-testid="group-status-reconnect">{{ t('admin.scheduledTests.groupStatusReconnect') }}</p>
       <!-- Add Plan Button -->
       <div class="flex items-center justify-between">
         <p class="text-sm text-gray-500 dark:text-gray-400">
@@ -212,8 +214,20 @@
 
               <!-- Actions -->
               <div class="flex items-center gap-1" @click.stop>
-                <button v-if="groupId" type="button" data-testid="trigger-group-test" class="rounded-lg p-1.5 text-gray-500 hover:bg-primary-50 hover:text-primary-600 disabled:opacity-40 dark:hover:bg-primary-900/20" :disabled="disabled || !plan.enabled || triggering === plan.id || Boolean(plan.running_until && Date.parse(plan.running_until) > Date.now())" :title="t('admin.scheduledTests.triggerGroup')" @click="triggerPlan(plan)">
-                  <Icon name="play" size="sm" />
+                <button v-if="groupId" type="button" data-testid="trigger-group-test" class="rounded-lg p-1.5 text-gray-500 hover:bg-primary-50 hover:text-primary-600 disabled:opacity-40 dark:hover:bg-primary-900/20" :disabled="disabled || !plan.enabled || groupBusy || refreshError" :title="t('admin.scheduledTests.triggerGroup')" @click="triggerPlan(plan)">
+                  <Icon :name="triggering === plan.id ? 'refresh' : 'play'" size="sm" :class="triggering === plan.id ? 'animate-spin' : ''" />
+                </button>
+                <button
+                  v-if="isGroupPlanRunning(plan)"
+                  type="button"
+                  data-testid="cancel-group-test"
+                  class="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:cursor-wait disabled:opacity-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                  :disabled="disabled || executionStatus(plan) === 'cancelling'"
+                  :title="t('admin.scheduledTests.cancelGroupHint')"
+                  @click="cancelPlan(plan)"
+                >
+                  <Icon v-if="executionStatus(plan) === 'cancelling'" name="refresh" size="sm" class="animate-spin" />
+                  {{ t(executionStatus(plan) === 'cancelling' ? 'admin.scheduledTests.groupStatusCancelling' : 'admin.scheduledTests.cancelGroup') }}
                 </button>
                 <button
                   @click="startEdit(plan)"
@@ -241,6 +255,19 @@
                 ]"
               />
             </div>
+          </div>
+
+          <div v-if="groupId" class="space-y-2 border-t border-gray-100 bg-gray-50/60 px-4 py-3 dark:border-dark-700 dark:bg-dark-900/30" role="status" aria-live="polite" :data-testid="'group-test-status-' + plan.id">
+            <div class="flex flex-wrap items-center gap-2 text-xs">
+              <span class="inline-flex items-center gap-1.5 rounded-full px-2 py-1 font-medium" :class="executionStatusClass(plan)">
+                <Icon v-if="['starting', 'running', 'retrying', 'cancelling'].includes(executionStatus(plan))" name="refresh" size="sm" class="animate-spin" />
+                {{ executionStatusLabel(plan) }}
+              </span>
+              <span v-if="plan.execution" class="tabular-nums text-gray-500 dark:text-gray-400">{{ t('admin.scheduledTests.groupElapsed', { seconds: executionElapsed(plan) }) }}</span>
+              <span v-if="executionStatus(plan) === 'retrying' && plan.execution?.retry_at" class="tabular-nums text-amber-700 dark:text-amber-300">{{ t('admin.scheduledTests.groupRetryCountdown', { seconds: Math.max(0, Math.ceil((Date.parse(plan.execution.retry_at) - clockNow) / 1000)) }) }}</span>
+            </div>
+            <p v-if="plan.execution" class="text-xs tabular-nums text-gray-600 dark:text-gray-300">{{ t('admin.scheduledTests.groupProgress', { attempt: plan.execution.attempt, max: plan.execution.max_attempts, completed: plan.execution.completed, total: plan.execution.total, succeeded: plan.execution.succeeded, failed: plan.execution.failed }) }}</p>
+            <p v-if="plan.execution?.last_error" class="break-words text-xs text-red-600 dark:text-red-300">{{ t('admin.scheduledTests.groupLastError', { message: plan.execution.last_error }) }}</p>
           </div>
 
           <!-- Edit Form -->
@@ -538,9 +565,14 @@ const editPelican = ref(configDefaults())
 
 let alive = true
 let revision = 0
+let triggerSequence = 0
+let cancelSequence = 0
+const cancelling = ref<number | null>(null)
 
 // State
 const loading = ref(false)
+const refreshError = ref(false)
+const clockNow = ref(Date.now())
 const creating = ref(false)
 const loadingResults = ref(false)
 const plans = ref<ScheduledTestPlan[]>([])
@@ -580,25 +612,29 @@ const resetNewPlan = () => {
   newPlan.api_key_id = 0
 }
 
-const loadPlans = async () => {
+const loadPlans = async (silent = false) => {
   if (!targetId.value) return
   const scopeId = targetId.value
   const version = revision
-  loading.value = true
+  if (!silent) loading.value = true
   try {
     const data = props.groupId
       ? await adminAPI.scheduledTests.listByGroup(props.groupId)
       : await adminAPI.scheduledTests.listByAccount(scopeId)
     if (alive && props.show && targetId.value === scopeId && revision === version) {
+      refreshError.value = false
       plans.value = data.filter((plan) => Boolean(plan.pelican_config) === Boolean(props.pelicanConfig))
-      if (props.pelicanConfig && plans.value.length > 0 && expandedPlanId.value === null) {
+      if (!silent && props.pelicanConfig && plans.value.length > 0 && expandedPlanId.value === null) {
         await expandPlan(plans.value[0].id)
       }
     }
   } catch (error: any) {
-    appStore.showError(error?.message || 'Failed to load plans')
+    if (alive && props.show && targetId.value === scopeId && revision === version) {
+      if (silent) refreshError.value = true
+      else appStore.showError(error?.message || 'Failed to load plans')
+    }
   } finally {
-    loading.value = false
+    if (!silent && alive && revision === version) loading.value = false
   }
 }
 
@@ -689,15 +725,87 @@ const handleEdit = async () => {
   }
 }
 
+const isGroupPlanRunning = (plan: ScheduledTestPlan) => Boolean(props.groupId && plan.running_until && Date.parse(plan.running_until) > clockNow.value && !['success', 'failed', 'interrupted'].includes(plan.execution?.status || ''))
+const executionStatus = (plan: ScheduledTestPlan) => {
+  if (cancelling.value === plan.id) return 'cancelling'
+  if (triggering.value === plan.id) return 'starting'
+  const leased = Boolean(plan.running_until && Date.parse(plan.running_until) > clockNow.value)
+  if (plan.execution?.status === 'running' || plan.execution?.status === 'retrying' || plan.execution?.status === 'cancelling') return leased ? plan.execution.status : 'interrupted'
+  if (leased) return 'running'
+  return plan.execution?.status || (plan.enabled ? 'ready' : 'paused')
+}
+const groupBusy = computed(() => triggering.value !== null || cancelling.value !== null || plans.value.some(plan => Boolean(plan.running_until && Date.parse(plan.running_until) > clockNow.value)))
+const executionStatusLabel = (plan: ScheduledTestPlan) => {
+  const status = executionStatus(plan)
+  if (status === 'running' && plan.execution?.phase) {
+    const phases = {
+      waiting: 'admin.scheduledTests.groupPhaseWaiting',
+      receiving: 'admin.scheduledTests.groupPhaseReceiving',
+      thinking: 'admin.scheduledTests.groupPhaseThinking',
+      generating: 'admin.scheduledTests.groupPhaseGenerating',
+      saving: 'admin.scheduledTests.groupPhaseSaving',
+    }
+    return t(phases[plan.execution.phase])
+  }
+  const labels = {
+    starting: 'admin.scheduledTests.groupStatusStarting',
+    running: 'admin.scheduledTests.groupStatusRunning',
+    retrying: 'admin.scheduledTests.groupStatusRetrying',
+    cancelling: 'admin.scheduledTests.groupStatusCancelling',
+    success: 'admin.scheduledTests.groupStatusSuccess',
+    failed: 'admin.scheduledTests.groupStatusFailed',
+    interrupted: 'admin.scheduledTests.groupStatusInterrupted',
+    ready: 'admin.scheduledTests.groupStatusReady',
+    paused: 'admin.scheduledTests.groupStatusPaused',
+  }
+  return t(labels[status])
+}
+const executionStatusClass = (plan: ScheduledTestPlan) => {
+  const status = executionStatus(plan)
+  if (status === 'success') return 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300'
+  if (status === 'failed' || status === 'interrupted') return 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-300'
+  if (status === 'retrying' || status === 'cancelling') return 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300'
+  if (status === 'starting' || status === 'running') return 'bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-300'
+  return 'bg-gray-100 text-gray-600 dark:bg-dark-700 dark:text-gray-300'
+}
+const executionElapsed = (plan: ScheduledTestPlan) => {
+  const state = plan.execution
+  if (!state) return 0
+  const end = state.finished_at ? Date.parse(state.finished_at) : clockNow.value
+  return Math.max(0, Math.floor((end - Date.parse(state.started_at)) / 1000))
+}
+
 const triggerPlan = async (plan: ScheduledTestPlan) => {
-  if (!props.groupId || triggering.value || props.disabled) return
+  if (!props.groupId || groupBusy.value || !plan.enabled || props.disabled) return
+  const scopeId = targetId.value
+  const version = ++revision
+  const sequence = ++triggerSequence
   triggering.value = plan.id
   try {
     await adminAPI.scheduledTests.triggerGroupPlan(plan.id)
-    appStore.showSuccess(t('admin.scheduledTests.groupQueued'))
-    await loadPlans()
-  } catch (error: any) { appStore.showError(error?.message || t('admin.scheduledTests.groupTriggerError')) }
-  finally { triggering.value = null }
+    if (!alive || !props.show || targetId.value !== scopeId || revision !== version) return
+    appStore.showSuccess(t('admin.scheduledTests.groupStarted'))
+    await loadPlans(true)
+    if (alive && props.show && targetId.value === scopeId && revision === version) await expandPlan(plan.id)
+  } catch (error: any) {
+    if (alive && props.show && targetId.value === scopeId && revision === version) appStore.showError(error?.message || t('admin.scheduledTests.groupTriggerError'))
+  } finally { if (alive && triggerSequence === sequence) triggering.value = null }
+}
+
+const cancelPlan = async (plan: ScheduledTestPlan) => {
+  if (!isGroupPlanRunning(plan) || !plan.running_until || props.disabled || executionStatus(plan) === 'cancelling') return
+  const scopeId = targetId.value
+  const version = ++revision
+  const sequence = ++cancelSequence
+  cancelling.value = plan.id
+  try {
+    await adminAPI.scheduledTests.cancelGroupPlan(plan.id, plan.running_until)
+    if (!alive || !props.show || targetId.value !== scopeId || revision !== version) return
+    appStore.showSuccess(t('admin.scheduledTests.groupCancelRequested'))
+    await loadPlans(true)
+  } catch (error: any) {
+    if (alive && props.show && targetId.value === scopeId && revision === version) appStore.showError(error?.message || t('admin.scheduledTests.groupCancelError'))
+  } finally { if (alive && cancelSequence === sequence) cancelling.value = null }
 }
 
 const confirmDeletePlan = (plan: ScheduledTestPlan) => {
@@ -770,6 +878,12 @@ const previewResult = async (result: ScheduledTestResult) => {
 
 watch(() => [props.show, props.accountId, props.groupId] as const, async ([visible]) => {
   revision++
+  triggerSequence++
+  cancelSequence++
+  cancelling.value = null
+  triggering.value = null
+  refreshError.value = false
+  loading.value = false
   plans.value = []
   results.value = []
   emit('history', [])
@@ -795,16 +909,29 @@ watch(() => [props.show, props.accountId, props.groupId] as const, async ([visib
   }
 }, { immediate: true })
 
-// Refresh background results while the embedded Pelican tab is open.
+// Poll group progress without hiding cards or overlapping requests. Account history keeps its cadence.
+let refreshInFlight = false
+let lastRefreshAt = Date.now()
 const refreshTimer = setInterval(async () => {
-  if (!props.show || !props.pelicanConfig || loading.value || creating.value || updating.value) return
-  await loadPlans()
-  const id = expandedPlanId.value
-  if (!id) return
+  clockNow.value = Date.now()
+  if (!props.show || !props.pelicanConfig || loading.value || loadingKeys.value || creating.value || updating.value || triggering.value !== null || refreshInFlight) return
+  const interval = props.groupId ? 1000 : 15000
+  if (clockNow.value - lastRefreshAt < interval) return
+  lastRefreshAt = clockNow.value
+  refreshInFlight = true
+  const scopeId = targetId.value
+  const version = revision
   try {
+    await loadPlans(true)
+    const id = expandedPlanId.value
+    if (!alive || !props.show || revision !== version || targetId.value !== scopeId || !id) return
     const data = await adminAPI.scheduledTests.listResults(id, 20, false)
-    if (alive && props.show && expandedPlanId.value === id) results.value = data
+    if (alive && props.show && revision === version && targetId.value === scopeId && expandedPlanId.value === id) {
+      results.value = data
+      emit('history', data)
+    }
   } catch { /* Manual expansion still surfaces errors. */ }
-}, 15000)
+  finally { refreshInFlight = false }
+}, 1000)
 onBeforeUnmount(() => { alive = false; clearInterval(refreshTimer) })
 </script>

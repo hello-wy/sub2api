@@ -752,6 +752,7 @@ func registerScheduledTestRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 	{
 		plans.POST("", h.Admin.ScheduledTest.Create)
 		plans.POST("/:id/trigger", h.Admin.ScheduledTest.TriggerGroupPlan)
+		plans.POST("/:id/cancel", h.Admin.ScheduledTest.CancelGroupPlan)
 		plans.PUT("/:id", h.Admin.ScheduledTest.Update)
 		plans.DELETE("/:id", h.Admin.ScheduledTest.Delete)
 		plans.GET("/:id/results", h.Admin.ScheduledTest.ListResults)

@@ -2470,7 +2470,24 @@ export interface PelicanTestConfig {
   model_id?: string
 }
 
+export interface ScheduledTestExecution {
+  phase?: 'waiting' | 'receiving' | 'thinking' | 'generating' | 'saving'
+  status: 'running' | 'retrying' | 'cancelling' | 'success' | 'failed' | 'interrupted'
+  cancel_requested?: boolean
+  attempt: number
+  max_attempts: number
+  total: number
+  completed: number
+  succeeded: number
+  failed: number
+  started_at: string
+  finished_at?: string
+  retry_at?: string
+  last_error?: string
+}
+
 export interface ScheduledTestPlan {
+  execution?: ScheduledTestExecution
   group_id?: number
   api_key_id?: number
   pelican_config?: PelicanTestConfig

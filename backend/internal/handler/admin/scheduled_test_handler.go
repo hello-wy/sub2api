@@ -3,6 +3,7 @@ package admin
 import (
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
 	"github.com/Wei-Shaw/sub2api/internal/service"
@@ -257,5 +258,26 @@ func (h *ScheduledTestHandler) TriggerGroupPlan(c *gin.Context) {
 		response.BadRequest(c, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "queued"})
+	c.JSON(http.StatusOK, gin.H{"message": "started"})
+}
+
+// CancelGroupPlan interrupts only the run identified by the displayed lease.
+func (h *ScheduledTestHandler) CancelGroupPlan(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || id <= 0 {
+		response.BadRequest(c, "invalid plan id")
+		return
+	}
+	var req struct {
+		RunningUntil time.Time `json:"running_until" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "current execution lease is required")
+		return
+	}
+	if err := h.scheduledTestSvc.CancelGroupPlan(c.Request.Context(), id, req.RunningUntil); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "cancelling"})
 }

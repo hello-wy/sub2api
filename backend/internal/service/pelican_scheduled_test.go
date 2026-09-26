@@ -47,23 +47,67 @@ func TestPelicanPlanValidation(t *testing.T) {
 
 type pelicanPlanRepo struct {
 	ScheduledTestPlanRepository
-	mu       sync.Mutex
-	claimed  bool
-	finished bool
+	mu        sync.Mutex
+	claimed   bool
+	finished  bool
+	plan      *ScheduledTestPlan
+	states    []ScheduledTestExecution
+	immediate bool
 }
 
-func (r *pelicanPlanRepo) ClaimPelican(context.Context, *ScheduledTestPlan, time.Time, time.Time, time.Time) (bool, error) {
+func (r *pelicanPlanRepo) ClaimPelican(_ context.Context, plan *ScheduledTestPlan, _ time.Time, until time.Time, _ time.Time, immediate ...bool) (bool, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if r.claimed {
 		return false, nil
 	}
 	r.claimed = true
+	copy := *plan
+	copy.RunningUntil = &until
+	r.plan = &copy
+	r.immediate = len(immediate) > 0 && immediate[0]
 	return true, nil
 }
 func (r *pelicanPlanRepo) FinishPelican(context.Context, int64, time.Time, time.Time) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	r.finished = true
 	return nil
+}
+
+func (r *pelicanPlanRepo) UpdatePelicanExecution(_ context.Context, _ int64, _ time.Time, state *ScheduledTestExecution) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	copy := *state
+	if r.plan != nil && r.plan.Execution != nil && r.plan.Execution.CancelRequested {
+		copy.CancelRequested, copy.Status, copy.Phase, copy.RetryAt = true, "cancelling", "", nil
+		if copy.FinishedAt != nil {
+			copy.Status = "interrupted"
+		}
+		copy.LastError = errGroupPelicanCancelled.Error()
+	}
+	r.states = append(r.states, copy)
+	if r.plan != nil {
+		r.plan.Execution = &copy
+	}
+	return nil
+}
+func (r *pelicanPlanRepo) GetByID(context.Context, int64) (*ScheduledTestPlan, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.plan == nil {
+		return nil, errors.New("missing plan")
+	}
+	copy := *r.plan
+	if r.plan.Execution != nil {
+		state := *r.plan.Execution
+		copy.Execution = &state
+	}
+	if r.plan.PelicanConfig != nil {
+		config := *r.plan.PelicanConfig
+		copy.PelicanConfig = &config
+	}
+	return &copy, nil
 }
 
 type pelicanResults struct {
@@ -165,4 +209,22 @@ func TestLegacyCandyPlanRejectsWrongAnswer(t *testing.T) {
 	cfg.QuestionKind = "candy"
 	require.Empty(t, intelligenceTestOutputError(cfg, "21"))
 	require.False(t, isBuiltinCandyPlan(&PelicanTestConfig{Prompt: "custom question"}))
+}
+
+func (r *pelicanPlanRepo) RequestPelicanCancellation(_ context.Context, _ int64, until time.Time) (bool, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.plan == nil || r.finished || r.plan.RunningUntil == nil || !r.plan.RunningUntil.Equal(until) || !until.After(time.Now()) {
+		return false, nil
+	}
+	if r.plan.Execution == nil {
+		r.plan.Execution = &ScheduledTestExecution{Status: "running"}
+	}
+	state := *r.plan.Execution
+	if state.Status != "running" && state.Status != "retrying" && state.Status != "cancelling" {
+		return false, nil
+	}
+	state.CancelRequested, state.Status, state.Phase, state.RetryAt = true, "cancelling", "", nil
+	r.plan.Execution = &state
+	return true, nil
 }

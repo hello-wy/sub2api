@@ -15,8 +15,27 @@ type PelicanTestConfig struct {
 	ModelID string `json:"model_id,omitempty"`
 }
 
+// ScheduledTestExecution is the latest group run, including bounded automatic retries.
+type ScheduledTestExecution struct {
+	CancelRequested bool       `json:"cancel_requested,omitempty"`
+	Status          string     `json:"status"`
+	Phase           string     `json:"phase,omitempty"`
+	Attempt         int        `json:"attempt"`
+	MaxAttempts     int        `json:"max_attempts"`
+	Total           int        `json:"total"`
+	Completed       int        `json:"completed"`
+	Succeeded       int        `json:"succeeded"`
+	Failed          int        `json:"failed"`
+	StartedAt       time.Time  `json:"started_at"`
+	FinishedAt      *time.Time `json:"finished_at,omitempty"`
+	RetryAt         *time.Time `json:"retry_at,omitempty"`
+	LastError       string     `json:"last_error,omitempty"`
+}
+
 // ScheduledTestPlan represents a scheduled test plan domain model.
 type ScheduledTestPlan struct {
+	Execution *ScheduledTestExecution `json:"execution,omitempty"`
+
 	PelicanConfig  *PelicanTestConfig `json:"pelican_config,omitempty"`
 	RunningUntil   *time.Time         `json:"running_until,omitempty"`
 	ID             int64              `json:"id"`
@@ -50,14 +69,15 @@ type ScheduledTestResult struct {
 
 // ScheduledTestPlanRepository defines the data access interface for test plans.
 type ScheduledTestPlanRepository interface {
-	ClaimPelican(ctx context.Context, plan *ScheduledTestPlan, now, until, next time.Time) (bool, error)
+	ClaimPelican(ctx context.Context, plan *ScheduledTestPlan, now, until, next time.Time, immediate ...bool) (bool, error)
 	FinishPelican(ctx context.Context, id int64, until, finished time.Time) error
 	Create(ctx context.Context, plan *ScheduledTestPlan) (*ScheduledTestPlan, error)
 	GetByID(ctx context.Context, id int64) (*ScheduledTestPlan, error)
 	ListByAccountID(ctx context.Context, accountID int64) ([]*ScheduledTestPlan, error)
 	ListByGroupID(ctx context.Context, groupID int64) ([]*ScheduledTestPlan, error)
 	ListGroupTestKeys(ctx context.Context, groupID int64) ([]*GroupTestKey, error)
-	Trigger(ctx context.Context, id int64, now time.Time) (bool, error)
+	UpdatePelicanExecution(ctx context.Context, id int64, until time.Time, state *ScheduledTestExecution) error
+	RequestPelicanCancellation(ctx context.Context, id int64, until time.Time) (bool, error)
 	ListDue(ctx context.Context, now time.Time) ([]*ScheduledTestPlan, error)
 	Update(ctx context.Context, plan *ScheduledTestPlan) (*ScheduledTestPlan, error)
 	Delete(ctx context.Context, id int64) error

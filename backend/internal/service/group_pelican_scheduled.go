@@ -28,7 +28,15 @@ func (s *ScheduledTestService) SetGroupGateway(gateway http.Handler) {
 }
 
 func (s *ScheduledTestService) ListPlansByGroup(ctx context.Context, groupID int64) ([]*ScheduledTestPlan, error) {
-	return s.planRepo.ListByGroupID(ctx, groupID)
+	plans, err := s.planRepo.ListByGroupID(ctx, groupID)
+	for _, plan := range plans {
+		if state := plan.Execution; state != nil && (state.Status == "running" || state.Status == "retrying" || state.Status == "cancelling") && (plan.RunningUntil == nil || !plan.RunningUntil.After(time.Now())) {
+			copy := *state
+			copy.Status, copy.RetryAt = "interrupted", nil
+			plan.Execution = &copy
+		}
+	}
+	return plans, err
 }
 
 func (s *ScheduledTestService) ListGroupTestKeys(ctx context.Context, groupID int64) ([]*GroupTestKey, error) {
@@ -46,14 +54,10 @@ func (s *ScheduledTestService) TriggerGroupPlan(ctx context.Context, id int64) e
 	if err := s.validatePlanTarget(ctx, plan); err != nil {
 		return err
 	}
-	ok, err := s.planRepo.Trigger(ctx, id, time.Now())
-	if err != nil {
-		return err
+	if s.startGroupPlan == nil {
+		return fmt.Errorf("group test runner is not ready")
 	}
-	if !ok {
-		return fmt.Errorf("plan is paused, deleted or already running")
-	}
-	return nil
+	return s.startGroupPlan(ctx, plan)
 }
 
 func (s *ScheduledTestService) validatePlanTarget(ctx context.Context, plan *ScheduledTestPlan) error {
@@ -102,6 +106,10 @@ func (s *ScheduledTestService) groupTestKey(ctx context.Context, plan *Scheduled
 // composite routing, scheduling, usage recording and billing retain normal behavior.
 // No external base URL or credential-bearing loopback network call is needed.
 func (s *ScheduledTestService) RunGroupPelican(ctx context.Context, plan *ScheduledTestPlan) (*ScheduledTestResult, error) {
+	return s.runGroupPelican(ctx, plan, nil)
+}
+
+func (s *ScheduledTestService) runGroupPelican(ctx context.Context, plan *ScheduledTestPlan, onProgress func(string)) (*ScheduledTestResult, error) {
 	if plan == nil || plan.PelicanConfig == nil {
 		return nil, fmt.Errorf("missing Pelican configuration")
 	}
@@ -136,6 +144,10 @@ func (s *ScheduledTestService) RunGroupPelican(ctx context.Context, plan *Schedu
 	request.Header.Set("Accept", "text/event-stream")
 	request.Header.Set("User-Agent", "Sub2API-Pelican-ScheduledTest/1.0")
 	recorder := &pelicanRecorder{ResponseRecorder: httptest.NewRecorder(), cancel: cancel}
+	if onProgress != nil {
+		progress := &groupPelicanStreamProgress{onProgress: onProgress}
+		recorder.onWrite = progress.write
+	}
 	gateway.ServeHTTP(recorder, request)
 	output, message := parseGroupPelicanOutput(recorder.Body.Bytes())
 	if recorder.Code < 200 || recorder.Code >= 300 {

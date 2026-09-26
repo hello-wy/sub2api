@@ -101,7 +101,12 @@ export async function triggerGroupPlan(id: number): Promise<void> {
   await apiClient.post('/admin/scheduled-test-plans/' + id + '/trigger')
 }
 
+export async function cancelGroupPlan(id: number, runningUntil: string): Promise<void> {
+  await apiClient.post('/admin/scheduled-test-plans/' + id + '/cancel', { running_until: runningUntil })
+}
+
 export const scheduledTestsAPI = {
+  cancelGroupPlan,
   listByGroup,
   listGroupTestKeys,
   triggerGroupPlan,

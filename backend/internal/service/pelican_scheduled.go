@@ -83,6 +83,10 @@ func (s *ScheduledTestRunnerService) runPelicanPlan(ctx context.Context, plan *S
 	if err != nil || !claimed {
 		return
 	}
+	if plan.GroupID > 0 {
+		s.runClaimedGroupPelican(ctx, plan, now, until)
+		return
+	}
 	runCtx, cancel := context.WithTimeout(ctx, 10*time.Minute)
 	defer cancel()
 	results := make([]*ScheduledTestResult, plan.PelicanConfig.ParallelCount)
@@ -130,6 +134,7 @@ type pelicanRecorder struct {
 	*httptest.ResponseRecorder
 	cancel   context.CancelFunc
 	overflow bool
+	onWrite  func([]byte)
 }
 
 func (w *pelicanRecorder) Write(data []byte) (int, error) {
@@ -138,7 +143,11 @@ func (w *pelicanRecorder) Write(data []byte) (int, error) {
 		w.cancel()
 		return 0, io.ErrShortWrite
 	}
-	return w.ResponseRecorder.Write(data)
+	n, err := w.ResponseRecorder.Write(data)
+	if n > 0 && w.onWrite != nil && w.Code >= 200 && w.Code < 300 {
+		w.onWrite(data[:n])
+	}
+	return n, err
 }
 func (w *pelicanRecorder) WriteString(data string) (int, error) { return w.Write([]byte(data)) }
 
