@@ -23,12 +23,26 @@ func TestPelicanShowcaseRepo_PublishListGetPrune(t *testing.T) {
 	suffix := time.Now().UnixNano()
 	name := func(label string) string { return fmt.Sprintf("showcase-%s-%d", label, suffix) }
 
-	groupA := mustCreateGroup(t, client, &service.Group{Name: name("a")})
-	groupB := mustCreateGroup(t, client, &service.Group{Name: name("b")})
-	unbound := mustCreateGroup(t, client, &service.Group{Name: name("unbound")})
-	disabled := mustCreateGroup(t, client, &service.Group{Name: name("disabled"), Status: service.StatusDisabled})
-	deleted := mustCreateGroup(t, client, &service.Group{Name: name("deleted")})
+	createGroup := func(group *service.Group) *service.Group {
+		t.Helper()
+		created := mustCreateGroup(t, client, group)
+		t.Cleanup(func() {
+			_, err := integrationDB.ExecContext(context.Background(), "DELETE FROM groups WHERE id = $1", created.ID)
+			require.NoError(t, err)
+		})
+		return created
+	}
+
+	groupA := createGroup(&service.Group{Name: name("a")})
+	groupB := createGroup(&service.Group{Name: name("b")})
+	unbound := createGroup(&service.Group{Name: name("unbound")})
+	disabled := createGroup(&service.Group{Name: name("disabled"), Status: service.StatusDisabled})
+	deleted := createGroup(&service.Group{Name: name("deleted")})
 	account := mustCreateAccount(t, client, &service.Account{Name: name("account")})
+	t.Cleanup(func() {
+		_, err := integrationDB.ExecContext(context.Background(), "DELETE FROM accounts WHERE id = $1", account.ID)
+		require.NoError(t, err)
+	})
 	for _, group := range []*service.Group{groupA, groupB, disabled, deleted} {
 		mustBindAccountToGroup(t, client, account.ID, group.ID, 1)
 	}

@@ -207,7 +207,7 @@ func parseGroupPelicanOutput(body []byte) (string, string) {
 			return output.String(), groupPelicanHTTPError([]byte(data))
 		}
 		for _, choice := range event.Choices {
-			output.WriteString(choice.Delta.Content)
+			_, _ = output.WriteString(choice.Delta.Content)
 			if choice.FinishReason != nil && *choice.FinishReason != "" {
 				if *choice.FinishReason != "stop" {
 					return output.String(), "Generation did not finish normally: " + *choice.FinishReason

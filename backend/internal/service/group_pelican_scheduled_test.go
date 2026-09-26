@@ -98,7 +98,7 @@ func TestGroupPelicanIncompleteAndErrorStreamsNeverPublishAsSuccess(t *testing.T
 	svc, plan, key := groupPelicanFixture()
 	svc.SetGroupGateway(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
-		json.NewEncoder(w).Encode(map[string]any{"error": map[string]string{"message": "invalid " + key.Key}})
+		require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"error": map[string]string{"message": "invalid " + key.Key}}))
 	}))
 	result, err := svc.RunGroupPelican(context.Background(), plan)
 	require.NoError(t, err)

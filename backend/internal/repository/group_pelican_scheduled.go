@@ -14,7 +14,7 @@ func (r *scheduledTestPlanRepository) ListByGroupID(ctx context.Context, groupID
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	return scanPlans(rows)
 }
 
@@ -26,7 +26,7 @@ func (r *scheduledTestPlanRepository) ListGroupTestKeys(ctx context.Context, gro
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	keys := make([]*service.GroupTestKey, 0)
 	for rows.Next() {
 		key := &service.GroupTestKey{}

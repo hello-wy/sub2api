@@ -18,8 +18,20 @@ func TestGroupPelicanPersistenceLeaseShowcaseAndKeyLifecycle(t *testing.T) {
 	suffix := time.Now().UnixNano()
 	name := func(label string) string { return fmt.Sprintf("group-pelican-%s-%d", label, suffix) }
 	group := mustCreateGroup(t, client, &service.Group{Name: name("entry")})
+	t.Cleanup(func() {
+		_, err := integrationDB.ExecContext(context.Background(), "DELETE FROM groups WHERE id = $1", group.ID)
+		require.NoError(t, err)
+	})
 	other := mustCreateGroup(t, client, &service.Group{Name: name("other")})
+	t.Cleanup(func() {
+		_, err := integrationDB.ExecContext(context.Background(), "DELETE FROM groups WHERE id = $1", other.ID)
+		require.NoError(t, err)
+	})
 	user := mustCreateUser(t, client, &service.User{Email: name("owner") + "@example.com", Balance: 100})
+	t.Cleanup(func() {
+		_, err := integrationDB.ExecContext(context.Background(), "DELETE FROM users WHERE id = $1", user.ID)
+		require.NoError(t, err)
+	})
 	keyRepo := NewAPIKeyRepository(client, integrationDB)
 	key := &service.APIKey{UserID: user.ID, Key: name("key"), Name: name("test"), GroupID: &group.ID, Status: service.StatusActive}
 	require.NoError(t, keyRepo.Create(ctx, key))
