@@ -1,166 +1,120 @@
 <template>
-  <PelicanRecordsDashboard v-if="dashboardOpen" :accounts="props.accounts || []" :account="props.account" :manual-record="records[0] || null" @close="dashboardOpen = false" />
-  <BaseDialog :show="show" :title="t('admin.accounts.pelicanTest.title')" width="full" :fullscreen="viewingScheduled" @close="handleClose">
-    <div class="space-y-5">
-      <div v-if="account" class="flex flex-col items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/70 p-3 dark:border-amber-800/60 dark:bg-amber-950/20 sm:flex-row sm:items-center sm:justify-between">
-        <div class="flex items-center gap-3">
-          <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500 text-white">
-            <Icon name="brain" size="md" :stroke-width="2" />
+  <PelicanRecordsDashboard v-if="show && dashboardOpen" :accounts="props.accounts || []" :account="props.account" :manual-record="records[0] || null" @close="dashboardOpen = false" />
+  <BaseDialog :show="show && !dashboardOpen" :title="t('admin.accounts.pelicanTest.title')" width="extra-wide" :fullscreen="viewingScheduled" @close="handleClose">
+    <div class="space-y-6">
+      <div v-if="account" class="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-gray-50 px-4 py-3 dark:bg-dark-900/50">
+        <div class="flex min-w-0 items-center gap-3">
+          <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-100 text-primary-600 dark:bg-primary-500/15 dark:text-primary-400">
+            <Icon name="brain" size="md" />
           </div>
-          <div>
-            <div class="font-semibold text-gray-900 dark:text-gray-100">{{ account.name }}</div>
-            <div class="text-xs text-gray-500 dark:text-gray-400">{{ account.platform }} · {{ t('admin.accounts.pelicanTest.subtitle') }}</div>
+          <div class="min-w-0">
+            <div class="truncate font-semibold text-gray-900 dark:text-gray-100">{{ account.name }}</div>
+            <div class="mt-0.5 flex items-center gap-2 text-xs text-gray-500 dark:text-dark-400">
+              <span class="uppercase">{{ account.platform }}</span><span aria-hidden="true">·</span><span>{{ account.type }}</span>
+            </div>
           </div>
         </div>
-        <span class="whitespace-nowrap rounded-full bg-white px-2.5 py-1 text-xs font-medium text-amber-700 shadow-sm dark:bg-dark-800 dark:text-amber-300">
-          {{ t('admin.accounts.pelicanTest.noScoring') }}
-        </span>
+        <span class="text-xs text-gray-500 dark:text-dark-400">{{ t('admin.accounts.pelicanTest.subtitle') }}</span>
       </div>
 
-      <div>
-        <label class="input-label mb-1.5 block">{{ t('admin.accounts.pelicanTest.question') }}</label>
-        <Select data-testid="question-select" :model-value="questionKind" :options="questionOptions" :disabled="running" @update:model-value="selectQuestion" />
-        <p v-if="questionKind === 'candy'" class="mt-2 text-xs text-gray-500">{{ t('admin.accounts.pelicanTest.candyHint') }}</p>
-      </div>
-      <div class="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
-        <TextArea
-          v-model="prompt"
-          :label="t('admin.accounts.pelicanTest.promptLabel')"
-          :disabled="running"
-          :rows="5"
-          :hint="t('admin.accounts.pelicanTest.promptHint')"
-        />
-        <div class="space-y-3">
-          <Input
-            v-model="modelId"
-            :label="t('admin.accounts.pelicanTest.model')"
-            :disabled="running"
-            :hint="t('admin.accounts.pelicanTest.modelHint')"
-          />
-          <div>
-            <label class="input-label mb-1.5 block">{{ t('admin.accounts.pelicanTest.reasoning') }}</label>
-            <Select v-model="reasoningEffort" :options="reasoningOptions" :disabled="running" />
-          </div>
-          <Input
-            v-model="parallelCount"
-            type="number"
-            :label="t('admin.accounts.pelicanTest.parallel')"
-            :disabled="running"
-            :hint="t('admin.accounts.pelicanTest.parallelHint')"
-          />
+      <nav class="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 pb-3 dark:border-dark-700" :aria-label="t('admin.accounts.pelicanTest.title')">
+        <div class="inline-flex rounded-xl bg-gray-100 p-1 dark:bg-dark-900">
+          <button type="button" data-testid="manual-tab" :aria-pressed="activeTab === 'results'" :disabled="running"
+            class="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-60"
+            :class="activeTab === 'results' ? 'bg-white text-primary-600 shadow-sm dark:bg-dark-700 dark:text-primary-400' : 'text-gray-500 hover:text-gray-900 dark:text-dark-400 dark:hover:text-gray-100'"
+            @click="openManualResults"><Icon name="play" size="sm" />{{ t(viewingScheduled ? 'admin.accounts.pelicanTest.scheduledPreview' : 'admin.accounts.pelicanTest.manualTab') }}</button>
+          <button type="button" data-testid="schedule-tab" :aria-pressed="activeTab === 'schedule'" :disabled="running"
+            class="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-60"
+            :class="activeTab === 'schedule' ? 'bg-white text-primary-600 shadow-sm dark:bg-dark-700 dark:text-primary-400' : 'text-gray-500 hover:text-gray-900 dark:text-dark-400 dark:hover:text-gray-100'"
+            @click="activeTab = 'schedule'"><Icon name="clock" size="sm" />{{ t('admin.accounts.pelicanTest.schedule') }}</button>
         </div>
-      </div>
-
-      <div class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600 dark:border-dark-600 dark:bg-dark-800/70 dark:text-gray-300">
-        <div class="flex items-start gap-2">
-          <Icon name="shield" size="sm" class="mt-0.5 shrink-0 text-emerald-500" />
-          <span>{{ deliveryContract }}</span>
-        </div>
-      </div>
-
-      <div class="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 pb-2 dark:border-dark-600">
-        <div class="flex items-center gap-2">
-          <button
-            type="button"
-            class="rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
-            :class="activeTab === 'results' ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300' : 'text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-dark-700'"
-            @click="openManualResults"
-          >
-            {{ viewingScheduled ? t('admin.accounts.pelicanTest.scheduledPreview') : t('admin.accounts.pelicanTest.results') }}
-          </button>
-          <button
-            type="button"
-            class="rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
-            :class="activeTab === 'history' ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300' : 'text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-dark-700'"
-            @click="dashboardOpen = true"
-          >
-            {{ t('admin.accounts.pelicanTest.history') }}<span v-if="records.length" class="ml-1">({{ records.length }})</span>
-          </button>
-          <button type="button" class="rounded-md px-3 py-1.5 text-sm font-medium"
-            :class="activeTab === 'schedule' ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300' : 'text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-dark-700'"
-            @click="activeTab = 'schedule'">{{ t('admin.accounts.pelicanTest.schedule') }}</button>
-        </div>
-        <span v-if="running" class="flex items-center gap-1.5 text-xs text-primary-600 dark:text-primary-300">
-          <Icon name="refresh" size="sm" class="animate-spin" />
-          {{ t('admin.accounts.pelicanTest.running', { count: runs.length }) }}
-        </span>
-      </div>
+        <button type="button" data-testid="history-button" class="btn btn-ghost px-3 py-2" :disabled="running" @click="dashboardOpen = true">
+          <Icon name="chart" size="sm" />{{ t('admin.accounts.pelicanTest.history') }}
+          <span v-if="records.length" class="rounded-md bg-gray-100 px-1.5 py-0.5 text-xs tabular-nums dark:bg-dark-700">{{ records.length }}</span>
+        </button>
+      </nav>
 
       <ScheduledTestsPanel v-if="show && account && activeTab === 'schedule'" :key="account.id" :show="true" embedded
         :account-id="account.id" :default-model="modelId" :model-options="[{ value: modelId, label: modelId }]"
         :pelican-config="{ question_kind: questionKind, prompt, reasoning_effort: reasoningEffort, parallel_count: Number(parallelCount) }"
-        :disabled="running" @preview="previewScheduled" @history="scheduledRecords = $event" />
-      <div v-else-if="activeTab === 'history'" class="space-y-2">
-        <button v-for="result in scheduledRecords" :key="`scheduled-${result.id}`" type="button"
-          class="flex w-full items-center justify-between rounded-lg border border-gray-200 px-3 py-2 text-left transition-colors hover:border-primary-300 hover:bg-primary-50/50 dark:border-dark-600 dark:hover:border-primary-700 dark:hover:bg-primary-900/10"
-          @click="previewScheduled(result)">
-          <span class="min-w-0">
-            <span class="block truncate text-sm font-medium text-gray-800 dark:text-gray-100">
-              {{ t('admin.accounts.pelicanTest.sourceScheduled') }} · {{ result.pelican_config?.model_id || modelId }} / {{ result.pelican_config?.reasoning_effort || reasoningEffort }}
-            </span>
-            <span class="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">
-              {{ formatDate(result.started_at) }} · {{ t('admin.accounts.pelicanTest.duration') }} {{ (result.latency_ms / 1000).toFixed(1) }} s
-            </span>
-          </span>
-          <span class="text-xs" :class="result.status === 'success' ? 'text-emerald-600' : 'text-red-500'">{{ t(result.status === 'success' ? 'admin.accounts.pelicanTest.success' : 'admin.accounts.pelicanTest.failed') }}</span>
-        </button>
-        <div v-for="record in records" :key="record.id" class="flex w-full items-center justify-between rounded-lg border border-gray-200 px-3 py-2 text-left dark:border-dark-600">
-          <button type="button" class="min-w-0 text-left" @click="loadRecord(record)">
-            <span class="block truncate text-sm font-medium text-gray-800 dark:text-gray-100">{{ t('admin.accounts.pelicanTest.sourceManual') }} · {{ record.modelId }} / {{ record.reasoningEffort }}</span>
-            <span class="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">{{ formatDate(record.createdAt) }} · {{ record.runs.length }} {{ t('admin.accounts.pelicanTest.outputs') }}</span>
-          </button>
-        </div>
-        <div v-if="scheduledRecords.length === 0 && records.length === 0" class="rounded-lg border border-dashed border-gray-300 py-10 text-center text-sm text-gray-500 dark:border-dark-600 dark:text-gray-400">
-          {{ t('admin.accounts.pelicanTest.noHistory') }}
-        </div>
-      </div>
+        :disabled="running" @preview="previewScheduled" />
 
-      <div v-else>
-        <div v-if="runs.length === 0" class="rounded-lg border border-dashed border-gray-300 py-10 text-center text-sm text-gray-500 dark:border-dark-600 dark:text-gray-400">
-          {{ t('admin.accounts.pelicanTest.emptyResults') }}
-        </div>
-        <div v-else class="grid grid-cols-1 gap-4 xl:grid-cols-2">
-          <article v-for="(run, index) in runs" :key="run.id" class="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-dark-600 dark:bg-dark-800">
-            <header class="flex items-center justify-between gap-2 border-b border-gray-200 px-3 py-2 dark:border-dark-600">
-              <div class="flex items-center gap-2">
-                <span class="flex h-6 w-6 items-center justify-center rounded-full bg-primary-100 text-xs font-semibold text-primary-700 dark:bg-primary-900/50 dark:text-primary-300">{{ index + 1 }}</span>
-                <span class="text-sm font-medium text-gray-800 dark:text-gray-100">{{ t('admin.accounts.pelicanTest.output') }} {{ index + 1 }}</span>
-              </div>
-              <div class="flex items-center gap-1">
-                <span v-if="run.status === 'running'" class="text-xs text-amber-600 dark:text-amber-300">{{ t('admin.accounts.pelicanTest.runningShort') }}</span>
-                <span v-else-if="run.status === 'success'" class="text-xs text-emerald-600 dark:text-emerald-300">{{ t('admin.accounts.pelicanTest.success') }}</span>
-                <span v-else class="text-xs text-red-600 dark:text-red-300">{{ t('admin.accounts.pelicanTest.failed') }}</span>
-                <button v-if="run.output" type="button" class="rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-primary-600 dark:hover:bg-dark-700 dark:hover:text-primary-300" :title="t('admin.accounts.pelicanTest.download')" @click="downloadHtml(run)">
-                  <Icon name="download" size="sm" />
-                </button>
-              </div>
-            </header>
-            <div class="space-y-1 px-3 py-2 text-xs text-gray-500 dark:text-gray-400" data-testid="run-metadata">
-              <div>{{ t(run.source === 'scheduled' ? 'admin.accounts.pelicanTest.sourceScheduled' : 'admin.accounts.pelicanTest.sourceManual') }} · {{ run.modelId || '—' }} / {{ run.reasoningEffort || '—' }}</div>
-              <div>{{ t('admin.accounts.pelicanTest.generatedAt') }}：{{ run.startedAt ? formatDate(run.startedAt) : '—' }}</div>
-              <div>{{ t('admin.accounts.pelicanTest.duration') }}：{{ run.durationMs == null ? '—' : `${(run.durationMs / 1000).toFixed(1)} s` }}</div>
+      <template v-else>
+        <section v-if="!viewingScheduled" class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_280px]" :aria-label="t('admin.accounts.pelicanTest.configuration')">
+          <div class="min-w-0 space-y-4">
+            <div>
+              <label id="iq-question-label" class="input-label">{{ t('admin.accounts.pelicanTest.question') }}</label>
+              <Select data-testid="question-select" aria-labelledby="iq-question-label" :model-value="questionKind" :options="questionOptions" :disabled="running" @update:model-value="selectQuestion" />
             </div>
-            <div v-if="run.html" class="aspect-[4/3] bg-white dark:bg-white">
-              <iframe :srcdoc="run.html" class="h-full w-full border-0" sandbox="allow-scripts" referrerpolicy="no-referrer" :title="`${t('admin.accounts.pelicanTest.output')} ${index + 1}`"></iframe>
+            <TextArea v-model="prompt" :label="t('admin.accounts.pelicanTest.promptLabel')" :disabled="running" :rows="5" :hint="t('admin.accounts.pelicanTest.promptHint')" />
+            <p v-if="questionKind === 'candy'" class="flex items-start gap-2 text-xs leading-relaxed text-gray-500 dark:text-dark-400">
+              <Icon name="infoCircle" size="sm" class="mt-0.5 shrink-0" />{{ t('admin.accounts.pelicanTest.candyHint') }}
+            </p>
+          </div>
+          <div class="space-y-4 border-gray-200 lg:border-l lg:pl-5 dark:border-dark-700">
+            <Input v-model="modelId" :label="t('admin.accounts.pelicanTest.model')" :disabled="running" :hint="t('admin.accounts.pelicanTest.modelHint')" />
+            <div class="grid grid-cols-2 gap-4 lg:grid-cols-1">
+              <div>
+                <label id="iq-effort-label" class="input-label">{{ t('admin.accounts.pelicanTest.reasoning') }}</label>
+                <Select v-model="reasoningEffort" aria-labelledby="iq-effort-label" :options="reasoningOptions" :disabled="running" />
+              </div>
+              <Input v-model="parallelCount" type="number" :label="t('admin.accounts.pelicanTest.parallel')" :disabled="running" :hint="t('admin.accounts.pelicanTest.parallelHint')" />
             </div>
-            <pre class="max-h-48 overflow-auto whitespace-pre-wrap break-words border-t border-gray-200 bg-gray-950 p-3 text-xs leading-relaxed text-gray-200 dark:border-dark-600">{{ run.output || run.error || t('admin.accounts.pelicanTest.waiting') }}</pre>
-          </article>
-        </div>
-      </div>
+            <div class="flex items-start gap-2 rounded-xl bg-primary-50/70 p-3 text-xs leading-relaxed text-primary-700 dark:bg-primary-500/10 dark:text-primary-300">
+              <Icon name="shield" size="sm" class="mt-0.5 shrink-0" /><span>{{ deliveryContract }}</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="space-y-3" :aria-label="t('admin.accounts.pelicanTest.resultTitle')" :aria-busy="running">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ t('admin.accounts.pelicanTest.resultTitle') }}</h4>
+            <span v-if="runs.length" role="status" class="flex items-center gap-2 text-xs tabular-nums text-gray-500 dark:text-dark-400">
+              <Icon v-if="running" name="refresh" size="sm" class="animate-spin text-primary-500" />
+              {{ t('admin.accounts.pelicanTest.progress', { completed: completedCount, total: runs.length }) }}
+            </span>
+          </div>
+          <div v-if="runs.length === 0" class="flex flex-col items-center rounded-xl border border-dashed border-gray-200 bg-gray-50/50 px-5 py-8 text-center dark:border-dark-600 dark:bg-dark-900/20">
+            <Icon name="chat" size="lg" class="mb-3 text-gray-400 dark:text-dark-500" />
+            <p class="text-sm font-medium text-gray-700 dark:text-gray-200">{{ t('admin.accounts.pelicanTest.emptyTitle') }}</p>
+            <p class="mt-1 text-xs leading-relaxed text-gray-500 dark:text-dark-400">{{ t('admin.accounts.pelicanTest.emptyResults') }}</p>
+          </div>
+          <div v-else class="grid min-w-0 grid-cols-1 gap-4" :class="{ 'xl:grid-cols-2': runs.length > 1 }">
+            <article v-for="(run, index) in runs" :key="run.id" class="min-w-0 overflow-hidden rounded-xl border border-gray-200 dark:border-dark-700">
+              <header class="flex items-center justify-between gap-2 border-b border-gray-100 px-4 py-3 dark:border-dark-700">
+                <span class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ t('admin.accounts.pelicanTest.output') }} <span class="ml-1 tabular-nums text-gray-400">{{ String(index + 1).padStart(2, '0') }}</span></span>
+                <div class="flex items-center gap-2">
+                  <span class="rounded-md px-2 py-1 text-xs font-medium" :class="run.status === 'running' ? 'bg-primary-50 text-primary-700 dark:bg-primary-500/15 dark:text-primary-300' : run.status === 'success' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400' : 'bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-400'">
+                    {{ t('admin.accounts.pelicanTest.' + (run.status === 'running' ? 'runningShort' : run.status === 'success' ? 'success' : 'failed')) }}
+                  </span>
+                  <button v-if="run.output" type="button" class="rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:text-dark-400 dark:hover:bg-dark-700" :aria-label="t('admin.accounts.pelicanTest.download') + ' ' + (index + 1)" :title="t('admin.accounts.pelicanTest.download')" @click="downloadHtml(run)"><Icon name="download" size="sm" /></button>
+                </div>
+              </header>
+              <div class="grid gap-1 bg-gray-50/70 px-4 py-3 text-xs leading-relaxed text-gray-500 dark:bg-dark-900/40 dark:text-dark-400" data-testid="run-metadata">
+                <div class="break-words font-medium text-gray-700 dark:text-gray-300">{{ run.modelId || '—' }} / {{ run.reasoningEffort || '—' }}</div>
+                <div>{{ t(run.source === 'scheduled' ? 'admin.accounts.pelicanTest.sourceScheduled' : 'admin.accounts.pelicanTest.sourceManual') }} · {{ t('admin.accounts.pelicanTest.generatedAt') }} {{ run.startedAt ? formatDate(run.startedAt) : '—' }}</div>
+                <div class="tabular-nums">{{ t('admin.accounts.pelicanTest.duration') }} {{ run.durationMs == null ? '—' : (run.durationMs / 1000).toFixed(1) + ' s' }}</div>
+              </div>
+              <div v-if="run.html" class="aspect-[16/10] bg-white"><iframe :srcdoc="run.html" class="h-full w-full border-0" sandbox="allow-scripts" referrerpolicy="no-referrer" :title="t('admin.accounts.pelicanTest.output') + ' ' + (index + 1)" /></div>
+              <pre v-else class="max-h-72 min-h-28 overflow-auto whitespace-pre-wrap break-words p-5 leading-relaxed text-gray-900 dark:text-gray-100" :class="run.questionKind === 'candy' ? 'font-mono text-xl' : 'font-mono text-sm'">{{ run.output || (run.status === 'running' ? t('admin.accounts.pelicanTest.waiting') : '') }}</pre>
+              <p v-if="run.error" role="alert" class="border-t border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-500/10 dark:text-red-300">{{ run.error }}</p>
+              <details v-if="run.html" class="border-t border-gray-100 dark:border-dark-700">
+                <summary class="cursor-pointer px-4 py-3 text-xs font-medium text-gray-500 hover:text-primary-600 dark:text-dark-400">{{ t('admin.accounts.pelicanTest.rawOutput') }}</summary>
+                <pre class="max-h-60 overflow-auto whitespace-pre-wrap break-words bg-gray-950 p-4 font-mono text-xs leading-relaxed text-gray-200">{{ run.output }}</pre>
+              </details>
+            </article>
+          </div>
+        </section>
+      </template>
     </div>
-
     <template #footer>
-      <div class="flex w-full items-center justify-between gap-3">
-        <button type="button" class="btn btn-secondary" :disabled="running || !hasDownloadable" @click="downloadAll">
-          <Icon name="download" size="sm" />
-          {{ t('admin.accounts.pelicanTest.downloadAll') }}
-        </button>
+      <div class="flex w-full flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <button v-if="activeTab !== 'schedule'" type="button" class="btn btn-ghost" :disabled="running || !hasDownloadable" @click="downloadAll"><Icon name="download" size="sm" />{{ t('admin.accounts.pelicanTest.downloadAll') }}</button>
+        <div v-else class="text-xs text-gray-500 dark:text-dark-400">{{ t('admin.accounts.pelicanTest.scheduleEvaluationHint') }}</div>
         <div class="flex gap-3">
-          <button type="button" class="btn btn-secondary" :disabled="running" @click="handleClose">{{ t('common.close') }}</button>
-          <button v-if="activeTab !== 'schedule'" type="button" class="btn btn-primary flex items-center gap-2" :disabled="running || !canStart" @click="startTest">
-            <Icon v-if="running" name="refresh" size="sm" class="animate-spin" />
-            <Icon v-else name="play" size="sm" />
-            {{ running ? t('admin.accounts.pelicanTest.generating') : t('admin.accounts.pelicanTest.start') }}
+          <button type="button" class="btn btn-secondary flex-1 sm:flex-none" :disabled="running" @click="handleClose">{{ t('common.close') }}</button>
+          <button v-if="activeTab !== 'schedule'" type="button" class="btn btn-primary flex-1 sm:flex-none" :disabled="running || !canStart" @click="startTest">
+            <Icon v-if="running" name="refresh" size="sm" class="animate-spin" /><Icon v-else name="play" size="sm" />{{ t(running ? 'admin.accounts.pelicanTest.generating' : 'admin.accounts.pelicanTest.start') }}
           </button>
         </div>
       </div>
@@ -221,14 +175,16 @@ const prompt = ref(questionPrompt('candy'))
 const modelId = ref('gpt-6-astra')
 const reasoningEffort = ref('medium')
 const parallelCount = ref<string | number>(1)
-const activeTab = ref<'results' | 'history' | 'schedule'>('results')
+const activeTab = ref<'results' | 'schedule'>('results')
 const running = ref(false)
 const viewingScheduled = ref(false)
 const dashboardOpen = ref(false)
 const runs = ref<TestRun[]>([])
 const records = ref<TestRecord[]>([])
-const scheduledRecords = ref<ScheduledTestResult[]>([])
 const controllers = new Map<string, AbortController>()
+let generation = 0
+
+const completedCount = computed(() => runs.value.filter(run => run.status !== 'running').length)
 
 const deliveryContract = computed(() => questionContract(questionKind.value))
 const questionOptions = computed(() => ['candy', 'pelican'].map(value => ({ value, label: t(`admin.accounts.pelicanTest.${value}Question`) })))
@@ -271,6 +227,7 @@ function saveRecords() {
 }
 
 function formatDate(value: string) {
+  if (!Number.isFinite(Date.parse(value))) return '—'
   return new Intl.DateTimeFormat(undefined, { dateStyle: 'short', timeStyle: 'medium' }).format(new Date(value))
 }
 
@@ -286,8 +243,8 @@ function editSchedule(config: PelicanTestConfig, model: string) {
 
 function openManualResults() {
   if (running.value) return
+  if (viewingScheduled.value) runs.value = []
   viewingScheduled.value = false
-  runs.value = []
   activeTab.value = 'results'
 }
 
@@ -304,21 +261,16 @@ function previewScheduled(result: ScheduledTestResult) {
   activeTab.value = 'results'
 }
 
-function loadRecord(record: TestRecord) {
-  if (running.value) return
-  questionKind.value = record.questionKind || 'pelican'
-  prompt.value = record.prompt
-  modelId.value = record.modelId
-  reasoningEffort.value = record.reasoningEffort || 'medium'
-  runs.value = record.runs.map((run) => ({ ...run, questionKind: run.questionKind || record.questionKind || 'pelican', modelId: run.modelId || record.modelId, reasoningEffort: run.reasoningEffort || record.reasoningEffort }))
-  viewingScheduled.value = false
-  activeTab.value = 'results'
-}
-
-function handleClose() {
+function cancelRuns() {
+  generation++
   for (const controller of controllers.values()) controller.abort()
   controllers.clear()
   running.value = false
+}
+
+function handleClose() {
+  cancelRuns()
+  dashboardOpen.value = false
   emit('close')
 }
 
@@ -397,6 +349,7 @@ async function startOne(run: TestRun) {
 async function startTest() {
   if (running.value || !props.account || !canStart.value) return
   viewingScheduled.value = false
+  const currentGeneration = ++generation
   const count = normalizeCount()
   parallelCount.value = count
   runs.value = Array.from({ length: count }, (_, index) => ({
@@ -413,6 +366,8 @@ async function startTest() {
   activeTab.value = 'results'
   running.value = true
   await Promise.all(runs.value.map((run) => startOne(run)))
+  // A closed or switched account must never receive results from an older run.
+  if (currentGeneration !== generation) return
   running.value = false
   const record: TestRecord = {
     id: `${Date.now()}`,
@@ -442,23 +397,21 @@ function downloadAll() {
   runs.value.filter((run) => run.output).forEach((run) => downloadHtml(run))
 }
 
-onBeforeUnmount(() => { for (const controller of controllers.values()) controller.abort() })
+onBeforeUnmount(cancelRuns)
 
 watch(() => [props.show, props.account?.id] as const, ([show]) => {
+  cancelRuns()
+  dashboardOpen.value = false
   if (show) {
     readRecords()
     activeTab.value = 'results'
     viewingScheduled.value = false
-    scheduledRecords.value = []
     questionKind.value = 'candy'
     prompt.value = questionPrompt('candy')
     modelId.value = 'gpt-6-astra'
     reasoningEffort.value = 'medium'
     parallelCount.value = 1
     runs.value = []
-  } else {
-    for (const controller of controllers.values()) controller.abort()
-    controllers.clear()
   }
 }, { immediate: true })
 </script>

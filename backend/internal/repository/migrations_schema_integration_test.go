@@ -60,6 +60,11 @@ func TestMigrationsRunner_IsIdempotent_AndSchemaIsUpToDate(t *testing.T) {
 	requireColumn(t, tx, "groups", "force_openai_fast", "boolean", 0, false)
 	requireColumn(t, tx, "groups", "free_openai_fast", "boolean", 0, false)
 
+	// pelican_showcase_items: 鹈鹕测智用户展示快照，按分组 + 生成时间倒序读取和清理。
+	requireColumn(t, tx, "pelican_showcase_items", "response_text", "text", 0, false)
+	requireColumn(t, tx, "pelican_showcase_items", "generated_at", "timestamp with time zone", 0, false)
+	requireIndex(t, tx, "pelican_showcase_items", "idx_pelican_showcase_items_group_generated")
+
 	// api_keys: key length should be 128
 	requireColumn(t, tx, "api_keys", "key", "character varying", 128, false)
 

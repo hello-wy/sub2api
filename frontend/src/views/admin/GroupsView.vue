@@ -403,6 +403,10 @@
 
           <template #cell-actions="{ row }">
             <div class="flex items-center gap-1">
+              <button data-testid="group-pelican-test" @click="pelicanTestGroup = row" class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-primary-600 dark:hover:bg-dark-700 dark:hover:text-primary-400">
+                <Icon name="clock" size="sm" />
+                <span class="text-xs">{{ t('admin.scheduledTests.groupAction') }}</span>
+              </button>
               <button
                 @click="handleEdit(row)"
                 class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-primary-600 dark:hover:bg-dark-700 dark:hover:text-primary-400"
@@ -4652,6 +4656,8 @@
       </template>
     </BaseDialog>
 
+    <GroupPelicanTestModal v-if="pelicanTestGroup" :group="pelicanTestGroup" @close="pelicanTestGroup = null" />
+
     <!-- Group Rate Multipliers Modal -->
     <GroupRateMultipliersModal
       :show="showRateMultipliersModal"
@@ -4704,6 +4710,7 @@ import EmptyState from "@/components/common/EmptyState.vue";
 import Select from "@/components/common/Select.vue";
 import PlatformIcon from "@/components/common/PlatformIcon.vue";
 import Icon from "@/components/icons/Icon.vue";
+import GroupPelicanTestModal from "@/components/admin/group/GroupPelicanTestModal.vue";
 import GroupRateMultipliersModal from "@/components/admin/group/GroupRateMultipliersModal.vue";
 import GroupRPMOverridesModal from "@/components/admin/group/GroupRPMOverridesModal.vue";
 import GroupCapacityBadge from "@/components/common/GroupCapacityBadge.vue";
@@ -5269,6 +5276,7 @@ const sortSubmitting = ref(false);
 const editingGroup = ref<AdminGroup | null>(null);
 const deletingGroup = ref<AdminGroup | null>(null);
 const duplicatingGroupIds = reactive(new Set<number>());
+const pelicanTestGroup = ref<AdminGroup | null>(null);
 const showRateMultipliersModal = ref(false);
 const rateMultipliersGroup = ref<AdminGroup | null>(null);
 const showRPMOverridesModal = ref(false);

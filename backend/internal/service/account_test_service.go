@@ -1005,7 +1005,11 @@ func (s *AccountTestService) testExcelBPSAccountConnection(c *gin.Context, accou
 
 	// Forward performs account model mapping; passing an already mapped model
 	// would apply chained mappings twice and could select the wrong protocol.
-	body, err := buildExcelBPSAccountTestBody(model, prompt)
+	effort := ""
+	if options, ok := pelicanTestOptionsFromContext(c.Request.Context()); ok {
+		effort = options.reasoningEffort
+	}
+	body, err := buildExcelBPSAccountTestBody(model, prompt, effort)
 	if err != nil {
 		return s.sendErrorAndEnd(c, "Failed to create Excel BPS test payload")
 	}
@@ -1051,17 +1055,21 @@ func (s *AccountTestService) testExcelBPSAccountConnection(c *gin.Context, accou
 	return nil
 }
 
-func buildExcelBPSAccountTestBody(model, prompt string) ([]byte, error) {
+func buildExcelBPSAccountTestBody(model, prompt, reasoningEffort string) ([]byte, error) {
 	prompt = strings.TrimSpace(prompt)
 	if prompt == "" {
 		prompt = "hi"
+	}
+	effort := normalizePelicanReasoningEffort(reasoningEffort)
+	if effort == "" {
+		effort = "medium"
 	}
 	return json.Marshal(map[string]any{
 		"model": model, "stream": true, "store": false,
 		"input": []any{map[string]any{"type": "message", "role": "user", "content": []any{
 			map[string]any{"type": "input_text", "text": prompt},
 		}}},
-		"reasoning": map[string]any{"effort": "medium"},
+		"reasoning": map[string]any{"effort": effort},
 	})
 }
 

@@ -1670,6 +1670,13 @@ export default {
       testModel: '测试模型',
       testPrompt: '提示词："hi"',
       pelicanTest: {
+        scheduleEvaluationHint: '糖果题定时测试校验标准答案，动画结果供人工比较。',
+        manualTab: '手动测试',
+        configuration: '测试配置',
+        resultTitle: '测试结果',
+        progress: '已完成 {completed} / {total}',
+        emptyTitle: '准备开始测试',
+        rawOutput: '查看原始 HTML',
         question: '题目',
         candyQuestion: '糖果逻辑测试',
         pelicanQuestion: '鹈鹕骑自行车（HTML）',

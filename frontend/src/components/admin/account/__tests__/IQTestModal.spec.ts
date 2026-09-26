@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { flushPromises, mount } from '@vue/test-utils'
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import IQTestModal from '../IQTestModal.vue'
+
+enableAutoUnmount(afterEach)
+const originalFetch = global.fetch
+afterEach(() => { global.fetch = originalFetch; localStorage.clear() })
 
 vi.mock('vue-i18n', async () => {
   const actual = await vi.importActual<typeof import('vue-i18n')>('vue-i18n')
@@ -42,7 +46,9 @@ function mountModal() {
     },
     global: {
       stubs: {
-        BaseDialog: { template: '<div><slot /><slot name="footer" /></div>' },
+        BaseDialog: { props: ['show'], template: '<div v-if="show"><slot /><slot name="footer" /></div>' },
+        ScheduledTestsPanel: true,
+        PelicanRecordsDashboard: true,
         Input: true,
         TextArea: true,
         Select: true,
@@ -110,6 +116,50 @@ describe('IQTestModal', () => {
     expect(wrapper.text()).toContain('I cannot provide HTML.')
     expect(wrapper.text()).toContain('admin.accounts.pelicanTest.failed')
   })
+
+  it('keeps manual results when returning from the schedule tab', async () => {
+    const wrapper = mountModal()
+    ;(wrapper.vm as any).selectQuestion('pelican')
+    await (wrapper.vm as any).startTest()
+    await wrapper.get('[data-testid="schedule-tab"]').trigger('click')
+    expect(wrapper.find('[data-testid="question-select"]').exists()).toBe(false)
+    await wrapper.get('[data-testid="manual-tab"]').trigger('click')
+    expect(wrapper.find('iframe').exists()).toBe(true)
+    expect(global.fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it('hides the main dialog while browsing history and resets it on account changes', async () => {
+    const wrapper = mountModal()
+    await wrapper.get('[data-testid="history-button"]').trigger('click')
+    expect(wrapper.find('[data-testid="question-select"]').exists()).toBe(false)
+    expect(wrapper.find('pelican-records-dashboard-stub').exists()).toBe(true)
+    await wrapper.setProps({ account: { ...wrapper.props('account')!, id: 43 } })
+    expect(wrapper.find('[data-testid="question-select"]').exists()).toBe(true)
+    expect(wrapper.find('pelican-records-dashboard-stub').exists()).toBe(false)
+  })
+
+  it('aborts switched accounts and ignores late results from an old generation', async () => {
+    let resolveOld!: (response: Response) => void
+    global.fetch = vi.fn(() => new Promise<Response>(resolve => { resolveOld = resolve }))
+    const wrapper = mountModal()
+    const oldRun = (wrapper.vm as any).startTest()
+    const oldSignal = (global.fetch as any).mock.calls[0][1].signal as AbortSignal
+    await wrapper.setProps({ account: { ...wrapper.props('account')!, id: 43 } })
+    expect(oldSignal.aborted).toBe(true)
+    expect((wrapper.vm as any).running).toBe(false)
+    global.fetch = vi.fn(async () => streamResponse([
+      { type: 'content', text: '21' }, { type: 'test_complete', success: true }
+    ]))
+    await (wrapper.vm as any).startTest()
+    const currentHistory = localStorage.getItem('sub2api-pelican-test:43')
+    resolveOld(streamResponse([
+      { type: 'content', text: 'old output' }, { type: 'test_complete', success: true }
+    ]))
+    await oldRun
+    expect(localStorage.getItem('sub2api-pelican-test:43')).toBe(currentHistory)
+    expect(localStorage.getItem('sub2api-pelican-test:42')).toBeNull()
+    expect((wrapper.vm as any).runs[0].output).toBe('21')
+  })
   it('persists manual timing and model snapshots independently of later form edits', async () => {
     const wrapper = mountModal()
     ;(wrapper.vm as any).selectQuestion('pelican')
@@ -161,8 +211,7 @@ describe('Intelligence question selection', () => {
     expect((wrapper.vm as any).runs[0].status).toBe('success')
     expect((wrapper.vm as any).records[0].questionKind).toBe('candy')
     ;(wrapper.vm as any).selectQuestion('pelican')
-    ;(wrapper.vm as any).loadRecord((wrapper.vm as any).records[0])
-    expect((wrapper.vm as any).questionKind).toBe('candy')
+    expect((wrapper.vm as any).records[0].questionKind).toBe('candy')
     wrapper.unmount()
   })
   it('previews scheduled candy results without marking text as invalid HTML', async () => {

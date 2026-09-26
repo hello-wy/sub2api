@@ -21,7 +21,9 @@ func NewScheduledTestHandler(scheduledTestSvc *service.ScheduledTestService) *Sc
 
 type createScheduledTestPlanRequest struct {
 	PelicanConfig  *service.PelicanTestConfig `json:"pelican_config"`
-	AccountID      int64                      `json:"account_id" binding:"required"`
+	AccountID      int64                      `json:"account_id"`
+	GroupID        int64                      `json:"group_id"`
+	APIKeyID       int64                      `json:"api_key_id"`
 	ModelID        string                     `json:"model_id"`
 	CronExpression string                     `json:"cron_expression" binding:"required"`
 	Enabled        *bool                      `json:"enabled"`
@@ -30,6 +32,7 @@ type createScheduledTestPlanRequest struct {
 }
 
 type updateScheduledTestPlanRequest struct {
+	APIKeyID       *int64                     `json:"api_key_id"`
 	PelicanConfig  *service.PelicanTestConfig `json:"pelican_config"`
 	ModelID        string                     `json:"model_id"`
 	CronExpression string                     `json:"cron_expression"`
@@ -64,6 +67,8 @@ func (h *ScheduledTestHandler) Create(c *gin.Context) {
 
 	plan := &service.ScheduledTestPlan{
 		AccountID:      req.AccountID,
+		GroupID:        req.GroupID,
+		APIKeyID:       req.APIKeyID,
 		PelicanConfig:  req.PelicanConfig,
 		ModelID:        req.ModelID,
 		CronExpression: req.CronExpression,
@@ -105,6 +110,9 @@ func (h *ScheduledTestHandler) Update(c *gin.Context) {
 		return
 	}
 
+	if req.APIKeyID != nil {
+		existing.APIKeyID = *req.APIKeyID
+	}
 	if req.PelicanConfig != nil {
 		if existing.PelicanConfig == nil {
 			response.BadRequest(c, "cannot change test type")
@@ -207,4 +215,47 @@ func (h *ScheduledTestHandler) ListPelicanHistory(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, page)
+}
+
+// ConfigureGroupGateway wires the completed router without a service/handler DI cycle.
+func (h *ScheduledTestHandler) ConfigureGroupGateway(gateway http.Handler) {
+	h.scheduledTestSvc.SetGroupGateway(gateway)
+}
+func (h *ScheduledTestHandler) ListByGroup(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || id <= 0 {
+		response.BadRequest(c, "invalid group id")
+		return
+	}
+	plans, err := h.scheduledTestSvc.ListPlansByGroup(c.Request.Context(), id)
+	if err != nil {
+		response.InternalError(c, "Failed to load group test plans")
+		return
+	}
+	c.JSON(http.StatusOK, plans)
+}
+func (h *ScheduledTestHandler) ListGroupTestKeys(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || id <= 0 {
+		response.BadRequest(c, "invalid group id")
+		return
+	}
+	keys, err := h.scheduledTestSvc.ListGroupTestKeys(c.Request.Context(), id)
+	if err != nil {
+		response.InternalError(c, "Failed to load test API Keys")
+		return
+	}
+	c.JSON(http.StatusOK, keys)
+}
+func (h *ScheduledTestHandler) TriggerGroupPlan(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || id <= 0 {
+		response.BadRequest(c, "invalid plan id")
+		return
+	}
+	if err := h.scheduledTestSvc.TriggerGroupPlan(c.Request.Context(), id); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "queued"})
 }

@@ -645,8 +645,15 @@ func ProvideIdempotencyCleanupService(repo IdempotencyRepository, cfg *config.Co
 func ProvideScheduledTestService(
 	planRepo ScheduledTestPlanRepository,
 	resultRepo ScheduledTestResultRepository,
+	showcase *PelicanShowcaseService,
+	groupRepo GroupRepository,
+	keyRepo APIKeyRepository,
 ) *ScheduledTestService {
-	return NewScheduledTestService(planRepo, resultRepo)
+	svc := NewScheduledTestService(planRepo, resultRepo)
+	svc.showcase = showcase
+	svc.groupRepo = groupRepo
+	svc.keyRepo = keyRepo
+	return svc
 }
 
 // ProvideScheduledTestRunnerService creates and starts ScheduledTestRunnerService.
@@ -990,6 +997,7 @@ var ProviderSet = wire.NewSet(
 	ProvideIdempotencyCoordinator,
 	ProvideSystemOperationLockService,
 	ProvideIdempotencyCleanupService,
+	NewPelicanShowcaseService,
 	ProvideScheduledTestService,
 	ProvideScheduledTestRunnerService,
 	NewGroupCapacityService,

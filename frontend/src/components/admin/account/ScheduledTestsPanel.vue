@@ -7,7 +7,8 @@
     @close="emit('close')"
   >
     <div class="space-y-4">
-      <p v-if="pelicanConfig" class="text-xs text-gray-500">{{ t('admin.accounts.pelicanTest.scheduleHint') }}</p>
+      <p v-if="pelicanConfig && !groupId" class="text-xs text-gray-500">{{ t('admin.accounts.pelicanTest.scheduleHint') }}</p>
+      <p v-if="groupId && !loading && !loadingKeys && !testKeys.length" class="rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-900/20 dark:text-amber-300" data-testid="group-test-no-keys">{{ t('admin.scheduledTests.groupNoKeys') }}</p>
       <!-- Add Plan Button -->
       <div class="flex items-center justify-between">
         <p class="text-sm text-gray-500 dark:text-gray-400">
@@ -43,6 +44,11 @@
               :placeholder="t('admin.scheduledTests.model')"
               :searchable="modelOptions.length > 5"
             />
+            <template v-if="groupId">
+              <label class="input-label mt-3">{{ t('admin.scheduledTests.groupTestKey') }}</label>
+              <Select v-model="newPlan.api_key_id" :options="keyOptions" :searchable="true" :placeholder="t('admin.scheduledTests.groupKeyRequired')" />
+              <p class="mt-1 text-xs text-gray-500 dark:text-dark-400">{{ t('admin.scheduledTests.groupBillingHint') }}</p>
+            </template>
           </div>
           <div>
             <label class="mb-1 flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-gray-400">
@@ -100,7 +106,7 @@
               {{ t('admin.scheduledTests.enabled') }}
             </label>
           </div>
-          <div class="flex items-end">
+          <div v-if="!groupId" class="flex items-end">
             <div>
               <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                 <Toggle v-model="newPlan.auto_recover" />
@@ -112,7 +118,7 @@
             </div>
           </div>
         </div>
-        <PelicanTestFields v-if="pelicanConfig" v-model="newPelican" class="mt-3" />
+        <PelicanTestFields v-if="pelicanConfig" v-model="newPelican" :drawing-only="Boolean(groupId)" class="mt-3" />
         <div class="mt-3 flex justify-end gap-2">
           <button
             @click="showAddForm = false; resetNewPlan()"
@@ -206,6 +212,9 @@
 
               <!-- Actions -->
               <div class="flex items-center gap-1" @click.stop>
+                <button v-if="groupId" type="button" data-testid="trigger-group-test" class="rounded-lg p-1.5 text-gray-500 hover:bg-primary-50 hover:text-primary-600 disabled:opacity-40 dark:hover:bg-primary-900/20" :disabled="disabled || !plan.enabled || triggering === plan.id || Boolean(plan.running_until && Date.parse(plan.running_until) > Date.now())" :title="t('admin.scheduledTests.triggerGroup')" @click="triggerPlan(plan)">
+                  <Icon name="play" size="sm" />
+                </button>
                 <button
                   @click="startEdit(plan)"
                   class="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-blue-50 hover:text-blue-500 dark:hover:bg-blue-900/20"
@@ -255,6 +264,11 @@
                   :placeholder="t('admin.scheduledTests.model')"
                   :searchable="modelOptions.length > 5"
                 />
+                <template v-if="groupId">
+                  <label class="input-label mt-3">{{ t('admin.scheduledTests.groupTestKey') }}</label>
+                  <Select v-model="editForm.api_key_id" :options="keyOptions" :searchable="true" :placeholder="t('admin.scheduledTests.groupKeyRequired')" />
+                  <p class="mt-1 text-xs text-gray-500 dark:text-dark-400">{{ t('admin.scheduledTests.groupBillingHint') }}</p>
+                </template>
               </div>
               <div>
                 <label class="mb-1 flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-gray-400">
@@ -312,7 +326,7 @@
                   {{ t('admin.scheduledTests.enabled') }}
                 </label>
               </div>
-              <div class="flex items-end">
+              <div v-if="!groupId" class="flex items-end">
                 <div>
                   <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                     <Toggle v-model="editForm.auto_recover" />
@@ -324,7 +338,7 @@
                 </div>
               </div>
             </div>
-            <PelicanTestFields v-if="pelicanConfig" v-model="editPelican" class="mt-3" />
+            <PelicanTestFields v-if="pelicanConfig" v-model="editPelican" :drawing-only="Boolean(groupId)" class="mt-3" />
             <div class="mt-3 flex justify-end gap-2">
               <button
                 @click="cancelEdit"
@@ -476,7 +490,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch, onBeforeUnmount } from 'vue'
+import { computed, ref, reactive, watch, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
@@ -485,6 +499,7 @@ import Select, { type SelectOption } from '@/components/common/Select.vue'
 import Input from '@/components/common/Input.vue'
 import Toggle from '@/components/common/Toggle.vue'
 import { Icon } from '@/components/icons'
+import type { GroupTestKey } from '@/api/admin/scheduledTests'
 import { adminAPI } from '@/api/admin'
 import { useAppStore } from '@/stores/app'
 import { formatDateTime } from '@/utils/format'
@@ -493,10 +508,15 @@ import type { PelicanTestConfig, ScheduledTestPlan, ScheduledTestResult } from '
 
 const { t } = useI18n()
 const appStore = useAppStore()
+const testKeys = ref<GroupTestKey[]>([])
+const loadingKeys = ref(false)
+const keyOptions = computed(() => testKeys.value.map(key => ({ value: key.id, label: key.name + " · " + key.user_email + " (#" + key.id + ")" })))
+const triggering = ref<number | null>(null)
 
 const props = defineProps<{
   show: boolean
   accountId: number | null
+  groupId?: number
   modelOptions: SelectOption[]
   embedded?: boolean
   pelicanConfig?: PelicanTestConfig
@@ -509,6 +529,8 @@ const emit = defineEmits<{
   (e: 'preview', result: ScheduledTestResult): void
   (e: 'history', results: ScheduledTestResult[]): void
 }>()
+
+const targetId = computed(() => props.groupId || props.accountId)
 
 const configDefaults = (): PelicanTestConfig => ({ prompt: '', reasoning_effort: 'medium', parallel_count: 1, ...props.pelicanConfig })
 const newPelican = ref(configDefaults())
@@ -535,7 +557,8 @@ const editForm = reactive({
   cron_expression: '*/30 * * * *',
   max_results: '100' as string,
   enabled: true,
-  auto_recover: false
+  auto_recover: false,
+  api_key_id: 0
 })
 
 const newPlan = reactive({
@@ -543,7 +566,8 @@ const newPlan = reactive({
   cron_expression: '*/30 * * * *',
   max_results: '100' as string,
   enabled: true,
-  auto_recover: false
+  auto_recover: false,
+  api_key_id: 0
 })
 
 const resetNewPlan = () => {
@@ -553,16 +577,19 @@ const resetNewPlan = () => {
   newPlan.max_results = '100'
   newPlan.enabled = true
   newPlan.auto_recover = false
+  newPlan.api_key_id = 0
 }
 
 const loadPlans = async () => {
-  if (!props.accountId) return
-  const accountId = props.accountId
+  if (!targetId.value) return
+  const scopeId = targetId.value
   const version = revision
   loading.value = true
   try {
-    const data = await adminAPI.scheduledTests.listByAccount(accountId)
-    if (alive && props.show && props.accountId === accountId && revision === version) {
+    const data = props.groupId
+      ? await adminAPI.scheduledTests.listByGroup(props.groupId)
+      : await adminAPI.scheduledTests.listByAccount(scopeId)
+    if (alive && props.show && targetId.value === scopeId && revision === version) {
       plans.value = data.filter((plan) => Boolean(plan.pelican_config) === Boolean(props.pelicanConfig))
       if (props.pelicanConfig && plans.value.length > 0 && expandedPlanId.value === null) {
         await expandPlan(plans.value[0].id)
@@ -576,19 +603,20 @@ const loadPlans = async () => {
 }
 
 const handleCreate = async () => {
-  if (!props.accountId || !newPlan.model_id || !newPlan.cron_expression) return
+  if (!targetId.value || !newPlan.model_id || !newPlan.cron_expression) return
+  if (props.groupId && !newPlan.api_key_id) { appStore.showError(t("admin.scheduledTests.groupKeyRequired")); return }
   if (props.disabled || creating.value) return
   revision++
   creating.value = true
   try {
     const maxResults = Number(newPlan.max_results) || 100
     await adminAPI.scheduledTests.create({
-      account_id: props.accountId,
+      ...(props.groupId ? { group_id: props.groupId, api_key_id: Number(newPlan.api_key_id) } : { account_id: props.accountId! }),
       model_id: newPlan.model_id,
       cron_expression: newPlan.cron_expression,
       enabled: newPlan.enabled,
       max_results: maxResults,
-      auto_recover: newPlan.auto_recover,
+      auto_recover: props.groupId ? false : newPlan.auto_recover,
       ...(props.pelicanConfig ? { pelican_config: newPelican.value } : {})
     })
     appStore.showSuccess(t('admin.scheduledTests.createSuccess'))
@@ -624,6 +652,7 @@ const startEdit = (plan: ScheduledTestPlan) => {
   editForm.max_results = String(plan.max_results)
   editForm.enabled = plan.enabled
   editForm.auto_recover = plan.auto_recover
+  editForm.api_key_id = plan.api_key_id || 0
   if (plan.pelican_config) editPelican.value = { ...plan.pelican_config }
 }
 
@@ -633,6 +662,7 @@ const cancelEdit = () => {
 
 const handleEdit = async () => {
   if (!editingPlanId.value || !editForm.model_id || !editForm.cron_expression) return
+  if (props.groupId && editForm.enabled && !editForm.api_key_id) { appStore.showError(t("admin.scheduledTests.groupKeyRequired")); return }
   if (props.disabled || updating.value) return
   revision++
   updating.value = true
@@ -642,7 +672,8 @@ const handleEdit = async () => {
       cron_expression: editForm.cron_expression,
       max_results: Number(editForm.max_results) || 100,
       enabled: editForm.enabled,
-      auto_recover: editForm.auto_recover,
+      auto_recover: props.groupId ? false : editForm.auto_recover,
+      ...(props.groupId ? { api_key_id: Number(editForm.api_key_id) } : {}),
       ...(props.pelicanConfig ? { pelican_config: editPelican.value } : {})
     })
     const index = plans.value.findIndex((p) => p.id === editingPlanId.value)
@@ -656,6 +687,17 @@ const handleEdit = async () => {
   } finally {
     updating.value = false
   }
+}
+
+const triggerPlan = async (plan: ScheduledTestPlan) => {
+  if (!props.groupId || triggering.value || props.disabled) return
+  triggering.value = plan.id
+  try {
+    await adminAPI.scheduledTests.triggerGroupPlan(plan.id)
+    appStore.showSuccess(t('admin.scheduledTests.groupQueued'))
+    await loadPlans()
+  } catch (error: any) { appStore.showError(error?.message || t('admin.scheduledTests.groupTriggerError')) }
+  finally { triggering.value = null }
 }
 
 const confirmDeletePlan = (plan: ScheduledTestPlan) => {
@@ -683,13 +725,13 @@ const handleDelete = async () => {
 }
 
 const expandPlan = async (planId: number) => {
-  const accountId = props.accountId
+  const scopeId = targetId.value
   expandedPlanId.value = planId
   expandedResultIds.clear()
   loadingResults.value = true
   try {
     const data = await adminAPI.scheduledTests.listResults(planId, 20, !props.pelicanConfig)
-    if (alive && props.show && props.accountId === accountId && expandedPlanId.value === planId) { results.value = data; emit('history', data) }
+    if (alive && props.show && targetId.value === scopeId && expandedPlanId.value === planId) { results.value = data; emit('history', data) }
   } catch (error: any) {
     appStore.showError(error?.message || 'Failed to load results')
     results.value = []
@@ -717,16 +759,16 @@ const toggleResultDetail = (resultId: number) => {
 }
 const previewResult = async (result: ScheduledTestResult) => {
   if (props.disabled) return
-  const accountId = props.accountId
+  const scopeId = targetId.value
   try {
     const full = await adminAPI.scheduledTests.getResult(result.plan_id, result.id)
-    if (alive && props.show && props.accountId === accountId) emit('preview', full)
+    if (alive && props.show && targetId.value === scopeId) emit('preview', full)
   } catch (error: any) {
     appStore.showError(error?.message || 'Failed to load result')
   }
 }
 
-watch(() => [props.show, props.accountId] as const, async ([visible, accountId]) => {
+watch(() => [props.show, props.accountId, props.groupId] as const, async ([visible]) => {
   revision++
   plans.value = []
   results.value = []
@@ -737,7 +779,20 @@ watch(() => [props.show, props.accountId] as const, async ([visible, accountId])
   showDeleteConfirm.value = false
   editingPlanId.value = null
   resetNewPlan()
-  if (visible && accountId) await loadPlans()
+  testKeys.value = []
+  loadingKeys.value = false
+  if (visible && targetId.value) {
+    const version = revision
+    if (props.groupId) {
+      loadingKeys.value = true
+      try {
+        const keys = await adminAPI.scheduledTests.listGroupTestKeys(props.groupId)
+        if (alive && props.show && revision === version) testKeys.value = keys
+      } catch (error: any) { appStore.showError(error?.message || t('admin.scheduledTests.groupKeysError')) }
+      finally { if (alive && revision === version) loadingKeys.value = false }
+    }
+    if (alive && props.show && revision === version) await loadPlans()
+  }
 }, { immediate: true })
 
 // Refresh background results while the embedded Pelican tab is open.

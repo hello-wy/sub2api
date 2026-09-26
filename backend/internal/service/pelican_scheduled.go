@@ -91,7 +91,13 @@ func (s *ScheduledTestRunnerService) runPelicanPlan(ctx context.Context, plan *S
 		wg.Add(1)
 		go func(index int) {
 			defer wg.Done()
-			result, err := s.runPelican(runCtx, plan.AccountID, plan.ModelID, plan.PelicanConfig)
+			var result *ScheduledTestResult
+			var err error
+			if plan.GroupID > 0 {
+				result, err = s.scheduledSvc.RunGroupPelican(runCtx, plan)
+			} else {
+				result, err = s.runPelican(runCtx, plan.AccountID, plan.ModelID, plan.PelicanConfig)
+			}
 			if err != nil {
 				result = &ScheduledTestResult{Status: "failed", ErrorMessage: fmt.Sprint(err), StartedAt: now, FinishedAt: time.Now(), PelicanConfig: plan.PelicanConfig}
 			}
@@ -111,7 +117,7 @@ func (s *ScheduledTestRunnerService) runPelicanPlan(ctx context.Context, plan *S
 			logger.LegacyPrintf("service.scheduled_test_runner", "pelican plan=%d save failed: %v", plan.ID, err)
 		}
 	}
-	if succeeded && plan.AutoRecover && !isBuiltinCandyPlan(plan.PelicanConfig) {
+	if plan.GroupID == 0 && succeeded && plan.AutoRecover && !isBuiltinCandyPlan(plan.PelicanConfig) {
 		s.tryRecoverAccount(saveCtx, plan.AccountID, plan.ID)
 	}
 	if err := s.planRepo.FinishPelican(saveCtx, plan.ID, until, time.Now()); err != nil {

@@ -12,3 +12,10 @@ export function getUsageTokensPerSecond(row: UsageThroughputRow): number | null 
   }
   return row.output_tokens / (row.duration_ms / 1000)
 }
+
+/** Match the compact usage display: one decimal below 100 t/s, integers above it. */
+export function formatUsageTokensPerSecond(row: UsageThroughputRow): string | null {
+  const tps = getUsageTokensPerSecond(row)
+  if (tps == null || !Number.isFinite(tps) || tps <= 0) return null
+  return String(tps >= 100 ? Math.round(tps) : tps.toFixed(1)) + ' t/s'
+}

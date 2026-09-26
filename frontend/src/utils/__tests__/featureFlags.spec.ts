@@ -40,6 +40,26 @@ describe('FeatureFlags.subscription', () => {
   })
 })
 
+describe('FeatureFlags.pelicanShowcase', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    delete (window as any).__APP_CONFIG__
+  })
+
+  it('keeps the gallery hidden until explicitly enabled and reflects later changes', () => {
+    const store = useAppStore()
+    const sidebarFlag = makeSidebarFlag(FeatureFlags.pelicanShowcase)
+
+    expect(sidebarFlag()).toBe(false)
+    store.cachedPublicSettings = {} as PublicSettings
+    expect(sidebarFlag()).toBe(false)
+    store.cachedPublicSettings = { pelican_showcase_enabled: true } as PublicSettings
+    expect(sidebarFlag()).toBe(true)
+    store.cachedPublicSettings = { pelican_showcase_enabled: false } as PublicSettings
+    expect(sidebarFlag()).toBe(false)
+  })
+})
+
 describe('resolveFeatureFlag', () => {
   beforeEach(() => {
     setActivePinia(createPinia())

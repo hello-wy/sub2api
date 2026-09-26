@@ -73,6 +73,9 @@ func SetupRouter(
 	// 注册路由
 	registerRoutes(r, handlers, jwtAuth, optionalJWTAuth, adminAuth, apiKeyAuth, auditLog, stepUpAuth, apiKeyService, subscriptionService, opsService, settingService, compositeResolver, cfg, redisClient)
 
+	if handlers.Admin != nil && handlers.Admin.ScheduledTest != nil {
+		handlers.Admin.ScheduledTest.ConfigureGroupGateway(r)
+	}
 	return r
 }
 

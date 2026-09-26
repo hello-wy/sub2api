@@ -1,65 +1,65 @@
 <template>
-  <div class="fixed inset-0 z-[60] overflow-y-auto bg-[#f6f8f7] p-4 dark:bg-dark-950 sm:p-6" role="dialog" aria-modal="true" :aria-label="t('admin.accounts.pelicanTest.history')" @keydown.esc.stop="selected = null">
-    <div class="mx-auto max-w-[1800px]">
-      <header class="mb-4 flex items-center justify-between gap-4">
+  <BaseDialog :show="true" :title="t('admin.accounts.pelicanTest.history')" width="full" fullscreen :z-index="60" :close-on-escape="!selected" @close="$emit('close')">
+    <div class="mx-auto max-w-7xl">
+      <header class="mb-5 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 class="text-xl font-semibold">{{ t('admin.accounts.pelicanTest.history') }}</h2>
-          <p class="text-sm text-gray-500">{{ t('admin.accounts.pelicanTest.dashboardHint') }}</p>
-          <p class="text-xs text-gray-500" data-testid="record-count">{{ t('admin.accounts.pelicanTest.recordCount', { count: cards.length }) }}</p>
+          <p class="text-sm leading-relaxed text-gray-500 dark:text-dark-400">{{ t('admin.accounts.pelicanTest.dashboardHint') }}</p>
+          <p class="mt-2 text-xs font-medium tabular-nums text-gray-700 dark:text-gray-300" data-testid="record-count">{{ t('admin.accounts.pelicanTest.recordCount', { count: cards.length }) }}</p>
         </div>
-        <div class="flex gap-2"><button type="button" class="btn btn-secondary" :disabled="refreshing" @click="refresh">{{ t('common.refresh') }}</button>
-        <button type="button" class="btn btn-secondary" @click="$emit('close')">{{ t('common.close') }}</button></div>
+        <button type="button" class="btn btn-secondary shrink-0" :disabled="refreshing" @click="refresh"><Icon name="refresh" size="sm" :class="{ 'animate-spin': refreshing }" />{{ t('common.refresh') }}</button>
       </header>
-      <p v-if="loadError" role="alert" class="mb-4 text-sm text-red-600">{{ loadError }}</p>
+      <p v-if="loadError" role="alert" class="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">{{ loadError }}</p>
       <div v-if="loading" class="py-20 text-center text-sm text-gray-500">{{ t('common.loading') }}...</div>
-      <div v-else-if="cards.length" class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div v-else-if="cards.length" class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         <article v-for="card in visibleCards" :key="card.key" class="relative overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition hover:border-primary-300 hover:shadow-md dark:border-dark-700 dark:bg-dark-800" data-testid="pelican-record-card">
           <div class="p-4">
-            <h3 class="font-semibold">{{ card.account.name }}</h3>
-            <p class="mt-1 text-xs text-gray-500">#{{ card.account.id }}<span v-if="card.resultId"> · {{ t('admin.accounts.pelicanTest.recordId') }} #{{ card.resultId }}</span></p>
+            <h3 class="truncate font-semibold text-gray-900 dark:text-gray-100">{{ card.account.name }}</h3>
+            <p class="mt-1 text-xs text-gray-500 dark:text-dark-400">#{{ card.account.id }}<span v-if="card.resultId"> · {{ t('admin.accounts.pelicanTest.recordId') }} #{{ card.resultId }}</span></p>
             <div class="mt-3 flex justify-between gap-2 text-xs">
               <span :class="card.record.status === 'success' ? 'text-emerald-600' : 'text-red-500'">{{ t(card.record.status === 'success' ? 'admin.accounts.pelicanTest.success' : 'admin.accounts.pelicanTest.failed') }}</span>
               <span class="text-gray-500">{{ duration(card.record.durationMs) }} · {{ sourceLabel(card.record.source) }}</span>
             </div>
-            <div class="mt-2 space-y-1 text-xs text-gray-500">
+            <div class="mt-2 space-y-1 break-words text-xs text-gray-500 dark:text-dark-400">
               <p>{{ card.record.modelId || '—' }} / {{ card.record.reasoningEffort || '—' }}</p>
               <p>{{ t('admin.accounts.pelicanTest.generatedAt') }}：{{ formatDate(card.record.startedAt) }}</p>
             </div>
-            <div class="mt-3 aspect-[4/3] overflow-hidden rounded-xl bg-gray-50">
+            <div class="mt-3 aspect-[16/10] overflow-hidden rounded-xl bg-gray-50 dark:bg-dark-900/70">
               <iframe v-if="card.record.html" :srcdoc="card.record.html" class="pointer-events-none h-full w-full border-0" tabindex="-1" sandbox="allow-scripts" referrerpolicy="no-referrer" :title="card.account.name" />
               <p v-else-if="!card.loaded && !card.loadError" class="p-4 text-sm text-gray-500">{{ t('common.loading') }}...</p>
-              <pre v-else-if="card.record.output && !card.record.html" class="whitespace-pre-wrap break-words p-4 text-sm">{{ card.record.output }}</pre>
+              <pre v-else-if="card.record.output && !card.record.html" class="max-h-full overflow-hidden whitespace-pre-wrap break-words p-4 font-mono text-base leading-relaxed text-gray-900 dark:text-gray-100">{{ card.record.output }}</pre>
               <p v-else class="p-4 text-sm text-red-500">{{ card.loadError || card.record.error || t('admin.accounts.pelicanTest.invalidHtml') }}</p>
             </div>
             <p v-if="card.record.error" class="mt-2 line-clamp-2 break-words text-xs text-red-500">{{ card.record.error }}</p>
           </div>
-          <div class="border-t border-gray-100 px-4 py-3 text-sm text-primary-600 dark:border-dark-700">{{ t('admin.accounts.pelicanTest.preview') }}</div>
-          <button type="button" class="absolute inset-0 z-10 rounded-2xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500" :aria-label="`${card.account.name} · ${t('admin.accounts.pelicanTest.preview')}`" @click="openRecord(card)" />
+          <div class="flex items-center gap-2 border-t border-gray-100 px-4 py-3 text-sm font-medium text-primary-600 dark:border-dark-700 dark:text-primary-400">{{ t('admin.accounts.pelicanTest.preview') }}</div>
+          <button type="button" class="absolute inset-0 z-10 rounded-2xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500 focus-visible:outline-offset-[-2px]" :aria-label="`${card.account.name} · ${t('admin.accounts.pelicanTest.preview')}`" @click="openRecord(card)" />
         </article>
       </div>
       <div v-else class="rounded-xl border border-dashed border-gray-300 bg-white py-20 text-center text-sm text-gray-500 dark:bg-dark-800">{{ t('admin.accounts.pelicanTest.noHistory') }}</div>
       <button v-if="cards.length > visibleLimit" type="button" class="btn btn-secondary mt-4" data-testid="load-more" @click="showMore">{{ t('admin.accounts.pelicanTest.moreRecords') }}</button>
     </div>
-    <div v-if="selected" class="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 p-4" data-testid="record-detail" @click.self="selected = null">
-      <div class="flex h-full w-full max-w-6xl flex-col overflow-hidden rounded-xl bg-white dark:bg-dark-800">
-        <header class="flex items-center justify-between gap-3 border-b px-4 py-3">
-          <div class="text-sm">
-            <strong>{{ selected.account.name }}</strong>
-            <p>{{ sourceLabel(selected.record.source) }} · {{ selected.record.modelId || '—' }} / {{ selected.record.reasoningEffort || '—' }} · {{ duration(selected.record.durationMs) }}</p>
-            <p class="text-xs text-gray-500">{{ formatDate(selected.record.startedAt) }}</p>
-          </div>
-          <button type="button" class="btn btn-secondary" @click="selected = null">{{ t('common.close') }}</button>
-        </header>
-        <iframe v-if="selected.record.html" :srcdoc="selected.record.html" class="min-h-0 w-full flex-1 border-0" sandbox="allow-scripts" referrerpolicy="no-referrer" :title="selected.account.name" />
-        <p v-else-if="!selected.loaded && !selected.loadError" class="p-4">{{ t('common.loading') }}...</p>
-        <pre v-else class="overflow-auto whitespace-pre-wrap p-4 text-sm">{{ selected.loadError || selected.record.error || selected.record.output }}</pre>
+    <template #footer>
+      <button type="button" class="btn btn-secondary" @click="$emit('close')">{{ t('common.close') }}</button>
+    </template>
+  </BaseDialog>
+  <BaseDialog :show="Boolean(selected)" :title="selected?.account.name || t('admin.accounts.pelicanTest.preview')" width="extra-wide" :z-index="70" @close="selected = null">
+    <div v-if="selected" class="space-y-4" data-testid="record-detail">
+      <div class="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-gray-50 px-4 py-3 text-xs leading-relaxed text-gray-500 dark:bg-dark-900/50 dark:text-dark-400">
+        <div><p class="font-medium text-gray-800 dark:text-gray-200">{{ selected.record.modelId || '—' }} / {{ selected.record.reasoningEffort || '—' }}</p><p class="mt-1">{{ sourceLabel(selected.record.source) }} · {{ formatDate(selected.record.startedAt) }}</p></div>
+        <span class="tabular-nums">{{ t('admin.accounts.pelicanTest.duration') }} {{ duration(selected.record.durationMs) }}</span>
       </div>
+      <iframe v-if="selected.record.html" :srcdoc="selected.record.html" class="h-[65vh] w-full rounded-xl border border-gray-200 bg-white dark:border-dark-700" sandbox="allow-scripts" referrerpolicy="no-referrer" :title="selected.account.name" />
+      <p v-else-if="!selected.loaded && !selected.loadError" role="status" class="py-16 text-center text-sm text-gray-500 dark:text-dark-400">{{ t('common.loading') }}...</p>
+      <pre v-else class="max-h-[65vh] min-h-40 overflow-auto whitespace-pre-wrap break-words rounded-xl bg-gray-50 p-5 font-mono text-lg leading-relaxed text-gray-900 dark:bg-dark-900/50 dark:text-gray-100">{{ selected.loadError || selected.record.error || selected.record.output }}</pre>
     </div>
-  </div>
+    <template #footer><button type="button" class="btn btn-secondary" @click="selected = null">{{ t('common.close') }}</button></template>
+  </BaseDialog>
 </template>
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import BaseDialog from '@/components/common/BaseDialog.vue'
+import { Icon } from '@/components/icons'
 import { scheduledTestsAPI } from '@/api/admin/scheduledTests'
 import type { PelicanHistoryResult } from '@/api/admin/scheduledTests'
 import { extractPelicanHtml } from '@/utils/pelicanHtml'

@@ -21,6 +21,8 @@ type ScheduledTestPlan struct {
 	RunningUntil   *time.Time         `json:"running_until,omitempty"`
 	ID             int64              `json:"id"`
 	AccountID      int64              `json:"account_id"`
+	GroupID        int64              `json:"group_id,omitempty"`
+	APIKeyID       int64              `json:"api_key_id,omitempty"`
 	ModelID        string             `json:"model_id"`
 	CronExpression string             `json:"cron_expression"`
 	Enabled        bool               `json:"enabled"`
@@ -53,10 +55,20 @@ type ScheduledTestPlanRepository interface {
 	Create(ctx context.Context, plan *ScheduledTestPlan) (*ScheduledTestPlan, error)
 	GetByID(ctx context.Context, id int64) (*ScheduledTestPlan, error)
 	ListByAccountID(ctx context.Context, accountID int64) ([]*ScheduledTestPlan, error)
+	ListByGroupID(ctx context.Context, groupID int64) ([]*ScheduledTestPlan, error)
+	ListGroupTestKeys(ctx context.Context, groupID int64) ([]*GroupTestKey, error)
+	Trigger(ctx context.Context, id int64, now time.Time) (bool, error)
 	ListDue(ctx context.Context, now time.Time) ([]*ScheduledTestPlan, error)
 	Update(ctx context.Context, plan *ScheduledTestPlan) (*ScheduledTestPlan, error)
 	Delete(ctx context.Context, id int64) error
 	UpdateAfterRun(ctx context.Context, id int64, lastRunAt time.Time, nextRunAt time.Time) error
+}
+
+// GroupTestKey exposes labels for administrators without exposing credentials.
+type GroupTestKey struct {
+	ID        int64  `json:"id"`
+	Name      string `json:"name"`
+	UserEmail string `json:"user_email"`
 }
 
 // PelicanHistoryResult includes account identity without exposing account credentials.

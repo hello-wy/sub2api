@@ -169,6 +169,7 @@ function mountView() {
         GroupCapacityBadge: true,
         GroupRateMultipliersModal: true,
         GroupRPMOverridesModal: true,
+        GroupPelicanTestModal: true,
         VueDraggable: true
       }
     }
@@ -176,6 +177,20 @@ function mountView() {
 }
 
 describe('GroupsView duplicate action', () => {
+  it('opens the selected group Pelican schedule from the actions column', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+    expect(wrapper.find('group-pelican-test-modal-stub').exists()).toBe(false)
+    await wrapper.get('[data-testid="group-pelican-test"]').trigger('click')
+    const modal = wrapper.findComponent({ name: 'GroupPelicanTestModal' })
+    expect(modal.exists()).toBe(true)
+    expect(modal.props('group')).toEqual(sourceGroup)
+    modal.vm.$emit('close')
+    await flushPromises()
+    expect(wrapper.find('group-pelican-test-modal-stub').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
   beforeEach(() => {
     authState.isSimpleMode = false
     localStorage.clear()

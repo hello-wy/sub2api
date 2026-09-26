@@ -21,16 +21,16 @@ func NewScheduledTestPlanRepository(db *sql.DB) service.ScheduledTestPlanReposit
 
 func (r *scheduledTestPlanRepository) Create(ctx context.Context, plan *service.ScheduledTestPlan) (*service.ScheduledTestPlan, error) {
 	row := r.db.QueryRowContext(ctx, `
-		INSERT INTO scheduled_test_plans (account_id, model_id, cron_expression, enabled, max_results, auto_recover, next_run_at, created_at, updated_at, pelican_config)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW(), $8)
-		RETURNING id, account_id, model_id, cron_expression, enabled, max_results, auto_recover, last_run_at, next_run_at, created_at, updated_at, pelican_config, running_until
-	`, plan.AccountID, plan.ModelID, plan.CronExpression, plan.Enabled, plan.MaxResults, plan.AutoRecover, plan.NextRunAt, marshalPelicanConfig(plan.PelicanConfig))
+		INSERT INTO scheduled_test_plans (account_id, model_id, cron_expression, enabled, max_results, auto_recover, next_run_at, created_at, updated_at, pelican_config, group_id, api_key_id)
+		VALUES (NULLIF($1, 0), $2, $3, $4, $5, $6, $7, NOW(), NOW(), $8, NULLIF($9, 0), NULLIF($10, 0))
+		RETURNING id, COALESCE(account_id, 0), model_id, cron_expression, enabled, max_results, auto_recover, last_run_at, next_run_at, created_at, updated_at, pelican_config, running_until, COALESCE(group_id, 0), COALESCE(api_key_id, 0)
+	`, plan.AccountID, plan.ModelID, plan.CronExpression, plan.Enabled, plan.MaxResults, plan.AutoRecover, plan.NextRunAt, marshalPelicanConfig(plan.PelicanConfig), plan.GroupID, plan.APIKeyID)
 	return scanPlan(row)
 }
 
 func (r *scheduledTestPlanRepository) GetByID(ctx context.Context, id int64) (*service.ScheduledTestPlan, error) {
 	row := r.db.QueryRowContext(ctx, `
-		SELECT id, account_id, model_id, cron_expression, enabled, max_results, auto_recover, last_run_at, next_run_at, created_at, updated_at, pelican_config, running_until
+		SELECT id, COALESCE(account_id, 0), model_id, cron_expression, enabled, max_results, auto_recover, last_run_at, next_run_at, created_at, updated_at, pelican_config, running_until, COALESCE(group_id, 0), COALESCE(api_key_id, 0)
 		FROM scheduled_test_plans WHERE id = $1
 	`, id)
 	return scanPlan(row)
@@ -38,7 +38,7 @@ func (r *scheduledTestPlanRepository) GetByID(ctx context.Context, id int64) (*s
 
 func (r *scheduledTestPlanRepository) ListByAccountID(ctx context.Context, accountID int64) ([]*service.ScheduledTestPlan, error) {
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT id, account_id, model_id, cron_expression, enabled, max_results, auto_recover, last_run_at, next_run_at, created_at, updated_at, pelican_config, running_until
+		SELECT id, COALESCE(account_id, 0), model_id, cron_expression, enabled, max_results, auto_recover, last_run_at, next_run_at, created_at, updated_at, pelican_config, running_until, COALESCE(group_id, 0), COALESCE(api_key_id, 0)
 		FROM scheduled_test_plans WHERE account_id = $1
 		ORDER BY created_at DESC, id DESC
 	`, accountID)
@@ -51,7 +51,7 @@ func (r *scheduledTestPlanRepository) ListByAccountID(ctx context.Context, accou
 
 func (r *scheduledTestPlanRepository) ListDue(ctx context.Context, now time.Time) ([]*service.ScheduledTestPlan, error) {
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT id, account_id, model_id, cron_expression, enabled, max_results, auto_recover, last_run_at, next_run_at, created_at, updated_at, pelican_config, running_until
+		SELECT id, COALESCE(account_id, 0), model_id, cron_expression, enabled, max_results, auto_recover, last_run_at, next_run_at, created_at, updated_at, pelican_config, running_until, COALESCE(group_id, 0), COALESCE(api_key_id, 0)
 		FROM scheduled_test_plans
 		WHERE enabled = true AND next_run_at <= $1
 		ORDER BY next_run_at ASC
@@ -66,10 +66,10 @@ func (r *scheduledTestPlanRepository) ListDue(ctx context.Context, now time.Time
 func (r *scheduledTestPlanRepository) Update(ctx context.Context, plan *service.ScheduledTestPlan) (*service.ScheduledTestPlan, error) {
 	row := r.db.QueryRowContext(ctx, `
 		UPDATE scheduled_test_plans
-		SET model_id = $2, cron_expression = $3, enabled = $4, max_results = $5, auto_recover = $6, next_run_at = $7, updated_at = NOW(), pelican_config = $8
+		SET model_id = $2, cron_expression = $3, enabled = $4, max_results = $5, auto_recover = $6, next_run_at = $7, updated_at = NOW(), pelican_config = $8, api_key_id = NULLIF($9, 0)
 		WHERE id = $1
-		RETURNING id, account_id, model_id, cron_expression, enabled, max_results, auto_recover, last_run_at, next_run_at, created_at, updated_at, pelican_config, running_until
-	`, plan.ID, plan.ModelID, plan.CronExpression, plan.Enabled, plan.MaxResults, plan.AutoRecover, plan.NextRunAt, marshalPelicanConfig(plan.PelicanConfig))
+		RETURNING id, COALESCE(account_id, 0), model_id, cron_expression, enabled, max_results, auto_recover, last_run_at, next_run_at, created_at, updated_at, pelican_config, running_until, COALESCE(group_id, 0), COALESCE(api_key_id, 0)
+	`, plan.ID, plan.ModelID, plan.CronExpression, plan.Enabled, plan.MaxResults, plan.AutoRecover, plan.NextRunAt, marshalPelicanConfig(plan.PelicanConfig), plan.APIKeyID)
 	return scanPlan(row)
 }
 
@@ -177,7 +177,7 @@ func scanPlan(row scannable) (*service.ScheduledTestPlan, error) {
 	var config []byte
 	if err := row.Scan(
 		&p.ID, &p.AccountID, &p.ModelID, &p.CronExpression, &p.Enabled, &p.MaxResults, &p.AutoRecover,
-		&p.LastRunAt, &p.NextRunAt, &p.CreatedAt, &p.UpdatedAt, &config, &p.RunningUntil,
+		&p.LastRunAt, &p.NextRunAt, &p.CreatedAt, &p.UpdatedAt, &config, &p.RunningUntil, &p.GroupID, &p.APIKeyID,
 	); err != nil {
 		return nil, err
 	}
@@ -217,6 +217,9 @@ func (r *scheduledTestPlanRepository) ClaimPelican(ctx context.Context, plan *se
 	}
 	defer func() { _ = tx.Rollback() }()
 	var locked bool
+	if plan.GroupID > 0 {
+		return r.claimGroupPelican(ctx, tx, plan, now, until, next)
+	}
 	if err := tx.QueryRowContext(ctx, `SELECT pg_try_advisory_xact_lock(hashtextextended('pelican-account:' || $1::text, 0))`, plan.AccountID).Scan(&locked); err != nil {
 		return false, err
 	}

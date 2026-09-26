@@ -3,7 +3,9 @@ package service
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/robfig/cron/v3"
@@ -15,6 +17,12 @@ var scheduledTestCronParser = cron.NewParser(cron.Minute | cron.Hour | cron.Dom 
 type ScheduledTestService struct {
 	planRepo   ScheduledTestPlanRepository
 	resultRepo ScheduledTestResultRepository
+	// showcase copies successful Pelican HTML results to the user gallery; nil disables it.
+	showcase     *PelicanShowcaseService
+	groupRepo    GroupRepository
+	keyRepo      APIKeyRepository
+	gatewayMu    sync.RWMutex
+	groupGateway http.Handler
 }
 
 // NewScheduledTestService creates a new ScheduledTestService.
@@ -30,6 +38,9 @@ func NewScheduledTestService(
 
 // CreatePlan validates the cron expression, computes next_run_at, and persists the plan.
 func (s *ScheduledTestService) CreatePlan(ctx context.Context, plan *ScheduledTestPlan) (*ScheduledTestPlan, error) {
+	if err := s.validatePlanTarget(ctx, plan); err != nil {
+		return nil, err
+	}
 	nextRun, err := nextPlanRun(plan, time.Now())
 	if err != nil {
 		return nil, fmt.Errorf("invalid test schedule: %w", err)
@@ -55,6 +66,9 @@ func (s *ScheduledTestService) ListPlansByAccount(ctx context.Context, accountID
 
 // UpdatePlan validates cron and updates the plan.
 func (s *ScheduledTestService) UpdatePlan(ctx context.Context, plan *ScheduledTestPlan) (*ScheduledTestPlan, error) {
+	if err := s.validatePlanTarget(ctx, plan); err != nil {
+		return nil, err
+	}
 	nextRun, err := nextPlanRun(plan, time.Now())
 	if err != nil {
 		return nil, fmt.Errorf("invalid test schedule: %w", err)
@@ -80,9 +94,11 @@ func (s *ScheduledTestService) ListResults(ctx context.Context, planID int64, li
 // SaveResult inserts a result and prunes old entries beyond maxResults.
 func (s *ScheduledTestService) SaveResult(ctx context.Context, planID int64, maxResults int, result *ScheduledTestResult) error {
 	result.PlanID = planID
-	if _, err := s.resultRepo.Create(ctx, result); err != nil {
+	saved, err := s.resultRepo.Create(ctx, result)
+	if err != nil {
 		return err
 	}
+	s.showcase.PublishScheduledResult(ctx, saved)
 	return s.resultRepo.PruneOldResults(ctx, planID, maxResults)
 }
 

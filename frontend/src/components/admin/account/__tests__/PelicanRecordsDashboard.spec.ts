@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import Dashboard from '../PelicanRecordsDashboard.vue'
+vi.mock('@/components/common/BaseDialog.vue', () => ({ default: { props: ['show'], template: '<div v-if="show"><slot /><slot name="footer" /></div>' } }))
 import { scheduledTestsAPI as api } from '@/api/admin/scheduledTests'
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }))
 vi.mock('@/api/admin/scheduledTests', () => ({ scheduledTestsAPI: { listPelicanHistory: vi.fn(), getResult: vi.fn() } }))

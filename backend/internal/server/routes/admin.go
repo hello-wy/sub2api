@@ -112,6 +112,9 @@ func RegisterAdminRoutes(
 		// 定时测试计划
 		registerScheduledTestRoutes(admin, h)
 
+		// 鹈鹕测智用户展示
+		registerPelicanShowcaseRoutes(admin, h)
+
 		// 渠道管理
 		registerChannelRoutes(admin, h)
 
@@ -748,6 +751,7 @@ func registerScheduledTestRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 	plans := admin.Group("/scheduled-test-plans")
 	{
 		plans.POST("", h.Admin.ScheduledTest.Create)
+		plans.POST("/:id/trigger", h.Admin.ScheduledTest.TriggerGroupPlan)
 		plans.PUT("/:id", h.Admin.ScheduledTest.Update)
 		plans.DELETE("/:id", h.Admin.ScheduledTest.Delete)
 		plans.GET("/:id/results", h.Admin.ScheduledTest.ListResults)
@@ -755,6 +759,13 @@ func registerScheduledTestRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 	}
 	// Nested under accounts
 	admin.GET("/accounts/:id/scheduled-test-plans", h.Admin.ScheduledTest.ListByAccount)
+	admin.GET("/groups/:id/scheduled-test-plans", h.Admin.ScheduledTest.ListByGroup)
+	admin.GET("/groups/:id/scheduled-test-keys", h.Admin.ScheduledTest.ListGroupTestKeys)
+}
+
+// Admins browse the gallery through the user page; this only takes a snapshot down.
+func registerPelicanShowcaseRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
+	admin.DELETE("/pelican-showcase/items/:id", h.PelicanShowcase.DeleteItem)
 }
 
 func registerErrorPassthroughRoutes(admin *gin.RouterGroup, h *handler.Handlers) {

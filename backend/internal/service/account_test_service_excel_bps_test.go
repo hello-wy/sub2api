@@ -15,7 +15,7 @@ import (
 )
 
 func TestBuildExcelBPSAccountTestBodyUsesResponsesContract(t *testing.T) {
-	raw, err := buildExcelBPSAccountTestBody("gpt-6-astra", "糖果题")
+	raw, err := buildExcelBPSAccountTestBody("gpt-6-astra", "糖果题", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,6 +44,39 @@ func TestExcelBPSAccountOnlyUsesOAuth(t *testing.T) {
 	apiKey := &Account{Platform: PlatformOpenAI, Type: AccountTypeAPIKey, Extra: map[string]any{"openai_excel_bps": true}}
 	if !oauth.IsExcelBPSEnabled() || apiKey.IsExcelBPSEnabled() {
 		t.Fatal("Excel BPS gate must be OAuth-only")
+	}
+}
+
+func TestPelicanExcelBPSReasoningAndPrompt(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	for _, effort := range []string{"low", "medium", "high"} {
+		t.Run(effort, func(t *testing.T) {
+			account := excelAccount()
+			account.Credentials["model_mapping"] = map[string]any{
+				"iq-alias": "gpt-6-astra", "gpt-6-astra": "gpt-6-sol",
+			}
+			account.Extra["openai_excel_bps_models"] = []string{"gpt-6-astra"}
+			upstream := &httpUpstreamRecorder{resp: &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     http.Header{"Content-Type": {"text/event-stream"}},
+				Body:       io.NopCloser(strings.NewReader("data: {\"type\":\"response.output_text.delta\",\"delta\":\"21\"}\n\ndata: {\"type\":\"response.completed\",\"response\":{\"id\":\"iq-result\",\"status\":\"completed\",\"output\":[]}}\n\n")),
+			}}
+			svc := &AccountTestService{
+				accountRepo:          &stubOpenAIAccountRepo{accounts: []Account{*account}},
+				httpUpstream:         upstream,
+				openaiGatewayService: openAIClientToolsTestService(upstream),
+			}
+			rec := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(rec)
+			c.Request = httptest.NewRequest(http.MethodPost, "/api/v1/admin/accounts/300/pelican-test", nil)
+			require.NoError(t, svc.TestPelicanAccountConnection(c, account.ID, "iq-alias", CandyPrompt, effort))
+			require.NotNil(t, upstream.lastReq)
+			require.Equal(t, basispoints.ResponsesURL, upstream.lastReq.URL.String())
+			require.Equal(t, "gpt-6-astra", gjson.GetBytes(upstream.lastBody, "model").String())
+			require.Equal(t, effort, gjson.GetBytes(upstream.lastBody, "reasoning_effort").String())
+			require.Contains(t, string(upstream.lastBody), "圆形 7 9 8")
+			require.Contains(t, rec.Body.String(), "\"type\":\"test_complete\",\"success\":true")
+		})
 	}
 }
 

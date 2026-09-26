@@ -1583,6 +1583,13 @@ export default {
       testModel: 'Test model',
       testPrompt: 'Prompt: "hi"',
       pelicanTest: {
+        scheduleEvaluationHint: 'Scheduled candy tests validate the built-in answer; animation outputs are compared manually.',
+        manualTab: 'Manual test',
+        configuration: 'Test configuration',
+        resultTitle: 'Test results',
+        progress: '{completed} / {total} completed',
+        emptyTitle: 'Ready when you are',
+        rawOutput: 'View original HTML',
         question: 'Question',
         candyQuestion: 'Candy logic test',
         pelicanQuestion: 'Pelican riding a bicycle (HTML)',

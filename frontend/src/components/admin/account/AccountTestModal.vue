@@ -170,31 +170,6 @@
         <p class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.accounts.grok.audioUploadHint') }}</p>
       </div>
 
-      <p v-if="testMode === 'gateway'" class="text-xs text-gray-500 dark:text-gray-400">
-        {{ t('admin.accounts.openai.diagnostics.hint') }}
-      </p>
-      <section v-if="capabilityResults.length" class="rounded-xl border border-gray-200 dark:border-dark-500" aria-live="polite">
-        <h3 class="border-b border-gray-200 px-3 py-2 text-sm font-medium dark:border-dark-500">
-          {{ t('admin.accounts.openai.diagnostics.title') }}
-        </h3>
-        <div v-for="result in capabilityResults" :key="result.capability" class="space-y-1 border-b border-gray-100 p-3 text-xs last:border-b-0 dark:border-dark-600" :data-capability="result.capability">
-          <div class="flex items-center justify-between gap-2">
-            <span class="font-semibold">{{ capabilityLabel(result.capability) }}</span>
-            <span :class="result.status === 'passed' ? 'text-green-600 dark:text-green-400' : result.status === 'failed' ? 'text-red-600 dark:text-red-400' : 'text-gray-500 dark:text-gray-400'">
-              {{ t(`admin.accounts.openai.diagnostics.states.${result.status}`) }}
-              <span v-if="result.http_status"> · HTTP {{ result.http_status }}</span>
-              <span v-if="result.duration_ms !== undefined"> · {{ result.duration_ms }} ms</span>
-            </span>
-          </div>
-          <div class="text-gray-500 dark:text-gray-400">
-            {{ t('admin.accounts.openai.diagnostics.source') }}：{{ result.source ? t(`admin.accounts.openai.diagnostics.sources.${result.source}`) : '—' }}
-          </div>
-          <div class="text-gray-500 dark:text-gray-400">{{ t('admin.accounts.openai.diagnostics.target') }}</div>
-          <div class="break-all font-mono text-gray-800 dark:text-gray-200">{{ result.target_url || t('admin.accounts.openai.diagnostics.noRequest') }}</div>
-          <p v-if="result.code" class="text-gray-500 dark:text-gray-400">{{ t(`admin.accounts.openai.diagnostics.errors.${result.code}`) }}</p>
-        </div>
-      </section>
-
       <!-- Terminal Output -->
       <div class="group relative">
         <div
@@ -441,20 +416,7 @@ const generatedImages = ref<PreviewMedia[]>([])
 const generatedAudios = ref<PreviewMedia[]>([])
 const generatedVideos = ref<PreviewMedia[]>([])
 const previewImageUrl = ref('')
-type Capability = 'http' | 'websocket' | 'compact'
-interface CapabilityResult {
-  capability: Capability
-  status: 'pending' | 'running' | 'passed' | 'failed' | 'skipped' | 'cancelled'
-  target_url?: string
-  source?: 'account' | 'parent' | 'official'
-  http_status?: number
-  duration_ms?: number
-  code?: string
-}
-const capabilityResults = ref<CapabilityResult[]>([])
-const capabilityLabel = (capability: Capability) => ({ http: 'HTTP', websocket: 'WebSocket', compact: t('admin.accounts.openai.diagnostics.compactLabel') })[capability]
-const isCodexAccount = computed(() => props.account?.platform === 'openai' && ['oauth', 'setup-token'].includes(props.account.type))
-const testMode = ref<'default' | 'compact' | 'gateway'>(isCodexAccount.value ? 'gateway' : 'default')
+const testMode = ref<'default' | 'compact'>('default')
 const grokTestMode = ref<'text' | 'image' | 'video' | 'search' | 'tts' | 'stt' | 'realtime'>('text')
 const uploadImageDataURL = ref('')
 const uploadImagePreview = ref('')
@@ -466,7 +428,6 @@ const audioFileInput = ref<HTMLInputElement | null>(null)
 const isOpenAIAccount = computed(() => props.account?.platform === 'openai')
 const isGrokAccount = computed(() => props.account?.platform === 'grok')
 const openAITestModeOptions = computed(() => [
-  ...(isCodexAccount.value && !supportsImageTest.value ? [{ value: 'gateway', label: t('admin.accounts.openai.diagnostics.mode') }] : []),
   { value: 'default', label: t('admin.accounts.openai.testModeDefault') },
   { value: 'compact', label: t('admin.accounts.openai.testModeCompact') }
 ])
@@ -780,7 +741,7 @@ watch(
   async (newVal) => {
     if (newVal && props.account) {
       testPrompt.value = ''
-      testMode.value = isCodexAccount.value ? 'gateway' : 'default'
+      testMode.value = 'default'
       grokTestMode.value = 'text'
       resetState()
       await loadAvailableModels()
@@ -793,10 +754,6 @@ watch(
     }
   }
 )
-
-watch(selectedModelId, () => {
-  if (supportsImageTest.value && testMode.value === 'gateway') testMode.value = 'default'
-})
 
 watch(grokTestMode, () => {
   if (!isGrokAccount.value) return
@@ -838,7 +795,6 @@ const loadAvailableModels = async () => {
 
 const resetState = () => {
   status.value = 'idle'
-  capabilityResults.value = []
   outputLines.value = []
   streamingContent.value = ''
   errorMessage.value = ''
@@ -853,18 +809,11 @@ const handleClose = () => {
   emit('close')
 }
 
-const finishPendingCapabilities = (state: 'cancelled' | 'failed', code: string) => {
-  capabilityResults.value = capabilityResults.value.map(result =>
-    ['pending', 'running'].includes(result.status) ? { ...result, status: state, code } : result
-  )
-}
-
 onBeforeUnmount(() => abortStream())
 const abortStream = () => {
   if (abortController) {
     abortController.abort()
     abortController = null
-    finishPendingCapabilities('cancelled', 'cancelled')
     if (status.value === 'connecting') status.value = 'idle'
   }
 }
@@ -887,9 +836,6 @@ const startTest = async () => {
   abortStream()
   resetState()
   status.value = 'connecting'
-  if (testMode.value === 'gateway') {
-    capabilityResults.value = (['http', 'websocket', 'compact'] as const).map(capability => ({ capability, status: 'pending' }))
-  }
   addLine(t('admin.accounts.startingTestForAccount', { name: props.account.name }), 'text-blue-400')
   addLine(t('admin.accounts.testAccountTypeLabel', { type: props.account.type }), 'text-gray-400')
   if (isGrokAccount.value) {
@@ -993,11 +939,9 @@ const startTest = async () => {
   } catch (error: unknown) {
     if (abortController !== controller) return
     if (error instanceof DOMException && error.name === 'AbortError') {
-      finishPendingCapabilities('cancelled', 'cancelled')
       status.value = 'idle'
       return
     }
-    finishPendingCapabilities('failed', 'incomplete_response')
     status.value = 'error'
     const msg = error instanceof Error ? error.message : t('common.unknownError')
     errorMessage.value = msg
@@ -1017,17 +961,8 @@ const handleEvent = (event: {
   audio_url?: string
   video_url?: string
   mime_type?: string
-  data?: CapabilityResult
 }) => {
   switch (event.type) {
-    case 'capability_result': {
-      const result = event.data
-      if (!result || !['http', 'websocket', 'compact'].includes(result.capability)) break
-      const index = capabilityResults.value.findIndex(item => item.capability === result.capability)
-      if (index < 0) capabilityResults.value.push(result)
-      else capabilityResults.value[index] = result
-      break
-    }
     case 'test_start':
       addLine(t('admin.accounts.connectingToApi'), 'text-gray-400')
       if (event.model) {
@@ -1106,17 +1041,15 @@ const handleEvent = (event: {
         addLine(streamingContent.value, 'text-green-300')
         streamingContent.value = ''
       }
-      if (event.success && capabilityResults.value.every(result => result.status === 'passed')) {
+      if (event.success) {
         status.value = 'success'
       } else {
         status.value = 'error'
-        errorMessage.value = capabilityResults.value.length ? t('admin.accounts.openai.diagnostics.failed') : event.error || t('admin.accounts.testFailed')
-        finishPendingCapabilities('failed', 'incomplete_response')
+        errorMessage.value = event.error || t('admin.accounts.testFailed')
       }
       break
 
     case 'error':
-      finishPendingCapabilities('failed', 'incomplete_response')
       status.value = 'error'
       errorMessage.value = event.error || t('common.unknownError')
       if (streamingContent.value) {
@@ -1128,16 +1061,7 @@ const handleEvent = (event: {
 }
 
 const copyOutput = () => {
-  const diagnostics = capabilityResults.value.map(result => [
-    capabilityLabel(result.capability),
-    t(`admin.accounts.openai.diagnostics.states.${result.status}`),
-    result.target_url || t('admin.accounts.openai.diagnostics.noRequest'),
-    result.source ? t(`admin.accounts.openai.diagnostics.sources.${result.source}`) : '—',
-    result.http_status ? `HTTP ${result.http_status}` : '',
-    result.duration_ms !== undefined ? `${result.duration_ms} ms` : '',
-    result.code ? t(`admin.accounts.openai.diagnostics.errors.${result.code}`) : ''
-  ].filter(Boolean).join(' | '))
-  const text = [...outputLines.value.map((l) => l.text), ...diagnostics, errorMessage.value].filter(Boolean).join('\n')
+  const text = [...outputLines.value.map((l) => l.text), errorMessage.value].filter(Boolean).join('\n')
   copyToClipboard(text, t('admin.accounts.outputCopied'))
 }
 </script>

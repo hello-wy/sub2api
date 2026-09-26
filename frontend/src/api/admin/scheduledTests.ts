@@ -88,7 +88,23 @@ export async function listPelicanHistory(beforeId = 0): Promise<{ items: Pelican
   return data
 }
 
+export interface GroupTestKey { id: number; name: string; user_email: string }
+export async function listByGroup(groupId: number): Promise<ScheduledTestPlan[]> {
+  const { data } = await apiClient.get<ScheduledTestPlan[]>('/admin/groups/' + groupId + '/scheduled-test-plans')
+  return data ?? []
+}
+export async function listGroupTestKeys(groupId: number): Promise<GroupTestKey[]> {
+  const { data } = await apiClient.get<GroupTestKey[]>('/admin/groups/' + groupId + '/scheduled-test-keys')
+  return data ?? []
+}
+export async function triggerGroupPlan(id: number): Promise<void> {
+  await apiClient.post('/admin/scheduled-test-plans/' + id + '/trigger')
+}
+
 export const scheduledTestsAPI = {
+  listByGroup,
+  listGroupTestKeys,
+  triggerGroupPlan,
   listPelicanHistory,
   getResult,
   listByAccount,

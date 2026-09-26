@@ -193,13 +193,13 @@ describe('AccountTestModal', () => {
   })
 })
 
-function mountDiagnostics(account = buildAccount()) {
+function mountConnectionTest(account = buildAccount()) {
   return mount(AccountTestModal, {
     props: { show: true, account },
     global: { stubs: { BaseDialog: BaseDialogStub, Select: SelectStub, TextArea: TextAreaStub, Icon: true } }
   })
 }
-function mockDiagnosticStream(events: unknown[], truncate = false) {
+function mockTestStream(events: unknown[], truncate = false) {
   const encoded = new TextEncoder().encode(events.map(event => `data: ${JSON.stringify(event)}\n\n`).join('').trimEnd() + (truncate ? '' : '\n\n'))
   // Deliberately split an SSE event across chunks.
   const chunks = [encoded.slice(0, 23), encoded.slice(23)]
@@ -208,96 +208,81 @@ function mockDiagnosticStream(events: unknown[], truncate = false) {
     body: { getReader: () => ({ read: vi.fn().mockImplementation(async () => chunks.length ? { done: false, value: chunks.shift() } : { done: true }) }) }
   }) as any
 }
-const diagnosticResult = (capability: string, status = 'passed', source = 'parent') => ({
-  type: 'capability_result',
-  data: { capability, status, source, target_url: `${capability === 'websocket' ? 'wss' : 'https'}://relay.example/backend-api/codex/responses`, http_status: capability === 'websocket' ? 101 : 200, duration_ms: 12 }
-})
-
-describe('Codex gateway acceptance results', () => {
+describe('Account connection modes', () => {
   const originalFetch = global.fetch
-  afterEach(() => { global.fetch = originalFetch })
+  beforeEach(() => {
+    copyMock.mockReset()
+    getAvailableModelsMock.mockResolvedValue([{ id: 'gpt-5.4', display_name: 'GPT-5.4' }])
+    localStorage.setItem('auth_token', 'test-token')
+  })
+  afterEach(() => { global.fetch = originalFetch; localStorage.clear() })
 
-  it('defaults OAuth tests to gateway mode and copies actual targets and sources', async () => {
-    mockDiagnosticStream([
-      diagnosticResult('http'), diagnosticResult('websocket'), diagnosticResult('compact'),
-      { type: 'test_complete', success: true }
-    ], true)
-    const wrapper = mountDiagnostics()
+  it.each(['oauth', 'setup-token', 'apikey'])('defaults %s to the normal test and omits gateway acceptance', async type => {
+    const account = { ...buildAccount(), type }
+    mockTestStream([{ type: 'content', text: 'Hello' }, { type: 'test_complete', success: true }], true)
+    const wrapper = mountConnectionTest(account)
+    const modes = wrapper.findAll('option').map(option => option.attributes('value'))
+    expect(modes).toContain('default')
+    expect(modes).toContain('compact')
+    expect(modes).not.toContain('gateway')
+    expect(wrapper.text()).not.toContain('admin.accounts.openai.diagnostics.mode')
     ;(wrapper.vm as any).selectedModelId = 'gpt-5.4'
     await (wrapper.vm as any).startTest()
-    expect(JSON.parse((global.fetch as any).mock.calls[0][1].body).mode).toBe('gateway')
+    expect(JSON.parse((global.fetch as any).mock.calls[0][1].body).mode).toBe('default')
     expect((wrapper.vm as any).status).toBe('success')
-    expect(wrapper.findAll('[data-capability]')).toHaveLength(3)
-    expect(wrapper.text()).toContain('wss://relay.example/backend-api/codex/responses')
-    expect(wrapper.text()).toContain('admin.accounts.openai.diagnostics.sources.parent')
+    expect(wrapper.findAll('[data-capability]')).toHaveLength(0)
     ;(wrapper.vm as any).copyOutput()
-    expect(copyMock).toHaveBeenCalledWith(expect.stringContaining('HTTP 101'), expect.any(String))
-    expect(copyMock).toHaveBeenCalledWith(expect.stringContaining('sources.parent'), expect.any(String))
+    expect(copyMock).toHaveBeenCalledWith(expect.stringContaining('Hello'), expect.any(String))
+    ;(wrapper.vm as any).testMode = 'compact'
+    await wrapper.setProps({ show: false })
+    await wrapper.setProps({ show: true })
+    await flushPromises()
+    expect((wrapper.vm as any).testMode).toBe('default')
     wrapper.unmount()
   })
 
-  it('retains mixed capability results and only finishes on the suite terminal event', async () => {
-    mockDiagnosticStream([
-      diagnosticResult('http'), diagnosticResult('websocket', 'failed'), diagnosticResult('compact'),
-      { type: 'test_complete', success: false }
-    ])
-    const wrapper = mountDiagnostics()
+  it('shows the terminal failure from a normal connection test', async () => {
+    mockTestStream([{ type: 'test_complete', success: false, error: 'upstream denied' }])
+    const wrapper = mountConnectionTest()
     ;(wrapper.vm as any).selectedModelId = 'gpt-5.4'
     await (wrapper.vm as any).startTest()
     expect((wrapper.vm as any).status).toBe('error')
-    expect((wrapper.vm as any).capabilityResults.map((result: any) => result.status)).toEqual(['passed', 'failed', 'passed'])
+    expect((wrapper.vm as any).errorMessage).toBe('upstream denied')
     wrapper.unmount()
   })
 
-  it('marks unfinished probes failed when SSE closes without a terminal event', async () => {
-    mockDiagnosticStream([diagnosticResult('http', 'passed', 'official'), diagnosticResult('websocket', 'running')])
-    const wrapper = mountDiagnostics()
+  it('fails a stream that ends without a terminal event', async () => {
+    mockTestStream([{ type: 'content', text: 'partial response' }])
+    const wrapper = mountConnectionTest()
     ;(wrapper.vm as any).selectedModelId = 'gpt-5.4'
     await (wrapper.vm as any).startTest()
     expect((wrapper.vm as any).status).toBe('error')
-    expect((wrapper.vm as any).capabilityResults.map((result: any) => result.status)).toEqual(['passed', 'failed', 'failed'])
-    expect(wrapper.text()).toContain('admin.accounts.openai.diagnostics.sources.official')
+    expect((wrapper.vm as any).errorMessage).toContain('incomplete_response')
     wrapper.unmount()
   })
 
-  it('does not turn skipped capabilities green even if the terminal event claims success', async () => {
-    mockDiagnosticStream([
-      diagnosticResult('http', 'skipped'), diagnosticResult('websocket', 'skipped'), diagnosticResult('compact', 'skipped'),
-      { type: 'test_complete', success: true }
-    ])
-    const wrapper = mountDiagnostics()
-    ;(wrapper.vm as any).selectedModelId = 'gpt-5.4'
-    await (wrapper.vm as any).startTest()
-    expect((wrapper.vm as any).status).toBe('error')
-    wrapper.unmount()
-  })
-
-  it('cancels pending probes and keeps completed results', async () => {
+  it('still cancels an in-flight normal connection test', async () => {
     global.fetch = vi.fn().mockImplementation((_url, options) => new Promise((_resolve, reject) => {
       options.signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')))
     })) as any
-    const wrapper = mountDiagnostics()
+    const wrapper = mountConnectionTest()
     ;(wrapper.vm as any).selectedModelId = 'gpt-5.4'
     const pending = (wrapper.vm as any).startTest()
-    ;(wrapper.vm as any).handleEvent(diagnosticResult('http'))
+    const signal = (global.fetch as any).mock.calls[0][1].signal as AbortSignal
     ;(wrapper.vm as any).abortStream()
     await pending
-    expect((wrapper.vm as any).capabilityResults.map((result: any) => result.status)).toEqual(['passed', 'cancelled', 'cancelled'])
+    expect(signal.aborted).toBe(true)
     expect((wrapper.vm as any).status).toBe('idle')
     wrapper.unmount()
   })
 
-  it.each(['apikey', 'grok'])('preserves normal testing for %s accounts', async (type) => {
-    const account = buildAccount()
-    if (type === 'apikey') account.type = 'apikey'
-    else account.platform = 'grok'
-    mockDiagnosticStream([{ type: 'test_complete', success: true }])
-    const wrapper = mountDiagnostics(account)
+  it('preserves the Grok text test mode', async () => {
+    mockTestStream([{ type: 'test_complete', success: true }])
+    const wrapper = mountConnectionTest({ ...buildAccount(), platform: 'grok' })
     ;(wrapper.vm as any).selectedModelId = 'test-model'
     await (wrapper.vm as any).startTest()
-    expect(JSON.parse((global.fetch as any).mock.calls[0][1].body).mode).toBe(type === 'grok' ? 'text' : 'default')
+    expect(JSON.parse((global.fetch as any).mock.calls[0][1].body).mode).toBe('text')
     expect((wrapper.vm as any).status).toBe('success')
-    expect(wrapper.findAll('[data-capability]')).toHaveLength(0)
     wrapper.unmount()
   })
 })

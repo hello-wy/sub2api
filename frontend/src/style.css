@@ -1525,5 +1525,15 @@
   }
 }
 
-.modal-fullscreen { width: 100vw !important; max-width: none !important; height: 100vh !important; max-height: none !important; border-radius: 0 !important; }
-.modal-fullscreen .modal-body { max-height: none !important; }
+.modal-content.modal-fullscreen {
+  width: 100%;
+  max-width: none;
+  height: calc(100dvh - 1rem);
+  max-height: calc(100dvh - 1rem);
+}
+@media (min-width: 640px) {
+  .modal-content.modal-fullscreen {
+    height: calc(100dvh - 2rem);
+    max-height: calc(100dvh - 2rem);
+  }
+}
