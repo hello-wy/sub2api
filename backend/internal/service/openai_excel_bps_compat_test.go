@@ -254,9 +254,11 @@ func TestExcelBPSCompatStreamRecoversTextWithoutDuplication(t *testing.T) {
 			var content strings.Builder
 			for _, event := range excelBPSCompatData(rec.Body.String()) {
 				if kind == "messages" {
-					content.WriteString(event.Get("delta.text").String())
+					_, err := content.WriteString(event.Get("delta.text").String())
+					require.NoError(t, err)
 				} else {
-					content.WriteString(event.Get("choices.0.delta.content").String())
+					_, err := content.WriteString(event.Get("choices.0.delta.content").String())
+					require.NoError(t, err)
 				}
 			}
 			require.Equal(t, "audit-ok", content.String())
