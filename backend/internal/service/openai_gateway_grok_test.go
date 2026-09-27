@@ -3365,10 +3365,14 @@ func TestHandleGrokAccountUpstreamError429DoesNotShortenExistingPause(t *testing
 	repo := &grokQuotaAccountRepo{}
 	svc := &OpenAIGatewayService{accountRepo: repo}
 
+	before := time.Now().Truncate(time.Second)
 	svc.handleGrokAccountUpstreamError(context.Background(), account, http.StatusTooManyRequests, http.Header{"Retry-After": []string{"45"}}, nil)
+	after := time.Now().Truncate(time.Second)
 
 	require.Equal(t, 1, repo.rateLimitedCalls)
-	require.WithinDuration(t, time.Now().Add(45*time.Second), repo.lastRateLimitResetAt, time.Second)
+	// Quota observation timestamps have second precision. Bracket the call so
+	// crossing a second boundary cannot turn a correct reset into a flaky failure.
+	require.WithinRange(t, repo.lastRateLimitResetAt, before.Add(45*time.Second), after.Add(45*time.Second))
 	require.Zero(t, repo.tempUnschedCalls)
 	value, ok := svc.openaiAccountRuntimeBlockUntil.Load(account.ID)
 	require.True(t, ok)
