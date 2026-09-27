@@ -1,6 +1,7 @@
 .PHONY: build build-backend build-frontend test test-backend test-frontend test-frontend-critical
 
 FRONTEND_CRITICAL_VITEST := \
+	src/components/modelPlaza/__tests__ \
 	src/components/admin/usage/__tests__/BusinessAnalyticsPanel.spec.ts \
 	src/components/admin/usage/__tests__/BusinessRecordDialog.spec.ts \
 	src/components/admin/usage/__tests__/BusinessLedgerCSV.spec.ts \
