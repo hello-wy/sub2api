@@ -203,7 +203,8 @@ const routes: RouteRecordRaw[] = [
     meta: {
       requiresAuth: false,
       title: 'Model Plaza',
-      titleKey: 'modelPlaza.title'
+      titleKey: 'modelPlaza.title',
+      descriptionKey: 'modelPlaza.description'
     }
   },
 
@@ -719,6 +720,18 @@ const routes: RouteRecordRaw[] = [
       title: 'Usage Records',
       titleKey: 'admin.usage.title',
       descriptionKey: 'admin.usage.description'
+    }
+  },
+  {
+    path: '/admin/business-analytics',
+    name: 'AdminBusinessAnalytics',
+    component: () => import('@/views/admin/BusinessAnalyticsView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Business Analytics',
+      titleKey: 'admin.businessAnalytics.title',
+      descriptionKey: 'admin.businessAnalytics.description'
     }
   },
   {

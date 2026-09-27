@@ -11,9 +11,11 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/enttest"
 	"github.com/Wei-Shaw/sub2api/internal/payment"
 
+	sqldriver "database/sql/driver"
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
-	_ "modernc.org/sqlite"
+	"modernc.org/sqlite"
+	"sync"
 )
 
 func TestPcParseFloat(t *testing.T) {
@@ -382,7 +384,16 @@ func TestGetPaymentConfigKeepsStoredEnabledTypes(t *testing.T) {
 	}
 }
 
+var businessSQLiteFunctions sync.Once
+
 func newPaymentConfigServiceTestClient(t *testing.T) *dbent.Client {
+	businessSQLiteFunctions.Do(func() {
+		// SQLite unit fixtures have no financial triggers; PostgreSQL integration
+		// tests verify that transaction-local context is captured by the journal.
+		if err := sqlite.RegisterScalarFunction("set_config", 3, func(_ *sqlite.FunctionContext, args []sqldriver.Value) (sqldriver.Value, error) { return args[1], nil }); err != nil {
+			panic(err)
+		}
+	})
 	t.Helper()
 
 	dbName := fmt.Sprintf(
