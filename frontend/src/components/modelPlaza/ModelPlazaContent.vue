@@ -123,11 +123,16 @@ const allOption = (label: string, count = entries.value.length): PlazaFilterOpti
 const providerOptions = computed(() => [allOption('allProviders'), ...[...new Set(entries.value.map(e => e.model.platform))].sort().map(value => ({
   value, label:platformLabel(value), platform:value, badge:entries.value.filter(e => e.model.platform === value).length,
 }))])
-const groupOptions = computed(() => [allOption('allGroups'), ...(props.response?.groups ?? []).filter(g => g.models.length).map(g => ({ value:String(g.id), label:g.name, badge:'×' + plazaRate(g) }))])
+const providerEntries = computed(() => entries.value.filter(e => platform.value === 'all' || e.model.platform === platform.value))
+const availableGroups = computed(() => {
+  const ids = new Set(providerEntries.value.map(e => e.group.id))
+  return (props.response?.groups ?? []).filter(g => ids.has(g.id))
+})
+const groupOptions = computed(() => [allOption('allGroups', providerEntries.value.length), ...availableGroups.value.map(g => ({ value:String(g.id), label:g.name, badge:'×' + plazaRate(g) }))])
 const tagOptions = computed(() => [allOption('allTags'), ...['tiered','timePricing','exclusive','subscription'].filter(value => entries.value.some(e => e.tags.includes(value))).map(value => ({ value, label:t('modelPlaza.gallery.' + value), badge:entries.value.filter(e => e.tags.includes(value)).length }))])
 const billingOptions = computed(() => [allOption('allBilling'), ...[...new Set(entries.value.map(e => e.billing))].map(value => ({ value, label:t('modelPlaza.gallery.billingModes.' + value), badge:entries.value.filter(e => e.billing === value).length }))])
 const healthOptions = computed(() => [allOption('allStatus'), ...['healthy','warning','critical','unknown'].map(value => ({ value, label:t('modelPlaza.gallery.health.' + value), badge:entries.value.filter(e => e.status.health === value).length }))])
-const rates = computed(() => [...new Set((props.response?.groups ?? []).map(g => plazaRate(g)))].sort((a,b) => a-b))
+const rates = computed(() => [...new Set(availableGroups.value.map(g => plazaRate(g)))].sort((a,b) => a-b))
 const filtered = computed(() => {
   const q = search.value.trim().toLowerCase()
   const list = entries.value.filter(e =>

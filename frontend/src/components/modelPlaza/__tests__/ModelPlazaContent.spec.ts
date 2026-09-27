@@ -39,6 +39,51 @@ describe('model plaza gallery', () => {
     expect(wrapper.findAll('.plaza-model-card')).toHaveLength(2)
     wrapper.unmount()
   })
+  it('limits groups and rates to the selected provider, including matching models in composite groups', async () => {
+    const wrapper = render([
+      group({ name:'OpenAI only', user_rate_multiplier:.5 }),
+      group({ id:2, name:'Claude only', platform:'anthropic', user_rate_multiplier:2, models:[model({ name:'claude-only', platform:'anthropic' })] }),
+      group({ id:3, name:'Mixed', platform:'composite', user_rate_multiplier:1, models:[model({ name:'gpt-mixed' }),model({ name:'claude-mixed', platform:'anthropic' })] }),
+      group({ id:4, name:'Empty', models:[] }),
+    ])
+    const providers = wrapper.get('[aria-label="modelPlaza.gallery.providers"]')
+    const groups = wrapper.get('[aria-label="modelPlaza.gallery.groups"]')
+    const names = () => groups.findAll('.option-label').map(option => option.text())
+    await providers.get('button[title="OpenAI"]').trigger('click')
+    expect(names()).toEqual(['modelPlaza.gallery.allGroups','OpenAI only','Mixed'])
+    expect(groups.get('button[title="modelPlaza.gallery.allGroups"] .option-count').text()).toBe('2')
+    expect(groups.findAll('select option').map(option => option.attributes('value'))).toEqual(['all','0.5','1'])
+    await groups.get('button[title="Mixed"]').trigger('click')
+    await providers.get('button[title="Anthropic"]').trigger('click')
+    expect(names()).toEqual(['modelPlaza.gallery.allGroups','Claude only','Mixed'])
+    expect(groups.get('button[aria-pressed="true"]').attributes('title')).toBe('Mixed')
+    expect(wrapper.findAll('.plaza-model-card')).toHaveLength(1)
+    expect(wrapper.get('.model-identity h3').text()).toBe('claude-mixed')
+    await providers.get('button[title="modelPlaza.gallery.allProviders"]').trigger('click')
+    expect(names()).toEqual(['modelPlaza.gallery.allGroups','OpenAI only','Claude only','Mixed'])
+    expect(wrapper.findAll('.plaza-model-card')).toHaveLength(2)
+    wrapper.unmount()
+  })
+  it('clears incompatible group and rate selections when switching providers', async () => {
+    const wrapper = render([
+      group({ name:'OpenAI only', user_rate_multiplier:.5 }),
+      group({ id:2, name:'Claude only', platform:'anthropic', user_rate_multiplier:2, models:[model({ name:'claude-only', platform:'anthropic' })] }),
+    ])
+    const providers = wrapper.get('[aria-label="modelPlaza.gallery.providers"]')
+    const groups = wrapper.get('[aria-label="modelPlaza.gallery.groups"]')
+    await groups.get('button[title="OpenAI only"]').trigger('click')
+    await groups.get('select').setValue('0.5')
+    await providers.get('button[title="Anthropic"]').trigger('click')
+    expect(groups.findAll('.option-label').map(option => option.text())).toEqual(['modelPlaza.gallery.allGroups','Claude only'])
+    expect(groups.get('button[aria-pressed="true"]').attributes('title')).toBe('modelPlaza.gallery.allGroups')
+    expect(groups.find('select').exists()).toBe(false)
+    expect(wrapper.findAll('.plaza-model-card')).toHaveLength(1)
+    expect(wrapper.get('.model-identity h3').text()).toBe('claude-only')
+    await providers.get('button[title="modelPlaza.gallery.allProviders"]').trigger('click')
+    expect(groups.get('select').element.value).toBe('all')
+    expect(wrapper.findAll('.plaza-model-card')).toHaveLength(2)
+    wrapper.unmount()
+  })
   it('expands overflowing double-column provider filters', async () => {
     const wrapper = render(Array.from({ length:12 },(_,i) => group({ id:i, models:[model({ platform:'vendor-'+i })] })))
     const section = wrapper.findAll('.plaza-filter-section')[0]
