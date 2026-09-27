@@ -76,6 +76,15 @@ func TestAdminServiceBulkUpdateAccounts_ExcelBPSSettings(t *testing.T) {
 			extra: map[string]any{"unrelated": true},
 			want:  map[string]any{"unrelated": true},
 		},
+		{
+			name: "client cannot forge automatic closure metadata",
+			extra: map[string]any{
+				"unrelated":                    true,
+				ExcelBPSDisabledReasonExtraKey: ExcelBPSDisabledReasonHTTP403,
+				ExcelBPSDisabledAtExtraKey:     "2026-09-27T01:02:03Z",
+			},
+			want: map[string]any{"unrelated": true},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

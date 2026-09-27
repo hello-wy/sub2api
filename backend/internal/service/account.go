@@ -2112,7 +2112,7 @@ func (a *Account) IsOpenAIPassthroughEnabled() bool {
 // IsExcelBPSEnabled routes an existing ChatGPT OAuth account to the Excel gateway.
 // Credentials and refresh remain on the original account; no sidecar is involved.
 func (a *Account) IsExcelBPSEnabled() bool {
-	if a == nil || a.Platform != PlatformOpenAI || a.Type != AccountTypeOAuth || a.IsShadow() || a.IsOpenAIAgentIdentity() || a.IsOpenAIPersonalAccessToken() {
+	if !a.supportsExcelBPS() {
 		return false
 	}
 	enabled, _ := a.Extra["openai_excel_bps"].(bool)

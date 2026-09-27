@@ -5,6 +5,7 @@ package repository
 import (
 	"context"
 	"testing"
+	"time"
 
 	dbent "github.com/Wei-Shaw/sub2api/ent"
 	"github.com/Wei-Shaw/sub2api/internal/service"
@@ -109,8 +110,15 @@ func TestDisableExcelBPSOn403ConcurrentAndCache(t *testing.T) {
 	after, err := repo.GetByID(ctx, account.ID)
 	require.NoError(t, err)
 	require.False(t, after.IsExcelBPSEnabled())
+	require.Equal(t, "disabled_403", after.ExcelBPSStatus())
+	require.Equal(t, service.ExcelBPSDisabledReasonHTTP403, after.Extra[service.ExcelBPSDisabledReasonExtraKey])
+	disabledAt, ok := after.Extra[service.ExcelBPSDisabledAtExtraKey].(string)
+	require.True(t, ok)
+	_, err = time.Parse(time.RFC3339Nano, disabledAt)
+	require.NoError(t, err)
 	require.Len(t, cache.setAccounts, 1)
 	require.False(t, cache.setAccounts[0].IsExcelBPSEnabled())
+	require.Equal(t, "disabled_403", cache.setAccounts[0].ExcelBPSStatus())
 	require.True(t, before.IsExcelBPSEnabled(), "shared request snapshot must remain unchanged")
 	require.Equal(t, before.Credentials, after.Credentials)
 	require.Equal(t, before.Status, after.Status)
@@ -119,6 +127,36 @@ func TestDisableExcelBPSOn403ConcurrentAndCache(t *testing.T) {
 	for key, value := range before.Extra {
 		if key != "openai_excel_bps" {
 			require.Equal(t, value, after.Extra[key], key)
+		}
+	}
+}
+
+func TestBulkUpdateExcelBPSStatusLifecycle(t *testing.T) {
+	tx := testEntTx(t)
+	ctx := dbent.NewTxContext(context.Background(), tx)
+	repo := newAccountRepositoryWithSQL(tx.Client(), tx, nil)
+	account := mustCreateAccount(t, tx.Client(), newExcelBPSAutoDisableAccount())
+	changed, err := repo.DisableExcelBPSOn403(ctx, account)
+	require.NoError(t, err)
+	require.True(t, changed)
+
+	for _, step := range []struct {
+		extra map[string]any
+		want  string
+	}{
+		{map[string]any{"openai_passthrough": false}, "disabled_403"},
+		{map[string]any{"openai_excel_bps": true}, "enabled"},
+		{map[string]any{"openai_excel_bps": false}, "disabled"},
+	} {
+		count, err := repo.BulkUpdate(ctx, []int64{account.ID}, service.AccountBulkUpdate{Extra: step.extra})
+		require.NoError(t, err)
+		require.Equal(t, int64(1), count)
+		stored, err := repo.GetByID(ctx, account.ID)
+		require.NoError(t, err)
+		require.Equal(t, step.want, stored.ExcelBPSStatus())
+		if step.want != "disabled_403" {
+			require.NotContains(t, stored.Extra, service.ExcelBPSDisabledReasonExtraKey)
+			require.NotContains(t, stored.Extra, service.ExcelBPSDisabledAtExtraKey)
 		}
 	}
 }

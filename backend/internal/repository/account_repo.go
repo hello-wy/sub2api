@@ -3154,6 +3154,9 @@ func (r *accountRepository) BulkUpdate(ctx context.Context, ids []int64, updates
 					extraExpression = "(" + extraExpression + ") - 'openai_excel_bps_auto_disable_on_403'"
 				}
 			}
+			if _, explicit := updates.Extra["openai_excel_bps"].(bool); explicit {
+				extraExpression = "(" + extraExpression + ") - 'openai_excel_bps_disabled_reason' - 'openai_excel_bps_disabled_at'"
+			}
 			if upstreamBillingProbeExplicitlyDisabled(updates.Extra) || upstreamBillingProbeSnapshotClearRequested(updates.Extra) {
 				extraExpression = "(" + extraExpression + ") - 'upstream_billing_probe'"
 			}

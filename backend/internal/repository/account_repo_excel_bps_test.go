@@ -59,6 +59,9 @@ func TestBulkUpdateExcelBPSExtra(t *testing.T) {
 					expression = "(" + expression + ") - '" + key + "'"
 				}
 			}
+			if _, explicit := tt.extra["openai_excel_bps"].(bool); explicit {
+				expression = "(" + expression + ") - 'openai_excel_bps_disabled_reason' - 'openai_excel_bps_disabled_at'"
+			}
 			require.Equal(t, "UPDATE accounts SET extra = "+expression+", updated_at = NOW() WHERE id = ANY($2) AND deleted_at IS NULL", query)
 			payload, ok := exec.execArgs[0][0].([]byte)
 			require.True(t, ok)

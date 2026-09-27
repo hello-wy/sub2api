@@ -41,7 +41,7 @@ vi.mock('vue-i18n', async () => {
 })
 
 const DataTableStub = {
-  props: ['columns'],
+  props: ['columns', 'data'],
   emits: ['sort'],
   template: `
     <div data-test="data-table">
@@ -49,6 +49,9 @@ const DataTableStub = {
         {{ column.sortable ? 'sortable' : 'fixed' }}
       </span>
       <button data-test="sort-priority" @click="$emit('sort', 'priority', 'desc')" />
+      <div v-for="row in data" :key="row.id">
+        <slot name="cell-bps_status" :row="row" />
+      </div>
     </div>
   `
 }
@@ -148,5 +151,42 @@ describe('admin AccountsView priority column preferences', () => {
       expect.arrayContaining(['today_stats', 'scheduler_score'])
     )
     expect(JSON.parse(localStorage.getItem('account-hidden-columns') || '[]')).not.toContain('priority')
+  })
+
+  it('shows BPS status by default and renders the status from lite accounts', async () => {
+    listAccounts.mockResolvedValue({
+      items: [{ id: 18, platform: 'openai', type: 'oauth', status: 'active', excel_bps_status: 'disabled_403' }],
+      total: 1, page: 1, page_size: 20, pages: 1
+    })
+    const wrapper = mountView()
+    await flushPromises()
+    expect(wrapper.get('[data-column="bps_status"]').text()).toBe('fixed')
+    expect(wrapper.get('[data-testid="bps-status"]').text()).toBe('admin.accounts.bpsStatus.disabled_403')
+  })
+
+  it('preserves an explicit preference that hides BPS status', async () => {
+    localStorage.setItem('account-hidden-columns', JSON.stringify(['bps_status']))
+    localStorage.setItem('account-hidden-columns-version', 'scheduler-score-hidden-by-default')
+    const wrapper = mountView()
+    await flushPromises()
+    expect(wrapper.find('[data-column="bps_status"]').exists()).toBe(false)
+    expect(JSON.parse(localStorage.getItem('account-hidden-columns') || '[]')).toEqual(['bps_status'])
+  })
+
+  it('shows the existing switch when an older backend omits the BPS status field', async () => {
+    listAccounts.mockResolvedValue({
+      items: [
+        { id: 18, platform: 'openai', type: 'oauth', status: 'active', extra: { openai_excel_bps: true } },
+        { id: 19, platform: 'openai', type: 'oauth', status: 'active', extra: { openai_excel_bps: false } }
+      ],
+      total: 2, page: 1, page_size: 20, pages: 1
+    })
+    const wrapper = mountView()
+    await flushPromises()
+    expect(wrapper.findAll('[data-testid="bps-status"]').map(badge => badge.text())).toEqual([
+      'admin.accounts.bpsStatus.enabled',
+      'admin.accounts.bpsStatus.disabled'
+    ])
+    expect(wrapper.find('[data-testid="bps-not-applicable"]').exists()).toBe(false)
   })
 })
