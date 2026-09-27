@@ -36,6 +36,7 @@ func RegisterAdminRoutes(
 
 		// 仪表盘
 		registerDashboardRoutes(admin, h)
+		registerBusinessLedgerRoutes(admin, h)
 
 		// 用户管理
 		registerUserManagementRoutes(admin, h)
@@ -302,11 +303,11 @@ func registerDashboardRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		dashboard.GET("/business-analytics", h.Admin.Dashboard.GetBusinessAnalytics)
 		dashboard.GET("/business-settings", h.Admin.Dashboard.GetBusinessAnalyticsSettings)
 		dashboard.GET("/business-api-key-cost-rates", h.Admin.Dashboard.GetBusinessAPIKeyCostRates)
-		dashboard.POST("/business-api-key-cost-rates", h.Admin.Dashboard.CreateBusinessAPIKeyCostRate)
-		dashboard.DELETE("/business-api-key-cost-rates/:id", h.Admin.Dashboard.DeleteBusinessAPIKeyCostRate)
+		dashboard.POST("/business-api-key-cost-rates", h.Admin.Dashboard.RejectLegacyBusinessWrite)
+		dashboard.DELETE("/business-api-key-cost-rates/:id", h.Admin.Dashboard.RejectLegacyBusinessWrite)
 		dashboard.GET("/business-costs", h.Admin.Dashboard.ListBusinessCosts)
-		dashboard.POST("/business-costs", h.Admin.Dashboard.CreateBusinessCost)
-		dashboard.DELETE("/business-costs/:id", h.Admin.Dashboard.DeleteBusinessCost)
+		dashboard.POST("/business-costs", h.Admin.Dashboard.RejectLegacyBusinessWrite)
+		dashboard.DELETE("/business-costs/:id", h.Admin.Dashboard.RejectLegacyBusinessWrite)
 		dashboard.POST("/business-capacity-snapshot", h.Admin.Dashboard.CaptureBusinessCapacitySnapshot)
 		dashboard.POST("/aggregation/backfill", h.Admin.Dashboard.BackfillAggregation)
 	}
@@ -938,4 +939,18 @@ func channelMonitorModeV2Guard(settingService *service.SettingService) gin.Handl
 		}
 		c.Next()
 	}
+}
+
+func registerBusinessLedgerRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
+	b := admin.Group("/business")
+	b.GET("/overview", h.Admin.Dashboard.GetBusinessLedgerOverview)
+	b.GET("/records", h.Admin.Dashboard.ListBusinessLedgerRecords)
+	b.GET("/pending", h.Admin.Dashboard.ListBusinessLedgerPending)
+	b.POST("/records", h.Admin.Dashboard.CreateBusinessLedgerRecord)
+	b.GET("/configuration", h.Admin.Dashboard.GetBusinessCostConfiguration)
+	b.POST("/pools", h.Admin.Dashboard.CreateBusinessCostPool)
+	b.POST("/bindings", h.Admin.Dashboard.CreateBusinessCostBinding)
+	b.POST("/rules", h.Admin.Dashboard.CreateBusinessCostRule)
+	b.GET("/entities", h.Admin.Dashboard.SearchBusinessEntities)
+	b.GET("/events/:id", h.Admin.Dashboard.GetBusinessEventTrace)
 }

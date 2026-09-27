@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"strings"
 
@@ -56,6 +57,22 @@ func (r *usageBillingRepository) Apply(ctx context.Context, cmd *service.UsageBi
 	result := &service.UsageBillingApplyResult{Applied: true}
 	if err := r.applyUsageBillingEffects(ctx, tx, cmd, result); err != nil {
 		return nil, err
+	}
+
+	if cmd.BusinessUsage != nil {
+		payload := cmd.BusinessUsage
+		payload["balance_cost"] = cmd.BalanceCost
+		payload["subscription_cost"] = cmd.SubscriptionCost
+		payload["subscription_term_version"] = cmd.SubscriptionTermVersion
+		payload["subscription_term_stale"] = result.SubscriptionTermStale
+		payload["billing_applied"] = true
+		raw, marshalErr := json.Marshal(payload)
+		if marshalErr != nil {
+			return nil, marshalErr
+		}
+		if _, emitErr := tx.ExecContext(ctx, "SELECT business_emit_usage($1::jsonb)", string(raw)); emitErr != nil {
+			return nil, emitErr
+		}
 	}
 
 	if err := tx.Commit(); err != nil {

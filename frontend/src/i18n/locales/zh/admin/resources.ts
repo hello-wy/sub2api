@@ -542,6 +542,12 @@ export default {
       failedToLoadUsages: '加载使用记录失败'
     },
 
+    // Business Analytics
+    businessAnalytics: {
+      title: '经营分析',
+      description: '以真实收款、采购和费用凭据核对人民币收入、成本与利润'
+    },
+
     // Usage Records
     usage: {
       title: '使用记录',

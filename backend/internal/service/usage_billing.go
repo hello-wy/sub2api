@@ -18,6 +18,9 @@ var ErrUsageBillingSubscriptionTermRequired = errors.New("usage billing subscrip
 
 // UsageBillingCommand describes one billable request that must be applied at most once.
 type UsageBillingCommand struct {
+	// BusinessUsage is an immutable financial snapshot, excluded from the legacy fingerprint.
+	BusinessUsage map[string]any
+
 	RequestID          string
 	APIKeyID           int64
 	RequestFingerprint string
