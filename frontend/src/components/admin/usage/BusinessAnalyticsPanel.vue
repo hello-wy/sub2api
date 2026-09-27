@@ -26,13 +26,13 @@
             <div class="business-status-main">
               <span class="business-status-icon"><Icon :name="needsReview ? 'exclamationTriangle' : 'checkCircle'" size="md" aria-hidden="true" /></span>
               <div class="min-w-0">
-                <div class="business-status-title"><strong>{{ overview.profit_cny === null ? '利润待核对' : needsReview ? '部分账目待核对' : '本期账目已核对' }}</strong><span v-if="overview.quality.missing_count" class="business-status-badge">{{ overview.quality.missing_count }} 项数据缺口</span></div>
+                <div class="business-status-title"><strong>{{ overview.quality.processing_count ? '账目计算中' : overview.profit_cny === null ? '利润待核对' : needsReview ? '部分账目待核对' : '本期账目已核对' }}</strong><span v-if="overview.quality.missing_count" class="business-status-badge">{{ overview.quality.missing_count }} 条记录缺少依据</span></div>
                 <p>{{ reviewDescription }}</p>
                 <div class="business-status-meta"><span>收入：{{ businessQuality(overview.quality.revenue) }}</span><span>成本：{{ businessQuality(overview.quality.cost) }}</span><span>归因：{{ businessQuality(overview.quality.attribution) }}</span><span>暂估 {{ overview.quality.estimated_count }} 项</span></div>
                 <p v-if="overview.quality.cash !== 'confirmed'">现金收支含待核实金额，当前仅显示已知收付款。</p>
               </div>
             </div>
-            <button type="button" class="business-status-action" @click="tab = 'reconcile'">{{ needsReview ? '查看并补录' : '查看核对记录' }}<Icon name="arrowRight" size="xs" aria-hidden="true" /></button>
+            <button type="button" class="business-status-action" @click="tab = 'reconcile'">{{ needsReview ? '查看待处理问题' : '查看核对记录' }}<Icon name="arrowRight" size="xs" aria-hidden="true" /></button>
           </section>
 
           <template v-if="tab === 'overview'">
@@ -68,7 +68,7 @@
               <section class="business-surface business-tasks" aria-label="完善经营账">
                 <div class="business-surface-heading"><h3>完善经营账</h3><span class="business-surface-hint">从这里开始</span></div>
                 <ol class="business-task-list">
-                  <li :class="{ 'is-priority': hasUnknownBalance }"><span class="business-task-number">01</span><div><h4>补录期初余额来源</h4><p>区分付费价值与赠送额度，确认收入依据</p></div><button type="button" class="business-text-link" @click="goToReconciliation('sources')">去补录<Icon name="arrowRight" size="xs" aria-hidden="true" /></button></li>
+                  <li :class="{ 'is-priority': hasUnknownBalance }"><span class="business-task-number">01</span><div><h4>确认期初余额来源</h4><p>区分付费价值与赠送额度，确认收入依据</p></div><button type="button" class="business-text-link" @click="goToReconciliation('sources')">确认来源<Icon name="arrowRight" size="xs" aria-hidden="true" /></button></li>
                   <li><span class="business-task-number">02</span><div><h4>核对上游采购与价格</h4><p>按供应商成本池维护采购凭据与价格规则</p></div><button type="button" class="business-text-link" @click="goToReconciliation('configuration')">去核对<Icon name="arrowRight" size="xs" aria-hidden="true" /></button></li>
                   <li><span class="business-task-number">03</span><div><h4>登记账号与日常费用</h4><p>账号月租、服务器及实际发生的活动支出</p></div><button type="button" class="business-text-link" @click="openRecord('expense')">去录入<Icon name="arrowRight" size="xs" aria-hidden="true" /></button></li>
                 </ol>
@@ -106,8 +106,9 @@
     <template v-if="tab === 'ledger'">
       <section class="business-section">
         <div class="business-section-heading"><div><h3>收支与成本凭据</h3><p>按登记顺序列出全部台账，保留原始记录与更正。</p></div><button class="btn btn-secondary" @click="importOpen = true">CSV 批量导入</button></div>
+        <p v-if="recordPoolFilter" class="notice">仅显示成本池「{{ configuration?.pools.find(p => p.id === recordPoolFilter)?.name || recordPoolFilter }}」的账单核对记录。<button class="ml-2 underline" @click="recordPoolFilter = 0">显示全部凭据</button></p>
         <p v-if="recordsError" role="alert" class="notice">{{ recordsError }}<button class="ml-2 underline" @click="loadRecords()">重试台账</button></p>
-        <div class="business-table-card overflow-x-auto"><table class="ledger-table"><thead><tr><th>发生时间</th><th>类别</th><th>人民币 / 原币</th><th>凭据说明</th><th>操作</th></tr></thead><tbody><tr v-for="record in records" :key="record.id"><td>{{ date(record.occurred_at) }}</td><td>{{ businessKindLabels[record.event_type] }}</td><td>{{ record.payload.amount_cny != null ? cny(String(record.payload.amount_cny)) : String(record.payload.pay_amount ?? '—') + ' ' + String(record.payload.currency || '') }}</td><td class="max-w-xs break-words">{{ record.payload.notes || record.payload.status || record.source_key }}</td><td><button class="text-primary-600 underline" @click="trace(record.id)">凭据</button><button v-if="['purchase','expense','adjustment','reconciliation','expense_stop'].includes(record.event_type)" class="ml-3 text-gray-500 underline" @click="openRecord('reversal', record)">冲销</button><button v-if="record.event_type === 'expense' && record.payload.ends_at" class="ml-3 text-gray-500 underline" @click="openRecord('expense_stop', record)">提前终止</button></td></tr></tbody></table><p v-if="!records.length && !recordsError" class="py-10 text-center text-sm text-gray-500">暂无台账，从顶部开始登记收款或成本。</p></div>
+        <div class="business-table-card overflow-x-auto"><table class="ledger-table"><thead><tr><th>发生时间</th><th>类别</th><th>人民币 / 原币</th><th>凭据说明</th><th>操作</th></tr></thead><tbody><tr v-for="record in visibleRecords" :key="record.id"><td>{{ date(record.occurred_at) }}</td><td>{{ businessKindLabels[record.event_type] }}</td><td>{{ record.payload.amount_cny != null ? cny(String(record.payload.amount_cny)) : String(record.payload.pay_amount ?? '—') + ' ' + String(record.payload.currency || '') }}</td><td class="max-w-xs break-words">{{ record.payload.notes || record.payload.status || record.source_key }}</td><td><button class="text-primary-600 underline" @click="trace(record.id)">凭据</button><button v-if="['purchase','expense','adjustment','reconciliation','expense_stop'].includes(record.event_type)" class="ml-3 text-gray-500 underline" @click="openRecord('reversal', record)">冲销</button><button v-if="record.event_type === 'expense' && record.payload.ends_at" class="ml-3 text-gray-500 underline" @click="openRecord('expense_stop', record)">提前终止</button></td></tr></tbody></table><p v-if="!visibleRecords.length && !recordsError" class="py-10 text-center text-sm text-gray-500">{{ recordPoolFilter ? '当前已加载凭据中没有该成本池的核对记录，可继续加载更早凭据。' : '暂无台账，从顶部开始登记收款或成本。' }}</p></div>
         <button v-if="recordsMore" class="btn btn-secondary" :disabled="recordsLoading" @click="loadRecords(true)">加载更早凭据</button>
       </section>
     </template>
@@ -115,14 +116,11 @@
     <template v-if="tab === 'reconcile'">
       <section class="business-section business-reconcile-stack">
         <div class="business-section-heading"><div><h3>核对与配置</h3><p>先维护成本池和价格规则，再处理期初、账单差异和历史待补录项。</p></div></div>
+        <p v-if="configurationNotice" role="status" class="notice">{{ configurationNotice }}</p>
         <p v-if="configError" role="alert" class="notice">{{ configError }}<button class="ml-2 underline" @click="loadConfiguration">重试配置</button></p>
-        <div ref="configurationSection" class="business-configuration-panel" tabindex="-1"><template v-if="configuration"><BusinessConfigurationPanel :configuration="configuration" @saved="loadConfiguration" /></template></div>
+        <div ref="configurationSection" class="business-configuration-panel" tabindex="-1"><template v-if="configuration"><BusinessConfigurationPanel ref="configurationPanel" :configuration="configuration" @saved="configurationSaved" /></template></div>
         <div class="business-subsection"><div class="business-subsection-heading"><div><h4>期初与账单调整</h4><p>这些操作会留下独立凭据，不会覆盖过去的经营记录。</p></div></div><div class="flex flex-wrap gap-2"><button class="btn btn-secondary" @click="openRecord('opening_pool')">登记期初采购</button><button class="btn btn-secondary" @click="openRecord('reconciliation')">登记账单差异</button><button class="btn btn-secondary" @click="openRecord('supplier_refund')">登记采购退款</button><button class="btn btn-secondary" @click="openRecord('supplier_loss')">登记采购失效</button></div></div>
-        <div ref="sourcesSection" class="business-subsection" tabindex="-1"><div class="business-subsection-heading"><div><h4>待核对与期初来源</h4><p>补录不会重复充值或增加现金收入；历史未知资金必须有凭据才能确认为付费价值。</p></div></div>
-          <p v-if="pendingError" role="alert" class="notice">{{ pendingError }}<button class="ml-2 underline" @click="loadPending()">重试</button></p>
-          <div class="business-table-card overflow-auto"><table class="ledger-table"><thead><tr><th>凭据</th><th>关联对象</th><th>待核实内容</th><th>操作</th></tr></thead><tbody><tr v-for="record in pending" :key="record.id"><td>#{{ record.id }} · {{ businessKindLabels[record.event_type] || record.event_type }}</td><td>{{ record.payload.user_name || record.payload.account_name || (record.user_id ? '用户 #' + record.user_id : '—') }}</td><td>{{ record.payload.credits ?? record.payload.actual_cost ?? record.payload.pay_amount ?? '来源或价格' }}</td><td><button class="text-primary-600 underline" @click="openRecord('annotation', record)">补录凭据</button><button class="ml-3 text-gray-500 underline" @click="trace(record.id)">追溯</button></td></tr></tbody></table><p v-if="!pending.length && !pendingError" class="py-10 text-center text-sm text-gray-500">暂无待补录的来源事件。仍需定期核对供应商账单和经营费用。</p></div>
-          <button v-if="pendingMore" class="btn btn-secondary" @click="loadPending(true)">加载更多待核对项</button><div v-if="gaps.length" class="business-gap-list"><h5>本期数据缺口</h5><button v-for="gap in gaps.slice(0, 100)" :key="gap.id" class="block text-left text-sm text-amber-700" @click="gap.event_id && trace(gap.event_id)">{{ date(gap.occurred_at) }} · {{ gap.detail.reason || businessKindLabels[gap.kind] }} ↗</button></div>
-        </div>
+        <div ref="sourcesSection" class="business-subsection" tabindex="-1"><BusinessIssuesPanel :start-date="startDate" :end-date="endDate" :refresh-key="issuesRefreshKey" @configure="configureIssue" @record="issueRecord" @annotate="openRecord('annotation', $event)" @trace="trace" @settled="loadOverview(); loadRecords()" @summary="issueSummary = $event" /></div>
       </section>
     </template>
 
@@ -134,9 +132,9 @@
       <p v-if="overview" class="notice">来源未知余额 {{ credits(overview.unknown_wallet_credits) }} 额度 · 未使用赠送余额 {{ credits(overview.gift_outstanding_credits) }} 额度。两者均不计为已确认的人民币价值。</p>
       <template #footer><button type="button" class="btn btn-secondary" @click="positionsOpen = false">关闭</button><button type="button" class="btn btn-primary" @click="positionsOpen = false; goToReconciliation('sources')">核对余额来源</button></template>
     </BaseDialog>
-    <BusinessRecordDialog v-if="recordType" :type="recordType" :pools="configuration?.pools || []" :target="recordTarget" @close="recordType = ''" @saved="recordType = ''; refresh()" /><BusinessImportDialog v-if="importOpen" @close="importOpen = false" @saved="refresh" />
+    <BusinessRecordDialog v-if="recordType" :type="recordType" :pools="configuration?.pools || []" :target="recordTarget" :defaults="recordDefaults" @close="recordType = ''" @saved="recordType = ''; refresh()" /><BusinessImportDialog v-if="importOpen" @close="importOpen = false" @saved="refresh" />
     <BaseDialog :show="entriesOpen" title="收入、成本与分摊明细" width="extra-wide" @close="entriesOpen = false"><div class="max-h-[65vh] overflow-auto"><table class="ledger-table"><thead><tr><th>时间 / 模型</th><th>科目</th><th>人民币</th><th>依据</th></tr></thead><tbody><tr v-for="entry in filteredEntries.slice(0, entriesLimit)" :key="entry.id"><td>{{ date(entry.occurred_at) }}<small class="block">{{ entry.model }}</small></td><td>{{ businessKindLabels[entry.kind] || entry.kind }}<small class="block text-gray-500">{{ entry.detail.allocation }}</small></td><td>{{ cny(entry.amount_cny) }}</td><td><button :disabled="!entry.event_id" class="text-primary-600 underline disabled:text-gray-400" @click="trace(entry.event_id)">{{ businessQuality(entry.quality) }} · #{{ entry.event_id }}</button></td></tr></tbody></table><button v-if="filteredEntries.length > entriesLimit" class="btn btn-secondary mt-3" @click="entriesLimit += 100">加载更多明细</button><p v-if="!filteredEntries.length" class="py-6 text-sm text-gray-500">无匹配记录</p></div></BaseDialog>
-    <BaseDialog :show="traceOpen" title="原始凭据与修订链" width="wide" :z-index="60" @close="traceOpen = false"><p v-if="traceError" role="alert" class="text-red-600">{{ traceError }}</p><p v-if="traceLoading" class="text-sm text-gray-500">读取凭据…</p><div v-for="event in traceEvents" :key="event.id" class="mb-4 rounded-lg border p-4 dark:border-dark-700"><h4 class="text-sm font-semibold">#{{ event.id }} · {{ businessKindLabels[event.event_type] || event.event_type }}</h4><p class="mt-1 text-xs text-gray-500">发生 {{ date(event.occurred_at) }} · 登记 {{ date(event.recorded_at) }} · 操作人 {{ event.actor_id || '系统' }}</p><pre class="mt-3 max-h-80 overflow-auto whitespace-pre-wrap break-all text-xs">{{ JSON.stringify(event.payload, null, 2) }}</pre><button v-if="['usage','wallet','opening_unknown','user_subscriptions','payment_orders'].includes(event.event_type)" class="btn btn-secondary mt-3" @click="traceOpen = false; openRecord('annotation', event)">补录此凭据</button></div></BaseDialog>
+    <BaseDialog :show="traceOpen" title="原始凭据与修订链" width="wide" :z-index="60" @close="traceOpen = false"><p v-if="traceError" role="alert" class="text-red-600">{{ traceError }}</p><p v-if="traceLoading" class="text-sm text-gray-500">读取凭据…</p><div v-for="event in traceEvents" :key="event.id" class="mb-4 rounded-lg border p-4 dark:border-dark-700"><h4 class="text-sm font-semibold">#{{ event.id }} · {{ businessKindLabels[event.event_type] || event.event_type }}</h4><p class="mt-1 text-xs text-gray-500">发生 {{ date(event.occurred_at) }} · 登记 {{ date(event.recorded_at) }} · 操作人 {{ event.actor_id || '系统' }}</p><pre class="mt-3 max-h-80 overflow-auto whitespace-pre-wrap break-all text-xs">{{ JSON.stringify(event.payload, null, 2) }}</pre><button v-if="['wallet','opening_unknown','user_subscriptions','payment_orders'].includes(event.event_type)" class="btn btn-secondary mt-3" @click="traceOpen = false; openRecord('annotation', event)">确认此来源</button><details v-if="event.event_type === 'usage'" class="mt-3 text-sm"><summary class="cursor-pointer text-gray-500">高级：单次供应商实际成本修正</summary><button class="btn btn-secondary mt-2" @click="traceOpen = false; openRecord('annotation', event)">登记实际扣费凭据</button></details></div></BaseDialog>
   </section>
 </template>
 <script setup lang="ts">
@@ -145,10 +143,11 @@ import BaseDialog from '@/components/common/BaseDialog.vue'
 import BusinessRecordDialog from './BusinessRecordDialog.vue'
 import BusinessImportDialog from './BusinessImportDialog.vue'
 import BusinessConfigurationPanel from './BusinessConfigurationPanel.vue'
+import BusinessIssuesPanel, { type BusinessConfigureRequest } from './BusinessIssuesPanel.vue'
 import BusinessLedgerCharts from './BusinessLedgerCharts.vue'
 import BusinessPanelNavigation, { businessTabs, type BusinessTab } from './BusinessPanelNavigation.vue'
 import Icon from '@/components/icons/Icon.vue'
-import { businessAPI, type BusinessOverview, type BusinessEvent, type BusinessEntry, type BusinessConfiguration } from '@/api/admin/business'
+import { businessAPI, type BusinessOverview, type BusinessEvent, type BusinessEntry, type BusinessConfiguration, type BusinessRecordDefaults, type BusinessIssueSummary } from '@/api/admin/business'
 import { getBusinessAnalytics, type BusinessAnalyticsOverview } from '@/api/admin/dashboard'
 import { businessKindLabels, businessQuality, cny, ledgerError } from '@/utils/business-ledger'
 const props = withDefaults(defineProps<{ startDate: string; endDate: string; showHeader?: boolean; showTabs?: boolean }>(), {
@@ -164,8 +163,13 @@ const tab = computed<BusinessTab>({
 })
 const view = ref('profit'), dimension = ref<Dimension>('groups')
 const dimensionIndex = computed(() => Math.max(0, dimensions.findIndex((item) => item.key === dimension.value)))
-const overview = ref<BusinessOverview | null>(null), configuration = ref<BusinessConfiguration | null>(null), records = ref<BusinessEvent[]>([]), pending = ref<BusinessEvent[]>([])
-const loading = ref(false), recordsLoading = ref(false), overviewError = ref(''), recordsError = ref(''), configError = ref(''), pendingError = ref(''), recordsMore = ref(false), pendingMore = ref(false)
+const overview = ref<BusinessOverview | null>(null), configuration = ref<BusinessConfiguration | null>(null), records = ref<BusinessEvent[]>([])
+const loading = ref(false), recordsLoading = ref(false), overviewError = ref(''), recordsError = ref(''), configError = ref(''), recordsMore = ref(false)
+const configurationNotice = ref('')
+const issuesRefreshKey = ref(0), issueSummary = ref<BusinessIssueSummary | null>(null)
+const configurationPanel = ref<InstanceType<typeof BusinessConfigurationPanel> | null>(null)
+const recordDefaults = ref<BusinessRecordDefaults>({}), recordPoolFilter = ref(0)
+const visibleRecords = computed(() => recordPoolFilter.value ? records.value.filter(r => r.event_type === 'reconciliation' && Number(r.payload.pool_id) === recordPoolFilter.value) : records.value)
 const recordType = ref(''), recordTarget = ref<BusinessEvent>(), importOpen = ref(false)
 const legacy = ref<BusinessAnalyticsOverview | null>(null), legacyError = ref('')
 const entriesOpen = ref(false), entriesLimit = ref(100), entryKinds = ref<string[]>([]), selectedDimension = ref<Dimension | ''>(''), selectedKey = ref('')
@@ -195,10 +199,12 @@ const reviewDescription = computed(() => {
   const o = overview.value
   if (!o) return ''
   const parts: string[] = []
+  if (o.quality.processing_count) parts.push(`后台正在计算 ${o.quality.processing_count} 条记录，无需逐条处理。`)
+  if (issueSummary.value?.total) parts.push(`已按原因归集为 ${issueSummary.value.total} 项待处理问题。`)
   if (hasUnknownBalance.value) parts.push(`有 ${credits(o.unknown_wallet_credits)} 额度的余额来源待补录，消费后的收入暂无法准确确认。`)
   const reason = gaps.value.find(entry => typeof entry.detail.reason === 'string')?.detail.reason
   if (reason) parts.push(String(reason))
-  if (!parts.length) parts.push(o.profit_cny === null ? '部分收入或成本缺少依据，请补录凭据并核对暂估金额。' : '本期已纳入台账的收入与成本已有核对依据，请继续按实际发生登记收支。')
+  if (!parts.length) parts.push(o.profit_cny === null ? '部分收入或成本缺少依据，请按问题补齐配置、确认资金来源或核对供应商账单。' : '本期已纳入台账的收入与成本已有核对依据，请继续按实际发生登记收支。')
   return parts.join(' ')
 })
 const hasTrendData = computed(() => {
@@ -244,7 +250,17 @@ const filteredEntries = computed(() => (overview.value?.entries || []).filter((e
 }))
 function showEntries(kinds: string[]) { entryKinds.value = kinds; selectedDimension.value = ''; entriesLimit.value = 100; entriesOpen.value = true }
 function showBreakdown(key: string) { showEntries([...revenueKinds, ...costKinds]); selectedDimension.value = dimension.value; selectedKey.value = key }
-function openRecord(type: string, target?: BusinessEvent) { recordTarget.value = target; recordType.value = type }
+function openRecord(type: string, target?: BusinessEvent) { recordDefaults.value = {}; recordTarget.value = target; recordType.value = type }
+function issueRecord(type: string, defaults: BusinessRecordDefaults) {
+  if (type === 'view_reconciliations') { recordPoolFilter.value = defaults.pool_id || 0; tab.value = 'ledger'; void loadRecords(); return }
+  openRecord(type); recordDefaults.value = defaults
+}
+async function configureIssue(request: BusinessConfigureRequest) {
+  await goToReconciliation('configuration')
+  if (!configurationPanel.value) { configError.value = '请先重试加载成本配置，再处理此问题'; return }
+  configurationPanel.value.open(request)
+}
+async function configurationSaved() { await loadConfiguration(); configurationNotice.value = '配置已保存。历史调用的缺口可通过下方「补算缺失记录」预览并统一处理。'; issuesRefreshKey.value++ }
 async function loadOverview() {
   const sequence = ++overviewSequence; loading.value = true; overviewError.value = ''
   try { const result = await businessAPI.overview({ start_date: props.startDate, end_date: props.endDate }); if (sequence === overviewSequence) overview.value = result }
@@ -258,13 +274,8 @@ async function loadRecords(more = false) {
   catch (e) { recordsError.value = ledgerError(e) }
   finally { recordsLoading.value = false }
 }
-async function loadPending(more = false) {
-  pendingError.value = ''
-  try { const data = await businessAPI.pending(more ? pending.value.at(-1)?.id : 0); pending.value = more ? [...pending.value, ...data] : data; pendingMore.value = data.length === 100 }
-  catch (e) { pendingError.value = ledgerError(e) }
-}
 async function loadConfiguration() { configError.value = ''; try { configuration.value = await businessAPI.configuration() } catch (e) { configError.value = ledgerError(e) } }
-async function refresh() { await Promise.allSettled([loadOverview(), loadRecords(), loadConfiguration(), loadPending()]) }
+async function refresh() { issuesRefreshKey.value++; await Promise.allSettled([loadOverview(), loadRecords(), loadConfiguration()]) }
 async function trace(id: number) {
   const sequence = ++traceSequence; traceOpen.value = true; traceLoading.value = true; traceError.value = ''; traceEvents.value = []
   try { const result = await businessAPI.trace(id); if (sequence === traceSequence) traceEvents.value = result } catch (e) { if (sequence === traceSequence) traceError.value = ledgerError(e) }
@@ -275,7 +286,7 @@ async function loadLegacy(event: Event) {
   try { legacy.value = await getBusinessAnalytics({ start_date: props.startDate, end_date: props.endDate }) } catch (e) { legacyError.value = ledgerError(e) }
 }
 watch(() => [props.startDate, props.endDate], () => { legacy.value = null; void loadOverview() }, { immediate: true })
-void Promise.allSettled([loadRecords(), loadConfiguration(), loadPending()])
+void Promise.allSettled([loadRecords(), loadConfiguration()])
 
 function selectTab(value: string) {
   const item = businessTabs.find(item => item.key === value)
