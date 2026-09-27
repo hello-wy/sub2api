@@ -1,6 +1,8 @@
 package admin
 
 import (
+	"database/sql"
+	"errors"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
 	"github.com/Wei-Shaw/sub2api/internal/server/middleware"
 	"github.com/Wei-Shaw/sub2api/internal/service"
@@ -138,6 +140,33 @@ func (h *DashboardHandler) CreateBusinessCostPool(c *gin.Context) {
 	}
 	response.Created(c, data)
 }
+func (h *DashboardHandler) UpdateBusinessCostPool(c *gin.Context) {
+	s := h.businessLedger(c)
+	if s == nil {
+		return
+	}
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || id <= 0 {
+		response.BadRequest(c, "成本池编号无效")
+		return
+	}
+	var input service.BusinessCostPool
+	if err = c.ShouldBindJSON(&input); err != nil {
+		response.BadRequest(c, "成本池参数无效")
+		return
+	}
+	data, err := s.UpdatePool(c.Request.Context(), id, input)
+	if errors.Is(err, sql.ErrNoRows) {
+		response.Error(c, 404, "成本池不存在或已归档")
+		return
+	}
+	if err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+	response.Success(c, data)
+}
+
 func (h *DashboardHandler) CreateBusinessCostBinding(c *gin.Context) {
 	s := h.businessLedger(c)
 	if s == nil {

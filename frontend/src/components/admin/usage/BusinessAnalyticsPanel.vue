@@ -114,13 +114,12 @@
     </template>
 
     <template v-if="tab === 'reconcile'">
-      <section class="business-section business-reconcile-stack">
-        <div class="business-section-heading"><div><h3>核对与配置</h3><p>先维护成本池和价格规则，再处理期初、账单差异和历史待补录项。</p></div></div>
+      <section class="business-reconcile-stack">
         <p v-if="configurationNotice" role="status" class="notice">{{ configurationNotice }}</p>
         <p v-if="configError" role="alert" class="notice">{{ configError }}<button class="ml-2 underline" @click="loadConfiguration">重试配置</button></p>
+        <div class="business-adjustments"><div class="business-subsection-heading"><h4>期初与账单调整</h4><p>登记期初和账单变动，保留独立凭据。</p></div><div class="flex flex-wrap gap-2"><button class="btn btn-secondary" @click="openRecord('opening_pool')">登记期初采购</button><button class="btn btn-secondary" @click="openRecord('reconciliation')">登记账单差异</button><button class="btn btn-secondary" @click="openRecord('supplier_refund')">登记采购退款</button><button class="btn btn-secondary" @click="openRecord('supplier_loss')">登记采购失效</button></div></div>
         <div ref="configurationSection" class="business-configuration-panel" tabindex="-1"><template v-if="configuration"><BusinessConfigurationPanel ref="configurationPanel" :configuration="configuration" @saved="configurationSaved" /></template></div>
-        <div class="business-subsection"><div class="business-subsection-heading"><div><h4>期初与账单调整</h4><p>这些操作会留下独立凭据，不会覆盖过去的经营记录。</p></div></div><div class="flex flex-wrap gap-2"><button class="btn btn-secondary" @click="openRecord('opening_pool')">登记期初采购</button><button class="btn btn-secondary" @click="openRecord('reconciliation')">登记账单差异</button><button class="btn btn-secondary" @click="openRecord('supplier_refund')">登记采购退款</button><button class="btn btn-secondary" @click="openRecord('supplier_loss')">登记采购失效</button></div></div>
-        <div ref="sourcesSection" class="business-subsection" tabindex="-1"><BusinessIssuesPanel :start-date="startDate" :end-date="endDate" :refresh-key="issuesRefreshKey" @configure="configureIssue" @record="issueRecord" @annotate="openRecord('annotation', $event)" @trace="trace" @settled="loadOverview(); loadRecords()" @summary="issueSummary = $event" /></div>
+        <div ref="sourcesSection" class="business-section" tabindex="-1"><BusinessIssuesPanel :start-date="startDate" :end-date="endDate" :refresh-key="issuesRefreshKey" @configure="configureIssue" @record="issueRecord" @annotate="openRecord('annotation', $event)" @trace="trace" @settled="loadOverview(); loadRecords()" @summary="issueSummary = $event" /></div>
       </section>
     </template>
 
@@ -260,7 +259,7 @@ async function configureIssue(request: BusinessConfigureRequest) {
   if (!configurationPanel.value) { configError.value = '请先重试加载成本配置，再处理此问题'; return }
   configurationPanel.value.open(request)
 }
-async function configurationSaved() { await loadConfiguration(); configurationNotice.value = '配置已保存。历史调用的缺口可通过下方「补算缺失记录」预览并统一处理。'; issuesRefreshKey.value++ }
+async function configurationSaved() { await loadConfiguration(); configurationNotice.value = '配置已保存。历史调用的缺口可在「待处理问题」中预览并补算缺失记录。'; issuesRefreshKey.value++ }
 async function loadOverview() {
   const sequence = ++overviewSequence; loading.value = true; overviewError.value = ''
   try { const result = await businessAPI.overview({ start_date: props.startDate, end_date: props.endDate }); if (sequence === overviewSequence) overview.value = result }
@@ -391,6 +390,7 @@ button.metric { @apply transition-colors hover:border-primary-300 dark:hover:bor
 .business-benefit-footer { @apply flex flex-col gap-3 md:flex-row md:items-center md:justify-between; }
 .business-benefit-footer p { @apply text-sm leading-6 text-gray-600 dark:text-gray-300; }
 .business-reconcile-stack { @apply space-y-6; }
+.business-adjustments { @apply flex flex-wrap items-center justify-between gap-4 rounded-xl border border-gray-200 bg-white p-5 dark:border-dark-700 dark:bg-dark-800; }
 .business-configuration-panel { @apply min-w-0 rounded-lg; scroll-margin-top: 1rem; }
 .business-gap-list { @apply space-y-2 rounded-lg border border-amber-100 bg-amber-50/60 p-4 dark:border-amber-900/50 dark:bg-amber-950/20; }
 .business-gap-list h5 { @apply mb-2 text-sm font-semibold text-amber-900 dark:text-amber-200; }

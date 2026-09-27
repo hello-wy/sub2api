@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/lib/pq"
 	"github.com/shopspring/decimal"
 )
 
 type BusinessIssue struct {
+	ObjectTypes   []string        `json:"object_types"`
 	PeriodStart   *time.Time      `json:"period_start_at,omitempty"`
 	PeriodEnd     *time.Time      `json:"period_end_at,omitempty"`
 	Key           string          `json:"key"`
@@ -58,17 +60,20 @@ const businessIssuesSQL = `WITH cost AS (
  ELSE COALESCE(NULLIF(payload->'pool'->>'name',''),NULLIF(payload->>'pool_name',''),'成本池 #'||pool_id) END AS name,
  CASE WHEN issue_kind='cost_rule' THEN COALESCE(NULLIF((SELECT e.payload->>'upstream_model' FROM business_events e WHERE e.id=cost.event_id),''),model) ELSE '' END AS model,
  to_char(occurred_at AT TIME ZONE $3,'YYYY-MM') AS period,
- event_id,0::bigint AS source_id,COALESCE(amount_cny,0) AS amount,occurred_at
+ event_id,0::bigint AS source_id,COALESCE(amount_cny,0) AS amount,occurred_at,
+ CASE WHEN issue_kind IN ('cost_binding','cost_other') THEN COALESCE(NULLIF((SELECT e.payload->>'account_type' FROM business_events e WHERE e.id=cost.event_id),''),'account') ELSE 'cost_pool' END AS object_type
  FROM cost
  UNION ALL
  SELECT 'funding_source',0,0,COALESCE(user_id,0),COALESCE(NULLIF(payload->>'user_name',''),'用户 #'||COALESCE(user_id,0)),
- '', '',0,id,0,occurred_at FROM business_unresolved_sources
+ '', '',0,id,0,occurred_at,CASE WHEN event_type='user_subscriptions' THEN 'user_subscription' ELSE 'user_balance' END FROM business_unresolved_sources
  UNION ALL
- SELECT 'funding_source',0,0,COALESCE(user_id,0),'用户 #'||COALESCE(user_id,0),'','',event_id,0,0,occurred_at
+ SELECT 'funding_source',0,0,COALESCE(user_id,0),'用户 #'||COALESCE(user_id,0),'','',event_id,0,0,occurred_at,
+ CASE WHEN (SELECT e.event_type FROM business_events e WHERE e.id=event_id)='user_subscriptions' THEN 'user_subscription' ELSE 'user_balance' END
  FROM business_ledger_entries WHERE kind='revenue_gap' AND occurred_at >= $1 AND occurred_at < $2
  UNION ALL
  SELECT 'fixed_cost',COALESCE(l.account_id,0),COALESCE((l.payload->'pool'->>'id')::bigint,0),0,
- COALESCE(NULLIF(l.payload->>'account_name',''),'账号 #'||l.account_id),'',to_char(l.occurred_at AT TIME ZONE $3,'YYYY-MM'),l.event_id,0,0,l.occurred_at
+ COALESCE(NULLIF(l.payload->>'account_name',''),'账号 #'||l.account_id),'',to_char(l.occurred_at AT TIME ZONE $3,'YYYY-MM'),l.event_id,0,0,l.occurred_at,
+ COALESCE(NULLIF((SELECT e.payload->>'account_type' FROM business_events e WHERE e.id=l.event_id),''),'account')
  FROM business_ledger_entries l WHERE l.kind='usage_weight' AND l.payload->>'requires_fixed_cost'='true'
  AND l.occurred_at >= $1 AND l.occurred_at < $2
  AND NOT EXISTS (SELECT 1 FROM business_projection_state s,LATERAL jsonb_array_elements(COALESCE(s.state->'expenses','[]'::jsonb)) x
@@ -78,7 +83,7 @@ const businessIssuesSQL = `WITH cost AS (
  SELECT kind,account_id,pool_id,user_id,MAX(name) AS name,model,period,
  COUNT(DISTINCT event_id) FILTER(WHERE event_id>0) AS affected_count,
  COUNT(DISTINCT source_id) FILTER(WHERE source_id>0) AS source_count,
- SUM(amount)::text AS amount,MIN(occurred_at) AS first_at,MAX(occurred_at) AS last_at
+ SUM(amount)::text AS amount,MIN(occurred_at) AS first_at,MAX(occurred_at) AS last_at,ARRAY_AGG(DISTINCT object_type ORDER BY object_type) AS object_types
  FROM raw GROUP BY kind,account_id,pool_id,user_id,model,period
 ) `
 
@@ -110,13 +115,13 @@ func (s *BusinessLedgerService) Issues(ctx context.Context, start, end time.Time
 	if err = tx.QueryRowContext(ctx, businessIssuesSQL+`SELECT COUNT(*) FROM grouped`, args...).Scan(&out.Total); err != nil {
 		return nil, err
 	}
-	rows, err := tx.QueryContext(ctx, businessIssuesSQL+`SELECT kind,account_id,pool_id,user_id,name,model,period,affected_count,source_count,amount,first_at,last_at FROM grouped ORDER BY kind,pool_id,account_id,user_id,model,period LIMIT 100 OFFSET $4`, append(args, offset)...)
+	rows, err := tx.QueryContext(ctx, businessIssuesSQL+`SELECT kind,account_id,pool_id,user_id,name,model,period,affected_count,source_count,amount,first_at,last_at,object_types FROM grouped ORDER BY kind,pool_id,account_id,user_id,model,period LIMIT 100 OFFSET $4`, append(args, offset)...)
 	if err != nil {
 		return nil, err
 	}
 	for rows.Next() {
 		var v BusinessIssue
-		if err = rows.Scan(&v.Kind, &v.AccountID, &v.PoolID, &v.UserID, &v.Name, &v.Model, &v.Period, &v.AffectedCount, &v.SourceCount, &v.Amount, &v.FirstAt, &v.LastAt); err != nil {
+		if err = rows.Scan(&v.Kind, &v.AccountID, &v.PoolID, &v.UserID, &v.Name, &v.Model, &v.Period, &v.AffectedCount, &v.SourceCount, &v.Amount, &v.FirstAt, &v.LastAt, pq.Array(&v.ObjectTypes)); err != nil {
 			_ = rows.Close()
 			return nil, err
 		}

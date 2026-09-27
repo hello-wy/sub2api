@@ -12,11 +12,12 @@ import (
 )
 
 type BusinessCostPool struct {
-	ID       int64  `json:"id"`
-	Name     string `json:"name"`
-	Supplier string `json:"supplier"`
-	Unit     string `json:"unit"`
-	Mode     string `json:"mode"`
+	AccountingLocked bool   `json:"accounting_locked"`
+	ID               int64  `json:"id"`
+	Name             string `json:"name"`
+	Supplier         string `json:"supplier"`
+	Unit             string `json:"unit"`
+	Mode             string `json:"mode"`
 }
 type BusinessCostBinding struct {
 	ID          int64     `json:"id"`
@@ -58,13 +59,13 @@ func (s *BusinessLedgerService) CostConfiguration(ctx context.Context) (*Busines
 		return nil, err
 	}
 	result.Timezone = businessReportingTimezone(result.Timezone)
-	rows, err := s.db.QueryContext(ctx, `SELECT id,name,supplier,unit,mode FROM business_cost_pools WHERE archived_at IS NULL ORDER BY id`)
+	rows, err := s.db.QueryContext(ctx, `SELECT id,name,supplier,unit,mode,`+businessPoolInUseSQL+` FROM business_cost_pools p WHERE archived_at IS NULL ORDER BY id`)
 	if err != nil {
 		return nil, err
 	}
 	for rows.Next() {
 		var v BusinessCostPool
-		if err = rows.Scan(&v.ID, &v.Name, &v.Supplier, &v.Unit, &v.Mode); err != nil {
+		if err = rows.Scan(&v.ID, &v.Name, &v.Supplier, &v.Unit, &v.Mode, &v.AccountingLocked); err != nil {
 			_ = rows.Close()
 			return nil, err
 		}
@@ -108,17 +109,61 @@ func (s *BusinessLedgerService) CostConfiguration(ctx context.Context) (*Busines
 	_ = rows.Close()
 	return result, err
 }
-func (s *BusinessLedgerService) CreatePool(ctx context.Context, v BusinessCostPool) (*BusinessCostPool, error) {
+
+const businessPoolInUseSQL = `(EXISTS(SELECT 1 FROM business_cost_bindings b WHERE b.pool_id=p.id)
+ OR EXISTS(SELECT 1 FROM business_cost_rules r WHERE r.pool_id=p.id)
+ OR EXISTS(SELECT 1 FROM business_events e WHERE e.payload->>'pool_id'=p.id::text OR e.payload->'pool'->>'id'=p.id::text))`
+
+func validateBusinessPool(v *BusinessCostPool) error {
 	v.Name = strings.TrimSpace(v.Name)
+	v.Supplier = strings.TrimSpace(v.Supplier)
 	v.Unit = strings.TrimSpace(v.Unit)
-	if v.Name == "" || len(v.Name) > 200 || v.Unit == "" || len(v.Unit) > 64 {
-		return nil, fmt.Errorf("请输入成本池名称与上游计价单位")
+	if v.Name == "" || len(v.Name) > 200 || len(v.Supplier) > 200 || v.Unit == "" || len(v.Unit) > 64 {
+		return fmt.Errorf("请输入有效的成本池名称、供应商与上游计价单位")
 	}
 	if v.Mode != "prepaid" && v.Mode != "postpaid" && v.Mode != "fixed" {
-		return nil, fmt.Errorf("无效的成本方式")
+		return fmt.Errorf("无效的成本方式")
 	}
+	return nil
+}
+
+func (s *BusinessLedgerService) CreatePool(ctx context.Context, v BusinessCostPool) (*BusinessCostPool, error) {
+	if err := validateBusinessPool(&v); err != nil {
+		return nil, err
+	}
+	v.AccountingLocked = false
 	err := s.db.QueryRowContext(ctx, `INSERT INTO business_cost_pools(name,supplier,unit,mode)VALUES($1,$2,$3,$4)RETURNING id`, v.Name, v.Supplier, v.Unit, v.Mode).Scan(&v.ID)
 	return &v, err
+}
+
+// Pool metadata can be corrected without changing captured financial snapshots.
+// Once referenced, its accounting unit and method must remain consistent.
+func (s *BusinessLedgerService) UpdatePool(ctx context.Context, id int64, v BusinessCostPool) (*BusinessCostPool, error) {
+	if err := validateBusinessPool(&v); err != nil {
+		return nil, err
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err = tx.ExecContext(ctx, `SELECT pg_advisory_xact_lock(252254)`); err != nil {
+		return nil, err
+	}
+	var oldMode, oldUnit string
+	err = tx.QueryRowContext(ctx, `SELECT mode,unit,`+businessPoolInUseSQL+` FROM business_cost_pools p WHERE id=$1 AND archived_at IS NULL FOR UPDATE`, id).Scan(&oldMode, &oldUnit, &v.AccountingLocked)
+	if err != nil {
+		return nil, err
+	}
+	if v.AccountingLocked && (v.Mode != oldMode || v.Unit != oldUnit) {
+		return nil, fmt.Errorf("成本池已有绑定、价格或凭据，不能修改成本方式和计价单位；请新建成本池并按生效时间重新绑定")
+	}
+	_, err = tx.ExecContext(ctx, `UPDATE business_cost_pools SET name=$2,supplier=$3,mode=$4,unit=$5 WHERE id=$1`, id, v.Name, v.Supplier, v.Mode, v.Unit)
+	if err != nil {
+		return nil, err
+	}
+	v.ID = id
+	return &v, tx.Commit()
 }
 func (s *BusinessLedgerService) CreateBinding(ctx context.Context, v BusinessCostBinding) (*BusinessCostBinding, error) {
 	if v.AccountID <= 0 || v.PoolID <= 0 || v.EffectiveAt.IsZero() {
@@ -218,6 +263,7 @@ func (s *BusinessLedgerService) CreateBindings(ctx context.Context, v BusinessBa
 		return 0, err
 	}
 	seen := map[int64]bool{}
+	created := 0
 	for _, id := range v.AccountIDs {
 		if id <= 0 {
 			return 0, fmt.Errorf("账号编号无效")
@@ -227,10 +273,18 @@ func (s *BusinessLedgerService) CreateBindings(ctx context.Context, v BusinessBa
 		}
 		seen[id] = true
 		var pool int64
+		// Reopening the form must not append another version of the same binding.
+		err = tx.QueryRowContext(ctx, `SELECT b.pool_id FROM business_cost_bindings b JOIN accounts a ON a.id=b.account_id AND a.deleted_at IS NULL WHERE b.account_id=$1 AND b.effective_at<=$2 ORDER BY b.effective_at DESC,b.id DESC LIMIT 1`, id, v.EffectiveAt).Scan(&pool)
+		if err == nil && pool == v.PoolID {
+			continue
+		}
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return 0, err
+		}
 		err = tx.QueryRowContext(ctx, `INSERT INTO business_cost_bindings(account_id,pool_id,effective_at) SELECT id,$2,$3 FROM accounts WHERE id=$1 AND deleted_at IS NULL
  ON CONFLICT(account_id,effective_at) DO NOTHING RETURNING pool_id`, id, v.PoolID, v.EffectiveAt).Scan(&pool)
 		if errors.Is(err, sql.ErrNoRows) {
-			err = tx.QueryRowContext(ctx, `SELECT pool_id FROM business_cost_bindings WHERE account_id=$1 AND effective_at=$2`, id, v.EffectiveAt).Scan(&pool)
+			err = tx.QueryRowContext(ctx, `SELECT b.pool_id FROM business_cost_bindings b JOIN accounts a ON a.id=b.account_id AND a.deleted_at IS NULL WHERE b.account_id=$1 AND b.effective_at=$2`, id, v.EffectiveAt).Scan(&pool)
 		}
 		if err != nil {
 			return 0, fmt.Errorf("账号 #%d 不存在或无法绑定: %w", id, err)
@@ -238,8 +292,9 @@ func (s *BusinessLedgerService) CreateBindings(ctx context.Context, v BusinessBa
 		if pool != v.PoolID {
 			return 0, fmt.Errorf("账号 #%d 在该生效时间已有其他成本池绑定", id)
 		}
+		created++
 	}
-	return len(seen), tx.Commit()
+	return created, tx.Commit()
 }
 
 // PostgreSQL requires an IANA name; Go's uninitialized "Local" is not one.

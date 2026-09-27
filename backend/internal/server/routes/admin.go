@@ -954,6 +954,7 @@ func registerBusinessLedgerRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 	b.POST("/records", h.Admin.Dashboard.CreateBusinessLedgerRecord)
 	b.GET("/configuration", h.Admin.Dashboard.GetBusinessCostConfiguration)
 	b.POST("/pools", h.Admin.Dashboard.CreateBusinessCostPool)
+	b.PUT("/pools/:id", h.Admin.Dashboard.UpdateBusinessCostPool)
 	b.POST("/bindings", h.Admin.Dashboard.CreateBusinessCostBinding)
 	b.POST("/rules", h.Admin.Dashboard.CreateBusinessCostRule)
 	b.GET("/entities", h.Admin.Dashboard.SearchBusinessEntities)

@@ -1,10 +1,10 @@
 <template>
   <section class="space-y-4" aria-label="经营账待处理问题">
     <div class="flex flex-wrap items-start justify-between gap-3">
-      <div><h4 class="font-semibold">待处理问题</h4><p class="mt-1 text-sm text-gray-500">同一原因合并处理，调用明细仅用于追溯。资金来源含历史期初，其余按所选日期归集。</p></div>
+      <div><h4 class="flex items-center gap-2 text-sm font-semibold"><Icon name="clipboard" size="sm" class="text-primary-500" />待处理问题</h4><p class="mt-1 text-xs leading-5 text-gray-500">同一原因合并处理，调用明细仅用于追溯。资金来源含历史期初，其余按所选日期归集。</p></div>
       <div class="flex flex-wrap gap-2"><button class="btn btn-secondary" :disabled="loading" @click="refresh()">刷新状态</button><button class="btn btn-primary" @click="repairIssue = undefined; repairOpen = true">补算历史缺失成本</button></div>
     </div>
-    <div v-if="summary" class="flex flex-wrap gap-4 text-sm" role="status">
+    <div v-if="summary" class="flex flex-wrap gap-4 rounded-lg bg-gray-50 px-3 py-2 text-xs dark:bg-dark-900" role="status">
       <span><strong>{{ summary.total }}</strong> 项待处理问题</span>
       <span v-if="summary.processing_count" class="text-primary-600">后台正在计算 {{ summary.processing_count }} 条记录，无需逐条处理</span>
       <span v-if="summary.calculation_error" class="text-amber-700">后台计算未完成，系统会自动重试</span>
@@ -13,9 +13,10 @@
     <p v-if="loading && !summary" class="text-sm text-gray-500">正在归集问题…</p>
     <div v-if="selectedAccounts.length" class="flex items-center gap-3 text-sm"><span>已选 {{ selectedAccounts.length }} 个缺配置账号</span><button class="btn btn-secondary" @click="emit('configure', { mode: 'binding', accountIDs: selectedAccounts, accountNames: selectedNames, effectiveAt: selectedEffective })">批量绑定成本池</button></div>
     <div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-dark-700">
-      <table class="w-full text-left text-sm"><thead class="bg-gray-50 text-gray-500 dark:bg-dark-800"><tr><th class="p-3">问题 / 对象</th><th class="p-3">影响范围</th><th class="p-3">处理</th></tr></thead>
+      <table class="w-full text-left text-sm"><thead class="bg-gray-50 text-gray-500 dark:bg-dark-800"><tr><th class="p-3">问题 / 对象</th><th class="p-3">类型</th><th class="p-3">影响范围</th><th class="p-3">处理</th></tr></thead>
         <tbody><tr v-for="issue in summary?.items || []" :key="issue.key" class="border-t border-gray-100 dark:border-dark-700">
           <td class="p-3"><label class="flex items-center gap-2"><input v-if="issue.kind === 'cost_binding' && issue.account_id" v-model="selected" type="checkbox" :value="issue.account_id" :aria-label="'选择' + issue.name" /><strong>{{ labels[issue.kind] || '其他成本缺口' }}</strong></label><p class="mt-1 text-gray-500">{{ issue.name }}<span v-if="issue.model"> · {{ issue.model }}</span></p></td>
+          <td class="p-3"><div class="flex flex-wrap gap-1.5"><span v-for="type in issueTypes(issue)" :key="type" class="issue-type" :class="{ 'issue-type-user': type.startsWith('user_'), 'issue-type-api': type === 'apikey' }">{{ typeLabels[type] || type }}</span></div></td>
           <td class="p-3"><p>{{ issue.period || '资金来源' }}</p><p v-if="issue.affected_count">影响 {{ issue.affected_count.toLocaleString('zh-CN') }} 条记录</p><p v-if="issue.source_count">{{ issue.source_count }} 笔原始来源待确认</p><p v-if="['invoice_needed', 'invoice_changed'].includes(issue.kind)" class="text-gray-500">已记成本 {{ cny(issue.known_amount_cny) }}</p></td>
           <td class="p-3"><div class="flex flex-wrap gap-3"><button class="text-primary-600 underline" @click="handle(issue)">{{ actions[issue.kind] || '查看成本配置' }}</button><button v-if="['cost_binding','cost_rule'].includes(issue.kind)" class="text-gray-500 underline" @click="repairIssue = issue; repairOpen = true">补算缺失记录</button></div></td>
         </tr></tbody>
@@ -39,6 +40,7 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref, watch } from 'vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
+import Icon from '@/components/icons/Icon.vue'
 import BusinessCostRepairDialog from './BusinessCostRepairDialog.vue'
 import { businessAPI, type BusinessEvent, type BusinessIssue, type BusinessIssueSummary, type BusinessRepairJob, type BusinessRecordDefaults } from '@/api/admin/business'
 import { businessKindLabels, cny, ledgerError } from '@/utils/business-ledger'
@@ -51,6 +53,8 @@ const repairOpen = ref(false), repairIssue = ref<BusinessIssue>()
 const sourceIssue = ref<BusinessIssue>(), sources = ref<BusinessEvent[]>([]), sourcesLoading = ref(false), sourcesError = ref(''), sourcesMore = ref(false)
 const labels: Record<string, string> = { cost_binding: '调用缺少成本绑定', cost_rule: '缺少有效期内价格', procurement: '采购额度或期初不足', fixed_cost: '缺少账号服务期费用', invoice_needed: '暂估成本待账单核对', invoice_changed: '账单覆盖成本已修订', funding_source: '资金来源待确认', cost_other: '其他成本缺口' }
 const actions: Record<string, string> = { cost_binding: '绑定成本池', cost_rule: '补充价格', procurement: '登记采购', fixed_cost: '登记账号费用', invoice_needed: '核对整期账单', invoice_changed: '查看原核对记录', funding_source: '确认资金来源' }
+const typeLabels: Record<string, string> = { oauth: 'OAuth 账号', apikey: 'API Key', 'setup-token': 'Setup Token', upstream: '上游账号', bedrock: 'Bedrock', service_account: '服务账号', user_balance: '用户余额', user_subscription: '用户订阅', cost_pool: '供应商成本池', account: '账号（类型未知）' }
+const issueTypes = (issue: BusinessIssue) => issue.object_types?.length ? issue.object_types : [issue.kind === 'funding_source' ? 'user_balance' : issue.account_id ? 'account' : 'cost_pool']
 const selectedAccounts = computed(() => [...new Set(selected.value)])
 const selectedNames = computed(() => Object.fromEntries((summary.value?.items || []).filter(i => selectedAccounts.value.includes(i.account_id)).map(i => [i.account_id, i.name])))
 const selectedEffective = computed(() => summary.value?.items.filter(i => selectedAccounts.value.includes(i.account_id)).map(i => i.first_at).sort()[0])
@@ -102,3 +106,9 @@ watch(sourceIssue, issue => { if (!issue) sourceSequence++ })
 onUnmounted(() => { stopped = true; sequence++; sourceSequence++; clearTimeout(timer) })
 defineExpose({ refresh })
 </script>
+
+<style scoped>
+.issue-type { @apply inline-flex whitespace-nowrap rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-[11px] font-medium text-gray-600 dark:border-dark-600 dark:bg-dark-700 dark:text-gray-300; }
+.issue-type-user { @apply border-amber-100 bg-amber-50 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300; }
+.issue-type-api { @apply border-blue-100 bg-blue-50 text-blue-700 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-300; }
+</style>
