@@ -1,7 +1,6 @@
 package service
 
 import (
-	"encoding/json"
 	"fmt"
 	"strconv"
 	"time"
@@ -194,12 +193,6 @@ func bMoney(m map[string]any) (decimal.Decimal, bool) {
 		return bDecimal(m, "pay_amount").Mul(bDecimal(m, "fx_rate")).Round(8), true
 	}
 	return decimal.Zero, false
-}
-func businessJSON(v any) map[string]any {
-	raw, _ := json.Marshal(v)
-	var m map[string]any
-	_ = json.Unmarshal(raw, &m)
-	return m
 }
 func (p *BusinessProjection) entry(e BusinessEvent, kind string, amount *decimal.Decimal, credits decimal.Decimal, quality string, detail map[string]any) {
 	if detail == nil {
