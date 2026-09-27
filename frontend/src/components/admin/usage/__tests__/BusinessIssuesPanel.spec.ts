@@ -14,6 +14,13 @@ function render() { return mount(BusinessIssuesPanel, { props: { startDate: '202
 beforeEach(() => { vi.clearAllMocks(); api.issues.mockResolvedValue(result([issue()])); api.repairJobs.mockResolvedValue([]); api.pending.mockResolvedValue([]) })
 afterEach(() => vi.useRealTimers())
 describe('按原因处理经营账问题', () => {
+  it('类型列区分 OAuth、API Key、用户余额和订阅', async () => {
+    api.issues.mockResolvedValue(result([issue({ object_types: ['oauth'] }), issue({ key: 'api', object_types: ['apikey'] }), issue({ key: 'funds', kind: 'funding_source', object_types: ['user_balance', 'user_subscription'] })]))
+    const wrapper = render(); await flushPromises()
+    expect(wrapper.findAll('th').map(h => h.text())).toContain('类型')
+    for (const label of ['OAuth 账号', 'API Key', '用户余额', '用户订阅']) expect(wrapper.text()).toContain(label)
+    wrapper.unmount()
+  })
   it('大量调用只展示一个问题，并把账号与生效时间带入配置', async () => {
     const wrapper = render(); await flushPromises()
     expect(wrapper.findAll('tbody tr')).toHaveLength(1)

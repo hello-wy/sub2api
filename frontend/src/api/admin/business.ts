@@ -28,7 +28,7 @@ export interface BusinessOverview {
   entries: BusinessEntry[]; daily: BusinessBreakdown[]; groups: BusinessBreakdown[]
   models: BusinessBreakdown[]; accounts: BusinessBreakdown[]; plans: BusinessBreakdown[]
 }
-export interface BusinessPool { id: number; name: string; supplier: string; unit: string; mode: string }
+export interface BusinessPool { id: number; name: string; supplier: string; unit: string; mode: string; accounting_locked?: boolean }
 export interface BusinessBinding { id: number; account_id: number; account_name: string; pool_id: number; effective_at: string }
 export interface BusinessRule {
   service_tier: string; image_size: string; video_resolution: string; cache_write_1h_price: string
@@ -44,6 +44,7 @@ export interface BusinessRecordInput {
 }
 export interface BusinessEntity { id: number; name: string; kind: string }
 export interface BusinessIssue {
+	object_types?: string[]
   period_start_at?: string; period_end_at?: string
   key: string; kind: string; account_id: number; pool_id: number; user_id: number; name: string; model: string; period: string
   affected_count: number; source_count: number; known_amount_cny: string; first_at: string; last_at: string
@@ -67,6 +68,7 @@ export const businessAPI = {
   record: async (input: BusinessRecordInput) => (await apiClient.post<BusinessEvent>('/admin/business/records', input)).data,
   configuration: async () => (await apiClient.get<BusinessConfiguration>('/admin/business/configuration')).data,
   pool: async (input: Omit<BusinessPool, 'id'>) => (await apiClient.post<BusinessPool>('/admin/business/pools', input)).data,
+  updatePool: async (id: number, input: Omit<BusinessPool, 'id'>) => (await apiClient.put<BusinessPool>(`/admin/business/pools/${id}`, input)).data,
   binding: async (input: Omit<BusinessBinding, 'id' | 'account_name'>) => (await apiClient.post<BusinessBinding>('/admin/business/bindings', input)).data,
   rule: async (input: Omit<BusinessRule, 'id'>) => (await apiClient.post<BusinessRule>('/admin/business/rules', input)).data,
   entities: async (kind: string, q = '') => (await apiClient.get<BusinessEntity[]>('/admin/business/entities', { params: { kind, q } })).data,

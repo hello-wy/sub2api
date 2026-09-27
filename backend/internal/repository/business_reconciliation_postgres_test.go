@@ -316,3 +316,81 @@ func TestBusinessLedgerWorkerDrainsBacklog(t *testing.T) {
 		return err == nil && count == 1001
 	}, 10*time.Second, 25*time.Millisecond)
 }
+
+func TestBusinessLedgerPoolEditingAndBindingDeduplication(t *testing.T) {
+	db, ledger, at, user, account := businessWorkflowDB(t)
+	ctx := context.Background()
+	pool, err := ledger.CreatePool(ctx, service.BusinessCostPool{Name: "original", Supplier: "supplier", Mode: "prepaid", Unit: "USD"})
+	require.NoError(t, err)
+	// Unused pools allow correcting the accounting definition.
+	pool, err = ledger.UpdatePool(ctx, pool.ID, service.BusinessCostPool{Name: "corrected", Supplier: "supplier", Mode: "postpaid", Unit: "CNY"})
+	require.NoError(t, err)
+	require.False(t, pool.AccountingLocked)
+	count, err := ledger.CreateBindings(ctx, service.BusinessBatchBinding{AccountIDs: []int64{account, account}, PoolID: pool.ID, EffectiveAt: at})
+	require.NoError(t, err)
+	require.Equal(t, 1, count)
+	// Same pool, later time is a no-op, even after reopening/retrying the form.
+	count, err = ledger.CreateBindings(ctx, service.BusinessBatchBinding{AccountIDs: []int64{account}, PoolID: pool.ID, EffectiveAt: at.Add(time.Minute)})
+	require.NoError(t, err)
+	require.Zero(t, count)
+	emitWorkflowUsage(t, db, user, account, at, 1)
+	workflowProject(t, ledger, db)
+	pool, err = ledger.UpdatePool(ctx, pool.ID, service.BusinessCostPool{Name: "renamed", Supplier: "new supplier", Mode: "postpaid", Unit: "CNY"})
+	require.NoError(t, err)
+	require.True(t, pool.AccountingLocked)
+	var snapshot string
+	require.NoError(t, db.QueryRow(`SELECT payload->'pool'->>'name' FROM business_events WHERE event_type='usage' ORDER BY id DESC LIMIT 1`).Scan(&snapshot))
+	require.Equal(t, "corrected", snapshot)
+	_, err = ledger.UpdatePool(ctx, pool.ID, service.BusinessCostPool{Name: "invalid", Mode: "prepaid", Unit: "USD"})
+	require.ErrorContains(t, err, "不能修改")
+	config, err := ledger.CostConfiguration(ctx)
+	require.NoError(t, err)
+	require.Equal(t, "renamed", config.Pools[0].Name)
+	require.True(t, config.Pools[0].AccountingLocked)
+	require.Len(t, config.Bindings, 1)
+	// Earlier missing history and changing suppliers remain possible.
+	count, err = ledger.CreateBindings(ctx, service.BusinessBatchBinding{AccountIDs: []int64{account}, PoolID: pool.ID, EffectiveAt: at.Add(-time.Hour)})
+	require.NoError(t, err)
+	require.Equal(t, 1, count)
+	other, err := ledger.CreatePool(ctx, service.BusinessCostPool{Name: "other", Mode: "postpaid", Unit: "CNY"})
+	require.NoError(t, err)
+	count, err = ledger.CreateBindings(ctx, service.BusinessBatchBinding{AccountIDs: []int64{account}, PoolID: other.ID, EffectiveAt: at.Add(time.Hour)})
+	require.NoError(t, err)
+	require.Equal(t, 1, count)
+	_, err = db.Exec(`UPDATE accounts SET deleted_at=NOW() WHERE id=$1`, account)
+	require.NoError(t, err)
+	_, err = ledger.CreateBindings(ctx, service.BusinessBatchBinding{AccountIDs: []int64{account}, PoolID: other.ID, EffectiveAt: at.Add(time.Hour)})
+	require.Error(t, err, "an old binding must not resurrect a deleted account")
+	_, err = ledger.UpdatePool(ctx, 999999, service.BusinessCostPool{Name: "missing", Mode: "postpaid", Unit: "CNY"})
+	require.ErrorIs(t, err, sql.ErrNoRows)
+}
+
+func TestBusinessLedgerIssueObjectTypesUseHistoricalSnapshots(t *testing.T) {
+	db, ledger, at, user, account := businessWorkflowDB(t)
+	emitWorkflowUsage(t, db, user, account, at, 1)
+	// Changing/deleting the live account must not relabel the historical issue.
+	_, err := db.Exec(`UPDATE accounts SET type='oauth',deleted_at=NOW() WHERE id=$1`, account)
+	require.NoError(t, err)
+	var oauth int64
+	require.NoError(t, db.QueryRow(`INSERT INTO accounts(name,platform,type,credentials)VALUES('OAuth account','openai','oauth','{}') RETURNING id`).Scan(&oauth))
+	_, err = db.Exec(`SELECT business_emit_usage(jsonb_build_object('user_id',$1::bigint,'api_key_id',999,'request_id','oauth-type','account_id',$2::bigint,'created_at',$3::timestamptz,'model','gpt','actual_cost','0','total_cost','1','billing_type',0))`, user, oauth, at)
+	require.NoError(t, err)
+	_, err = db.Exec(`INSERT INTO business_events(source_key,event_type,user_id,occurred_at,payload)VALUES('type-opening','opening_unknown',$1,$2,'{"credits":"100"}')`, user, at)
+	require.NoError(t, err)
+	workflowProject(t, ledger, db)
+	summary, err := ledger.Issues(context.Background(), at, at.Add(time.Hour), 0)
+	require.NoError(t, err)
+	require.Len(t, summary.Items, 3)
+	for _, issue := range summary.Items {
+		switch {
+		case issue.Kind == "funding_source":
+			require.Equal(t, []string{"user_balance"}, issue.ObjectTypes)
+		case issue.AccountID == account:
+			require.Equal(t, []string{"apikey"}, issue.ObjectTypes)
+		case issue.AccountID == oauth:
+			require.Equal(t, []string{"oauth"}, issue.ObjectTypes)
+		default:
+			t.Fatalf("unexpected issue: %+v", issue)
+		}
+	}
+}
