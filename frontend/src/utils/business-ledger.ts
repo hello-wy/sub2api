@@ -3,7 +3,7 @@ import type { BusinessRecordInput } from '@/api/admin/business'
 export const businessKindLabels: Record<string, string> = {
   receipt: '线下收款', payment_orders: '线上支付 / 退款', purchase: '上游采购', expense: '经营费用', expense_stop: '预付费用终止',
   opening_pool: '期初采购', opening_unknown: '期初余额', user_subscriptions: '订阅购买期',
-  wallet: '余额来源', signup_wallet: '注册赠送', usage: '调用成本', annotation: '来源补录',
+  wallet: '余额来源', signup_wallet: '注册赠送', usage: '调用成本', annotation: '来源修订', cost_repair_batch: '历史成本批量补算',
   adjustment: '账务调整', reconciliation: '账单差异', reversal: '冲销', supplier_refund: '采购退款', supplier_loss: '采购失效',
   wallet_revenue: '余额消费收入', subscription_revenue: '订阅服务收入', subscription_close_revenue: '订阅终止结转',
   ticket_revenue: '抽奖券消费收入', refund_revenue: '退款收入冲回', usage_cost: '上游消耗成本', fixed_cost: '服务期成本',

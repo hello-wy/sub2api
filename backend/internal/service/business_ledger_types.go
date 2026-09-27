@@ -199,7 +199,7 @@ func (p *BusinessProjection) entry(e BusinessEvent, kind string, amount *decimal
 		detail = map[string]any{}
 	}
 	detail["source_key"] = e.SourceKey
-	for _, key := range []string{"account_name", "group_name", "pool", "rule", "currency", "pay_amount", "category"} {
+	for _, key := range []string{"account_name", "group_name", "pool", "pool_id", "pool_name", "rule", "currency", "pay_amount", "category"} {
 		if v := e.Payload[key]; v != nil {
 			detail[key] = v
 		}
@@ -230,12 +230,13 @@ type BusinessRecordInput struct {
 }
 
 type BusinessDataQuality struct {
-	Cash           string `json:"cash"`
-	Revenue        string `json:"revenue"`
-	Cost           string `json:"cost"`
-	Attribution    string `json:"attribution"`
-	MissingCount   int    `json:"missing_count"`
-	EstimatedCount int    `json:"estimated_count"`
+	ProcessingCount int    `json:"processing_count"`
+	Cash            string `json:"cash"`
+	Revenue         string `json:"revenue"`
+	Cost            string `json:"cost"`
+	Attribution     string `json:"attribution"`
+	MissingCount    int    `json:"missing_count"`
+	EstimatedCount  int    `json:"estimated_count"`
 }
 
 type BusinessLedgerOverview struct {

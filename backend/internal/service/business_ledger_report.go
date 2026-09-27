@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/Wei-Shaw/sub2api/internal/pkg/timezone"
 	"sort"
 	"time"
 
@@ -16,8 +15,15 @@ func (s *BusinessLedgerService) Overview(ctx context.Context, start, end time.Ti
 	if !end.After(start) || end.Sub(start) > 366*24*time.Hour {
 		return nil, fmt.Errorf("请选择不超过 366 天的有效区间")
 	}
-	if _, err := s.Project(ctx); err != nil {
+	// Bulk repairs run in the background. Keep the last consistent report readable.
+	var repairPending bool
+	if err := s.db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM business_events e LEFT JOIN business_projection_processed p ON p.event_id=e.id WHERE e.event_type='cost_repair_batch' AND p.event_id IS NULL)`).Scan(&repairPending); err != nil {
 		return nil, err
+	}
+	if !repairPending {
+		if _, err := s.Project(ctx); err != nil {
+			return nil, err
+		}
 	}
 	s.Start()
 	var stateRaw []byte
@@ -38,7 +44,7 @@ func (s *BusinessLedgerService) Overview(ctx context.Context, start, end time.Ti
 	if err = json.Unmarshal(stateRaw, state); err != nil {
 		return nil, err
 	}
-	zone = timezone.Location().String()
+	zone = businessReportingTimezone(zone)
 	location, err := time.LoadLocation(zone)
 	if err != nil {
 		return nil, err
@@ -89,7 +95,7 @@ func (s *BusinessLedgerService) Overview(ctx context.Context, start, end time.Ti
 	report.UpdatedAt = updated
 	report.EnabledAt = enabled
 	if pending > 0 {
-		report.Quality.MissingCount += pending
+		report.Quality.ProcessingCount = pending
 		report.Quality.Revenue = "pending"
 		report.Quality.Cost = "pending"
 		report.Profit = nil

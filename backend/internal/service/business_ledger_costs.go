@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/timezone"
 	"github.com/shopspring/decimal"
@@ -55,7 +57,7 @@ func (s *BusinessLedgerService) CostConfiguration(ctx context.Context) (*Busines
 	if err := s.db.QueryRowContext(ctx, `SELECT enabled_at,reporting_timezone FROM business_ledger_config WHERE id=1`).Scan(&result.EnabledAt, &result.Timezone); err != nil {
 		return nil, err
 	}
-	result.Timezone = timezone.Location().String()
+	result.Timezone = businessReportingTimezone(result.Timezone)
 	rows, err := s.db.QueryContext(ctx, `SELECT id,name,supplier,unit,mode FROM business_cost_pools WHERE archived_at IS NULL ORDER BY id`)
 	if err != nil {
 		return nil, err
@@ -122,8 +124,19 @@ func (s *BusinessLedgerService) CreateBinding(ctx context.Context, v BusinessCos
 	if v.AccountID <= 0 || v.PoolID <= 0 || v.EffectiveAt.IsZero() {
 		return nil, fmt.Errorf("请选择账号、成本池和生效时间")
 	}
-	err := s.db.QueryRowContext(ctx, `INSERT INTO business_cost_bindings(account_id,pool_id,effective_at)SELECT a.id,$2,$3 FROM accounts a WHERE a.id=$1 AND a.deleted_at IS NULL RETURNING id`, v.AccountID, v.PoolID, v.EffectiveAt).Scan(&v.ID)
-	return &v, err
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err = tx.ExecContext(ctx, `SELECT pg_advisory_xact_lock(252254)`); err != nil {
+		return nil, err
+	}
+	err = tx.QueryRowContext(ctx, `INSERT INTO business_cost_bindings(account_id,pool_id,effective_at)SELECT a.id,$2,$3 FROM accounts a WHERE a.id=$1 AND a.deleted_at IS NULL RETURNING id`, v.AccountID, v.PoolID, v.EffectiveAt).Scan(&v.ID)
+	if err != nil {
+		return nil, err
+	}
+	return &v, tx.Commit()
 }
 func (s *BusinessLedgerService) CreateRule(ctx context.Context, v BusinessCostRule) (*BusinessCostRule, error) {
 	if v.PoolID <= 0 || v.EffectiveAt.IsZero() {
@@ -151,8 +164,19 @@ func (s *BusinessLedgerService) CreateRule(ctx context.Context, v BusinessCostRu
 			return nil, fmt.Errorf("单价必须是合理的非负金额")
 		}
 	}
-	err := s.db.QueryRowContext(ctx, `INSERT INTO business_cost_rules(pool_id,model,effective_at,basis,unit_price,input_price,output_price,cache_read_price,cache_write_price,cny_per_unit,quality,notes,service_tier,image_size,video_resolution,cache_write_1h_price)VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)RETURNING id`, v.PoolID, v.Model, v.EffectiveAt, v.Basis, v.UnitPrice.String(), v.InputPrice.String(), v.OutputPrice.String(), v.CacheReadPrice.String(), v.CacheWritePrice.String(), v.CNYPerUnit.String(), v.Quality, v.Notes, v.ServiceTier, v.ImageSize, v.VideoResolution, v.CacheWrite1hPrice.String()).Scan(&v.ID)
-	return &v, err
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err = tx.ExecContext(ctx, `SELECT pg_advisory_xact_lock(252254)`); err != nil {
+		return nil, err
+	}
+	err = tx.QueryRowContext(ctx, `INSERT INTO business_cost_rules(pool_id,model,effective_at,basis,unit_price,input_price,output_price,cache_read_price,cache_write_price,cny_per_unit,quality,notes,service_tier,image_size,video_resolution,cache_write_1h_price)VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)RETURNING id`, v.PoolID, v.Model, v.EffectiveAt, v.Basis, v.UnitPrice.String(), v.InputPrice.String(), v.OutputPrice.String(), v.CacheReadPrice.String(), v.CacheWritePrice.String(), v.CNYPerUnit.String(), v.Quality, v.Notes, v.ServiceTier, v.ImageSize, v.VideoResolution, v.CacheWrite1hPrice.String()).Scan(&v.ID)
+	if err != nil {
+		return nil, err
+	}
+	return &v, tx.Commit()
 }
 
 // Trace is intentionally independent of disposable usage_logs and entity FKs.
@@ -173,4 +197,58 @@ func (s *BusinessLedgerService) Trace(ctx context.Context, id int64) ([]Business
 	}
 	defer func() { _ = rows.Close() }()
 	return scanBusinessEvents(rows)
+}
+
+type BusinessBatchBinding struct {
+	AccountIDs  []int64   `json:"account_ids"`
+	PoolID      int64     `json:"pool_id"`
+	EffectiveAt time.Time `json:"effective_at"`
+}
+
+func (s *BusinessLedgerService) CreateBindings(ctx context.Context, v BusinessBatchBinding) (int, error) {
+	if len(v.AccountIDs) == 0 || len(v.AccountIDs) > 1000 || v.PoolID <= 0 || v.EffectiveAt.IsZero() {
+		return 0, fmt.Errorf("请选择 1–1000 个账号、成本池和生效时间")
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err = tx.ExecContext(ctx, `SELECT pg_advisory_xact_lock(252254)`); err != nil {
+		return 0, err
+	}
+	seen := map[int64]bool{}
+	for _, id := range v.AccountIDs {
+		if id <= 0 {
+			return 0, fmt.Errorf("账号编号无效")
+		}
+		if seen[id] {
+			continue
+		}
+		seen[id] = true
+		var pool int64
+		err = tx.QueryRowContext(ctx, `INSERT INTO business_cost_bindings(account_id,pool_id,effective_at) SELECT id,$2,$3 FROM accounts WHERE id=$1 AND deleted_at IS NULL
+ ON CONFLICT(account_id,effective_at) DO NOTHING RETURNING pool_id`, id, v.PoolID, v.EffectiveAt).Scan(&pool)
+		if errors.Is(err, sql.ErrNoRows) {
+			err = tx.QueryRowContext(ctx, `SELECT pool_id FROM business_cost_bindings WHERE account_id=$1 AND effective_at=$2`, id, v.EffectiveAt).Scan(&pool)
+		}
+		if err != nil {
+			return 0, fmt.Errorf("账号 #%d 不存在或无法绑定: %w", id, err)
+		}
+		if pool != v.PoolID {
+			return 0, fmt.Errorf("账号 #%d 在该生效时间已有其他成本池绑定", id)
+		}
+	}
+	return len(seen), tx.Commit()
+}
+
+// PostgreSQL requires an IANA name; Go's uninitialized "Local" is not one.
+func businessReportingTimezone(configured string) string {
+	if zone := timezone.Location().String(); zone != "Local" {
+		return zone
+	}
+	if configured != "" && configured != "Local" {
+		return configured
+	}
+	return "UTC"
 }

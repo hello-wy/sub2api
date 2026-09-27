@@ -28,6 +28,7 @@ type BusinessLedgerService struct {
 	db            *sql.DB
 	once          sync.Once
 	stop          chan struct{}
+	wake          chan struct{}
 	balanceCache  *BillingCacheService
 	stopOnce      sync.Once
 	done          chan struct{}
@@ -37,7 +38,7 @@ type BusinessLedgerService struct {
 
 func NewBusinessLedgerService(db *sql.DB) *BusinessLedgerService {
 	ctx, cancel := context.WithCancel(context.Background())
-	return &BusinessLedgerService{db: db, stop: make(chan struct{}), done: make(chan struct{}), workerContext: ctx, cancelWorker: cancel}
+	return &BusinessLedgerService{db: db, stop: make(chan struct{}), wake: make(chan struct{}, 1), done: make(chan struct{}), workerContext: ctx, cancelWorker: cancel}
 }
 func (s *BusinessLedgerService) SetBalanceCache(cache *BillingCacheService) { s.balanceCache = cache }
 
@@ -55,19 +56,36 @@ func (s *BusinessLedgerService) Start() {
 				case <-s.stop:
 					return
 				case <-ticker.C:
-					ctx, cancel := context.WithTimeout(s.workerContext, 12*time.Second)
-					_, err := s.Project(ctx)
+				case <-s.wake:
+				}
+				ctx, cancel := context.WithTimeout(s.workerContext, 5*time.Minute)
+				count, err := s.Project(ctx)
+				// Drain ready transactions within the worker's time budget.
+				// Busy sites must not be limited to 500 events every 15 seconds.
+				for err == nil && count > 0 && ctx.Err() == nil {
+					count, err = s.Project(ctx)
+				}
+				cancel()
+				if err != nil {
+					ctx, cancel = context.WithTimeout(context.Background(), time.Second)
+					_, _ = s.db.ExecContext(ctx, `UPDATE business_projection_state SET last_error=$1 WHERE id=1`, err.Error())
 					cancel()
-					if err != nil {
-						ctx, cancel = context.WithTimeout(context.Background(), time.Second)
-						_, _ = s.db.ExecContext(ctx, `UPDATE business_projection_state SET last_error=$1 WHERE id=1`, err.Error())
-						cancel()
-					}
 				}
 			}
 		}()
 	})
 }
+
+// Wake schedules a durable batch on the existing projector; a restart resumes
+// from unprocessed events. All annotations in a batch share one transaction.
+func (s *BusinessLedgerService) Wake() {
+	s.Start()
+	select {
+	case s.wake <- struct{}{}:
+	default:
+	}
+}
+
 func (s *BusinessLedgerService) Stop() {
 	if s == nil || s.db == nil {
 		return
@@ -170,21 +188,8 @@ func (s *BusinessLedgerService) Project(ctx context.Context) (int, error) {
 	for _, id := range order {
 		state.ApplyTransaction(groups[id])
 	}
-	for _, entry := range state.Entries {
-		detail, _ := json.Marshal(entry.Detail)
-		var amount any
-		if entry.Amount != nil {
-			amount = entry.Amount.String()
-		}
-		_, err = tx.ExecContext(ctx, `INSERT INTO business_ledger_entries(id,event_id,occurred_at,kind,user_id,account_id,group_id,model,plan_id,amount_cny,credits,quality,payload) VALUES($1,$2,$3,$4,NULLIF($5,0),NULLIF($6,0),NULLIF($7,0),$8,NULLIF($9,0),$10,$11,$12,$13) ON CONFLICT(id) DO NOTHING`, entry.ID, entry.EventID, entry.At, entry.Kind, entry.UserID, entry.AccountID, entry.GroupID, entry.Model, entry.PlanID, amount, entry.Credits.String(), entry.Quality, string(detail))
-		if err != nil {
-			return 0, err
-		}
-	}
-	for _, e := range events {
-		if _, err = tx.ExecContext(ctx, `INSERT INTO business_projection_processed(event_id)VALUES($1) ON CONFLICT DO NOTHING`, e.ID); err != nil {
-			return 0, err
-		}
+	if err = storeBusinessProjection(ctx, tx, state.Entries, events); err != nil {
+		return 0, err
 	}
 	encoded, err := json.Marshal(state)
 	if err != nil {
@@ -287,7 +292,7 @@ func (s *BusinessLedgerService) Records(ctx context.Context, before int64, limit
 	if limit < 1 || limit > 500 {
 		limit = 100
 	}
-	rows, err := s.db.QueryContext(ctx, `SELECT id,source_key,event_type,transaction_id,COALESCE(user_id,0),occurred_at,recorded_at,payload,COALESCE(actor_id,0),COALESCE(reverses_id,0) FROM business_events WHERE ($1=0 OR id<$1) AND event_type IN ('receipt','purchase','expense','opening_pool','annotation','reconciliation','adjustment','reversal','supplier_refund','supplier_loss','payment_orders','expense_stop') ORDER BY id DESC LIMIT $2`, before, limit)
+	rows, err := s.db.QueryContext(ctx, `SELECT id,source_key,event_type,transaction_id,COALESCE(user_id,0),occurred_at,recorded_at,payload,COALESCE(actor_id,0),COALESCE(reverses_id,0) FROM business_events WHERE ($1=0 OR id<$1) AND event_type IN ('receipt','purchase','expense','opening_pool','annotation','reconciliation','adjustment','reversal','supplier_refund','supplier_loss','payment_orders','expense_stop','cost_repair_batch') AND NOT (event_type='annotation' AND payload ? 'repair_batch_id') ORDER BY id DESC LIMIT $2`, before, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -313,6 +318,9 @@ func (s *BusinessLedgerService) Record(ctx context.Context, input BusinessRecord
 		return nil, err
 	}
 	defer func() { _ = tx.Rollback() }()
+	if _, err = tx.ExecContext(ctx, `SELECT pg_advisory_xact_lock(252254)`); err != nil {
+		return nil, err
+	}
 	// Replay-safe writes: a retry cannot credit a user twice, and a reused key
 	// with a different payload is rejected instead of silently changing a receipt.
 	key := "manual:" + input.IdempotencyKey

@@ -24,7 +24,7 @@ export interface BusinessOverview {
   gift_granted_credits: string; gift_used_credits: string; gift_cost_cny: string; discount_cny: string
   wallet_deferred_cny: string; subscription_deferred_cny: string; prepaid_supplier_cny: string
   unknown_wallet_credits: string; prepaid_expense_cny: string; gift_outstanding_credits: string
-  quality: { cash: string; revenue: string; cost: string; attribution: string; missing_count: number; estimated_count: number }
+  quality: { cash: string; revenue: string; cost: string; attribution: string; missing_count: number; estimated_count: number; processing_count?: number }
   entries: BusinessEntry[]; daily: BusinessBreakdown[]; groups: BusinessBreakdown[]
   models: BusinessBreakdown[]; accounts: BusinessBreakdown[]; plans: BusinessBreakdown[]
 }
@@ -43,6 +43,24 @@ export interface BusinessRecordInput {
   idempotency_key: string; type: string; occurred_at: string; user_id?: number; payload: Record<string, unknown>
 }
 export interface BusinessEntity { id: number; name: string; kind: string }
+export interface BusinessIssue {
+  period_start_at?: string; period_end_at?: string
+  key: string; kind: string; account_id: number; pool_id: number; user_id: number; name: string; model: string; period: string
+  affected_count: number; source_count: number; known_amount_cny: string; first_at: string; last_at: string
+}
+export interface BusinessIssueSummary {
+  starts_at?: string; ends_at?: string
+  items: BusinessIssue[]; total: number; processing_count: number; calculation_error: boolean; updated_at: string; revision: number
+}
+export interface BusinessRepairInput {
+  starts_at: string; ends_at: string; account_ids: number[]; pool_id: number; model: string
+  through_event_id?: number; fingerprint?: string; idempotency_key?: string; notes?: string
+}
+export interface BusinessRepairPreview {
+  through_event_id: number; fingerprint: string; repairable_count: number; missing_binding_count: number; missing_rule_count: number; protected_count: number
+}
+export interface BusinessRepairJob { id: number; count: number; status: string; notes: string; created_at: string }
+export interface BusinessRecordDefaults { pool_id?: number; account_id?: number; starts_at?: string; ends_at?: string; bill_mode?: boolean }
 export const businessAPI = {
   overview: async (params: { start_date?: string; end_date?: string }) => (await apiClient.get<BusinessOverview>('/admin/business/overview', { params })).data,
   records: async (before = 0) => (await apiClient.get<BusinessEvent[]>('/admin/business/records', { params: { before, limit: 100 } })).data,
@@ -52,6 +70,11 @@ export const businessAPI = {
   binding: async (input: Omit<BusinessBinding, 'id' | 'account_name'>) => (await apiClient.post<BusinessBinding>('/admin/business/bindings', input)).data,
   rule: async (input: Omit<BusinessRule, 'id'>) => (await apiClient.post<BusinessRule>('/admin/business/rules', input)).data,
   entities: async (kind: string, q = '') => (await apiClient.get<BusinessEntity[]>('/admin/business/entities', { params: { kind, q } })).data,
-  pending: async (before = 0) => (await apiClient.get<BusinessEvent[]>('/admin/business/pending', { params: { before } })).data,
+  pending: async (before = 0, userID = 0) => (await apiClient.get<BusinessEvent[]>('/admin/business/pending', { params: { before, user_id: userID } })).data,
+  issues: async (params: { start_date: string; end_date: string; offset?: number }) => (await apiClient.get<BusinessIssueSummary>('/admin/business/issues', { params })).data,
+  previewRepair: async (input: BusinessRepairInput) => (await apiClient.post<BusinessRepairPreview>('/admin/business/cost-repairs/preview', input)).data,
+  repair: async (input: BusinessRepairInput) => (await apiClient.post<BusinessRepairJob>('/admin/business/cost-repairs', input)).data,
+  repairJobs: async () => (await apiClient.get<BusinessRepairJob[]>('/admin/business/cost-repairs')).data,
+  bindAccounts: async (input: { account_ids: number[]; pool_id: number; effective_at: string }) => (await apiClient.post<{ count: number }>('/admin/business/bindings/batch', input)).data,
   trace: async (id: number) => (await apiClient.get<BusinessEvent[]>(`/admin/business/events/${id}`)).data,
 }

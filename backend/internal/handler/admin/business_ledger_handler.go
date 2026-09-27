@@ -79,7 +79,8 @@ func (h *DashboardHandler) ListBusinessLedgerPending(c *gin.Context) {
 		return
 	}
 	before, _ := strconv.ParseInt(c.Query("before"), 10, 64)
-	data, err := s.Pending(c.Request.Context(), before)
+	userID, _ := strconv.ParseInt(c.Query("user_id"), 10, 64)
+	data, err := s.PendingSources(c.Request.Context(), userID, before)
 	if err != nil {
 		response.Error(c, 500, "待核对列表读取失败")
 		return
@@ -203,4 +204,107 @@ func (h *DashboardHandler) GetBusinessEventTrace(c *gin.Context) {
 
 func (h *DashboardHandler) RejectLegacyBusinessWrite(c *gin.Context) {
 	response.Error(c, 409, "旧经营估算已只读，请在人民币经营账中登记成本或修正凭据")
+}
+
+func (h *DashboardHandler) ListBusinessLedgerIssues(c *gin.Context) {
+	s := h.businessLedger(c)
+	if s == nil {
+		return
+	}
+	config, err := s.CostConfiguration(c.Request.Context())
+	if err != nil {
+		response.Error(c, 500, "无法读取经营账配置")
+		return
+	}
+	zone, err := time.LoadLocation(config.Timezone)
+	if err != nil {
+		response.Error(c, 500, "报表时区无效")
+		return
+	}
+	start, err := time.ParseInLocation("2006-01-02", c.Query("start_date"), zone)
+	if err != nil {
+		response.BadRequest(c, "开始日期无效")
+		return
+	}
+	end, err := time.ParseInLocation("2006-01-02", c.Query("end_date"), zone)
+	if err != nil {
+		response.BadRequest(c, "结束日期无效")
+		return
+	}
+	offset, _ := strconv.Atoi(c.Query("offset"))
+	data, err := s.Issues(c.Request.Context(), start, end.AddDate(0, 0, 1), offset)
+	if err != nil {
+		slog.ErrorContext(c.Request.Context(), "business issue query failed", "error", err)
+		response.Error(c, 500, "待处理问题读取失败")
+		return
+	}
+	response.Success(c, data)
+}
+func (h *DashboardHandler) PreviewBusinessCostRepair(c *gin.Context) {
+	s := h.businessLedger(c)
+	if s == nil {
+		return
+	}
+	var v service.BusinessRepairInput
+	if err := c.ShouldBindJSON(&v); err != nil {
+		response.BadRequest(c, "补算参数无效")
+		return
+	}
+	data, err := s.PreviewCostRepair(c.Request.Context(), v)
+	if err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+	response.Success(c, data)
+}
+func (h *DashboardHandler) QueueBusinessCostRepair(c *gin.Context) {
+	s := h.businessLedger(c)
+	if s == nil {
+		return
+	}
+	var v service.BusinessRepairInput
+	if err := c.ShouldBindJSON(&v); err != nil {
+		response.BadRequest(c, "补算参数无效")
+		return
+	}
+	subject, ok := middleware.GetAuthSubjectFromContext(c)
+	if !ok {
+		response.Error(c, 401, "需要管理员身份")
+		return
+	}
+	data, err := s.QueueCostRepair(c.Request.Context(), v, subject.UserID)
+	if err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+	response.Accepted(c, data)
+}
+func (h *DashboardHandler) ListBusinessCostRepairs(c *gin.Context) {
+	s := h.businessLedger(c)
+	if s == nil {
+		return
+	}
+	data, err := s.CostRepairJobs(c.Request.Context())
+	if err != nil {
+		response.Error(c, 500, "补算任务读取失败")
+		return
+	}
+	response.Success(c, data)
+}
+func (h *DashboardHandler) CreateBusinessCostBindings(c *gin.Context) {
+	s := h.businessLedger(c)
+	if s == nil {
+		return
+	}
+	var v service.BusinessBatchBinding
+	if err := c.ShouldBindJSON(&v); err != nil {
+		response.BadRequest(c, "批量绑定参数无效")
+		return
+	}
+	count, err := s.CreateBindings(c.Request.Context(), v)
+	if err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+	response.Created(c, gin.H{"count": count})
 }

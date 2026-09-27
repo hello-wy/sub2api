@@ -6,7 +6,7 @@ import BusinessPanelNavigation, { type BusinessTab } from '../BusinessPanelNavig
 import type { BusinessOverview } from '@/api/admin/business'
 
 const api = vi.hoisted(() => ({
-  overview: vi.fn(), records: vi.fn(), configuration: vi.fn(), pending: vi.fn(), trace: vi.fn(),
+  overview: vi.fn(), records: vi.fn(), configuration: vi.fn(), pending: vi.fn(), trace: vi.fn(), issues: vi.fn(), repairJobs: vi.fn(),
 }))
 vi.mock('@/api/admin/business', () => ({ businessAPI: api }))
 vi.mock('@/api/admin/dashboard', () => ({ getBusinessAnalytics: vi.fn() }))
@@ -31,6 +31,8 @@ beforeEach(() => {
   api.records.mockResolvedValue([{ id: 1, event_type: 'expense', occurred_at: '2026-08-01T00:00:00Z', payload: { amount_cny: '99', notes: '服务器凭据' } }])
   api.configuration.mockResolvedValue({ pools: [], rules: [], bindings: [], enabled_at: '', timezone: 'Asia/Shanghai' })
   api.pending.mockResolvedValue([])
+  api.issues.mockResolvedValue({ items: [], total: 0, processing_count: 0, calculation_error: false, revision: 1 })
+  api.repairJobs.mockResolvedValue([])
   api.trace.mockResolvedValue([])
 })
 describe('人民币经营账', () => {
@@ -48,7 +50,7 @@ describe('人民币经营账', () => {
     expect(wrapper.text()).toContain('服务器凭据')
     expect(navigation.get('[aria-current="page"]').text()).toBe('收支与成本台账')
     await navigation.findAll('button').find(b => b.text() === '经营总览')!.trigger('click')
-    await wrapper.findAll('button').find(b => b.text() === '查看并补录')!.trigger('click')
+    await wrapper.findAll('button').find(b => b.text() === '查看待处理问题')!.trigger('click')
     expect(wrapper.text()).toContain('期初与账单调整')
     expect(navigation.get('[aria-current="page"]').text()).toBe('核对与配置')
     wrapper.unmount()
@@ -133,8 +135,8 @@ describe('人民币经营账', () => {
     HTMLElement.prototype.scrollIntoView = scroll
     try {
       const wrapper = mountPanel(); await flushPromises()
-      await wrapper.findAll('button').find(b => b.text() === '去补录')!.trigger('click'); await flushPromises()
-      expect(wrapper.text()).toContain('待核对与期初来源')
+      await wrapper.findAll('button').find(b => b.text() === '确认来源')!.trigger('click'); await flushPromises()
+      expect(wrapper.text()).toContain('待处理问题')
       expect(scroll).toHaveBeenCalledWith({ block: 'start' })
       await wrapper.findAll('button').find(b => b.text() === '经营总览')!.trigger('click')
       await wrapper.findAll('button').find(b => b.text() === '去录入')!.trigger('click')

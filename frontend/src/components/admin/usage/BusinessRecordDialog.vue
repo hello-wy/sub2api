@@ -10,7 +10,7 @@
           <div><span class="mb-1 block text-sm">关联用户</span><BusinessEntitySelect v-model="userID" kind="users" label="搜索用户姓名或邮箱" /></div>
           <label class="flex items-center gap-2 text-sm"><input v-model="applyBalance" type="checkbox" />同时给用户增加余额</label>
           <label v-if="applyBalance" class="block text-sm">到账站内额度<input v-model="credits" required inputmode="decimal" class="input mt-1" /></label>
-          <p class="text-xs text-gray-500 sm:col-span-2">仅登记收款不会重复充值。补登已充值的线下款项后，请在待核对列表中补录对应余额来源。</p>
+          <p class="text-xs text-gray-500 sm:col-span-2">仅登记收款不会重复充值。补登已充值的线下款项后，请在待处理问题中确认对应资金来源。</p>
         </template>
         <template v-if="['purchase', 'opening_pool', 'supplier_refund', 'supplier_loss'].includes(type)">
           <div><span class="mb-1 block text-sm">供应商成本池</span><Select v-model="poolID" :options="poolOptions" searchable placeholder="选择成本池" /></div>
@@ -21,7 +21,7 @@
           <div><span class="mb-1 block text-sm">指定账号（可选）</span><BusinessEntitySelect v-model="accountID" kind="accounts" label="搜索账号；留空表示不指定" /></div>
           <div><span class="mb-1 block text-sm">指定分组（可选）</span><BusinessEntitySelect v-model="groupID" kind="groups" label="搜索分组；均留空为公共费用" /></div>
           <template v-if="type === 'expense'"><label class="flex items-center gap-2 text-sm"><input v-model="accrue" type="checkbox" />按服务期摊销</label><template v-if="accrue"><label class="block text-sm">服务期开始<input v-model="starts" type="datetime-local" required class="input mt-1" /></label><label class="block text-sm">服务期结束（不含）<input v-model="ends" type="datetime-local" required class="input mt-1" /></label></template></template>
-          <template v-else><label v-if="type === 'reconciliation'" class="flex items-center gap-2 text-sm"><input v-model="billMode" type="checkbox" />按供应商完整账单核对</label><template v-if="billMode && type === 'reconciliation'"><div><span class="mb-1 block text-sm">成本池</span><Select v-model="poolID" :options="allPoolOptions" searchable placeholder="选择供应商成本池" /></div><label class="text-sm">账单期开始<input v-model="starts" required type="datetime-local" class="input mt-1" /></label><label class="text-sm">账单期结束（不含）<input v-model="ends" required type="datetime-local" class="input mt-1" /></label><p class="text-xs text-gray-500 sm:col-span-2">金额填写完整账单实际金额，系统计算与已记成本的差额并保留核对范围。</p></template><label class="block text-sm">影响科目<select v-model="entryKind" class="input mt-1"><option value="usage_cost">上游成本差额</option><option value="operating_cost">经营费用差额</option><option value="refund_revenue">退款收入调整</option></select></label><p class="text-xs text-gray-500 sm:col-span-2">填写“账单实际金额减已入账金额”的差额；正数增加成本，负数减少成本。实际付款另登记费用时需选择仅现金付款，避免重复成本。</p></template>
+          <template v-else><label v-if="type === 'reconciliation'" class="flex items-center gap-2 text-sm"><input v-model="billMode" type="checkbox" />按供应商完整账单核对</label><template v-if="billMode && type === 'reconciliation'"><div><span class="mb-1 block text-sm">成本池</span><Select v-model="poolID" :options="allPoolOptions" searchable placeholder="选择供应商成本池" /></div><label class="text-sm">账单期开始<input v-model="starts" required type="datetime-local" class="input mt-1" /></label><label class="text-sm">账单期结束（不含）<input v-model="ends" required type="datetime-local" class="input mt-1" /></label><p class="text-xs text-gray-500 sm:col-span-2">填写账单期间的实际消耗成本，不是充值采购金额。系统计算与已记成本的差额，并统一核对该期间记录。</p></template><label v-if="!billMode" class="block text-sm">影响科目<select v-model="entryKind" class="input mt-1"><option value="usage_cost">上游成本差额</option><option value="operating_cost">经营费用差额</option><option value="refund_revenue">退款收入调整</option></select></label><p v-if="!billMode" class="text-xs text-gray-500 sm:col-span-2">填写“账单实际金额减已入账金额”的差额；正数增加成本，负数减少成本。实际付款另登记费用时需选择仅现金付款，避免重复成本。</p></template>
         </template>
         <template v-if="type === 'annotation' && target">
           <template v-if="target.event_type === 'opening_unknown'">
@@ -46,17 +46,18 @@ import { computed, ref } from 'vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import Select from '@/components/common/Select.vue'
 import BusinessEntitySelect from './BusinessEntitySelect.vue'
-import { businessAPI, type BusinessEvent, type BusinessPool, type BusinessRecordInput } from '@/api/admin/business'
+import { businessAPI, type BusinessEvent, type BusinessPool, type BusinessRecordInput, type BusinessRecordDefaults } from '@/api/admin/business'
 import { businessKindLabels, ledgerError, localDateTime } from '@/utils/business-ledger'
-const props = defineProps<{ type: string; pools: BusinessPool[]; target?: BusinessEvent }>()
+const props = defineProps<{ type: string; pools: BusinessPool[]; target?: BusinessEvent; defaults?: BusinessRecordDefaults }>()
 const emit = defineEmits<{ close: []; saved: [] }>()
+function localDefault(value?: string) { if (!value) return localDateTime(); const date = new Date(value); return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16) }
 const currency = ref('CNY'), originalAmount = ref(''), fxRate = ref('')
-const at = ref(localDateTime()), amount = ref(''), notes = ref(''), credits = ref(''), userID = ref(0), accountID = ref(0), groupID = ref(0), poolID = ref<number | string | boolean | null>(null)
-const paid = ref('0'), gift = ref('0'), unknown = ref(String(props.target?.payload.credits || '0')), giftShare = ref('0'), classification = ref('paid')
+const at = ref(localDateTime()), amount = ref(props.type === 'annotation' ? String(props.target?.payload.amount_cny ?? '') : ''), notes = ref(''), credits = ref(''), userID = ref(0), accountID = ref(props.defaults?.account_id || 0), groupID = ref(0), poolID = ref<number | string | boolean | null>(props.defaults?.pool_id || null)
+const paid = ref(String(props.target?.payload.paid_credits || '0')), gift = ref(String(props.target?.payload.gift_credits || '0')), unknown = ref(String(props.target?.payload.unknown_credits ?? props.target?.payload.credits ?? '0')), giftShare = ref(String(props.target?.payload.gift_share || '0')), classification = ref(String(props.target?.payload.classification || 'paid'))
 const openingExpense = ref(false)
-const billMode = ref(false)
+const billMode = ref(props.defaults?.bill_mode ?? false)
 const allPoolOptions = computed(() => props.pools.map(p => ({ value: p.id, label: p.name })))
-const applyBalance = ref(false), accrue = ref(false), cashOnly = ref(false), starts = ref(localDateTime()), ends = ref(''), category = ref('account_subscription'), entryKind = ref('usage_cost')
+const applyBalance = ref(false), accrue = ref(Boolean(props.defaults?.starts_at) && props.type === 'expense'), cashOnly = ref(false), starts = ref(localDefault(props.defaults?.starts_at)), ends = ref(props.defaults?.ends_at ? localDefault(props.defaults.ends_at) : ''), category = ref('account_subscription'), entryKind = ref('usage_cost')
 const saving = ref(false), error = ref('')
 const poolOptions = computed(() => props.pools.filter(p => p.mode === 'prepaid').map(p => ({ value: p.id, label: `${p.name} · ${p.unit}` })))
 const selectedPool = computed(() => props.pools.find(p => p.id === Number(poolID.value)))
