@@ -1,717 +1,400 @@
 <template>
-  <div class="business-panel">
-    <div v-if="loading" class="business-panel__loading"><LoadingSpinner /><span>正在汇总经营数据</span></div>
-
-    <template v-else-if="overview">
-      <div class="business-toolbar">
-        <nav class="business-subnav" aria-label="经营分析二级菜单">
-          <button
-            v-for="item in businessViews"
-            :key="item.key"
-            type="button"
-            :class="activeBusinessView === item.key ? 'business-subnav__item--active' : ''"
-            :aria-current="activeBusinessView === item.key ? 'page' : undefined"
-            @click="activeBusinessView = item.key"
-          >
-            <Icon :name="item.icon" size="sm" />
-            <span>{{ item.label }}</span>
-          </button>
-        </nav>
-        <span v-if="overview.snapshot_captured_at" class="business-panel__snapshot">承载快照 {{ formatDateTime(overview.snapshot_captured_at) }}</span>
+  <section class="business-ledger" aria-label="人民币经营账">
+    <header v-if="props.showHeader" class="business-ledger-header flex flex-wrap items-center justify-end gap-4 border-b pb-5 dark:border-dark-700">
+      <div class="flex flex-wrap gap-2">
+        <button class="btn btn-primary inline-flex items-center gap-1.5" @click="openRecord('expense')"><Icon name="dollar" size="sm" />录入费用</button>
+        <button class="btn btn-secondary inline-flex items-center gap-1.5" @click="openRecord('receipt')"><Icon name="plus" size="sm" />登记收款</button>
+        <button class="btn btn-secondary inline-flex items-center gap-1.5" @click="openRecord('purchase')"><Icon name="database" size="sm" />登记采购</button>
+        <button class="btn btn-secondary inline-flex items-center gap-1.5" :disabled="loading" @click="refresh"><Icon name="refresh" size="sm" :class="loading ? 'animate-spin' : ''" />刷新</button>
       </div>
+    </header>
 
-      <div v-if="!overview.profit_complete" class="business-data-warning">
-        <Icon name="exclamationTriangle" size="sm" />
-        <span>{{ usd(overview.unpriced_api_key_usage_cost_usd) }} API Key 计价分待定价</span>
-        <button type="button" @click="openRateDialog">配置比例</button>
-      </div>
+    <div v-if="props.showTabs" class="business-navigation">
+      <BusinessPanelNavigation v-model="tab" />
+      <span v-if="overview" class="business-updated" :title="date(overview.updated_at)"><Icon name="clock" size="xs" aria-hidden="true" />更新于 {{ updatedTime }} · 修订 #{{ overview.revision }}</span>
+    </div>
 
-      <div v-if="activeBusinessView === 'overview'" class="business-view">
-        <div class="business-cumulative" :class="overview.cumulative.operating_profit_cny >= 0 ? 'business-cumulative--positive' : 'business-cumulative--negative'">
-          <div class="business-cumulative__result">
-            <span>{{ overview.cumulative.profit_complete ? '累计经营利润' : '累计已定价利润' }}</span>
-            <strong>{{ cny(overview.cumulative.operating_profit_cny) }}</strong>
-            <small>{{ formatDate(overview.cumulative.start_at) }} - {{ formatCostEndDate(overview.cumulative.end_at) }}</small>
-          </div>
-          <div><span>累计收入</span><strong>{{ cny(overview.cumulative.usage_revenue_cny) }}</strong></div>
-          <div><span>累计成本</span><strong>{{ cny(overview.cumulative.total_cost_cny) }}</strong></div>
-          <div><span>累计利润率</span><strong>{{ percent(overview.cumulative.operating_margin) }}</strong></div>
-        </div>
-        <div v-if="!overview.cumulative.profit_complete" class="business-inline-warning">累计仍有 {{ usd(overview.cumulative.unpriced_api_key_usage_cost_usd) }} 分待定价</div>
-
-        <div class="business-rate-strip">
-          <span>收入换算 <strong>¥1 = {{ decimal(overview.settings.balance_credits_per_cny, 2) }} 分</strong></span>
-          <span>API Key 比例 <strong>{{ configuredAccountCount }} / {{ rateConfig.accounts.length }}</strong></span>
-          <span>扣费分数 <strong>{{ usd(overview.usage_credits_usd) }}</strong></span>
+    <template v-if="tab === 'overview' || tab === 'profit' || tab === 'benefits'">
+      <div class="business-ledger-stack">
+        <div v-if="overviewError || loading" class="business-status-stack">
+          <p v-if="overviewError" role="alert" class="notice">{{ overviewError }}。收支台账、配置与录入仍可使用。<button class="ml-3 underline" @click="loadOverview">重试汇总</button></p>
+          <p v-if="loading" role="status" class="business-loading">正在核对经营账…</p>
         </div>
 
-        <section class="business-section business-period">
-          <div class="business-section__title"><span>本期经营</span></div>
-          <div class="business-metrics">
-            <div class="business-metric business-metric--revenue"><span>折算收入</span><strong>{{ cny(overview.usage_revenue_cny) }}</strong><small>本区间</small></div>
-            <div class="business-metric business-metric--amber"><span>API Key 成本</span><strong>-{{ cny(overview.api_key_usage_cost_cny) }}</strong><small>{{ usd(overview.api_key_usage_cost_usd) }} 分</small></div>
-            <div class="business-metric business-metric--amber"><span>福利发放</span><strong>-{{ cny(overview.welfare_cost_cny) }}</strong><small>{{ usd(overview.welfare_granted_usd) }} 分</small></div>
-            <div class="business-metric business-metric--amber"><span>OAuth / 固定</span><strong>{{ overview.cost_ledger_configured ? `-${cny(overview.account_cost_cny)}` : '待录入' }}</strong><small>本区间摊销</small></div>
-            <div class="business-metric" :class="overview.gross_profit_cny >= 0 ? 'business-metric--green' : 'business-metric--red'"><span>用量毛利</span><strong>{{ cny(overview.gross_profit_cny) }}</strong><small>{{ percent(overview.gross_margin) }}</small></div>
-            <div class="business-metric" :class="overview.operating_profit_cny >= 0 ? 'business-metric--green' : 'business-metric--red'"><span>{{ overview.profit_complete ? '区间利润' : '已定价利润' }}</span><strong>{{ cny(overview.operating_profit_cny) }}</strong><small>{{ percent(overview.operating_margin) }}</small></div>
-          </div>
-        </section>
+        <template v-if="overview">
+          <section class="business-status" :class="{ 'business-status--pending': needsReview }" aria-label="账目核对状态">
+            <div class="business-status-main">
+              <span class="business-status-icon"><Icon :name="needsReview ? 'exclamationTriangle' : 'checkCircle'" size="md" aria-hidden="true" /></span>
+              <div class="min-w-0">
+                <div class="business-status-title"><strong>{{ overview.profit_cny === null ? '利润待核对' : needsReview ? '部分账目待核对' : '本期账目已核对' }}</strong><span v-if="overview.quality.missing_count" class="business-status-badge">{{ overview.quality.missing_count }} 项数据缺口</span></div>
+                <p>{{ reviewDescription }}</p>
+                <div class="business-status-meta"><span>收入：{{ businessQuality(overview.quality.revenue) }}</span><span>成本：{{ businessQuality(overview.quality.cost) }}</span><span>归因：{{ businessQuality(overview.quality.attribution) }}</span><span>暂估 {{ overview.quality.estimated_count }} 项</span></div>
+                <p v-if="overview.quality.cash !== 'confirmed'">现金收支含待核实金额，当前仅显示已知收付款。</p>
+              </div>
+            </div>
+            <button type="button" class="business-status-action" @click="tab = 'reconcile'">{{ needsReview ? '查看并补录' : '查看核对记录' }}<Icon name="arrowRight" size="xs" aria-hidden="true" /></button>
+          </section>
 
-        <section class="business-section business-visuals">
-          <BusinessAnalyticsCharts :daily="overview.daily" :groups="overview.groups" />
-        </section>
+          <template v-if="tab === 'overview'">
+            <section aria-label="本期经营">
+              <div class="business-overview-heading">
+                <div class="business-inline-heading"><h3>本期经营</h3><p>{{ periodLabel }} · 人民币</p></div>
+                <div class="business-segmented-control" :style="{ '--segment-count': 2, '--segment-index': view === 'cash' ? 1 : 0 }" role="group" aria-label="经营视图">
+                  <span class="business-segmented-control__slider" aria-hidden="true"></span>
+                  <button type="button" :class="{ 'is-active': view === 'profit' }" :aria-pressed="view === 'profit'" @click="view = 'profit'">经营利润</button>
+                  <button type="button" :class="{ 'is-active': view === 'cash' }" :aria-pressed="view === 'cash'" @click="view = 'cash'">现金收支</button>
+                </div>
+              </div>
+              <div class="business-metrics">
+                <button v-for="(metric, index) in metrics" :key="metric.label" type="button" class="metric business-summary-metric" :class="{ 'metric--primary': index === 0, 'metric--pending': index === 3 && metric.value === null }" :aria-label="metric.label + '，查看明细'" @click="showEntries(metric.kinds)">
+                  <span class="metric-heading">{{ metric.label }}<Icon name="infoCircle" size="sm" aria-hidden="true" /></span>
+                  <strong>{{ metric.value === null && index !== 3 ? '—' : cny(metric.value) }}</strong>
+                  <small>{{ metric.hint }}<Icon v-if="index === 0" name="arrowRight" size="xs" aria-hidden="true" /></small>
+                </button>
+              </div>
+            </section>
 
-        <section class="business-section business-section--last">
-          <div class="business-section__title"><span>实际现金流</span></div>
-          <div v-if="overview.cash_receipts.length" class="business-cash-list">
-            <div v-for="item in overview.cash_receipts" :key="item.currency"><span>{{ item.currency }}</span><strong>{{ money(item.amount, item.currency) }}</strong></div>
-          </div>
-          <p v-else class="business-empty">当前区间没有外部支付收款</p>
-        </section>
-      </div>
+            <div class="business-middle">
+              <section class="business-surface business-trend" aria-label="收支趋势">
+                <div class="business-surface-heading"><h3>{{ view === 'cash' ? '现金收支趋势' : '收入与成本趋势' }}</h3><span class="business-surface-hint">{{ overview.timezone }} · 每日</span></div>
+                <div v-if="!hasTrendData" class="business-empty-trend">
+                  <span class="business-empty-icon"><Icon name="chartBar" size="lg" aria-hidden="true" /></span>
+                  <h4>本期暂无已入账记录</h4>
+                  <p>登记收支或完成期初补录后，在这里查看每日变化</p>
+                  <div class="business-empty-actions"><button type="button" class="business-text-link" @click="openRecord('receipt')">登记收款<Icon name="arrowRight" size="xs" aria-hidden="true" /></button><button type="button" class="business-text-link" @click="tab = 'ledger'">查看收支台账<Icon name="arrowRight" size="xs" aria-hidden="true" /></button></div>
+                </div>
+                <div v-else class="business-chart-card"><BusinessLedgerCharts :daily="overview.daily" :view="view" /></div>
+              </section>
+              <section class="business-surface business-tasks" aria-label="完善经营账">
+                <div class="business-surface-heading"><h3>完善经营账</h3><span class="business-surface-hint">从这里开始</span></div>
+                <ol class="business-task-list">
+                  <li :class="{ 'is-priority': hasUnknownBalance }"><span class="business-task-number">01</span><div><h4>补录期初余额来源</h4><p>区分付费价值与赠送额度，确认收入依据</p></div><button type="button" class="business-text-link" @click="goToReconciliation('sources')">去补录<Icon name="arrowRight" size="xs" aria-hidden="true" /></button></li>
+                  <li><span class="business-task-number">02</span><div><h4>核对上游采购与价格</h4><p>按供应商成本池维护采购凭据与价格规则</p></div><button type="button" class="business-text-link" @click="goToReconciliation('configuration')">去核对<Icon name="arrowRight" size="xs" aria-hidden="true" /></button></li>
+                  <li><span class="business-task-number">03</span><div><h4>登记账号与日常费用</h4><p>账号月租、服务器及实际发生的活动支出</p></div><button type="button" class="business-text-link" @click="openRecord('expense')">去录入<Icon name="arrowRight" size="xs" aria-hidden="true" /></button></li>
+                </ol>
+              </section>
+            </div>
 
-      <div v-else-if="activeBusinessView === 'profit'" class="business-view">
-        <section class="business-section">
-          <div class="business-section__title"><span>每日利润对账</span></div>
-          <div class="business-table-wrap">
-            <table class="business-table business-table--daily">
-              <thead><tr><th>日期</th><th>收入</th><th>API Key</th><th>福利</th><th>OAuth / 固定</th><th>经营利润</th></tr></thead>
-              <tbody>
-                <tr v-for="day in overview.daily" :key="day.date">
-                  <td><strong>{{ day.date }}</strong></td>
-                  <td>{{ cny(day.usage_revenue_cny) }}</td>
-                  <td class="business-table__muted"><strong>{{ cny(day.api_key_usage_cost_cny) }}</strong><small v-if="day.unpriced_api_key_usage_cost_usd" class="business-table__warning">{{ usd(day.unpriced_api_key_usage_cost_usd) }} 待定价</small></td>
-                  <td class="business-table__muted">{{ cny(day.welfare_cost_cny) }}</td>
-                  <td class="business-table__muted">{{ cny(day.account_cost_cny) }}</td>
-                  <td :class="day.operating_profit_cny >= 0 ? 'business-table__positive' : 'business-table__negative'"><strong>{{ cny(day.operating_profit_cny) }}</strong></td>
-                </tr>
-                <tr v-if="!overview.daily.length"><td colspan="6" class="business-empty">当前区间暂无经营数据</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
+            <section class="business-surface business-positions" aria-label="余额与待确认价值">
+              <div class="business-overview-heading"><div class="business-inline-heading"><h3>余额与待确认价值</h3><p>截至最近入账 · 非所选区间期末值</p></div><button type="button" class="business-text-link" @click="positionsOpen = true">查看组成<Icon name="arrowRight" size="xs" aria-hidden="true" /></button></div>
+              <dl class="business-position-grid"><div v-for="position in positions" :key="position.label" class="business-position"><dt>{{ position.label }}</dt><dd>{{ cny(position.value) }}</dd><small>{{ position.hint }}</small></div></dl>
+              <p class="business-position-note"><Icon name="infoCircle" size="xs" aria-hidden="true" /><span>这里只汇总已入账价值；<template v-if="hasUnknownBalance">来源未知的 {{ credits(overview.unknown_wallet_credits) }} 额度仍需补录，不视为已确认的人民币价值。</template><template v-else>赠送额度不计为收款，余额变化请以原始凭据为准。</template></span></p>
+            </section>
 
-        <section class="business-section business-section--last">
-          <div class="business-section__title"><span>分组盈利</span></div>
-          <div class="business-table-wrap">
-            <table class="business-table business-table--profit-groups">
-              <thead><tr><th>分组</th><th>扣费倍率</th><th>收入</th><th>API Key</th><th>福利</th><th>OAuth / 固定</th><th>经营利润</th></tr></thead>
-              <tbody>
-                <tr v-for="group in overview.groups" :key="group.group_id">
-                  <td><strong>{{ group.group_name || `分组 #${group.group_id}` }}</strong></td>
-                  <td><strong>{{ decimal(group.effective_rate_multiplier, 3) }}x</strong><small>{{ usd(group.usage_credits_usd) }} 分</small></td>
-                  <td><strong>{{ cny(group.usage_revenue_cny) }}</strong></td>
-                  <td class="business-table__muted"><strong>{{ cny(group.api_key_usage_cost_cny) }}</strong><small v-if="group.unpriced_api_key_usage_cost_usd" class="business-table__warning">{{ usd(group.unpriced_api_key_usage_cost_usd) }} 待定价</small></td>
-                  <td class="business-table__muted">{{ cny(group.allocated_welfare_cost_cny) }}</td>
-                  <td class="business-table__muted">{{ cny(group.allocated_account_cost_cny) }}</td>
-                  <td :class="group.operating_profit_cny >= 0 ? 'business-table__positive' : 'business-table__negative'"><strong>{{ cny(group.operating_profit_cny) }}</strong><small>{{ percent(group.gross_margin) }} 毛利率</small></td>
-                </tr>
-                <tr v-if="!overview.groups.length"><td colspan="7" class="business-empty">当前区间暂无分组数据</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
-      </div>
+            <footer class="business-footer">
+              <p><Icon name="infoCircle" size="xs" aria-hidden="true" />{{ view === 'cash' ? '现金按实际收付款日统计；余额购买订阅不再计一次收款。' : '经营利润仅涵盖已纳入台账的收入与费用；赠送兑现成本不重复扣减。' }}</p>
+              <details class="business-history-panel" @toggle="loadLegacy"><summary>历史估算 · 只读</summary><div class="business-history-content"><p class="text-xs text-amber-700 dark:text-amber-300">旧报表使用当前充值比例及成本比例，仅供历史参考，不参与新账。</p><p v-if="legacyError" class="mt-3 text-sm text-red-600">{{ legacyError }}</p><div v-if="legacy" class="mt-3 flex flex-wrap gap-5 text-sm"><span>折算收入 {{ cny(String(legacy.usage_revenue_cny)) }}</span><span>旧估算成本 {{ cny(String(legacy.api_key_usage_cost_cny + legacy.welfare_cost_cny + legacy.account_cost_cny)) }}</span><span>旧估算差额 {{ cny(String(legacy.operating_profit_cny)) }}</span></div></div></details>
+            </footer>
+          </template>
 
-      <div v-else-if="activeBusinessView === 'capacity'" class="business-view">
-        <section class="business-section">
-          <div class="business-section__title">
-            <span>待履约权益</span>
-            <button type="button" class="btn btn-secondary" :disabled="snapshotting" @click="captureSnapshot"><Icon name="refresh" size="sm" :class="snapshotting ? 'animate-spin' : ''" />刷新承载</button>
-          </div>
-          <div class="business-risk-grid">
-            <div><span>余额计价分</span><strong>{{ usd(overview.liabilities.balance_credits_usd) }}</strong><small>{{ cny(overview.liabilities.balance_face_value_cny) }} 面值</small></div>
-            <div><span>余额履约成本</span><strong>{{ cny(overview.liabilities.balance_estimated_cost_cny) }}</strong><small>含冻结余额</small></div>
-            <div><span>订阅履约成本</span><strong>{{ cny(overview.liabilities.subscription_estimated_cost_cny) }}</strong><small>{{ overview.liabilities.active_subscriptions }} 个订阅</small></div>
-            <div :class="overview.liabilities.unlimited_subscriptions ? 'business-risk-grid__alert' : ''"><span>无限订阅</span><strong>{{ overview.liabilities.unlimited_subscriptions }}</strong><small>需预测储备</small></div>
-          </div>
-        </section>
+          <section v-if="tab === 'profit'" class="business-section">
+            <div class="business-section-heading"><div><h3>盈利明细</h3><p>按分组、套餐、模型或账号查看收入与成本归属。</p></div><div class="business-segmented-control business-segmented-control--dimensions" :style="{ '--segment-count': dimensions.length, '--segment-index': dimensionIndex }" role="group" aria-label="盈利明细维度"><span class="business-segmented-control__slider" aria-hidden="true"></span><button v-for="d in dimensions" :key="d.key" type="button" :class="{ 'is-active': dimension === d.key }" :aria-pressed="dimension === d.key" @click="dimension = d.key">{{ d.label }}</button></div></div>
+            <p class="business-section-help">点击任一行查看对应明细及凭据。订阅模型收入标为分摊；公共、闲置、未归属项保留，确保与全站对平。</p>
+            <div class="business-table-card overflow-x-auto"><table class="ledger-table"><thead><tr><th>归属</th><th>收入</th><th>已入账成本</th><th>贡献差额</th><th>状态</th></tr></thead><tbody><tr v-for="row in breakdown" :key="row.key"><td><button class="text-primary-600 underline" @click="showBreakdown(row.key)">{{ row.name }}</button></td><td>{{ cny(row.revenue_cny) }}</td><td>{{ cny(row.cost_cny) }}</td><td>{{ cny(row.profit_cny) }}</td><td>{{ row.missing_count ? row.missing_count + ' 项待核对' : row.estimated_count ? row.estimated_count + ' 项暂估' : businessQuality(row.allocation) }}</td></tr></tbody></table><p v-if="!breakdown.length" class="py-10 text-center text-sm text-gray-500">当前区间暂无已入账明细</p></div>
+          </section>
 
-        <section class="business-section business-section--last">
-          <div class="business-section__title"><span>分组容量预测</span></div>
-          <div class="business-table-wrap">
-            <table class="business-table business-table--capacity">
-              <thead><tr><th>分组</th><th>P50 日需求</th><th>P95 日需求</th><th>单账号日承载</th><th>账号池</th><th>预测需要</th><th>需补账号</th></tr></thead>
-              <tbody>
-                <tr v-for="group in overview.groups" :key="group.group_id">
-                  <td><strong>{{ group.group_name || `分组 #${group.group_id}` }}</strong><small>{{ group.concurrency_max }} 并发</small></td>
-                  <td>{{ usd(group.forecast_p50_daily_cost_usd) }}</td>
-                  <td><strong>{{ usd(group.forecast_p95_daily_cost_usd) }}</strong></td>
-                  <td>{{ group.observed_capacity_per_account > 0 ? usd(group.observed_capacity_per_account) : '-' }}</td>
-                  <td>{{ group.schedulable_accounts }} 个</td>
-                  <td>{{ group.required_accounts }} 个</td>
-                  <td :class="group.additional_accounts > 0 ? 'business-table__negative' : 'business-table__positive'"><strong>{{ group.additional_accounts > 0 ? `+${group.additional_accounts}` : '充足' }}</strong></td>
-                </tr>
-                <tr v-if="!overview.groups.length"><td colspan="7" class="business-empty">等待分组用量与承载数据</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
-      </div>
-
-      <div v-else class="business-view business-view--costs">
-        <div class="business-config-actions">
-          <button type="button" class="btn btn-secondary" @click="openRateDialog"><Icon name="cog" size="sm" />API Key 比例</button>
-          <button type="button" class="btn btn-primary" @click="openCostDialog"><Icon name="plus" size="sm" />录入固定成本</button>
-        </div>
-
-        <section class="business-section">
-          <div class="business-section__title"><span>API Key 分数兑换比例</span></div>
-          <div class="business-table-wrap">
-            <table class="business-table business-table--compact">
-              <thead><tr><th>API Key 账号</th><th>分数兑换比例</th><th>备注</th><th></th></tr></thead>
-              <tbody>
-                <tr v-for="rate in rateConfig.rates" :key="rate.id"><td><strong>{{ rateAccount(rate.account_id)?.name || `账号 #${rate.account_id}` }}</strong><small>{{ rateAccount(rate.account_id)?.platform || '-' }}</small></td><td><strong>{{ creditsPerCNY(rate.credits_per_cny) }}</strong></td><td class="business-table__muted">{{ rate.notes || '-' }}</td><td><button type="button" class="business-icon-button" title="删除分数比例记录" @click="removeRate(rate.id)"><Icon name="trash" size="sm" /></button></td></tr>
-                <tr v-if="!rateConfig.rates.length"><td colspan="4" class="business-empty">尚未配置 API Key 比例</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        <section class="business-section business-section--last">
-          <div class="business-section__title"><span>OAuth / 固定成本台账</span></div>
-          <div class="business-table-wrap">
-            <table class="business-table business-table--compact">
-              <thead><tr><th>类型</th><th>金额</th><th>归属</th><th>有效期</th><th>备注</th><th></th></tr></thead>
-              <tbody>
-                <tr v-for="cost in costs" :key="cost.id"><td>{{ costType(cost.cost_type) }}</td><td><strong>{{ money(cost.amount, cost.currency) }}</strong><small>汇率 {{ decimal(cost.fx_rate || 1, 4) }}</small></td><td>{{ owner(cost) }}</td><td>{{ formatDate(cost.starts_at) }} - {{ formatCostEndDate(cost.ends_at) }}</td><td class="business-table__muted">{{ cost.notes || '-' }}</td><td><button type="button" class="business-icon-button" title="删除成本记录" @click="removeCost(cost.id)"><Icon name="trash" size="sm" /></button></td></tr>
-                <tr v-if="!costs.length"><td colspan="6" class="business-empty">尚未录入固定成本</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
+          <section v-if="tab === 'benefits'" class="business-section">
+            <div class="business-section-heading"><div><h3>福利与优惠</h3><p>区分赠送权益、成交让利和实际兑现成本，避免重复扣减。</p></div></div>
+            <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><div class="metric"><span>赠送额度发放</span><strong>{{ overview.gift_granted_credits }}</strong></div><div class="metric"><span>赠送额度已消费</span><strong>{{ overview.gift_used_credits }}</strong></div><button class="metric text-left" @click="showEntries(['gift_cost'])"><span>赠送服务兑现成本</span><strong>{{ cny(overview.gift_cost_cny) }}</strong><small>已包含在总服务成本中 ↗</small></button><button class="metric text-left" @click="showEntries(['discount'])"><span>成交优惠让利</span><strong>{{ cny(overview.discount_cny) }}</strong><small>已体现在较低实收中 ↗</small></button></div>
+            <p class="notice">发放面值不直接扣利润；赠送兑现成本不重复扣减。现金奖励、实物奖品、渠道佣金请登记实际费用。</p>
+            <div class="business-subsection business-benefit-footer"><p>最新未使用赠送余额：{{ overview.gift_outstanding_credits || '0' }} 额度。赠送订阅随服务期确认，未使用订阅收入保留在独立归属。</p><button class="btn btn-secondary" @click="showEntries(['gift_grant', 'gift_use', 'gift_cost', 'discount'])">查看福利与优惠明细</button></div>
+          </section>
+        </template>
       </div>
     </template>
 
-    <div v-else class="business-panel__loading"><span>经营分析暂时无法加载。</span><button class="btn btn-secondary" @click="load">重新加载</button></div>
-  </div>
+    <template v-if="tab === 'ledger'">
+      <section class="business-section">
+        <div class="business-section-heading"><div><h3>收支与成本凭据</h3><p>按登记顺序列出全部台账，保留原始记录与更正。</p></div><button class="btn btn-secondary" @click="importOpen = true">CSV 批量导入</button></div>
+        <p v-if="recordsError" role="alert" class="notice">{{ recordsError }}<button class="ml-2 underline" @click="loadRecords()">重试台账</button></p>
+        <div class="business-table-card overflow-x-auto"><table class="ledger-table"><thead><tr><th>发生时间</th><th>类别</th><th>人民币 / 原币</th><th>凭据说明</th><th>操作</th></tr></thead><tbody><tr v-for="record in records" :key="record.id"><td>{{ date(record.occurred_at) }}</td><td>{{ businessKindLabels[record.event_type] }}</td><td>{{ record.payload.amount_cny != null ? cny(String(record.payload.amount_cny)) : String(record.payload.pay_amount ?? '—') + ' ' + String(record.payload.currency || '') }}</td><td class="max-w-xs break-words">{{ record.payload.notes || record.payload.status || record.source_key }}</td><td><button class="text-primary-600 underline" @click="trace(record.id)">凭据</button><button v-if="['purchase','expense','adjustment','reconciliation','expense_stop'].includes(record.event_type)" class="ml-3 text-gray-500 underline" @click="openRecord('reversal', record)">冲销</button><button v-if="record.event_type === 'expense' && record.payload.ends_at" class="ml-3 text-gray-500 underline" @click="openRecord('expense_stop', record)">提前终止</button></td></tr></tbody></table><p v-if="!records.length && !recordsError" class="py-10 text-center text-sm text-gray-500">暂无台账，从顶部开始登记收款或成本。</p></div>
+        <button v-if="recordsMore" class="btn btn-secondary" :disabled="recordsLoading" @click="loadRecords(true)">加载更早凭据</button>
+      </section>
+    </template>
 
-  <BaseDialog :show="rateDialogOpen" title="配置 API Key 分数兑换比例" width="normal" @close="rateDialogOpen = false">
-    <form class="space-y-4" @submit.prevent="saveRate">
-      <div class="business-dialog-note">
-        <span>成本计算口径</span>
-        <strong>人民币成本 = API Key 账号计价分 ÷ 每人民币计价分</strong>
-        <small>这里的 $ 是平台计价分，不是法币美元。用户扣费倍率已经包含在收入中，不再参与 API Key 成本计算。</small>
-      </div>
-      <div>
-        <label class="input-label">API Key 账号</label>
-        <select v-model="rateForm.account_id" required class="input" @change="syncRateFormForAccount">
-          <option value="" disabled>选择 API Key 账号</option>
-          <option v-for="account in rateConfig.accounts" :key="account.id" :value="String(account.id)">
-            {{ account.name }} · {{ account.platform }}
-          </option>
-        </select>
-      </div>
-      <div>
-        <label class="input-label">每 1 元人民币可兑换的计价分</label>
-        <input v-model.number="rateForm.credits_per_cny" required min="0.000001" step="any" type="number" class="input" placeholder="通常填 1，也可能填 10" />
-        <p class="business-dialog-help">填 1 表示 ¥1 = $1 计价分；填 10 表示 ¥1 = $10 计价分。只应用于所选 API Key。</p>
-      </div>
-      <div><label class="input-label">备注</label><textarea v-model="rateForm.notes" class="input min-h-20" maxlength="1000" placeholder="例如采购渠道、账单批次" /></div>
-      <div class="business-dialog-warning">重复保存同一账号会更新当前比例，并按新比例重新计算该账号的 API Key 用量成本。未配置比例的账号会标记为“待定价”，不会套用其他账号的比例。</div>
-      <div class="flex justify-end gap-2"><button type="button" class="btn btn-secondary" @click="rateDialogOpen = false">取消</button><button type="submit" class="btn btn-primary" :disabled="savingRate || !rateConfig.accounts.length">{{ savingRate ? '保存中' : '保存比例' }}</button></div>
-    </form>
-  </BaseDialog>
+    <template v-if="tab === 'reconcile'">
+      <section class="business-section business-reconcile-stack">
+        <div class="business-section-heading"><div><h3>核对与配置</h3><p>先维护成本池和价格规则，再处理期初、账单差异和历史待补录项。</p></div></div>
+        <p v-if="configError" role="alert" class="notice">{{ configError }}<button class="ml-2 underline" @click="loadConfiguration">重试配置</button></p>
+        <div ref="configurationSection" class="business-configuration-panel" tabindex="-1"><template v-if="configuration"><BusinessConfigurationPanel :configuration="configuration" @saved="loadConfiguration" /></template></div>
+        <div class="business-subsection"><div class="business-subsection-heading"><div><h4>期初与账单调整</h4><p>这些操作会留下独立凭据，不会覆盖过去的经营记录。</p></div></div><div class="flex flex-wrap gap-2"><button class="btn btn-secondary" @click="openRecord('opening_pool')">登记期初采购</button><button class="btn btn-secondary" @click="openRecord('reconciliation')">登记账单差异</button><button class="btn btn-secondary" @click="openRecord('supplier_refund')">登记采购退款</button><button class="btn btn-secondary" @click="openRecord('supplier_loss')">登记采购失效</button></div></div>
+        <div ref="sourcesSection" class="business-subsection" tabindex="-1"><div class="business-subsection-heading"><div><h4>待核对与期初来源</h4><p>补录不会重复充值或增加现金收入；历史未知资金必须有凭据才能确认为付费价值。</p></div></div>
+          <p v-if="pendingError" role="alert" class="notice">{{ pendingError }}<button class="ml-2 underline" @click="loadPending()">重试</button></p>
+          <div class="business-table-card overflow-auto"><table class="ledger-table"><thead><tr><th>凭据</th><th>关联对象</th><th>待核实内容</th><th>操作</th></tr></thead><tbody><tr v-for="record in pending" :key="record.id"><td>#{{ record.id }} · {{ businessKindLabels[record.event_type] || record.event_type }}</td><td>{{ record.payload.user_name || record.payload.account_name || (record.user_id ? '用户 #' + record.user_id : '—') }}</td><td>{{ record.payload.credits ?? record.payload.actual_cost ?? record.payload.pay_amount ?? '来源或价格' }}</td><td><button class="text-primary-600 underline" @click="openRecord('annotation', record)">补录凭据</button><button class="ml-3 text-gray-500 underline" @click="trace(record.id)">追溯</button></td></tr></tbody></table><p v-if="!pending.length && !pendingError" class="py-10 text-center text-sm text-gray-500">暂无待补录的来源事件。仍需定期核对供应商账单和经营费用。</p></div>
+          <button v-if="pendingMore" class="btn btn-secondary" @click="loadPending(true)">加载更多待核对项</button><div v-if="gaps.length" class="business-gap-list"><h5>本期数据缺口</h5><button v-for="gap in gaps.slice(0, 100)" :key="gap.id" class="block text-left text-sm text-amber-700" @click="gap.event_id && trace(gap.event_id)">{{ date(gap.occurred_at) }} · {{ gap.detail.reason || businessKindLabels[gap.kind] }} ↗</button></div>
+        </div>
+      </section>
+    </template>
 
-  <BaseDialog :show="costDialogOpen" title="录入 OAuth / 固定成本" width="normal" @close="costDialogOpen = false">
-    <form class="space-y-4" @submit.prevent="saveCost">
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2"><div><label class="input-label">成本类型</label><select v-model="costForm.cost_type" class="input"><option value="oauth_subscription">OAuth 包月 / 预付</option><option value="purchase">账号采购</option><option value="renewal">账号续费</option><option value="proxy">代理费用</option><option value="other">其他固定支出</option></select></div><div><label class="input-label">金额</label><input v-model.number="costForm.amount" required min="0.000001" step="any" type="number" class="input" /></div></div>
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-3"><div><label class="input-label">币种</label><input v-model="costForm.currency" required maxlength="12" class="input" /></div><div><label class="input-label">兑换人民币汇率</label><input v-model.number="costForm.fx_rate" required min="0.000001" step="any" type="number" class="input" /></div><div><label class="input-label">归属分组 ID（可选）</label><input v-model="costForm.group_id" min="1" type="number" class="input" placeholder="留空按收入分摊" /></div></div>
-      <div><label class="input-label">OAuth 账号 ID（可选）</label><input v-model="costForm.account_id" min="1" type="number" class="input" placeholder="留空表示共享固定成本" /></div>
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2"><div><label class="input-label">开始日期</label><input v-model="costForm.starts_at" required type="date" class="input" /></div><div><label class="input-label">结束日期（含）</label><input v-model="costForm.ends_at" required type="date" class="input" /></div></div>
-      <div><label class="input-label">备注</label><textarea v-model="costForm.notes" class="input min-h-20" maxlength="1000" /></div>
-      <div class="business-dialog-warning">API Key 账号按量成本已根据账号计价分与兑换比例自动计算，不能在此重复录入。OAuth 包月预付请填写覆盖的完整有效期。</div>
-      <div class="flex justify-end gap-2"><button type="button" class="btn btn-secondary" @click="costDialogOpen = false">取消</button><button type="submit" class="btn btn-primary" :disabled="saving">{{ saving ? '保存中' : '保存成本' }}</button></div>
-    </form>
-  </BaseDialog>
+    <p v-if="overview && !props.showTabs" class="business-updated" :title="date(overview.updated_at)"><Icon name="clock" size="xs" aria-hidden="true" />更新于 {{ updatedTime }} · 修订 #{{ overview.revision }}</p>
+
+    <BaseDialog :show="positionsOpen" title="余额与待确认价值组成" width="wide" @close="positionsOpen = false">
+      <p class="business-section-help">截至最近入账的已识别价值，不代表所选区间的期末余额。</p>
+      <dl class="business-position-details"><div v-for="position in positions" :key="position.label"><dt>{{ position.label }}<small>{{ position.hint }}</small></dt><dd>{{ cny(position.value) }}</dd></div></dl>
+      <p v-if="overview" class="notice">来源未知余额 {{ credits(overview.unknown_wallet_credits) }} 额度 · 未使用赠送余额 {{ credits(overview.gift_outstanding_credits) }} 额度。两者均不计为已确认的人民币价值。</p>
+      <template #footer><button type="button" class="btn btn-secondary" @click="positionsOpen = false">关闭</button><button type="button" class="btn btn-primary" @click="positionsOpen = false; goToReconciliation('sources')">核对余额来源</button></template>
+    </BaseDialog>
+    <BusinessRecordDialog v-if="recordType" :type="recordType" :pools="configuration?.pools || []" :target="recordTarget" @close="recordType = ''" @saved="recordType = ''; refresh()" /><BusinessImportDialog v-if="importOpen" @close="importOpen = false" @saved="refresh" />
+    <BaseDialog :show="entriesOpen" title="收入、成本与分摊明细" width="extra-wide" @close="entriesOpen = false"><div class="max-h-[65vh] overflow-auto"><table class="ledger-table"><thead><tr><th>时间 / 模型</th><th>科目</th><th>人民币</th><th>依据</th></tr></thead><tbody><tr v-for="entry in filteredEntries.slice(0, entriesLimit)" :key="entry.id"><td>{{ date(entry.occurred_at) }}<small class="block">{{ entry.model }}</small></td><td>{{ businessKindLabels[entry.kind] || entry.kind }}<small class="block text-gray-500">{{ entry.detail.allocation }}</small></td><td>{{ cny(entry.amount_cny) }}</td><td><button :disabled="!entry.event_id" class="text-primary-600 underline disabled:text-gray-400" @click="trace(entry.event_id)">{{ businessQuality(entry.quality) }} · #{{ entry.event_id }}</button></td></tr></tbody></table><button v-if="filteredEntries.length > entriesLimit" class="btn btn-secondary mt-3" @click="entriesLimit += 100">加载更多明细</button><p v-if="!filteredEntries.length" class="py-6 text-sm text-gray-500">无匹配记录</p></div></BaseDialog>
+    <BaseDialog :show="traceOpen" title="原始凭据与修订链" width="wide" :z-index="60" @close="traceOpen = false"><p v-if="traceError" role="alert" class="text-red-600">{{ traceError }}</p><p v-if="traceLoading" class="text-sm text-gray-500">读取凭据…</p><div v-for="event in traceEvents" :key="event.id" class="mb-4 rounded-lg border p-4 dark:border-dark-700"><h4 class="text-sm font-semibold">#{{ event.id }} · {{ businessKindLabels[event.event_type] || event.event_type }}</h4><p class="mt-1 text-xs text-gray-500">发生 {{ date(event.occurred_at) }} · 登记 {{ date(event.recorded_at) }} · 操作人 {{ event.actor_id || '系统' }}</p><pre class="mt-3 max-h-80 overflow-auto whitespace-pre-wrap break-all text-xs">{{ JSON.stringify(event.payload, null, 2) }}</pre><button v-if="['usage','wallet','opening_unknown','user_subscriptions','payment_orders'].includes(event.event_type)" class="btn btn-secondary mt-3" @click="traceOpen = false; openRecord('annotation', event)">补录此凭据</button></div></BaseDialog>
+  </section>
 </template>
-
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
-import { useAppStore } from '@/stores/app'
+import { computed, nextTick, ref, watch } from 'vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
+import BusinessRecordDialog from './BusinessRecordDialog.vue'
+import BusinessImportDialog from './BusinessImportDialog.vue'
+import BusinessConfigurationPanel from './BusinessConfigurationPanel.vue'
+import BusinessLedgerCharts from './BusinessLedgerCharts.vue'
+import BusinessPanelNavigation, { businessTabs, type BusinessTab } from './BusinessPanelNavigation.vue'
 import Icon from '@/components/icons/Icon.vue'
-import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
-import BusinessAnalyticsCharts from './BusinessAnalyticsCharts.vue'
-import {
-  captureBusinessCapacitySnapshot,
-  createBusinessAPIKeyCostRate,
-  createBusinessCost,
-  deleteBusinessAPIKeyCostRate,
-  deleteBusinessCost,
-  getBusinessAPIKeyCostRates,
-  getBusinessAnalytics,
-  listBusinessCosts,
-  type BusinessAccountCost,
-  type BusinessAPIKeyAccount,
-  type BusinessAPIKeyCostRateConfig,
-  type BusinessAnalyticsOverview,
-} from '@/api/admin/dashboard'
+import { businessAPI, type BusinessOverview, type BusinessEvent, type BusinessEntry, type BusinessConfiguration } from '@/api/admin/business'
+import { getBusinessAnalytics, type BusinessAnalyticsOverview } from '@/api/admin/dashboard'
+import { businessKindLabels, businessQuality, cny, ledgerError } from '@/utils/business-ledger'
+const props = withDefaults(defineProps<{ startDate: string; endDate: string; showHeader?: boolean; showTabs?: boolean }>(), {
+  showHeader: true,
+  showTabs: true,
+})
+const dimensions = [{ key: 'groups', label: '分组' }, { key: 'plans', label: '套餐' }, { key: 'models', label: '模型' }, { key: 'accounts', label: '账号' }] as const
+type Dimension = typeof dimensions[number]['key']
+const activeTab = defineModel<BusinessTab>('activeTab', { default: 'overview' })
+const tab = computed<BusinessTab>({
+  get: () => activeTab.value ?? 'overview',
+  set: value => { activeTab.value = value },
+})
+const view = ref('profit'), dimension = ref<Dimension>('groups')
+const dimensionIndex = computed(() => Math.max(0, dimensions.findIndex((item) => item.key === dimension.value)))
+const overview = ref<BusinessOverview | null>(null), configuration = ref<BusinessConfiguration | null>(null), records = ref<BusinessEvent[]>([]), pending = ref<BusinessEvent[]>([])
+const loading = ref(false), recordsLoading = ref(false), overviewError = ref(''), recordsError = ref(''), configError = ref(''), pendingError = ref(''), recordsMore = ref(false), pendingMore = ref(false)
+const recordType = ref(''), recordTarget = ref<BusinessEvent>(), importOpen = ref(false)
+const legacy = ref<BusinessAnalyticsOverview | null>(null), legacyError = ref('')
+const entriesOpen = ref(false), entriesLimit = ref(100), entryKinds = ref<string[]>([]), selectedDimension = ref<Dimension | ''>(''), selectedKey = ref('')
+const positionsOpen = ref(false)
+const sourcesSection = ref<HTMLElement | null>(null), configurationSection = ref<HTMLElement | null>(null)
+const traceOpen = ref(false), traceLoading = ref(false), traceError = ref(''), traceEvents = ref<BusinessEvent[]>([])
+let overviewSequence = 0, traceSequence = 0
+const date = (s: string) => s ? new Date(s).toLocaleString('zh-CN', { timeZone: overview.value?.timezone || configuration.value?.timezone || 'Asia/Shanghai' }) : '—'
+const breakdown = computed(() => overview.value?.[dimension.value] || [])
+const gaps = computed(() => overview.value?.entries.filter(e => e.quality === 'unknown') || [])
+const positions = computed(() => {
+  const o = overview.value
+  if (!o) return []
+  return [
+    { label: '用户未消费付费价值', value: o.wallet_deferred_cny, hint: '已识别付费部分 · 含冻结及抽奖券' },
+    { label: '订阅待确认收入', value: o.subscription_deferred_cny, hint: '随剩余服务期确认' },
+    { label: '未消耗上游采购', value: o.prepaid_supplier_cny, hint: '待实际消耗后计入成本' },
+    { label: '预付费用剩余价值', value: o.prepaid_expense_cny, hint: '按费用归属期间摊销' },
+  ]
+})
+const credits = (value: string) => new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 2 }).format(Number(value || '0'))
+const hasUnknownBalance = computed(() => Number(overview.value?.unknown_wallet_credits || '0') > 0)
+const needsReview = computed(() => overview.value?.profit_cny === null || overview.value?.quality.cash !== 'confirmed' || hasUnknownBalance.value)
+const updatedTime = computed(() => overview.value ? new Date(overview.value.updated_at).toLocaleTimeString('zh-CN', { timeZone: overview.value.timezone, hour: '2-digit', minute: '2-digit' }) : '')
+const periodLabel = computed(() => `${props.startDate.replace(/-/g, '.')} — ${props.endDate.replace(/-/g, '.')}`)
+const reviewDescription = computed(() => {
+  const o = overview.value
+  if (!o) return ''
+  const parts: string[] = []
+  if (hasUnknownBalance.value) parts.push(`有 ${credits(o.unknown_wallet_credits)} 额度的余额来源待补录，消费后的收入暂无法准确确认。`)
+  const reason = gaps.value.find(entry => typeof entry.detail.reason === 'string')?.detail.reason
+  if (reason) parts.push(String(reason))
+  if (!parts.length) parts.push(o.profit_cny === null ? '部分收入或成本缺少依据，请补录凭据并核对暂估金额。' : '本期已纳入台账的收入与成本已有核对依据，请继续按实际发生登记收支。')
+  return parts.join(' ')
+})
+const hasTrendData = computed(() => {
+  const o = overview.value
+  if (!o) return false
+  const kinds = view.value === 'cash' ? ['cash_in', 'cash_out', 'cash_refund'] : ['wallet_revenue', 'subscription_revenue', 'subscription_close_revenue', 'ticket_revenue', 'refund_revenue', 'usage_cost', 'fixed_cost', 'operating_cost']
+  const fields = view.value === 'cash' ? ['cash_in_cny', 'cash_out_cny', 'cash_refund_cny'] as const : ['revenue_cny', 'cost_cny'] as const
+  return o.entries.some(entry => kinds.includes(entry.kind) && entry.amount_cny != null) || o.daily.some(day => fields.some(key => Number(day[key] || '0') !== 0))
+})
+async function goToReconciliation(section: 'sources' | 'configuration') {
+  tab.value = 'reconcile'
+  await nextTick()
+  const target = section === 'sources' ? sourcesSection.value : configurationSection.value
+  target?.scrollIntoView({ block: 'start' })
+  target?.focus({ preventScroll: true })
+}
+const revenueKinds = ['wallet_revenue', 'subscription_revenue', 'subscription_close_revenue', 'ticket_revenue', 'refund_revenue', 'revenue_gap']
+const costKinds = ['usage_cost', 'fixed_cost', 'operating_cost', 'cost_gap']
+const metrics = computed(() => {
+  const o = overview.value; if (!o) return []
+  const costUnverified = o.quality.cost === 'unknown' || o.quality.cost === 'pending'
+  // Only combine values for display; accounting amounts remain server decimals.
+  const expenses = String(Number(o.fixed_cost_cny) + Number(o.operating_cost_cny))
+  if (view.value === 'cash') return [
+    { label: '实际收款', value: o.cash_in_cny, hint: '线上 + 线下', kinds: ['cash_in', 'cash_gap'] },
+    { label: '实际退款', value: o.cash_refund_cny, hint: '按退款发生日', kinds: ['cash_refund'] },
+    { label: '实际经营付款', value: o.cash_out_cny, hint: '含采购与预付费用', kinds: ['cash_out'] },
+    { label: '经营现金净流入', value: o.cash_net_cny, hint: '收款 − 退款 − 付款', kinds: ['cash_in', 'cash_refund', 'cash_out', 'cash_gap'] },
+  ]
+  return [
+    { label: '已确认收入', value: o.recognized_revenue_cny, hint: o.quality.revenue === 'confirmed' ? '已入账收入 · 查看凭据' : `已入账部分 · 收入${businessQuality(o.quality.revenue)}`, kinds: revenueKinds },
+    { label: '上游消耗成本', value: costUnverified ? null : o.usage_cost_cny, hint: o.quality.cost === 'confirmed' ? '采购加权成本 / 合同计价' : `${businessQuality(o.quality.cost)} · 已入账 ${cny(o.usage_cost_cny)}`, kinds: ['usage_cost', 'cost_gap'] },
+    { label: '账号及经营费用', value: costUnverified ? null : expenses, hint: costUnverified ? `${businessQuality(o.quality.cost)} · 已入账 ${cny(expenses)}` : `账号 ${cny(o.fixed_cost_cny)} · 其他 ${cny(o.operating_cost_cny)}`, kinds: ['fixed_cost', 'operating_cost'] },
+    { label: '本期经营利润', value: o.profit_cny, hint: o.profit_cny === null ? `已知收支差额 ${cny(o.known_profit_cny)}，不能视为完整利润` : '台账范围经营利润 · 查看凭据', kinds: [...revenueKinds, ...costKinds] },
+  ]
+})
+const filteredEntries = computed(() => (overview.value?.entries || []).filter((e: BusinessEntry) => {
+  if (e.kind === 'usage_weight') return false
+  if (entryKinds.value.length && !entryKinds.value.includes(e.kind)) return false
+  if (!selectedDimension.value) return true
+  const key = selectedDimension.value === 'groups' ? String(e.group_id) : selectedDimension.value === 'accounts' ? String(e.account_id) : selectedDimension.value === 'plans' ? String(e.plan_id) : e.model
+  return key === selectedKey.value
+}))
+function showEntries(kinds: string[]) { entryKinds.value = kinds; selectedDimension.value = ''; entriesLimit.value = 100; entriesOpen.value = true }
+function showBreakdown(key: string) { showEntries([...revenueKinds, ...costKinds]); selectedDimension.value = dimension.value; selectedKey.value = key }
+function openRecord(type: string, target?: BusinessEvent) { recordTarget.value = target; recordType.value = type }
+async function loadOverview() {
+  const sequence = ++overviewSequence; loading.value = true; overviewError.value = ''
+  try { const result = await businessAPI.overview({ start_date: props.startDate, end_date: props.endDate }); if (sequence === overviewSequence) overview.value = result }
+  catch (e) { if (sequence === overviewSequence) { overview.value = null; overviewError.value = ledgerError(e) } }
+  finally { if (sequence === overviewSequence) loading.value = false }
+}
+async function loadRecords(more = false) {
+  if (recordsLoading.value) return
+  recordsLoading.value = true; recordsError.value = ''
+  try { const data = await businessAPI.records(more ? records.value.at(-1)?.id : 0); records.value = more ? [...records.value, ...data] : data; recordsMore.value = data.length === 100 }
+  catch (e) { recordsError.value = ledgerError(e) }
+  finally { recordsLoading.value = false }
+}
+async function loadPending(more = false) {
+  pendingError.value = ''
+  try { const data = await businessAPI.pending(more ? pending.value.at(-1)?.id : 0); pending.value = more ? [...pending.value, ...data] : data; pendingMore.value = data.length === 100 }
+  catch (e) { pendingError.value = ledgerError(e) }
+}
+async function loadConfiguration() { configError.value = ''; try { configuration.value = await businessAPI.configuration() } catch (e) { configError.value = ledgerError(e) } }
+async function refresh() { await Promise.allSettled([loadOverview(), loadRecords(), loadConfiguration(), loadPending()]) }
+async function trace(id: number) {
+  const sequence = ++traceSequence; traceOpen.value = true; traceLoading.value = true; traceError.value = ''; traceEvents.value = []
+  try { const result = await businessAPI.trace(id); if (sequence === traceSequence) traceEvents.value = result } catch (e) { if (sequence === traceSequence) traceError.value = ledgerError(e) }
+  finally { if (sequence === traceSequence) traceLoading.value = false }
+}
+async function loadLegacy(event: Event) {
+  if (!(event.target as HTMLDetailsElement).open || legacy.value) return
+  try { legacy.value = await getBusinessAnalytics({ start_date: props.startDate, end_date: props.endDate }) } catch (e) { legacyError.value = ledgerError(e) }
+}
+watch(() => [props.startDate, props.endDate], () => { legacy.value = null; void loadOverview() }, { immediate: true })
+void Promise.allSettled([loadRecords(), loadConfiguration(), loadPending()])
 
-const props = defineProps<{ startDate: string; endDate: string }>()
-const appStore = useAppStore()
-const loading = ref(false)
-const snapshotting = ref(false)
-const saving = ref(false)
-const savingRate = ref(false)
-const overview = ref<BusinessAnalyticsOverview | null>(null)
-const costs = ref<BusinessAccountCost[]>([])
-const rateConfig = ref<BusinessAPIKeyCostRateConfig>({ accounts: [], rates: [] })
-const costDialogOpen = ref(false)
-const rateDialogOpen = ref(false)
-type BusinessView = 'overview' | 'profit' | 'capacity' | 'costs'
-const activeBusinessView = ref<BusinessView>('overview')
-const businessViews = [
-  { key: 'overview', label: '总览', icon: 'chartBar' },
-  { key: 'profit', label: '利润明细', icon: 'document' },
-  { key: 'capacity', label: '资源承载', icon: 'server' },
-  { key: 'costs', label: '成本配置', icon: 'cog' },
-] as const
-const rateForm = ref({ account_id: '', credits_per_cny: 1, notes: '' })
-const costForm = ref({ cost_type: 'oauth_subscription', amount: 0, currency: 'CNY', fx_rate: 1, group_id: '', account_id: '', starts_at: '', ends_at: '', notes: '' })
-
-const configuredAccountCount = computed(() => new Set(rateConfig.value.rates.map((rate) => rate.account_id)).size)
-
-const cny = (value: number) => `¥${Number(value || 0).toFixed(2)}`
-const usd = (value: number) => `$${Number(value || 0).toFixed(2)}`
-const decimal = (value: number, digits: number) => Number(value || 0).toFixed(digits)
-const percent = (value: number) => `${Number(value || 0).toFixed(1)}%`
-const money = (value: number, currency: string) => `${currency} ${Number(value || 0).toFixed(2)}`
-const creditsPerCNY = (value: number) => `¥1 : $${Number(value || 0).toFixed(4)}`
-const formatDate = (value: string) => value ? new Date(value).toLocaleDateString() : '-'
-const formatCostEndDate = (value: string) => value ? new Date(new Date(value).getTime() - 1).toLocaleDateString() : '-'
-const formatDateTime = (value: string) => value ? new Date(value).toLocaleString() : '-'
-const rateAccount = (accountID: number): BusinessAPIKeyAccount | undefined => rateConfig.value.accounts.find((account) => account.id === accountID)
-const owner = (cost: BusinessAccountCost) => cost.group_id ? `分组 #${cost.group_id}${cost.account_id ? ` / 账号 #${cost.account_id}` : ''}` : cost.account_id ? `账号 #${cost.account_id}（按收入分摊）` : '按收入分摊'
-const costType = (value: string) => ({ oauth_subscription: 'OAuth 包月 / 预付', purchase: '账号采购', renewal: '账号续费', proxy: '代理费用', other: '其他固定支出', upstream_invoice: '上游账单（历史）' }[value] || value)
-
-async function load() {
-  loading.value = true
-  try {
-    const [nextOverview, nextCosts, nextRateConfig] = await Promise.all([
-      getBusinessAnalytics({ start_date: props.startDate, end_date: props.endDate }),
-      listBusinessCosts(),
-      getBusinessAPIKeyCostRates(),
-    ])
-    overview.value = nextOverview
-    costs.value = nextCosts
-    rateConfig.value = nextRateConfig
-  } catch (error) {
-    console.error('Failed to load business analytics:', error)
-    appStore.showError('经营分析加载失败')
-  } finally { loading.value = false }
+function selectTab(value: string) {
+  const item = businessTabs.find(item => item.key === value)
+  if (item) tab.value = item.key
 }
 
-function openRateDialog() {
-  rateForm.value = {
-    account_id: rateConfig.value.accounts.length === 1 ? String(rateConfig.value.accounts[0].id) : '',
-    credits_per_cny: 1,
-    notes: '',
-  }
-  syncRateFormForAccount()
-  rateDialogOpen.value = true
-}
-
-function syncRateFormForAccount() {
-  const existing = rateConfig.value.rates.find((rate) => rate.account_id === Number(rateForm.value.account_id))
-  rateForm.value.credits_per_cny = existing?.credits_per_cny ?? 1
-  rateForm.value.notes = existing?.notes ?? ''
-}
-
-async function saveRate() {
-  savingRate.value = true
-  try {
-    await createBusinessAPIKeyCostRate({
-      account_id: Number(rateForm.value.account_id),
-      credits_per_cny: rateForm.value.credits_per_cny,
-      notes: rateForm.value.notes,
-    })
-    rateDialogOpen.value = false
-    appStore.showSuccess('API Key 分数兑换比例已保存')
-    await load()
-  } catch (error) {
-    console.error('Failed to create API key cost rate:', error)
-    appStore.showError('API Key 分数比例保存失败，请检查账号和比例')
-  } finally { savingRate.value = false }
-}
-
-function openCostDialog() {
-  costForm.value = { cost_type: 'oauth_subscription', amount: 0, currency: 'CNY', fx_rate: 1, group_id: '', account_id: '', starts_at: props.startDate, ends_at: props.endDate, notes: '' }
-  costDialogOpen.value = true
-}
-
-function localDateStartISO(value: string) {
-  return new Date(`${value}T00:00:00`).toISOString()
-}
-
-function dayAfterISO(value: string) {
-  const date = new Date(`${value}T00:00:00`)
-  date.setDate(date.getDate() + 1)
-  return date.toISOString()
-}
-
-async function saveCost() {
-  saving.value = true
-  try {
-    await createBusinessCost({
-      cost_type: costForm.value.cost_type,
-      amount: costForm.value.amount,
-      currency: costForm.value.currency.toUpperCase(),
-      fx_rate: costForm.value.fx_rate,
-      group_id: costForm.value.group_id ? Number(costForm.value.group_id) : undefined,
-      account_id: costForm.value.account_id ? Number(costForm.value.account_id) : undefined,
-      starts_at: localDateStartISO(costForm.value.starts_at),
-      ends_at: dayAfterISO(costForm.value.ends_at),
-      notes: costForm.value.notes,
-    })
-    costDialogOpen.value = false
-    appStore.showSuccess('OAuth / 固定成本已录入')
-    await load()
-  } catch (error) {
-    console.error('Failed to create business cost:', error)
-    appStore.showError('固定成本保存失败；API Key 账号无需重复录入')
-  } finally { saving.value = false }
-}
-
-async function removeCost(id: number) {
-  if (!window.confirm('删除这条账号成本记录？')) return
-  try { await deleteBusinessCost(id); await load(); appStore.showSuccess('账号成本已删除') }
-  catch (error) { console.error('Failed to delete business cost:', error); appStore.showError('账号成本删除失败') }
-}
-
-async function removeRate(id: number) {
-  if (!window.confirm('删除这条 API Key 分数比例记录？删除后该账号的 API Key 用量成本会变为待定价。')) return
-  try { await deleteBusinessAPIKeyCostRate(id); await load(); appStore.showSuccess('API Key 分数比例已删除') }
-  catch (error) { console.error('Failed to delete API key cost rate:', error); appStore.showError('API Key 分数比例删除失败') }
-}
-
-async function captureSnapshot() {
-  snapshotting.value = true
-  try { await captureBusinessCapacitySnapshot(); await load(); appStore.showSuccess('承载快照已刷新') }
-  catch (error) { console.error('Failed to capture capacity snapshot:', error); appStore.showError('承载快照刷新失败') }
-  finally { snapshotting.value = false }
-}
-
-onMounted(() => { void load() })
-watch(() => [props.startDate, props.endDate], () => { void load() })
+defineExpose({ openRecord, refresh, selectTab })
 </script>
-
 <style scoped>
-.business-panel {
-  background: rgb(255 255 255);
+.business-ledger { @apply min-w-0 space-y-6; }
+.business-navigation { @apply flex min-w-0 items-center justify-between gap-4 border-b border-gray-200 pb-3 dark:border-dark-700; }
+.business-updated { @apply flex shrink-0 items-center gap-1.5 text-[11px] text-gray-500 dark:text-gray-400; }
+.business-navigation .business-updated { @apply hidden 2xl:inline-flex; }
+.business-ledger-stack { @apply space-y-6; }
+.business-status-stack { @apply space-y-3; }
+.business-loading { @apply rounded-xl border border-gray-200 bg-white px-4 py-5 text-center text-sm text-gray-500 dark:border-dark-700 dark:bg-dark-800 dark:text-gray-400; }
+.business-status { @apply flex flex-wrap items-center justify-between gap-4 rounded-xl border border-gray-200 bg-white px-5 py-4 text-gray-600 dark:border-dark-700 dark:bg-dark-800 dark:text-gray-300; }
+.business-status--pending { @apply border-amber-200/70 bg-amber-50/70 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-200; }
+.business-status-main { @apply flex min-w-0 flex-1 items-start gap-3.5; }
+.business-status-icon { @apply inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-500 dark:bg-dark-700 dark:text-gray-300; }
+.business-status--pending .business-status-icon { @apply bg-amber-100/80 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400; }
+.business-status-title { @apply flex flex-wrap items-center gap-2.5 text-sm leading-6; }
+.business-status-title strong { @apply font-semibold; }
+.business-status-badge { @apply rounded bg-amber-100/80 px-2 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-900/50 dark:text-amber-200; }
+.business-status-main p { @apply mt-1 text-xs leading-5; }
+.business-status-meta { @apply mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] opacity-80; }
+.business-status-meta span + span { @apply border-l border-gray-300/60 pl-3 dark:border-dark-500; }
+.business-status-action { @apply inline-flex h-9 shrink-0 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 text-xs font-medium transition-colors hover:bg-gray-50 dark:border-dark-600 dark:bg-dark-800 dark:hover:bg-dark-700; }
+.business-status--pending .business-status-action { @apply border-amber-200 bg-white/70 hover:bg-white dark:border-amber-900 dark:bg-amber-950/30 dark:hover:bg-amber-900/40; }
+.business-overview-heading { @apply mb-4 flex flex-wrap items-center justify-between gap-3; }
+.business-inline-heading { @apply flex flex-wrap items-baseline gap-x-3 gap-y-1; }
+.business-inline-heading h3 { @apply text-base font-semibold text-gray-900 dark:text-white; }
+.business-inline-heading p { @apply text-[11px] leading-5 text-gray-500 dark:text-gray-400; }
+.business-metrics { @apply grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4; }
+.metric { @apply min-w-0 rounded-xl border border-gray-200 bg-white p-5 text-left text-gray-900 dark:border-dark-700 dark:bg-dark-800 dark:text-white; }
+button.metric { @apply transition-colors hover:border-primary-300 dark:hover:border-primary-700; }
+.metric > span { @apply block text-xs text-gray-500 dark:text-gray-400; }
+.metric > strong { @apply mt-4 block break-words text-[28px] font-semibold leading-9 tracking-tight tabular-nums; }
+.metric > small { @apply mt-2 flex items-center gap-1 text-[11px] leading-5 text-gray-500 dark:text-gray-400; }
+.metric .metric-heading { @apply flex items-center justify-between gap-2; }
+.metric-heading svg { @apply shrink-0 text-gray-400 dark:text-gray-500; }
+.business-summary-metric { @apply min-h-[155px]; }
+.metric--primary { @apply border-t-[3px] border-t-blue-500 pt-[18px] dark:border-t-blue-400; }
+.metric--pending { @apply border-amber-200/70 bg-amber-50/40 dark:border-amber-900/60 dark:bg-amber-950/20; }
+.metric--pending > strong { @apply text-2xl text-amber-700 dark:text-amber-300; }
+.metric--pending > span, .metric--pending > small { @apply text-amber-800/80 dark:text-amber-200/80; }
+.business-middle { @apply grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1.65fr)_minmax(340px,1fr)]; }
+.business-surface { @apply min-w-0 rounded-xl border border-gray-200 bg-white dark:border-dark-700 dark:bg-dark-800; }
+.business-surface-heading { @apply flex flex-wrap items-center justify-between gap-2 px-5 pt-5; }
+.business-surface-heading h3 { @apply text-sm font-semibold text-gray-900 dark:text-white; }
+.business-surface-hint { @apply text-[11px] text-gray-500 dark:text-gray-400; }
+.business-empty-trend { @apply flex min-h-[245px] flex-col items-center justify-center px-5 py-6 text-center; }
+.business-empty-icon { @apply mb-3 inline-flex h-12 w-12 items-center justify-center rounded-xl border border-blue-100/70 bg-blue-50/70 text-blue-300 dark:border-dark-600 dark:bg-dark-700 dark:text-blue-400; }
+.business-empty-trend h4 { @apply text-sm font-medium text-gray-600 dark:text-gray-300; }
+.business-empty-trend p { @apply mt-2 text-xs leading-5 text-gray-500 dark:text-gray-400; }
+.business-empty-actions { @apply mt-4 flex flex-wrap justify-center gap-x-5 gap-y-2; }
+.business-empty-actions button + button { @apply border-l border-gray-200 pl-5 dark:border-dark-600; }
+.business-text-link { @apply inline-flex shrink-0 items-center gap-1.5 rounded text-xs font-medium text-primary-600 transition-colors hover:text-primary-800 dark:text-primary-300 dark:hover:text-primary-200; }
+.business-chart-card { @apply min-w-0 p-4; }
+.business-task-list { @apply px-5; }
+.business-task-list li { @apply flex items-center gap-3 border-b border-gray-100 py-5 last:border-0 dark:border-dark-700; }
+.business-task-list li > div { @apply min-w-0 flex-1; }
+.business-task-number { @apply inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-gray-200 bg-gray-50 text-[10px] tabular-nums text-gray-500 dark:border-dark-600 dark:bg-dark-900 dark:text-gray-400; }
+.is-priority .business-task-number { @apply border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300; }
+.business-task-list h4 { @apply text-xs font-medium leading-5 text-gray-700 dark:text-gray-200; }
+.business-task-list p { @apply mt-1 text-[11px] leading-5 text-gray-500 dark:text-gray-400; }
+.business-positions { @apply p-5; }
+.business-positions h3 { @apply text-sm; }
+.business-position-grid { @apply grid grid-cols-1 gap-y-5 sm:grid-cols-2 xl:grid-cols-4; }
+.business-position { @apply min-w-0 sm:border-l sm:border-gray-200 sm:px-5 sm:dark:border-dark-700; }
+.business-position:first-child { @apply border-l-0 pl-0; }
+.business-position dt { @apply text-xs leading-5 text-gray-500 dark:text-gray-400; }
+.business-position dd { @apply mt-2 break-words text-[22px] font-semibold tabular-nums text-gray-700 dark:text-gray-100; }
+.business-position small { @apply mt-1 block text-[11px] leading-5 text-gray-500 dark:text-gray-400; }
+.business-position-note { @apply mt-5 flex items-start gap-1.5 border-t border-gray-100 pt-3 text-[11px] leading-5 text-gray-500 dark:border-dark-700 dark:text-gray-400; }
+.business-position-note svg, .business-footer > p svg { @apply mt-1 shrink-0; }
+.business-position-details { @apply my-5 divide-y divide-gray-100 dark:divide-dark-700; }
+.business-position-details > div { @apply flex flex-wrap items-center justify-between gap-3 py-3 text-sm; }
+.business-position-details small { @apply mt-1 block text-xs text-gray-500 dark:text-gray-400; }
+.business-position-details dd { @apply font-semibold tabular-nums; }
+.business-footer { @apply flex flex-wrap items-start justify-between gap-4 text-gray-500 dark:text-gray-400; }
+.business-footer > p { @apply flex flex-1 items-start gap-1.5 text-[11px] leading-5; }
+.business-history-panel { @apply max-w-full text-xs; }
+.business-history-panel[open] { @apply basis-full; }
+.business-history-panel summary { @apply cursor-pointer text-right text-xs leading-5 hover:text-gray-800 dark:hover:text-gray-200; }
+.business-history-content { @apply mt-3 rounded-xl border border-gray-200 bg-white p-4 dark:border-dark-700 dark:bg-dark-800; }
+.business-section { @apply space-y-5 rounded-xl border border-gray-200 bg-white p-4 dark:border-dark-700 dark:bg-dark-800 sm:p-5; }
+.business-section-heading { @apply flex flex-col gap-4 border-b border-gray-100 pb-4 dark:border-dark-700 md:flex-row md:items-start md:justify-between; }
+.business-section-heading h3 { @apply text-base font-semibold text-gray-900 dark:text-white; }
+.business-section-heading p { @apply mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400; }
+.business-segmented-control { --segment-count: 2; --segment-index: 0; @apply relative grid min-w-[180px] grid-cols-2 overflow-hidden rounded-lg bg-gray-200/60 p-[3px] dark:bg-dark-900; }
+.business-segmented-control--dimensions { @apply min-w-[260px] grid-cols-4; }
+.business-segmented-control__slider { @apply pointer-events-none absolute inset-y-[3px] left-[3px] rounded-md bg-white shadow-sm transition-transform duration-200 ease-out dark:bg-dark-700; width: calc((100% - 6px) / var(--segment-count)); transform: translateX(calc(var(--segment-index) * 100%)); }
+.business-segmented-control button { @apply relative z-[1] min-w-0 px-3 py-1.5 text-xs font-medium text-gray-500 transition-colors hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-100; }
+.business-segmented-control button.is-active { @apply text-primary-700 dark:text-primary-200; }
+.business-section-help { @apply text-xs leading-5 text-gray-500 dark:text-gray-400; }
+.business-subsection { @apply space-y-4 border-t border-gray-100 pt-5 dark:border-dark-700; scroll-margin-top: 1rem; }
+.business-subsection-heading h4 { @apply text-sm font-semibold text-gray-900 dark:text-white; }
+.business-subsection-heading p { @apply mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400; }
+.business-table-card { @apply overflow-x-auto rounded-lg border border-gray-100 dark:border-dark-700; }
+.business-table-card .ledger-table { @apply min-w-[760px]; }
+.business-benefit-footer { @apply flex flex-col gap-3 md:flex-row md:items-center md:justify-between; }
+.business-benefit-footer p { @apply text-sm leading-6 text-gray-600 dark:text-gray-300; }
+.business-reconcile-stack { @apply space-y-6; }
+.business-configuration-panel { @apply min-w-0 rounded-lg; scroll-margin-top: 1rem; }
+.business-gap-list { @apply space-y-2 rounded-lg border border-amber-100 bg-amber-50/60 p-4 dark:border-amber-900/50 dark:bg-amber-950/20; }
+.business-gap-list h5 { @apply mb-2 text-sm font-semibold text-amber-900 dark:text-amber-200; }
+.notice { @apply rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-relaxed text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200; }
+.ledger-table { @apply w-full text-left text-sm; }
+.ledger-table th { @apply whitespace-nowrap border-b border-gray-100 bg-gray-50/70 px-3 py-3 text-xs font-medium text-gray-500 dark:border-dark-700 dark:bg-dark-900/30 dark:text-gray-400; }
+.ledger-table td { @apply border-b border-gray-100 px-3 py-3 tabular-nums dark:border-dark-700; }
+.business-ledger button:focus-visible, .business-ledger summary:focus-visible { @apply outline-none ring-2 ring-primary-400 ring-offset-2 dark:ring-offset-dark-900; }
+@media (min-width: 640px) and (max-width: 1279px) { .business-position:nth-child(3) { @apply border-l-0 pl-0; } }
+@media (max-width: 639px) {
+  .business-status-main { @apply basis-full; }
+  .business-status-action { @apply ml-auto; }
+  .business-task-list li { @apply flex-wrap; }
+  .business-task-list li > .business-text-link { @apply ml-9; }
+  .business-footer > p { @apply basis-full; }
 }
-
-.business-panel__loading {
-  display: flex;
-  min-height: 18rem;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: .75rem;
-  color: rgb(107 114 128);
-  font-size: .875rem;
-}
-
-.business-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: .75rem 1.5rem;
-  border-bottom: 1px solid rgb(229 231 235);
-}
-
-.business-subnav {
-  display: inline-flex;
-  max-width: 100%;
-  gap: .25rem;
-  overflow-x: auto;
-  padding: .25rem;
-  border-radius: .625rem;
-  background: rgb(243 244 246);
-}
-
-.business-subnav button {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: .4rem;
-  min-width: 6.5rem;
-  justify-content: center;
-  padding: .5rem .75rem;
-  border-radius: .5rem;
-  color: rgb(107 114 128);
-  font-size: .75rem;
-  font-weight: 600;
-  transition: background-color .2s ease, color .2s ease, box-shadow .2s ease;
-}
-
-.business-subnav button:hover {
-  color: rgb(55 65 81);
-}
-
-.business-subnav button:focus-visible {
-  outline: 2px solid rgb(59 130 246 / .5);
-  outline-offset: 1px;
-}
-
-.business-subnav .business-subnav__item--active {
-  background: rgb(255 255 255);
-  color: rgb(37 99 235);
-  box-shadow: 0 1px 2px rgb(15 23 42 / .08);
-}
-
-.business-panel__snapshot {
-  flex: 0 0 auto;
-  color: rgb(156 163 175);
-  font-size: .75rem;
-  white-space: nowrap;
-}
-
-.business-view {
-  padding: 1.5rem;
-  animation: business-view-in .18s ease-out;
-}
-
-.business-view .business-section + .business-section {
-  border-top: 1px solid rgb(229 231 235);
-}
-
-@keyframes business-view-in {
-  from { opacity: .45; transform: translateY(2px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.business-data-warning {
-  display: flex;
-  align-items: center;
-  gap: .625rem;
-  margin: 1.25rem 1.5rem 0;
-  padding: .75rem 1rem;
-  border: 1px solid rgb(253 230 138);
-  border-radius: .625rem;
-  background: rgb(255 251 235);
-  color: rgb(146 64 14);
-  font-size: .8125rem;
-}
-
-.business-data-warning span { flex: 1; }
-.business-data-warning button { color: rgb(146 64 14); font-weight: 600; white-space: nowrap; }
-.business-data-warning button:hover { text-decoration: underline; }
-
-.business-cumulative {
-  display: grid;
-  grid-template-columns: minmax(15rem, 1.55fr) repeat(3, minmax(8rem, 1fr));
-  overflow: hidden;
-  border: 1px solid rgb(219 234 254);
-  border-radius: .75rem;
-  background: rgb(248 250 252);
-  font-variant-numeric: tabular-nums;
-}
-
-.business-cumulative > div {
-  min-width: 0;
-  padding: 1.15rem 1.25rem;
-  border-left: 1px solid rgb(226 232 240);
-}
-
-.business-cumulative > div:first-child { border-left: 0; }
-.business-cumulative span,
-.business-cumulative small { display: block; color: rgb(107 114 128); font-size: .75rem; line-height: 1.4; }
-.business-cumulative strong { display: block; margin-top: .35rem; color: rgb(31 41 55); font-size: 1.125rem; overflow-wrap: anywhere; }
-.business-cumulative__result { background: rgb(239 246 255); }
-.business-cumulative__result strong { margin: .35rem 0; color: rgb(5 150 105); font-size: 2rem; line-height: 1.15; }
-.business-cumulative--negative .business-cumulative__result { background: rgb(254 242 242); }
-.business-cumulative--negative .business-cumulative__result strong { color: rgb(220 38 38); }
-
-.business-inline-warning {
-  margin-top: .5rem;
-  color: rgb(180 83 9);
-  font-size: .75rem;
-}
-
-.business-rate-strip {
-  display: flex;
-  flex-wrap: wrap;
-  gap: .5rem 1.5rem;
-  padding: .875rem .25rem 0;
-  color: rgb(107 114 128);
-  font-size: .75rem;
-}
-
-.business-rate-strip strong { margin-left: .2rem; color: rgb(55 65 81); font-weight: 600; }
-
-.business-section { padding: 1.5rem 0; }
-.business-section--last { padding-bottom: 0; }
-.business-period { padding-top: 1.25rem; }
-.business-section__title { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
-.business-section__title span { display: block; color: rgb(17 24 39); font-size: .875rem; font-weight: 600; }
-.business-section__title .btn { padding: .5rem .75rem; border-radius: .5rem; font-size: .75rem; }
-.business-visuals { padding-top: 0; }
-
-.business-metrics {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: .75rem;
-}
-
-.business-metric {
-  min-width: 0;
-  padding: 1rem;
-  border: 1px solid rgb(229 231 235);
-  border-radius: .625rem;
-  background: rgb(255 255 255);
-}
-
-.business-metric span,
-.business-metric small { display: block; color: rgb(107 114 128); font-size: .75rem; line-height: 1.4; }
-.business-metric strong { display: block; margin: .3rem 0; color: rgb(17 24 39); font-size: 1.125rem; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.business-metric--revenue strong { color: rgb(37 99 235); }
-.business-metric--green strong { color: rgb(5 150 105); }
-.business-metric--amber strong { color: rgb(217 119 6); }
-.business-metric--red strong { color: rgb(220 38 38); }
-
-.business-cash-list { display: flex; flex-wrap: wrap; gap: .75rem; }
-.business-cash-list div { min-width: 8rem; padding: .75rem 1rem; border: 1px solid rgb(229 231 235); border-radius: .625rem; background: rgb(255 255 255); }
-.business-cash-list span,
-.business-cash-list strong { display: block; font-size: .8125rem; }
-.business-cash-list span { color: rgb(107 114 128); }
-.business-cash-list strong { margin-top: .2rem; color: rgb(5 150 105); font-variant-numeric: tabular-nums; }
-
-.business-risk-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .75rem; }
-.business-risk-grid div { min-width: 0; padding: 1rem; border: 1px solid rgb(229 231 235); border-radius: .625rem; background: rgb(255 255 255); }
-.business-risk-grid__alert { border-color: rgb(254 202 202) !important; background: rgb(254 242 242) !important; }
-.business-risk-grid span,
-.business-risk-grid small { display: block; color: rgb(107 114 128); font-size: .75rem; line-height: 1.4; }
-.business-risk-grid strong { display: block; margin: .3rem 0; color: rgb(31 41 55); font-size: 1rem; font-variant-numeric: tabular-nums; }
-
-.business-table-wrap {
-  max-width: 100%;
-  overflow-x: auto;
-  border: 1px solid rgb(229 231 235);
-  border-radius: .75rem;
-  background: rgb(255 255 255);
-}
-
-.business-table { width: 100%; min-width: 850px; border-collapse: collapse; font-size: .875rem; }
-.business-table--daily { min-width: 720px; }
-.business-table--profit-groups { min-width: 900px; }
-.business-table--capacity { min-width: 820px; }
-.business-table--compact { min-width: 760px; }
-.business-table th {
-  padding: .75rem 1rem;
-  border-bottom: 1px solid rgb(229 231 235);
-  background: rgb(249 250 251);
-  color: rgb(107 114 128);
-  font-size: .75rem;
-  font-weight: 500;
-  text-align: right;
-  white-space: nowrap;
-}
-.business-table th:first-child,
-.business-table td:first-child { text-align: left; }
-.business-table td {
-  padding: .75rem 1rem;
-  border-bottom: 1px solid rgb(229 231 235);
-  color: rgb(75 85 99);
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-  vertical-align: middle;
-}
-.business-table tbody tr { transition: background-color .15s ease; }
-.business-table tbody tr:hover { background: rgb(249 250 251); }
-.business-table tbody tr:last-child td { border-bottom: 0; }
-.business-table td strong,
-.business-table td small { display: block; }
-.business-table td strong { color: rgb(31 41 55); font-weight: 500; }
-.business-table td small { margin-top: .15rem; color: rgb(156 163 175); font-size: .75rem; }
-.business-table__muted { color: rgb(107 114 128) !important; }
-.business-table__warning { color: rgb(180 83 9) !important; font-weight: 600; }
-.business-table__positive,
-.business-table__positive strong { color: rgb(5 150 105) !important; }
-.business-table__negative,
-.business-table__negative strong { color: rgb(220 38 38) !important; }
-.business-icon-button { display: inline-flex; padding: .375rem; border-radius: .375rem; color: rgb(107 114 128); transition: background-color .15s ease, color .15s ease; }
-.business-icon-button:hover { background: rgb(254 242 242); color: rgb(220 38 38); }
-.business-icon-button:focus-visible { outline: 2px solid rgb(59 130 246 / .5); outline-offset: 1px; }
-
-.business-config-actions { display: flex; justify-content: flex-end; gap: .5rem; padding-bottom: 1rem; }
-.business-empty { padding: 2.5rem 1rem !important; color: rgb(156 163 175) !important; font-size: .875rem; text-align: center !important; }
-.business-dialog-note { padding: .75rem; border-left: 3px solid rgb(59 130 246); background: rgb(239 246 255); }
-.business-dialog-note span,
-.business-dialog-note strong,
-.business-dialog-note small { display: block; }
-.business-dialog-note span,
-.business-dialog-note small,
-.business-dialog-help { color: rgb(107 114 128); font-size: .75rem; }
-.business-dialog-note strong { margin: .2rem 0; color: rgb(17 24 39); font-size: .875rem; }
-.business-dialog-help { margin: .35rem 0 0; }
-.business-dialog-warning { padding: .75rem; border-left: 3px solid rgb(217 119 6); background: rgb(255 251 235); color: rgb(146 64 14); font-size: .75rem; }
-
-:global(.dark) .business-panel,
-:global(.dark) .business-toolbar { background: rgb(17 24 39); }
-:global(.dark) .business-toolbar,
-:global(.dark) .business-view .business-section + .business-section { border-color: rgb(55 65 81); }
-:global(.dark) .business-subnav { background: rgb(31 41 55); }
-:global(.dark) .business-subnav button:hover { color: rgb(229 231 235); }
-:global(.dark) .business-subnav .business-subnav__item--active { background: rgb(55 65 81); color: rgb(96 165 250); box-shadow: none; }
-:global(.dark) .business-cumulative { border-color: rgb(30 64 175 / .55); background: rgb(31 41 55); }
-:global(.dark) .business-cumulative > div { border-color: rgb(55 65 81); }
-:global(.dark) .business-cumulative__result { background: rgb(30 58 138 / .22); }
-:global(.dark) .business-cumulative--negative .business-cumulative__result { background: rgb(127 29 29 / .2); }
-:global(.dark) .business-cumulative strong,
-:global(.dark) .business-section__title span,
-:global(.dark) .business-metric strong,
-:global(.dark) .business-risk-grid strong,
-:global(.dark) .business-rate-strip strong { color: rgb(243 244 246); }
-:global(.dark) .business-cumulative--positive .business-cumulative__result strong { color: rgb(52 211 153); }
-:global(.dark) .business-cumulative--negative .business-cumulative__result strong { color: rgb(248 113 113); }
-:global(.dark) .business-metric--revenue strong { color: rgb(96 165 250); }
-:global(.dark) .business-metric--green strong { color: rgb(52 211 153); }
-:global(.dark) .business-metric--amber strong { color: rgb(251 191 36); }
-:global(.dark) .business-metric--red strong { color: rgb(248 113 113); }
-:global(.dark) .business-metric,
-:global(.dark) .business-cash-list div,
-:global(.dark) .business-risk-grid div,
-:global(.dark) .business-table-wrap { border-color: rgb(55 65 81); background: rgb(17 24 39); }
-:global(.dark) .business-risk-grid__alert { border-color: rgb(127 29 29) !important; background: rgb(127 29 29 / .18) !important; }
-:global(.dark) .business-table th { border-color: rgb(55 65 81); background: rgb(31 41 55); color: rgb(156 163 175); }
-:global(.dark) .business-table td { border-color: rgb(55 65 81); color: rgb(209 213 219); }
-:global(.dark) .business-table td strong { color: rgb(243 244 246); }
-:global(.dark) .business-table tbody tr:hover { background: rgb(31 41 55 / .65); }
-:global(.dark) .business-icon-button:hover { background: rgb(127 29 29 / .2); color: rgb(248 113 113); }
-:global(.dark) .business-data-warning,
-:global(.dark) .business-dialog-warning { border-color: rgb(146 64 14); background: rgb(120 53 15 / .25); color: rgb(253 186 116); }
-:global(.dark) .business-data-warning button { color: rgb(253 186 116); }
-:global(.dark) .business-dialog-note { background: rgb(30 58 138 / .2); }
-:global(.dark) .business-dialog-note strong { color: rgb(243 244 246); }
-
-@media (max-width: 900px) {
-  .business-toolbar { align-items: flex-start; }
-  .business-cumulative { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .business-cumulative__result { grid-column: 1 / -1; }
-  .business-cumulative > div:nth-child(2) { border-left: 0; }
-  .business-cumulative > div:nth-child(n + 2) { border-top: 1px solid rgb(226 232 240); }
-  .business-metrics,
-  .business-risk-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-
-@media (max-width: 640px) {
-  .business-toolbar { padding: .75rem 1rem; }
-  .business-panel__snapshot { display: none; }
-  .business-subnav { width: 100%; }
-  .business-subnav button { min-width: max-content; flex: 1 0 auto; padding-right: .65rem; padding-left: .65rem; }
-  .business-view { padding: 1rem; }
-  .business-data-warning { margin: 1rem 1rem 0; }
-  .business-cumulative { grid-template-columns: 1fr; }
-  .business-cumulative__result { grid-column: auto; }
-  .business-cumulative > div { border-top: 1px solid rgb(226 232 240); border-left: 0; }
-  .business-cumulative > div:first-child { border-top: 0; }
-  .business-cumulative__result strong { font-size: 1.75rem; }
-  .business-metric { padding: .875rem; }
-  .business-metric strong { font-size: 1rem; }
-  .business-risk-grid { grid-template-columns: 1fr; }
-  .business-config-actions { align-items: stretch; }
-  .business-config-actions .btn { flex: 1; padding-right: .75rem; padding-left: .75rem; }
-}
+@media (prefers-reduced-motion: reduce) { .business-segmented-control__slider { transition: none; } }
 </style>

@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/lib/pq"
@@ -18,7 +19,9 @@ import (
 // accounts contribute variable cost using their score cost and CNY conversion;
 // OAuth and other fixed-cost accounts contribute only through the manual ledger.
 type BusinessAnalyticsService struct {
-	db *sql.DB
+	db         *sql.DB
+	ledgerOnce sync.Once
+	ledger     *BusinessLedgerService
 }
 
 func NewBusinessAnalyticsService(db *sql.DB) *BusinessAnalyticsService {

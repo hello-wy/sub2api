@@ -545,6 +545,12 @@ export default {
       failedToLoadUsages: 'Failed to load usage records'
     },
 
+    // Business Analytics
+    businessAnalytics: {
+      title: 'Business Analytics',
+      description: 'Reconcile CNY revenue, costs, and profit from receipts, purchases, and expenses'
+    },
+
     // Usage Records
     usage: {
       title: 'Usage Records',
