@@ -255,6 +255,7 @@ export default {
         tempUnschedulableUntil: 'Resumes {time}'
       },
       columns: {
+        bpsStatus: 'BPS Status',
         name: 'Name',
         id: 'Account ID',
         platformType: 'Platform/Type',
@@ -277,6 +278,15 @@ export default {
         createdAt: 'Created',
         expiresAt: 'Expires At',
         actions: 'Actions'
+      },
+      bpsStatus: {
+        enabled: 'Enabled',
+        disabled: 'Disabled',
+        disabled_403: 'Auto-disabled (403)',
+        disabledAt: 'Automatically disabled at {time}',
+        autoDisabledHint: 'BPS was automatically disabled after an upstream HTTP 403. This status does not mean the account is disabled.',
+        notApplicable: 'Not applicable',
+        notApplicableHint: 'The current Excel / BPS integration requires a regular ChatGPT OAuth account. API keys, PATs, Agent Identity and shadow accounts are not eligible.'
       },
       schedulerScore: {
         baseShort: 'Base',

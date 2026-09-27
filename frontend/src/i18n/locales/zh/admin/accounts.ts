@@ -106,6 +106,7 @@ export default {
       failedToToggleSchedulable: '切换调度状态失败',
       groupCountTotal: '共 {count} 个分组',
       columns: {
+        bpsStatus: 'BPS 状态',
         name: '名称',
         id: '账号ID',
         platformType: '平台/类型',
@@ -128,6 +129,15 @@ export default {
         createdAt: '创建时间',
         expiresAt: '过期时间',
         actions: '操作'
+      },
+      bpsStatus: {
+        enabled: '开启',
+        disabled: '关闭',
+        disabled_403: '403 自动关闭',
+        disabledAt: '自动关闭时间：{time}',
+        autoDisabledHint: 'BPS 上游返回 HTTP 403 后自动关闭协议，此状态不代表账号被禁用。',
+        notApplicable: '不适用',
+        notApplicableHint: '当前 Excel / BPS 接入需要普通 ChatGPT OAuth 账号；API Key、PAT、Agent Identity 和影子账号不适用。'
       },
       schedulerScore: {
         baseShort: '普通',

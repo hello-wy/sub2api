@@ -41,7 +41,11 @@ func TestDisableExcelBPSOn403AtomicWrite(t *testing.T) {
 				begin.WillReturnError(failure)
 			} else {
 				query := `(?s)` + regexp.QuoteMeta("UPDATE accounts") + `.*` +
-					regexp.QuoteMeta("SET extra = jsonb_set(extra, '{openai_excel_bps}', 'false'::jsonb), updated_at = NOW()") + `.*` +
+					regexp.QuoteMeta("SET extra = extra || jsonb_build_object(") + `.*` +
+					regexp.QuoteMeta("'openai_excel_bps', false,") + `.*` +
+					regexp.QuoteMeta("'openai_excel_bps_disabled_reason', 'http_403',") + `.*` +
+					regexp.QuoteMeta("'openai_excel_bps_disabled_at', NOW()") + `.*` +
+					regexp.QuoteMeta("), updated_at = NOW()") + `.*` +
 					regexp.QuoteMeta("WHERE id = $1 AND deleted_at IS NULL AND parent_account_id IS NULL") + `.*` +
 					regexp.QuoteMeta("AND platform = 'openai' AND type = 'oauth'") + `.*` +
 					regexp.QuoteMeta("AND credentials = $2::jsonb") + `.*` +

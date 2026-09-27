@@ -15,6 +15,7 @@ FRONTEND_CRITICAL_VITEST := \
 	src/components/account/__tests__/OpenAIReferralCell.spec.ts \
 	src/components/account/__tests__/OpenAIReferralCell.transport.spec.ts \
 	src/components/account/__tests__/OpenAIQuotaResetCell.spark_shadow.spec.ts \
+	src/components/account/__tests__/AccountBPSStatusCell.spec.ts \
 	src/components/keys/__tests__/BulkEditKeysModal.spec.ts \
 	src/components/account/__tests__/CodexGatewayField.spec.ts \
 	src/components/account/__tests__/CreateAccountModal.spec.ts \
@@ -39,6 +40,7 @@ FRONTEND_CRITICAL_VITEST := \
 	src/views/user/__tests__/ChannelStatusView.mode.spec.ts \
 	src/components/user/profile/__tests__/ProfileInfoCard.spec.ts \
 	src/views/admin/__tests__/SettingsView.spec.ts \
+	src/views/admin/__tests__/AccountsView.priorityColumn.spec.ts \
 	src/features/channel-monitor-v2/__tests__/designSystem.structure.spec.ts \
 	src/features/channel-monitor-v2/__tests__/monitorFormat.spec.ts \
 	src/features/channel-monitor-v2/__tests__/monitorZoom.spec.ts
