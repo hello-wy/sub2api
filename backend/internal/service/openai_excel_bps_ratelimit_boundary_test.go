@@ -38,8 +38,11 @@ func TestExcelBPS429AfterClientOutputDoesNotFailover(t *testing.T) {
 				c.Request.URL.Path = "/v1/responses/compact"
 				stop := startOpenAISSEKeepalive(c, time.Hour)
 				defer stop()
-				value, _ := c.Get(openAICompactSSEKeepaliveKey)
-				require.True(t, value.(*openAICompactSSEKeepalive).beat())
+				value, exists := c.Get(openAICompactSSEKeepaliveKey)
+				require.True(t, exists)
+				heartbeat, ok := value.(*openAICompactSSEKeepalive)
+				require.True(t, ok)
+				require.True(t, heartbeat.beat())
 			case "committed marker":
 				MarkResponseCommitted(c)
 			}
@@ -72,8 +75,10 @@ func TestExcelBPS429StopsPendingCompactHeartbeatBeforeFailover(t *testing.T) {
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses/compact", nil)
 	stop := startOpenAISSEKeepalive(c, time.Hour)
 	defer stop()
-	value, _ := c.Get(openAICompactSSEKeepaliveKey)
-	heartbeat := value.(*openAICompactSSEKeepalive)
+	value, exists := c.Get(openAICompactSSEKeepaliveKey)
+	require.True(t, exists)
+	heartbeat, ok := value.(*openAICompactSSEKeepalive)
+	require.True(t, ok)
 	_, err := svc.Forward(context.Background(), c, excelAccount(), []byte("{\"model\":\"gpt-6-astra\",\"input\":\"test\"}"))
 	requireExcelBPSRateLimitFailover(t, err, c)
 	require.False(t, heartbeat.beat(), "a stopped heartbeat cannot write while switching accounts")
