@@ -1019,6 +1019,11 @@ func (s *AccountTestService) testExcelBPSAccountConnection(c *gin.Context, accou
 	probeCtx.Request = c.Request.Clone(c.Request.Context())
 	result, err := s.openaiGatewayService.Forward(probeCtx, probeCtx, account, body)
 	if err != nil {
+		// A single-account probe cannot switch to another account.
+		var failover *UpstreamFailoverError
+		if errors.As(err, &failover) && failover.Reason == ExcelBPSRateLimitedReason {
+			return s.sendErrorAndEnd(c, failover.ClientMessage)
+		}
 		return s.sendErrorAndEnd(c, err.Error())
 	}
 

@@ -38,7 +38,8 @@ func useExcelBPSForCompat(c *gin.Context, account *Account, model string, bodies
 // Adapt only the downstream representation. The Responses BPS path remains
 // authoritative for preparation, replay, images, usage, cancellation and
 // account state. In particular, raw billing usage is collected before this
-// writer sees the optionally normalized downstream usage. No request is retried.
+// writer sees the optionally normalized downstream usage. A pre-output HTTP 429
+// returns to the handler's existing account-switch loop without writing a body.
 func (s *OpenAIGatewayService) forwardExcelBPSCompat(ctx context.Context, c *gin.Context, account *Account, original, body []byte, start time.Time, options excelBPSCompatOptions) (*OpenAIForwardResult, error) {
 	var err error
 	body, err = sjson.SetBytes(body, "stream", options.stream)

@@ -223,9 +223,17 @@ func TestExcelBPSCompatErrorsAreNeverSuccessfulOrRetried(t *testing.T) {
 				t.Run(fmt.Sprintf("%s/stream=%t/%s", kind, stream, tc.name), func(t *testing.T) {
 					upstream := excelBPSCompatUpstream(tc.wire)
 					upstream.resp.StatusCode = tc.status
-					_, rec, err := forwardExcelBPSCompatTest(t, openAIClientToolsTestService(upstream), excelAccount(), kind, excelBPSCompatBody(t, kind, stream, "high"), "")
+					result, rec, err := forwardExcelBPSCompatTest(t, openAIClientToolsTestService(upstream), excelAccount(), kind, excelBPSCompatBody(t, kind, stream, "high"), "")
 					require.Error(t, err)
 					require.Len(t, upstream.requests, 1)
+					if tc.status == http.StatusTooManyRequests {
+						var failover *UpstreamFailoverError
+						require.ErrorAs(t, err, &failover)
+						require.Equal(t, ExcelBPSRateLimitedReason, failover.Reason)
+						require.Nil(t, result, "unserved attempts must not be billed")
+						require.Empty(t, rec.Body.String())
+						return
+					}
 					require.Contains(t, rec.Body.String(), `"error"`)
 					if tc.code != "" {
 						require.Contains(t, rec.Body.String(), tc.code)

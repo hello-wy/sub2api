@@ -1458,7 +1458,11 @@ func (s *defaultOpenAIAccountScheduler) selectByLoadBalance(
 			continue
 		}
 		if s.service.isOpenAIAccountRequestRuntimeBlocked(account, req.RequestedModel) {
-			filterStats.exclude("runtime_blocked")
+			if s.service.isExcelBPSCoolingDown(account, req.RequestedModel) {
+				filterStats.exclude(excelBPSRateLimitedFilterReason)
+			} else {
+				filterStats.exclude("runtime_blocked")
+			}
 			continue
 		}
 		// require_privacy_set is a group-scoped eligibility gate. Do not mutate the

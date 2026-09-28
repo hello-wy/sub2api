@@ -125,3 +125,21 @@ func TestExcelBPSAccountTestRouting(t *testing.T) {
 		})
 	}
 }
+
+func TestExcelBPSManualTestReportsRateLimit(t *testing.T) {
+	upstream := &httpUpstreamRecorder{resp: &http.Response{
+		StatusCode: http.StatusTooManyRequests, Header: http.Header{"Retry-After": {"30"}},
+		Body: io.NopCloser(strings.NewReader("{\"error\":{\"message\":\"PRIVATE_UPSTREAM\"}}")),
+	}}
+	svc := &AccountTestService{openaiGatewayService: openAIClientToolsTestService(upstream)}
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodPost, "/api/v1/admin/accounts/300/test", nil)
+
+	err := svc.testExcelBPSAccountConnection(c, excelAccount(), "gpt-6-astra", "Reply OK")
+
+	require.EqualError(t, err, excelBPSRateLimitedClientMessage)
+	require.Contains(t, rec.Body.String(), excelBPSRateLimitedClientMessage)
+	require.NotContains(t, rec.Body.String(), "PRIVATE_UPSTREAM")
+	require.Len(t, upstream.requests, 1, "a single-account probe cannot switch to another account")
+}

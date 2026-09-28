@@ -48,6 +48,16 @@ func (b *Bridge) transform(reader io.Reader, writer io.Writer) error {
 	terminal := false
 	emitted := make(map[string]bool)
 	pendingTools := make(map[string]bool)
+	// Keep only response identity and measured usage across conversion failures.
+	// Native tool output must never escape validation through this fallback.
+	responseMeta := make(object)
+	failedResponse := func(problem object) object {
+		response := object{"object": "response", "status": "failed", "output": []any{}, "error": problem}
+		for key, value := range responseMeta {
+			response[key] = value
+		}
+		return response
+	}
 	emit := func(kind string, payload object) error {
 		payload["type"] = kind
 		payload["sequence_number"] = sequence
@@ -96,6 +106,37 @@ func (b *Bridge) transform(reader io.Reader, writer io.Writer) error {
 		kind := text(payload["type"])
 		if kind == "" {
 			kind = event
+		}
+		if response, ok := payload["response"].(object); ok {
+			for _, key := range []string{"id", "object", "model", "created_at", "usage"} {
+				if value := response[key]; value != nil {
+					responseMeta[key] = value
+				}
+			}
+		}
+		if usage, ok := payload["usage"].(object); ok {
+			responseMeta["usage"] = usage
+		}
+		if kind == "error" {
+			problem, _ := payload["error"].(object)
+			if problem == nil {
+				problem = make(object)
+				for _, key := range []string{"code", "message", "param", "status", "status_code", "headers"} {
+					if value, exists := payload[key]; exists {
+						problem[key] = value
+					}
+				}
+			}
+			if text(problem["code"]) == "" {
+				problem["code"] = "upstream_error"
+			}
+			if text(problem["message"]) == "" {
+				problem["message"] = "Basispoints upstream response failed"
+			}
+			// A bare error followed by EOF is not a Responses terminal to Codex
+			// clients. Preserve the error (including retry headers) in a failure.
+			terminal = true
+			return emit("response.failed", object{"response": failedResponse(problem)})
 		}
 		if b.structured != nil && kind == "response.completed" {
 			if response, ok := payload["response"].(object); !ok || response == nil {
@@ -196,10 +237,9 @@ func (b *Bridge) transform(reader io.Reader, writer io.Writer) error {
 		if errors.Is(err, io.ErrClosedPipe) || !errors.As(err, &invalid) {
 			return err
 		}
-		return emit("response.failed", object{"response": object{
-			"status": "failed", "output": []any{},
-			"error": object{"code": "basispoints_protocol_error", "message": err.Error()},
-		}})
+		return emit("response.failed", object{"response": failedResponse(object{
+			"code": "basispoints_protocol_error", "message": err.Error(),
+		})})
 	}
 	if !terminal {
 		return io.ErrUnexpectedEOF
