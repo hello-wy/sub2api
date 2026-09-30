@@ -13,7 +13,6 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/pagination"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/timezone"
-	"github.com/Wei-Shaw/sub2api/internal/pkg/usagestats"
 
 	"github.com/google/uuid"
 	"github.com/robfig/cron/v3"
@@ -111,33 +110,6 @@ func (s *WelfareService) RunRewardJob(ctx context.Context) {
 func dailyRewardWindow(now time.Time) (time.Time, time.Time) {
 	end := now.In(timezone.Location())
 	return timezone.StartOfDay(end), end
-}
-
-func (s *WelfareService) distributeRankingRewards(ctx context.Context, ranking []usagestats.UserSpendingRankingItem, day time.Time, rankLimit int, ratios []float64) int {
-	distributedCount := 0
-	todayStr := day.Format("2006-01-02")
-	for i, item := range ranking {
-		if i >= rankLimit || i >= len(ratios) {
-			break
-		}
-		ratio := ratios[i]
-		if item.ActualCost <= 0 || ratio <= 0 {
-			continue
-		}
-		rewardAmount := item.ActualCost * ratio
-		if rewardAmount <= 0 {
-			continue
-		}
-		remarks := fmt.Sprintf("%s 消费 $%.2f #%d", todayStr, item.ActualCost, i+1)
-		_, err := s.CreateWelfareRecord(ctx, item.UserID, item.Email, rewardAmount, remarks)
-		if err != nil {
-			slog.Error("[WelfareService] failed to distribute welfare reward", "user_id", item.UserID, "email", item.Email, "amount", rewardAmount, "error", err)
-		} else {
-			distributedCount++
-			slog.Info("[WelfareService] distributed welfare reward successfully", "user_id", item.UserID, "email", item.Email, "amount", rewardAmount, "rank", i+1)
-		}
-	}
-	return distributedCount
 }
 
 // CreateWelfareRecord creates a welfare reward record, increases the user's balance, and invalidates caches.
