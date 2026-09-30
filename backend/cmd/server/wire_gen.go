@@ -337,6 +337,8 @@ func initializeApplication(buildInfo handler.BuildInfo) (*Application, error) {
 	auditLogHandler := admin.NewAuditLogHandler(auditLogService, totpService)
 	upstreamBillingProbeService := service.ProvideUpstreamBillingProbeService(accountRepository, accountTestService, settingService, leaderLockCache, db)
 	openCodeGoUsageService := service.ProvideOpenCodeGoUsageService(accountRepository, httpUpstream, settingService, leaderLockCache, db)
+	idempotencyCoordinator := service.ProvideIdempotencyCoordinator(idempotencyRepository, configConfig)
+	claudeResetCreditService := service.ProvideClaudeResetCreditService(accountRepository, claudeTokenProvider, proxyRepository, settingService, idempotencyCoordinator, leaderLockCache)
 	adminHandlersDependencies := handler.AdminHandlersDependencies{
 		DashboardHandler:              dashboardHandler,
 		UserHandler:                   adminUserHandler,
@@ -378,6 +380,7 @@ func initializeApplication(buildInfo handler.BuildInfo) (*Application, error) {
 		UpstreamBillingProbe:          upstreamBillingProbeService,
 		OllamaCloudUsage:              ollamaCloudUsageService,
 		OpenCodeGoUsage:               openCodeGoUsageService,
+		ClaudeResetCredits:            claudeResetCreditService,
 	}
 	adminHandlers := handler.ProvideAdminHandlers(adminHandlersDependencies)
 	usageRecordWorkerPool := service.NewUsageRecordWorkerPool(configConfig)
@@ -386,7 +389,7 @@ func initializeApplication(buildInfo handler.BuildInfo) (*Application, error) {
 	legacyEngine := securityaudit.NewLegacyModerationAdapter(contentModerationService)
 	coordinator := securityaudit.NewCoordinator(legacyEngine, promptService)
 	gatewayHandler := handler.ProvideGatewayHandler(gatewayService, openAIGatewayService, geminiMessagesCompatService, antigravityGatewayService, userService, concurrencyService, billingCacheService, usageService, apiKeyService, usageRecordWorkerPool, errorPassthroughService, contentModerationService, userMessageQueueService, configConfig, settingService, coordinator)
-	openAIGatewayHandler := handler.ProvideOpenAIGatewayHandler(openAIGatewayService, pluginManager, concurrencyService, billingCacheService, apiKeyService, usageRecordWorkerPool, errorPassthroughService, contentModerationService, opsService, grokQuotaService, configConfig, coordinator)
+	openAIGatewayHandler := handler.ProvideOpenAIGatewayHandler(openAIGatewayService, pluginManager, concurrencyService, billingCacheService, apiKeyService, usageRecordWorkerPool, errorPassthroughService, contentModerationService, opsService, grokQuotaService, configConfig, coordinator, compositeRouteResolver)
 	handlerSettingHandler := handler.ProvideSettingHandler(settingService, buildInfo, notificationEmailService)
 	totpHandler := handler.NewTotpHandler(totpService)
 	passkeyRepository := repository.NewPasskeyRepository(db)
@@ -413,7 +416,6 @@ func initializeApplication(buildInfo handler.BuildInfo) (*Application, error) {
 	batchImageDownloadService := service.NewBatchImageDownloadService(batchImageRepository, accountRepository, batchImageDownloadLimiter, configConfig)
 	batchImageCleanupService := service.ProvideBatchImageCleanupService(batchImageRepository, accountRepository, configConfig)
 	batchImageHandler := handler.ProvideBatchImageHandler(batchImagePublicService, batchImageDownloadService, batchImageCleanupService, openAIGatewayHandler)
-	idempotencyCoordinator := service.ProvideIdempotencyCoordinator(idempotencyRepository, configConfig)
 	idempotencyCleanupService := service.ProvideIdempotencyCleanupService(idempotencyRepository, configConfig)
 	openAIQuotaAutoResetService := service.ProvideOpenAIQuotaAutoResetService(accountRepository, openAIQuotaService, rateLimitService, idempotencyCoordinator, auditLogService, settingService, leaderLockCache)
 	handlers := handler.ProvideHandlers(authHandler, userHandler, apiKeyHandler, usageHandler, redeemHandler, subscriptionHandler, announcementHandler, channelMonitorUserHandler, channelMonitorV2Handler, adminHandlers, gatewayHandler, openAIGatewayHandler, handlerSettingHandler, totpHandler, passkeyHandler, handlerPaymentHandler, paymentWebhookHandler, availableChannelHandler, pelicanShowcaseHandler, modelPlazaHandler, asyncImageHandler, batchImageHandler, idempotencyCoordinator, idempotencyCleanupService, openAIQuotaAutoResetService)

@@ -181,6 +181,7 @@
                 <span class="min-w-0 truncate text-xs text-gray-400 font-mono">{{ file.path }}</span>
                 <button
                   type="button"
+                  data-testid="key-config-copy"
                   @click="copyContent(file.content, index)"
                   class="flex flex-shrink-0 items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg transition-colors"
                   :class="copiedIndex === index
@@ -197,7 +198,7 @@
                 </button>
               </div>
               <!-- Code Content -->
-              <pre class="p-4 text-sm font-mono text-gray-100 overflow-x-auto"><code v-if="file.highlighted" v-html="file.highlighted"></code><code v-else v-text="file.content"></code></pre>
+              <pre class="p-4 text-sm font-mono text-gray-100 overflow-x-auto"><code v-if="file.highlighted" data-testid="key-config-code" v-html="file.highlighted"></code><code v-else data-testid="key-config-code" v-text="file.content"></code></pre>
             </div>
           </div>
         </div>
@@ -216,7 +217,19 @@
                 {{ t('keys.useKeyModal.codexModelCatalog.description') }}
               </p>
               <p class="mt-1 truncate font-mono text-xs text-gray-700 dark:text-gray-300">
-                {{ codexModelCatalogPath }}
+                {{ codexModelCatalogMode === 'remote' ? codexModelCatalogUrl : codexModelCatalogPath }}
+              </p>
+              <select
+                v-model="codexModelCatalogMode"
+                data-testid="codex-model-catalog-mode"
+                :aria-label="t('keys.useKeyModal.codexModelCatalog.mode')"
+                class="input mt-2 text-sm"
+              >
+                <option value="remote" :disabled="codexModelCatalogOversized">{{ t('keys.useKeyModal.codexModelCatalog.remote') }}</option>
+                <option value="file">{{ t('keys.useKeyModal.codexModelCatalog.local') }}</option>
+              </select>
+              <p v-if="codexModelCatalogOversized" class="mt-2 text-xs text-amber-700 dark:text-amber-300">
+                {{ t('keys.useKeyModal.codexModelCatalog.oversized') }}
               </p>
             </div>
             <button
@@ -302,7 +315,7 @@ import {
   withoutV1,
   type ShellType
 } from '@/utils/shellCommandGenerator'
-import { fetchCodexModelsManifest } from '@/api/codex'
+import { buildCodexModelCatalogUrl, fetchCodexModelsManifest } from '@/api/codex'
 import type { GroupPlatform } from '@/types'
 import {
   findCodexCatalogModel,
@@ -316,6 +329,7 @@ interface Props {
   apiKey: string
   baseUrl: string
   platform: GroupPlatform | null
+  claudeCodeOnly?: boolean
   allowMessagesDispatch?: boolean
 }
 
@@ -352,6 +366,15 @@ type CodexModelManifestState = 'idle' | 'loading' | 'ready' | 'error'
 const codexModelManifestState = ref<CodexModelManifestState>('idle')
 const codexModelManifestContent = ref('')
 const codexModelManifestModelCount = ref(0)
+const CODEX_REMOTE_CATALOG_MAX_BYTES = 1024 * 1024
+const CODEX_MODEL_CATALOG_CONFIG_PATH = '~/.codex/codex-models.json'
+const codexModelCatalogMode = ref<'remote' | 'file'>('remote')
+const codexModelManifestResponseBytes = ref(0)
+const codexModelCatalogOversized = computed(() => codexModelManifestResponseBytes.value > CODEX_REMOTE_CATALOG_MAX_BYTES)
+const codexModelCatalogUrl = computed(() => buildCodexModelCatalogUrl(props.baseUrl))
+const codexLocalCatalogToml = computed(() => codexModelCatalogMode.value === 'file'
+  ? `model_catalog_json = "${CODEX_MODEL_CATALOG_CONFIG_PATH}"\n`
+  : '')
 let codexModelManifestController: AbortController | null = null
 let codexModelManifestRequestID = 0
 
@@ -374,6 +397,7 @@ const codexManifestContext = computed(() => {
 
 // Reset tabs when platform changes
 const defaultClientTab = computed(() => {
+  if (props.claudeCodeOnly) return 'claude'
   switch (props.platform) {
     case 'openai':
       return 'codex'
@@ -388,7 +412,7 @@ const defaultClientTab = computed(() => {
   }
 })
 
-watch(() => props.platform, () => {
+watch(() => [props.platform, props.claudeCodeOnly], () => {
   activeTab.value = 'unix'
   activeClientTab.value = defaultClientTab.value
   codexAuthMode.value = 'legacy'
@@ -478,6 +502,9 @@ const SparkleIcon = {
 
 const clientTabs = computed((): TabConfig[] => {
   if (!props.platform) return []
+  if (props.claudeCodeOnly) {
+    return [{ id: 'claude', label: t('keys.useKeyModal.cliTabs.claudeCode'), icon: TerminalIcon }]
+  }
   switch (props.platform) {
     case 'openai':
       return [
@@ -719,6 +746,7 @@ function resetCodexModelManifest() {
   codexModelManifestState.value = 'idle'
   codexModelManifestContent.value = ''
   codexModelManifestModelCount.value = 0
+  codexModelManifestResponseBytes.value = 0
 }
 
 async function loadCodexModelManifest() {
@@ -735,6 +763,8 @@ async function loadCodexModelManifest() {
     if (requestID !== codexModelManifestRequestID) return
     codexModelManifestContent.value = result.content
     codexModelManifestModelCount.value = result.modelCount
+    codexModelManifestResponseBytes.value = result.responseBytes
+    if (codexModelCatalogOversized.value) codexModelCatalogMode.value = 'file'
     codexModelManifestState.value = 'ready'
   } catch (error) {
     const errorName = error && typeof error === 'object' && 'name' in error
@@ -1025,14 +1055,14 @@ function generateOpenAIFiles(baseUrl: string, apiKey: string): FileConfig[] {
 model = "${model}"
 review_model = "${model}"
 ${reasoningEffortLine}disable_response_storage = true
-model_catalog_json = "${escapeTomlBasicString(codexModelCatalogPath.value)}"
+${codexLocalCatalogToml.value}
 network_access = "enabled"
 windows_wsl_setup_acknowledged = true
 
 [model_providers.OpenAI]
 name = "OpenAI"
 base_url = "${baseUrl}"
-wire_api = "responses"
+${codexModelCatalogMode.value === 'remote' ? `model_catalog_url = "${escapeTomlBasicString(buildCodexModelCatalogUrl(baseUrl))}"\n` : ''}wire_api = "responses"
 ${generateCodexProviderAuthConfig(apiKey)}
 
 [features]
@@ -1258,8 +1288,7 @@ function generateGrokCodexFiles(baseUrl: string, apiKey: string): FileConfig[] {
 
 model_provider = "sub2api"
 model = "${model}"
-model_catalog_json = "${escapeTomlBasicString(codexModelCatalogPath.value)}"
-# Optional:
+${codexLocalCatalogToml.value}# Optional:
 # review_model = "${model}"
 # model_reasoning_effort = "medium"
 # model_context_window = 500000
@@ -1270,7 +1299,7 @@ model_catalog_json = "${escapeTomlBasicString(codexModelCatalogPath.value)}"
 [model_providers.sub2api]
 name = "Sub2API Grok"
 base_url = "${baseUrl}"
-# Prefer env_key (variable NAME). Do not combine with experimental_bearer_token.
+${codexModelCatalogMode.value === 'remote' ? `model_catalog_url = "${escapeTomlBasicString(buildCodexModelCatalogUrl(baseUrl))}"\n` : ''}# Prefer env_key (variable NAME). Do not combine with experimental_bearer_token.
 env_key = "SUB2API_API_KEY"
 # Fallback only if you cannot set env (discouraged — keeps secret on disk):
 # experimental_bearer_token = "${apiKey}"
@@ -1339,12 +1368,11 @@ model_provider = "sub2api"
 model = "${model}"
 review_model = "${model}"
 disable_response_storage = true
-model_catalog_json = "${escapeTomlBasicString(codexModelCatalogPath.value)}"
-
+${codexLocalCatalogToml.value}
 [model_providers.sub2api]
 name = "Sub2API ${label}"
 base_url = "${baseUrl}"
-env_key = "SUB2API_API_KEY"
+${codexModelCatalogMode.value === 'remote' ? `model_catalog_url = "${escapeTomlBasicString(buildCodexModelCatalogUrl(baseUrl))}"\n` : ''}env_key = "SUB2API_API_KEY"
 wire_api = "responses"
 requires_openai_auth = false
 supports_websockets = false`
@@ -1374,14 +1402,14 @@ function generateOpenAIWsFiles(baseUrl: string, apiKey: string): FileConfig[] {
 model = "${model}"
 review_model = "${model}"
 ${reasoningEffortLine}disable_response_storage = true
-model_catalog_json = "${escapeTomlBasicString(codexModelCatalogPath.value)}"
+${codexLocalCatalogToml.value}
 network_access = "enabled"
 windows_wsl_setup_acknowledged = true
 
 [model_providers.OpenAI]
 name = "OpenAI"
 base_url = "${baseUrl}"
-wire_api = "responses"
+${codexModelCatalogMode.value === 'remote' ? `model_catalog_url = "${escapeTomlBasicString(buildCodexModelCatalogUrl(baseUrl))}"\n` : ''}wire_api = "responses"
 supports_websockets = true
 ${generateCodexProviderAuthConfig(apiKey)}
 
@@ -1454,6 +1482,23 @@ function generateOpenCodeConfig(platform: string, baseUrl: string, apiKey: strin
     },
     'gpt-5.6': {
       name: 'GPT-5.6 (Sol)',
+      limit: {
+        context: 1050000,
+        output: 128000
+      },
+      options: {
+        store: false
+      },
+      variants: {
+        low: {},
+        medium: {},
+        high: {},
+        xhigh: {},
+        max: {}
+      }
+    },
+    'gpt-6.1-sol': {
+      name: 'GPT-6.1 Sol',
       limit: {
         context: 1050000,
         output: 128000
@@ -1960,6 +2005,19 @@ function generateOpenCodeConfig(platform: string, baseUrl: string, apiKey: strin
         limit: { context: 1000000, output: 128000 },
         modalities: { input: ['text', 'image', 'pdf'], output: ['text'] },
         options: { thinking: { type: 'adaptive' }, effort: 'medium' },
+        variants: {
+          low: { effort: 'low' },
+          medium: { effort: 'medium' },
+          high: { effort: 'high' },
+          xhigh: { effort: 'xhigh' },
+          max: { effort: 'max' }
+        }
+      },
+      'claude-sonnet-5-5': {
+        name: 'Claude Sonnet 5.5',
+        limit: { context: 1000000, output: 128000 },
+        modalities: { input: ['text', 'image', 'pdf'], output: ['text'] },
+        options: { thinking: { type: 'adaptive' }, effort: 'high' },
         variants: {
           low: { effort: 'low' },
           medium: { effort: 'medium' },

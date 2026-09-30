@@ -48,12 +48,14 @@ type AdminHandlersDependencies struct {
 	UpstreamBillingProbe          *service.UpstreamBillingProbeService
 	OllamaCloudUsage              *service.OllamaCloudUsageService
 	OpenCodeGoUsage               *service.OpenCodeGoUsageService
+	ClaudeResetCredits            *service.ClaudeResetCreditService
 }
 
 func ProvideAdminHandlers(deps AdminHandlersDependencies) *AdminHandlers {
 	deps.AccountHandler.SetUpstreamBillingProbeService(deps.UpstreamBillingProbe)
 	deps.AccountHandler.SetOllamaCloudUsageService(deps.OllamaCloudUsage)
 	deps.AccountHandler.SetOpenCodeGoUsageService(deps.OpenCodeGoUsage)
+	deps.AccountHandler.SetClaudeResetCreditService(deps.ClaudeResetCredits)
 	return &AdminHandlers{
 		Dashboard:              deps.DashboardHandler,
 		User:                   deps.UserHandler,
