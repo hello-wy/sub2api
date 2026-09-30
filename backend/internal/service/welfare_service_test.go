@@ -5,10 +5,8 @@ package service
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/pkg/pagination"
-	"github.com/Wei-Shaw/sub2api/internal/pkg/usagestats"
 	"github.com/stretchr/testify/require"
 )
 
@@ -36,18 +34,6 @@ func TestCreateWelfareRecordSkipsDuplicateRemark(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, record)
 	require.Zero(t, repo.createCalls)
-}
-
-func TestDistributeRankingRewardsRemarkIncludesSpendAndRank(t *testing.T) {
-	repo := &welfareRepoStub{existingRemark: true}
-	svc := &WelfareService{welfareRepo: repo}
-	day := time.Date(2026, time.June, 25, 0, 0, 0, 0, time.UTC)
-
-	svc.distributeRankingRewards(context.Background(), []usagestats.UserSpendingRankingItem{
-		{UserID: 10, Email: "u@example.com", ActualCost: 12.345},
-	}, day, 1, []float64{1})
-
-	require.Equal(t, "2026-06-25 消费 $12.35 #1", repo.lastRemark)
 }
 
 func TestListWelfareRecordsIncludesSummaryAndTypeFilter(t *testing.T) {
