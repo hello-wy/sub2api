@@ -220,6 +220,13 @@ func (s *SettingService) buildSystemSettingsUpdates(ctx context.Context, setting
 	updates[SettingKeyTotpEnabled] = strconv.FormatBool(settings.TotpEnabled)
 	updates[SettingKeyWelfareLeaderboardRankLimit] = strconv.Itoa(settings.WelfareLeaderboardRankLimit)
 	updates[SettingKeyWelfareLeaderboardRewardRatios] = settings.WelfareLeaderboardRewardRatios
+	rewardTime := settings.WelfareRewardTime
+	if rewardTime == "" {
+		rewardTime = DefaultWelfareRewardTime
+	}
+	updates[SettingKeyWelfareRewardTime] = rewardTime
+	updates[SettingKeyTicketRebateEnabled] = strconv.FormatBool(settings.TicketRebateEnabled)
+	updates[SettingKeyTicketRebateRules] = settings.TicketRebateRules
 	loyaltyWeeklyRulesJSON, err := NormalizePaymentLoyaltyRulesJSON("weekly", settings.LoyaltyWeeklyRules)
 	if err != nil {
 		return nil, infraerrors.BadRequest("INVALID_LOYALTY_WEEKLY_RULES", err.Error())

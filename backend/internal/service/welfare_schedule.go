@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -11,7 +13,17 @@ import (
 	"github.com/robfig/cron/v3"
 )
 
-// Start starts the daily 23:55 cron job.
+const DefaultWelfareRewardTime = "23:55"
+
+func ValidateWelfareRewardTime(value string) (string, error) {
+	parsed, err := time.Parse("15:04", value)
+	if err != nil || parsed.Format("15:04") != value {
+		return "", fmt.Errorf("welfare_reward_time must use HH:mm (00:00-23:59)")
+	}
+	return value, nil
+}
+
+// Start checks the editable daily settlement time every minute.
 func (s *WelfareService) Start() {
 	if s == nil {
 		return
@@ -23,16 +35,44 @@ func (s *WelfareService) Start() {
 	}
 	s.started = true
 
-	schedule := "55 23 * * *"
+	schedule := "* * * * *"
 	loc := timezone.Location()
 	c := newWelfareCron(loc)
-	if _, err := c.AddFunc(schedule, func() { s.RunRewardJob(context.Background()) }); err != nil {
+	if _, err := c.AddFunc(schedule, func() { s.runScheduledRewardJob(context.Background()) }); err != nil {
 		slog.Error("[WelfareService] failed to schedule cron job", "error", err)
 		return
 	}
 	c.Start()
 	s.cron = c
 	slog.Info("[WelfareService] scheduled reward job successfully", "schedule", schedule, "timezone", loc.String())
+}
+
+func (s *WelfareService) runScheduledRewardJob(ctx context.Context) {
+	due, err := s.scheduledRewardDue(ctx, timezone.Now())
+	if err != nil {
+		slog.Error("[WelfareService] failed to read reward time", "error", err)
+		return
+	}
+	if due {
+		s.RunRewardJob(ctx)
+	}
+}
+
+func (s *WelfareService) scheduledRewardDue(ctx context.Context, now time.Time) (bool, error) {
+	raw, err := s.settingRepo.GetValue(ctx, SettingKeyWelfareRewardTime)
+	if errors.Is(err, ErrSettingNotFound) {
+		raw = DefaultWelfareRewardTime
+	} else if err != nil {
+		return false, err
+	}
+	if raw == "" {
+		raw = DefaultWelfareRewardTime
+	}
+	setting, err := ValidateWelfareRewardTime(raw)
+	if err != nil {
+		return false, err
+	}
+	return now.In(timezone.Location()).Format("15:04") == setting, nil
 }
 
 func newWelfareCron(loc *time.Location) *cron.Cron {

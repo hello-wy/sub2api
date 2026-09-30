@@ -182,6 +182,9 @@ type SystemSettings struct {
 	// 排行榜福利设置
 	WelfareLeaderboardRankLimit    int
 	WelfareLeaderboardRewardRatios string
+	WelfareRewardTime              string
+	TicketRebateEnabled            bool
+	TicketRebateRules              string
 	LoyaltyWeeklyRules             string
 	LoyaltyPermanentRules          string
 	DailyCheckinRewardMin          float64

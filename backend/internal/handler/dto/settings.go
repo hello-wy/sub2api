@@ -101,6 +101,9 @@ type SystemSettings struct {
 	// 排行榜福利设置
 	WelfareLeaderboardRankLimit    int     `json:"welfare_leaderboard_rank_limit"`
 	WelfareLeaderboardRewardRatios string  `json:"welfare_leaderboard_reward_ratios"`
+	WelfareRewardTime              string  `json:"welfare_reward_time"`
+	TicketRebateEnabled            bool    `json:"ticket_rebate_enabled"`
+	TicketRebateRules              string  `json:"ticket_rebate_rules"`
 	LoyaltyWeeklyRules             string  `json:"loyalty_weekly_rules"`
 	LoyaltyPermanentRules          string  `json:"loyalty_permanent_rules"`
 	DailyCheckinRewardMin          float64 `json:"daily_checkin_reward_min"`

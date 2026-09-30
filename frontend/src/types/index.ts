@@ -2071,6 +2071,9 @@ export interface UserSpendingRankingItem {
   requests: number
   tokens: number
   rank?: number
+  amount_rebate?: number
+  ticket_count?: number
+  matched_rules?: Array<{ amount_threshold: number; ticket_count: number }>
 }
 
 export interface UserSpendingRankingResponse {

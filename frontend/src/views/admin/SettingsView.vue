@@ -8558,6 +8558,11 @@
               </p>
             </div>
             <div class="space-y-6 p-6">
+              <div class="max-w-xs">
+                <label for="welfare-reward-time" class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">每日返利结算时间</label>
+                <input id="welfare-reward-time" v-model="form.welfare_reward_time" type="time" step="60" required class="input" data-testid="welfare-reward-time" />
+                <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">按站点时区结算当日截至执行时的消费</p>
+              </div>
               <!-- Limit Settings -->
               <div class="max-w-xs">
                 <label
@@ -8622,6 +8627,7 @@
                   </div>
                 </div>
               </div>
+              <TicketRebateSettings v-model:enabled="form.ticket_rebate_enabled" v-model:rules="ticketRebateRules" />
             </div>
           </div>
 
@@ -9498,6 +9504,7 @@ import BackupSettings from "@/views/admin/BackupView.vue";
 import EmailTemplateEditor from "@/views/admin/settings/EmailTemplateEditor.vue";
 import OpenAIFastPolicyUserSelector from "@/views/admin/settings/OpenAIFastPolicyUserSelector.vue";
 import PelicanShowcaseSettings from "@/views/admin/settings/PelicanShowcaseSettings.vue";
+import TicketRebateSettings, { type TicketRebateRule } from "@/views/admin/settings/TicketRebateSettings.vue";
 import {
   defaultPelicanShowcaseConfig,
   sanitizePelicanShowcaseConfig,
@@ -9564,6 +9571,11 @@ type SettingsTab =
   | "operations";
 const activeTab = ref<SettingsTab>("general");
 const welfareRatios = ref<number[]>([1.0, 0.5, 0.2]);
+const ticketRebateRules = ref<TicketRebateRule[]>([{ amount_threshold: 5, ticket_count: 1 }]);
+
+function parseTicketRebateRules(raw: string): TicketRebateRule[] {
+  return JSON.parse(raw) as TicketRebateRule[];
+}
 const dailyCheckinRewardRanges = ref<DailyCheckinRewardRangeSetting[]>([]);
 const dailyCheckinStreakRules = ref<DailyCheckinStreakRuleSetting[]>([]);
 type OperationsSubTab = "welfare" | "checkin" | "membership" | "lottery";
@@ -10603,6 +10615,9 @@ const form = reactive<SettingsForm>({
   email_verify_enabled: false,
   welfare_leaderboard_rank_limit: 3,
   welfare_leaderboard_reward_ratios: "[1.0, 0.5, 0.2]",
+  welfare_reward_time: "23:55",
+  ticket_rebate_enabled: false,
+  ticket_rebate_rules: '[{"amount_threshold":5,"ticket_count":1}]',
   loyalty_weekly_rules: serializeLoyaltyRules("weekly", loyaltyWeeklyRules.value),
   loyalty_permanent_rules: serializeLoyaltyRules("permanent", loyaltyPermanentRules.value),
   daily_checkin_reward_min: 0.001,
@@ -11883,6 +11898,7 @@ async function loadSettings() {
     welfareRatios.value = parseWelfareRatios(
       form.welfare_leaderboard_reward_ratios,
     );
+    ticketRebateRules.value = parseTicketRebateRules(form.ticket_rebate_rules);
     normalizeWelfareSettings();
     loyaltyWeeklyRules.value = parseLoyaltyRules(form.loyalty_weekly_rules, "weekly");
     loyaltyPermanentRules.value = parseLoyaltyRules(
@@ -12685,6 +12701,9 @@ async function saveSettings() {
       allow_user_view_error_requests: form.allow_user_view_error_requests,
       welfare_leaderboard_rank_limit: form.welfare_leaderboard_rank_limit,
       welfare_leaderboard_reward_ratios: JSON.stringify(welfareRatios.value),
+      welfare_reward_time: form.welfare_reward_time,
+      ticket_rebate_enabled: form.ticket_rebate_enabled,
+      ticket_rebate_rules: JSON.stringify(ticketRebateRules.value),
       loyalty_weekly_rules: serializeLoyaltyRules("weekly", loyaltyWeeklyRules.value),
       loyalty_permanent_rules: serializeLoyaltyRules("permanent", loyaltyPermanentRules.value),
       daily_checkin_reward_min: form.daily_checkin_reward_min,
@@ -12754,6 +12773,7 @@ async function saveSettings() {
     welfareRatios.value = parseWelfareRatios(
       updated.welfare_leaderboard_reward_ratios,
     );
+    ticketRebateRules.value = parseTicketRebateRules(updated.ticket_rebate_rules);
     normalizeWelfareSettings();
     loyaltyWeeklyRules.value = parseLoyaltyRules(
       updated.loyalty_weekly_rules,

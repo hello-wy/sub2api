@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/pkg/usagestats"
+	"github.com/lib/pq"
 )
 
 const defaultUserSpendingRankingLimit = 12
@@ -122,10 +123,59 @@ func (r *usageLogRepository) GetUserSpendingRanking(ctx context.Context, startTi
 	if err != nil {
 		return nil, err
 	}
+	if startTime.AddDate(0, 0, 1).Equal(endTime) {
+		if err := r.attachDailyRebates(ctx, startTime, ranking, currentUser); err != nil {
+			return nil, err
+		}
+	}
 	return &UserSpendingRankingResponse{
 		Ranking: ranking, TotalActualCost: totals.actualCost, TotalRequests: totals.requests,
 		TotalTokens: totals.tokens, UserRanking: currentUser,
 	}, nil
+}
+
+func (r *usageLogRepository) attachDailyRebates(ctx context.Context, day time.Time, ranking []UserSpendingRankingItem, current *UserSpendingRankingItem) error {
+	ids := make([]int64, 0, len(ranking)+1)
+	for _, item := range ranking {
+		ids = append(ids, item.UserID)
+	}
+	if current != nil {
+		ids = append(ids, current.UserID)
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	rows, err := r.sql.QueryContext(ctx, `SELECT user_id, amount_rebate, ticket_count, matched_rules
+FROM daily_ticket_rebates WHERE settlement_date = $1 AND status = 'success' AND user_id = ANY($2)`, day.Format(time.DateOnly), pq.Array(ids))
+	if err != nil {
+		return err
+	}
+	defer func() { _ = rows.Close() }()
+	matched := make(map[int64]UserSpendingRankingItem, len(ids))
+	for rows.Next() {
+		var id int64
+		var item UserSpendingRankingItem
+		if err := rows.Scan(&id, &item.AmountRebate, &item.TicketCount, &item.MatchedRules); err != nil {
+			return err
+		}
+		matched[id] = item
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	for i := range ranking {
+		applyDailyRebate(&ranking[i], matched[ranking[i].UserID])
+	}
+	if current != nil {
+		applyDailyRebate(current, matched[current.UserID])
+	}
+	return nil
+}
+
+func applyDailyRebate(item *UserSpendingRankingItem, rebate UserSpendingRankingItem) {
+	item.AmountRebate = rebate.AmountRebate
+	item.TicketCount = rebate.TicketCount
+	item.MatchedRules = rebate.MatchedRules
 }
 
 func scanUserSpendingRankingRows(rows *sql.Rows) ([]UserSpendingRankingItem, userSpendingTotals, error) {

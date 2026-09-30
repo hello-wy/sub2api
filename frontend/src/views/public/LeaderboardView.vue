@@ -73,6 +73,7 @@
             </div>
             <div class="user-email" :title="ranking[1].email">{{ maskEmail(ranking[1].email) }}</div>
             <div class="token-value">{{ formatCost(ranking[1].actual_cost) }}</div>
+            <button class="rebate-trigger" type="button" @click="selectedReward = ranking[1]">{{ rebateSummary(ranking[1]) }}</button>
             <div class="podium-bar bar-2">
               <div class="bar-shine" />
             </div>
@@ -93,6 +94,7 @@
             </div>
             <div class="user-email" :title="ranking[0].email">{{ maskEmail(ranking[0].email) }}</div>
             <div class="token-value champion">{{ formatCost(ranking[0].actual_cost) }}</div>
+            <button class="rebate-trigger" type="button" @click="selectedReward = ranking[0]">{{ rebateSummary(ranking[0]) }}</button>
             <div class="podium-bar bar-1">
               <div class="bar-shine" />
             </div>
@@ -112,6 +114,7 @@
             </div>
             <div class="user-email" :title="ranking[2].email">{{ maskEmail(ranking[2].email) }}</div>
             <div class="token-value">{{ formatCost(ranking[2].actual_cost) }}</div>
+            <button class="rebate-trigger" type="button" @click="selectedReward = ranking[2]">{{ rebateSummary(ranking[2]) }}</button>
             <div class="podium-bar bar-3">
               <div class="bar-shine" />
             </div>
@@ -142,6 +145,7 @@
             </div>
             <div class="list-tokens">
               <span class="list-token-value">{{ formatCost(user.actual_cost) }}</span>
+              <button class="rebate-trigger" type="button" @click="selectedReward = user">{{ rebateSummary(user) }}</button>
             </div>
           </div>
         </div>
@@ -165,6 +169,7 @@
             </div>
             <div class="list-tokens">
               <span class="list-token-value">{{ formatCost(userRanking?.actual_cost || 0) }}</span>
+              <button v-if="userRanking" class="rebate-trigger" type="button" @click="selectedReward = userRanking">{{ rebateSummary(userRanking) }}</button>
             </div>
           </div>
         </div>
@@ -174,6 +179,15 @@
       <footer class="lb-footer">
         <p>每 60 秒自动刷新</p>
       </footer>
+      <BaseDialog :show="selectedReward !== null" title="最终返利详情" width="narrow" @close="selectedReward = null">
+        <div v-if="selectedReward" class="rebate-detail">
+          <div><span>消费金额</span><strong>{{ formatCost(selectedReward.actual_cost) }}</strong></div>
+          <div><span>金额返利</span><strong>{{ selectedReward.amount_rebate === undefined ? '待结算' : formatCost(selectedReward.amount_rebate) }}</strong></div>
+          <div><span>抽奖券返利</span><strong>{{ selectedReward.ticket_count === undefined ? '待结算' : `${selectedReward.ticket_count} 张` }}</strong></div>
+          <div><span>最终返利</span><strong>{{ rebateSummary(selectedReward) }}</strong></div>
+          <div v-if="selectedReward.matched_rules?.length" class="rebate-rules"><span>命中的抽奖券档位</span><strong v-for="rule in selectedReward.matched_rules" :key="rule.amount_threshold">消费达到 ${{ rule.amount_threshold }}：{{ rule.ticket_count }} 张</strong></div>
+        </div>
+      </BaseDialog>
     </div>
     </ScrollablePageLayout>
   </AppLayout>
@@ -185,6 +199,7 @@ import { getUserSpendingRanking } from '@/api/admin/dashboard'
 import type { UserSpendingRankingItem } from '@/types'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import ScrollablePageLayout from '@/components/layout/ScrollablePageLayout.vue'
+import BaseDialog from '@/components/common/BaseDialog.vue'
 import { useAuthStore } from '@/stores'
 import { maskLeaderboardEmail } from '@/utils/leaderboardEmail'
 
@@ -202,6 +217,7 @@ const userRanking = ref<UserSpendingRankingItem | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
 const hoveredCard = ref<number | null>(null)
+const selectedReward = ref<UserSpendingRankingItem | null>(null)
 const selectedRange = ref<LeaderboardRange>('today')
 let refreshTimer: ReturnType<typeof setInterval> | null = null
 
@@ -271,6 +287,11 @@ function formatCost(cost: number): string {
   return `$${(cost || 0).toFixed(2)}`
 }
 
+function rebateSummary(item: UserSpendingRankingItem): string {
+  if (item.ticket_count === undefined || item.amount_rebate === undefined) return '待结算'
+  return `${formatCost(item.amount_rebate)} + ${item.ticket_count} 张抽奖券`
+}
+
 // Generate random particle styles
 function particleStyle(n: number) {
   const size = 2 + Math.random() * 4
@@ -323,6 +344,25 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.rebate-trigger {
+  display: block;
+  max-width: 100%;
+  margin: 4px auto 0;
+  border: 0;
+  background: none;
+  color: #087f5b;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: center;
+  cursor: pointer;
+}
+.rebate-trigger:hover { text-decoration: underline; }
+.rebate-detail { display: grid; gap: 12px; font-size: 14px; }
+.rebate-detail > div:not(.rebate-rules) { display: flex; justify-content: space-between; gap: 16px; }
+.rebate-detail strong { color: #087f5b; text-align: right; }
+.rebate-rules { display: grid; gap: 6px; border-top: 1px solid #d1d5db; padding-top: 12px; }
+.rebate-rules strong { text-align: left; }
 /* ==================== Base & Background ==================== */
 .leaderboard-page {
   min-height: calc(100vh - 64px - 4rem);

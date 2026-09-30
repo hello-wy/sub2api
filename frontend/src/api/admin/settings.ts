@@ -471,6 +471,9 @@ export interface SystemSettings {
   login_agreement_documents: LoginAgreementDocument[];
   welfare_leaderboard_rank_limit: number;
   welfare_leaderboard_reward_ratios: string;
+  welfare_reward_time: string;
+  ticket_rebate_enabled: boolean;
+  ticket_rebate_rules: string;
   loyalty_weekly_rules: string;
   loyalty_permanent_rules: string;
   daily_checkin_reward_min: number;
@@ -839,6 +842,9 @@ export interface UpdateSettingsRequest {
   login_agreement_documents?: LoginAgreementDocument[];
   welfare_leaderboard_rank_limit?: number;
   welfare_leaderboard_reward_ratios?: string;
+  welfare_reward_time?: string;
+  ticket_rebate_enabled?: boolean;
+  ticket_rebate_rules?: string;
   loyalty_weekly_rules?: string;
   loyalty_permanent_rules?: string;
   daily_checkin_reward_min?: number;

@@ -1,7 +1,10 @@
 // Package usagestats provides types for usage statistics and reporting.
 package usagestats
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 const (
 	ModelSourceRequested = "requested"
@@ -152,13 +155,16 @@ const ContextKeyRankingUserID ContextKeyType = "ranking_user_id"
 
 // UserSpendingRankingItem represents a user spending ranking row.
 type UserSpendingRankingItem struct {
-	UserID     int64   `json:"user_id"`
-	Email      string  `json:"email"`
-	Username   string  `json:"username"`
-	ActualCost float64 `json:"actual_cost"` // 实际扣除
-	Requests   int64   `json:"requests"`
-	Tokens     int64   `json:"tokens"`
-	Rank       int64   `json:"rank,omitempty"`
+	UserID       int64           `json:"user_id"`
+	Email        string          `json:"email"`
+	Username     string          `json:"username"`
+	ActualCost   float64         `json:"actual_cost"` // 实际扣除
+	Requests     int64           `json:"requests"`
+	Tokens       int64           `json:"tokens"`
+	Rank         int64           `json:"rank,omitempty"`
+	AmountRebate *float64        `json:"amount_rebate,omitempty"`
+	TicketCount  *int            `json:"ticket_count,omitempty"`
+	MatchedRules json.RawMessage `json:"matched_rules,omitempty"`
 }
 
 // UserSpendingRankingResponse represents ranking rows plus total spend for the time range.

@@ -830,6 +830,8 @@ func TestUsageLogRepositoryGetUserSpendingRanking(t *testing.T) {
 	mock.ExpectQuery("WITH user_spend AS \\([\\s\\S]*COALESCE\\(us\\.role, 'user'\\) <> 'admin'").
 		WithArgs(start, end, 12).
 		WillReturnRows(rows)
+	mock.ExpectQuery("FROM daily_ticket_rebates").WithArgs("2025-01-01", sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{"user_id", "amount_rebate", "ticket_count", "matched_rules"}))
 
 	got, err := repo.GetUserSpendingRanking(context.Background(), start, end, 12)
 	require.NoError(t, err)

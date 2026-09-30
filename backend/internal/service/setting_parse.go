@@ -1021,6 +1021,15 @@ func (s *SettingService) parseSettings(settings map[string]string) *SystemSettin
 		result.WelfareLeaderboardRankLimit = 3
 	}
 	result.WelfareLeaderboardRewardRatios = settings[SettingKeyWelfareLeaderboardRewardRatios]
+	result.WelfareRewardTime = settings[SettingKeyWelfareRewardTime]
+	if result.WelfareRewardTime == "" {
+		result.WelfareRewardTime = DefaultWelfareRewardTime
+	}
+	result.TicketRebateEnabled = settings[SettingKeyTicketRebateEnabled] == "true"
+	result.TicketRebateRules = settings[SettingKeyTicketRebateRules]
+	if result.TicketRebateRules == "" {
+		result.TicketRebateRules = DefaultTicketRebateRules
+	}
 	if strings.TrimSpace(result.WelfareLeaderboardRewardRatios) == "" {
 		result.WelfareLeaderboardRewardRatios = "[1.0, 0.5, 0.2]"
 	}

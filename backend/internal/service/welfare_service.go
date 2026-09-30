@@ -93,16 +93,24 @@ func (s *WelfareService) RunRewardJob(ctx context.Context) {
 	slog.Info("[WelfareService] starting daily reward job execution")
 
 	rankLimit, ratios := s.loadRewardSettings(ctx)
-	today := timezone.Today()
-	endTime := timezone.Now()
-	ranking, err := s.dashboardSvc.GetUserSpendingRanking(ctx, today, endTime, rankLimit)
+	day, endTime := dailyRewardWindow(timezone.Now())
+	ranking, err := s.dashboardSvc.GetUserSpendingRanking(ctx, day, endTime, rankLimit)
 	if err != nil {
 		slog.Error("[WelfareService] failed to fetch daily user spending ranking", "error", err)
 		return
 	}
 
-	count := s.distributeRankingRewards(ctx, ranking.Ranking, today, rankLimit, ratios)
+	count, err := s.settleDailyRewards(ctx, day, endTime, ranking.Ranking, ratios)
+	if err != nil {
+		slog.Error("[WelfareService] daily reward settlement failed", "error", err)
+		return
+	}
 	slog.Info("[WelfareService] daily reward job finished", "distributed_count", count, "duration", time.Since(startedAt))
+}
+
+func dailyRewardWindow(now time.Time) (time.Time, time.Time) {
+	end := now.In(timezone.Location())
+	return timezone.StartOfDay(end), end
 }
 
 func (s *WelfareService) distributeRankingRewards(ctx context.Context, ranking []usagestats.UserSpendingRankingItem, day time.Time, rankLimit int, ratios []float64) int {

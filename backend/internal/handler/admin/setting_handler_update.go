@@ -182,6 +182,9 @@ type UpdateSettingsRequest struct {
 	// 排行榜福利设置
 	WelfareLeaderboardRankLimit               int                               `json:"welfare_leaderboard_rank_limit"`
 	WelfareLeaderboardRewardRatios            string                            `json:"welfare_leaderboard_reward_ratios"`
+	WelfareRewardTime                         *string                           `json:"welfare_reward_time"`
+	TicketRebateEnabled                       *bool                             `json:"ticket_rebate_enabled"`
+	TicketRebateRules                         string                            `json:"ticket_rebate_rules"`
 	LoyaltyWeeklyRules                        string                            `json:"loyalty_weekly_rules"`
 	LoyaltyPermanentRules                     string                            `json:"loyalty_permanent_rules"`
 	DailyCheckinRewardMin                     float64                           `json:"daily_checkin_reward_min"`
@@ -665,6 +668,27 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 	if err := validateWelfareSettings(req.WelfareLeaderboardRankLimit, req.WelfareLeaderboardRewardRatios); err != nil {
 		response.BadRequest(c, err.Error())
 		return
+	}
+	welfareRewardTime := previousSettings.WelfareRewardTime
+	if req.WelfareRewardTime != nil {
+		welfareRewardTime = *req.WelfareRewardTime
+	}
+	if _, err := service.ValidateWelfareRewardTime(welfareRewardTime); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+	if req.TicketRebateRules == "" {
+		req.TicketRebateRules = previousSettings.TicketRebateRules
+	}
+	normalizedTicketRules, err := service.NormalizeTicketRebateRules(req.TicketRebateRules)
+	if err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+	req.TicketRebateRules = normalizedTicketRules
+	ticketRebateEnabled := previousSettings.TicketRebateEnabled
+	if req.TicketRebateEnabled != nil {
+		ticketRebateEnabled = *req.TicketRebateEnabled
 	}
 	normalizeLoyaltyUpdateRequest(&req, previousSettings)
 	if _, err := service.NormalizePaymentLoyaltyRulesJSON("weekly", req.LoyaltyWeeklyRules); err != nil {
@@ -1581,6 +1605,9 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		TotpEnabled:                         req.TotpEnabled,
 		WelfareLeaderboardRankLimit:         req.WelfareLeaderboardRankLimit,
 		WelfareLeaderboardRewardRatios:      req.WelfareLeaderboardRewardRatios,
+		WelfareRewardTime:                   welfareRewardTime,
+		TicketRebateEnabled:                 ticketRebateEnabled,
+		TicketRebateRules:                   req.TicketRebateRules,
 		LoyaltyWeeklyRules:                  req.LoyaltyWeeklyRules,
 		LoyaltyPermanentRules:               req.LoyaltyPermanentRules,
 		DailyCheckinRewardMin:               req.DailyCheckinRewardMin,
@@ -2289,6 +2316,9 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		TotpEncryptionKeyConfigured:                            h.settingService.IsTotpEncryptionKeyConfigured(),
 		WelfareLeaderboardRankLimit:                            updatedSettings.WelfareLeaderboardRankLimit,
 		WelfareLeaderboardRewardRatios:                         updatedSettings.WelfareLeaderboardRewardRatios,
+		WelfareRewardTime:                                      updatedSettings.WelfareRewardTime,
+		TicketRebateEnabled:                                    updatedSettings.TicketRebateEnabled,
+		TicketRebateRules:                                      updatedSettings.TicketRebateRules,
 		LoyaltyWeeklyRules:                                     updatedSettings.LoyaltyWeeklyRules,
 		LoyaltyPermanentRules:                                  updatedSettings.LoyaltyPermanentRules,
 		DailyCheckinRewardMin:                                  updatedSettings.DailyCheckinRewardMin,

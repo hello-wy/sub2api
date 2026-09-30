@@ -1874,6 +1874,21 @@ describe("admin SettingsView payment visible method controls", () => {
     });
   });
 
+  it("shows and saves the editable daily rebate time", async () => {
+    getSettings.mockResolvedValue({ ...baseSettingsResponse, welfare_reward_time: "06:45" });
+    const wrapper = mountView();
+
+    await flushPromises();
+    await openOperationsTab(wrapper);
+    const timeInput = wrapper.get('[data-testid="welfare-reward-time"]');
+    expect((timeInput.element as HTMLInputElement).value).toBe("06:45");
+
+    await timeInput.setValue("07:30");
+    await wrapper.find("form").trigger("submit.prevent");
+    await flushPromises();
+    expect(updateSettings.mock.calls[0]?.[0]).toMatchObject({ welfare_reward_time: "07:30" });
+  });
+
   it("submits membership plan rules from operations settings", async () => {
     const wrapper = mountView();
 
