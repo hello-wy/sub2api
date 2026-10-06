@@ -303,6 +303,11 @@ gateway:
   # Use this to avoid compact failures when newer models are not yet supported by the compact endpoint.
   # 当 compact 端点暂未支持更新模型时，可通过这里降级规避失败。
   openai_compact_model: "gpt-5.5"
+  # Prism OAuth browser adapter. Keep the adapter on a numeric loopback address.
+  prism_browser:
+    enabled: false
+    base_url: "http://127.0.0.1:8319/v1"
+    api_key: ""
   # ChatGPT Frameless Live 单会话硬上限（秒）。
   live:
     max_session_duration_seconds: 3600

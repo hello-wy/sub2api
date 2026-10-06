@@ -775,7 +775,7 @@ func (s *PaymentService) affiliateRebateBaseAmount(ctx context.Context, o *dbent
 	switch o.OrderType {
 	case payment.OrderTypeBalance:
 		// 返利只按实充部分计算，赠送额度不参与。
-		return paymentOrderAmountWithoutBonus(o), nil
+		return affiliateRebateBaseAmount(o), nil
 	case payment.OrderTypeSubscription:
 		if s.configService == nil {
 			return 0, errors.New("payment config service is unavailable")
