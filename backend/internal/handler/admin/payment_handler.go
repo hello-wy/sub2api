@@ -200,6 +200,7 @@ type AdminPaymentOrderResult struct {
 	Amount              float64    `json:"amount"`
 	PayAmount           float64    `json:"pay_amount"`
 	FeeRate             float64    `json:"fee_rate"`
+	BonusAmount         float64    `json:"bonus_amount,omitempty"`
 	Currency            string     `json:"currency"`
 	RechargeCode        string     `json:"recharge_code,omitempty"`
 	OutTradeNo          string     `json:"out_trade_no"`
@@ -252,7 +253,7 @@ func sanitizeAdminPaymentOrderForResponse(order *dbent.PaymentOrder) *AdminPayme
 	return sanitizeAdminOrderForResponse(service.AdminOrder{
 		ID: "payment:" + strconv.FormatInt(int64(order.ID), 10), SourceKind: service.AdminOrderSourcePayment,
 		UserID: order.UserID, UserEmail: order.UserEmail, UserName: order.UserName, UserNotes: order.UserNotes,
-		Amount: order.Amount, PayAmount: order.PayAmount, FeeRate: order.FeeRate, Currency: service.PaymentOrderCurrency(order),
+		Amount: order.Amount, PayAmount: order.PayAmount, FeeRate: order.FeeRate, BonusAmount: order.BonusAmount, Currency: service.PaymentOrderCurrency(order),
 		RechargeCode: order.RechargeCode, OutTradeNo: order.OutTradeNo, PaymentType: order.PaymentType, PaymentTradeNo: order.PaymentTradeNo,
 		PayURL: order.PayURL, QRCode: order.QrCode, QRCodeImg: order.QrCodeImg, OrderType: order.OrderType,
 		PlanID: order.PlanID, SubscriptionGroupID: order.SubscriptionGroupID, SubscriptionDays: order.SubscriptionDays,
@@ -276,6 +277,7 @@ func sanitizeAdminOrderForResponse(order service.AdminOrder) *AdminPaymentOrderR
 		Amount:              order.Amount,
 		PayAmount:           order.PayAmount,
 		FeeRate:             order.FeeRate,
+		BonusAmount:         order.BonusAmount,
 		Currency:            order.Currency,
 		RechargeCode:        order.RechargeCode,
 		OutTradeNo:          order.OutTradeNo,

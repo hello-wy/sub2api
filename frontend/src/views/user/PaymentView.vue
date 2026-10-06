@@ -43,6 +43,12 @@
                   <h2 class="text-lg font-semibold text-gray-950 dark:text-white">{{ t('wallet.rechargeSectionTitle') }}</h2>
                   <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ t('wallet.rechargeSectionHint') }}</p>
                 </div>
+                <div
+                  v-if="renderedBonusNotice"
+                  class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-relaxed text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100 [&_a]:font-medium [&_a]:underline [&_h1]:text-base [&_h1]:font-semibold [&_h2]:text-base [&_h2]:font-semibold [&_h3]:text-sm [&_h3]:font-semibold [&_ol]:my-1 [&_ol]:ml-5 [&_ol]:list-decimal [&_p]:my-1 [&_strong]:font-semibold [&_ul]:my-1 [&_ul]:ml-5 [&_ul]:list-disc"
+                  data-testid="recharge-bonus-notice"
+                  v-html="renderedBonusNotice"
+                ></div>
                 <div v-if="enabledMethods.length === 0" class="rounded-lg bg-gray-50 py-14 text-center dark:bg-dark-700/60">
                   <Icon name="creditCard" size="xl" class="mx-auto mb-3 text-gray-300 dark:text-gray-500" />
                   <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('payment.notAvailable') }}</p>
@@ -69,9 +75,17 @@
                         <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('payment.paymentAmount') }}</dt>
                         <dd class="mt-1 font-semibold text-gray-900 dark:text-white">{{ formatSelectedPaymentAmount(validAmount) }}</dd>
                       </div>
+                      <div v-if="bonusDiscountAmount > 0">
+                        <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('payment.rechargeBonus.discountLabelWithPercent', { percent: formatRechargeBonusNumber(bonusQuote.percent) }) }}</dt>
+                        <dd class="mt-1 font-semibold text-red-600 dark:text-red-400">-{{ formatSelectedPaymentAmount(bonusDiscountAmount) }}</dd>
+                      </div>
                       <div v-if="hasLoyaltyDiscount">
                         <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('payment.loyaltyDiscount', { discount: loyaltyDiscountPercent }) }}</dt>
                         <dd class="mt-1 font-semibold text-emerald-600 dark:text-emerald-400">-{{ formatSelectedPaymentAmount(loyaltyDiscountAmount) }}</dd>
+                      </div>
+                      <div v-if="showBonusRow">
+                        <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('payment.rechargeBonus.amountLabelWithPercent', { percent: formatRechargeBonusNumber(bonusQuote.percent) }) }}</dt>
+                        <dd class="mt-1 font-semibold text-amber-600 dark:text-amber-400">+${{ bonusQuote.bonus.toFixed(2) }}</dd>
                       </div>
                       <div v-if="feeRate > 0">
                         <dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('payment.fee') }} ({{ feeRate }}%)</dt>
@@ -272,6 +286,7 @@ import { isMobileDevice } from '@/utils/device'
 import { formatDateTimeToMinute } from '@/utils/format'
 import type { SubscriptionPlan, CheckoutInfoResponse, CreateOrderResult, OrderType } from '@/types/payment'
 import type { UserSubscription } from '@/types'
+import { formatRechargeBonusNumber, normalizeRechargeBonusMode, normalizeRechargeBonusTiers, quoteRechargeBonus } from '@/utils/rechargeBonus'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import ScrollablePageLayout from '@/components/layout/ScrollablePageLayout.vue'
 import PaymentMethodSelector from '@/components/payment/PaymentMethodSelector.vue'
@@ -563,12 +578,18 @@ function onPaymentSettled() {
 // All checkout data from single API call
 const checkout = ref<CheckoutInfoResponse>({
   methods: {}, global_min: 0, global_max: 0,
-  plans: [], balance_disabled: false, balance_recharge_multiplier: 1, subscription_usd_to_cny_rate: 0, recharge_fee_rate: 0, help_text: '', help_image_url: '', stripe_publishable_key: '',
+  plans: [], balance_disabled: false, balance_recharge_multiplier: 1, subscription_usd_to_cny_rate: 0, recharge_fee_rate: 0, recharge_bonus_tiers: [], recharge_bonus_mode: 'bonus', recharge_bonus_notice: '', help_text: '', help_image_url: '', stripe_publishable_key: '',
 })
 
 const renderedHelpText = computed(() => DOMPurify.sanitize(
   marked.parse(checkout.value.help_text || '', { async: false, gfm: true, breaks: false }),
 ))
+
+const renderedBonusNotice = computed(() => {
+  const raw = (checkout.value.recharge_bonus_notice || '').trim()
+  if (!raw) return ''
+  return DOMPurify.sanitize(marked.parse(raw, { async: false, gfm: true, breaks: true }))
+})
 
 const walletSectionIds: Record<string, string> = {
   recharge: 'wallet-recharge',
@@ -616,13 +637,24 @@ const subscriptionUsdToCnyRate = computed(() => {
   const rate = checkout.value.subscription_usd_to_cny_rate
   return Number.isFinite(rate) && rate > 0 ? rate : 0
 })
-const creditedAmount = computed(() => Math.round((validAmount.value * balanceRechargeMultiplier.value) * 100) / 100)
 const loyaltyInfo = computed(() => checkout.value.loyalty)
 const loyaltyDiscountPercent = computed(() => {
   const raw = loyaltyInfo.value?.discount_percent ?? 0
   if (!loyaltyInfo.value?.enabled || !Number.isFinite(raw) || raw <= 0) return 0
   return Math.min(100, Math.max(0, raw))
 })
+const rechargeBonusTiers = computed(() => normalizeRechargeBonusTiers(checkout.value.recharge_bonus_tiers))
+const rechargeBonusMode = computed(() => normalizeRechargeBonusMode(checkout.value.recharge_bonus_mode))
+const bonusQuote = computed(() => quoteRechargeBonus(rechargeBonusTiers.value, validAmount.value, {
+  multiplier: balanceRechargeMultiplier.value,
+  mode: rechargeBonusMode.value,
+  currencyDigits: currencyFractionDigits(selectedCurrency.value),
+}))
+const creditedAmount = computed(() => bonusQuote.value.credited)
+const showBonusRow = computed(() => bonusQuote.value.mode !== 'discount' && bonusQuote.value.bonus > 0)
+const bonusDiscountAmount = computed(() => bonusQuote.value.mode === 'discount'
+  ? roundPaymentAmount(Math.max(0, validAmount.value - bonusQuote.value.payBase), selectedCurrency.value)
+  : 0)
 
 // Adaptive grid: center single card, 2-col for 2 plans, 3-col for 3+
 const planGridClass = computed(() => {
@@ -714,7 +746,12 @@ function balanceFeeAmountForCurrency(value: number, currency: string): number {
 }
 
 function balanceTotalAmountForCurrency(value: number, currency: string): number {
-  const paymentBase = balancePaymentBaseForCurrency(value, currency)
+  const quote = quoteRechargeBonus(rechargeBonusTiers.value, value, {
+    multiplier: balanceRechargeMultiplier.value,
+    mode: rechargeBonusMode.value,
+    currencyDigits: currencyFractionDigits(currency),
+  })
+  const paymentBase = balancePaymentBaseForCurrency(quote.payBase, currency)
   if (paymentBase <= 0) return 0
   return roundPaymentAmount(paymentBase + balanceFeeAmountForCurrency(paymentBase, currency), currency)
 }
@@ -724,8 +761,8 @@ function balanceTotalAmountForMethod(value: number, methodType: string): number 
   return balanceTotalAmountForCurrency(value, currency)
 }
 
-const paymentBaseAmount = computed(() => balancePaymentBaseForCurrency(validAmount.value, selectedCurrency.value))
-const loyaltyDiscountAmount = computed(() => roundPaymentAmount(Math.max(0, validAmount.value - paymentBaseAmount.value), selectedCurrency.value))
+const paymentBaseAmount = computed(() => balancePaymentBaseForCurrency(bonusQuote.value.payBase, selectedCurrency.value))
+const loyaltyDiscountAmount = computed(() => roundPaymentAmount(Math.max(0, bonusQuote.value.payBase - paymentBaseAmount.value), selectedCurrency.value))
 const hasLoyaltyDiscount = computed(() => loyaltyDiscountPercent.value > 0 && loyaltyDiscountAmount.value > 0)
 const selectedBalanceTotalAmount = computed(() => balanceTotalAmountForCurrency(validAmount.value, selectedCurrency.value))
 

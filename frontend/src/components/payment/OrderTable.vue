@@ -24,7 +24,7 @@
         <div v-else-if="row.order_type === 'lottery'" class="text-xs text-gray-500">
           {{ t('payment.admin.lotteryOrder') }} · {{ t('payment.admin.lotteryChances', { count: row.ticket_count || 1 }) }}
         </div>
-        <div v-else-if="row.amount !== row.pay_amount" class="text-xs text-gray-500">
+        <div v-else-if="row.amount !== row.pay_amount || (row.bonus_amount ?? 0) > 0" class="text-xs text-gray-500">
           {{ t('payment.orders.creditedAmount') }}: {{ creditedAmountSymbol }}{{ row.amount.toFixed(2) }}
         </div>
       </div>

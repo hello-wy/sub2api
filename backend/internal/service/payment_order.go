@@ -60,8 +60,6 @@ func (s *PaymentService) CreateOrder(ctx context.Context, req CreateOrderRequest
 	if plan != nil {
 		orderAmount = plan.Price
 		limitAmount = plan.Price
-	} else if req.OrderType == payment.OrderTypeBalance {
-		orderAmount = calculateCreditedBalance(req.Amount, cfg.BalanceRechargeMultiplier)
 	}
 	feeRate := cfg.RechargeFeeRate
 	methodCurrency := payment.DefaultPaymentCurrency
@@ -70,6 +68,13 @@ func (s *PaymentService) CreateOrder(ctx context.Context, req CreateOrderRequest
 		if err != nil {
 			return nil, err
 		}
+	}
+	bonusAmount := 0.0
+	if plan == nil && req.OrderType == payment.OrderTypeBalance {
+		quote := quoteRechargeBonus(cfg, req.Amount, methodCurrency)
+		limitAmount = quote.PayBase
+		orderAmount = quote.Credited
+		bonusAmount = quote.Bonus
 	}
 	var loyaltyInfo *PaymentLoyaltyInfo
 	if req.OrderType == payment.OrderTypeBalance || req.OrderType == payment.OrderTypeSubscription {
@@ -125,7 +130,7 @@ func (s *PaymentService) CreateOrder(ctx context.Context, req CreateOrderRequest
 	}
 	loyaltyPointsDelta := paymentLoyaltyPointsDeltaForCreateOrder(req.OrderType, limitAmount, gatewayOriginalAmount)
 	loyaltySnapshot := buildPaymentLoyaltySnapshot(loyaltyInfo, gatewayOriginalAmount, gatewayBaseAmount, loyaltyPointsDelta, selectedCurrency)
-	order, err := s.createOrderInTx(ctx, req, user, plan, cfg, orderAmount, gatewayBaseAmount, feeRate, payAmount, sel, loyaltySnapshot)
+	order, err := s.createOrderInTx(ctx, req, user, plan, cfg, orderAmount, gatewayBaseAmount, feeRate, payAmount, bonusAmount, sel, loyaltySnapshot)
 	if err != nil {
 		return nil, err
 	}
@@ -182,7 +187,7 @@ func (s *PaymentService) validateSubOrder(ctx context.Context, req CreateOrderRe
 	return plan, nil
 }
 
-func (s *PaymentService) createOrderInTx(ctx context.Context, req CreateOrderRequest, user *User, plan *dbent.SubscriptionPlan, cfg *PaymentConfig, orderAmount, limitAmount, feeRate, payAmount float64, sel *payment.InstanceSelection, loyaltySnapshot map[string]any) (*dbent.PaymentOrder, error) {
+func (s *PaymentService) createOrderInTx(ctx context.Context, req CreateOrderRequest, user *User, plan *dbent.SubscriptionPlan, cfg *PaymentConfig, orderAmount, limitAmount, feeRate, payAmount, bonusAmount float64, sel *payment.InstanceSelection, loyaltySnapshot map[string]any) (*dbent.PaymentOrder, error) {
 	tx, err := s.entClient.Tx(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("begin transaction: %w", err)
@@ -224,6 +229,7 @@ func (s *PaymentService) createOrderInTx(ctx context.Context, req CreateOrderReq
 		SetAmount(orderAmount).
 		SetPayAmount(payAmount).
 		SetFeeRate(feeRate).
+		SetBonusAmount(bonusAmount).
 		SetRechargeCode("").
 		SetOutTradeNo(outTradeNo).
 		SetPaymentType(req.PaymentType).
@@ -510,6 +516,7 @@ func (s *PaymentService) invokeProvider(ctx context.Context, order *dbent.Paymen
 	auditDetail := map[string]any{
 		"paymentAmount":  req.Amount,
 		"creditedAmount": order.Amount,
+		"bonusAmount":    order.BonusAmount,
 		"payAmount":      order.PayAmount,
 		"paymentType":    req.PaymentType,
 		"orderType":      req.OrderType,
@@ -801,6 +808,7 @@ func buildCreateOrderResponse(order *dbent.PaymentOrder, req CreateOrderRequest,
 		Amount:       order.Amount,
 		PayAmount:    payAmount,
 		FeeRate:      order.FeeRate,
+		BonusAmount:  order.BonusAmount,
 		Status:       OrderStatusPending,
 		ResultType:   resultType,
 		PaymentType:  req.PaymentType,
@@ -946,6 +954,7 @@ type AdminOrder struct {
 	Amount              float64
 	PayAmount           float64
 	FeeRate             float64
+	BonusAmount         float64
 	Currency            string
 	RechargeCode        string
 	OutTradeNo          string
@@ -987,7 +996,7 @@ func adminPaymentOrder(order *dbent.PaymentOrder) AdminOrder {
 	return AdminOrder{
 		ID: "payment:" + strconv.FormatInt(int64(order.ID), 10), SourceKind: AdminOrderSourcePayment,
 		UserID: order.UserID, UserEmail: order.UserEmail, UserName: order.UserName, UserNotes: order.UserNotes,
-		Amount: order.Amount, PayAmount: order.PayAmount, FeeRate: order.FeeRate, Currency: PaymentOrderCurrency(order),
+		Amount: order.Amount, PayAmount: order.PayAmount, FeeRate: order.FeeRate, BonusAmount: order.BonusAmount, Currency: PaymentOrderCurrency(order),
 		RechargeCode: order.RechargeCode, OutTradeNo: order.OutTradeNo, PaymentType: order.PaymentType, PaymentTradeNo: order.PaymentTradeNo,
 		PayURL: order.PayURL, QRCode: order.QrCode, QRCodeImg: order.QrCodeImg, OrderType: order.OrderType,
 		PlanID: order.PlanID, SubscriptionGroupID: order.SubscriptionGroupID, SubscriptionDays: order.SubscriptionDays,

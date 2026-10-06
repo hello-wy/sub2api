@@ -774,7 +774,8 @@ func (s *PaymentService) affiliateRebateBaseAmount(ctx context.Context, o *dbent
 	}
 	switch o.OrderType {
 	case payment.OrderTypeBalance:
-		return o.Amount, nil
+		// 返利只按实充部分计算，赠送额度不参与。
+		return paymentOrderAmountWithoutBonus(o), nil
 	case payment.OrderTypeSubscription:
 		if s.configService == nil {
 			return 0, errors.New("payment config service is unavailable")
@@ -786,6 +787,24 @@ func (s *PaymentService) affiliateRebateBaseAmount(ctx context.Context, o *dbent
 		return calculateCreditedBalance(o.PayAmount, cfg.BalanceRechargeMultiplier), nil
 	default:
 		return 0, nil
+	}
+}
+
+// affiliateRebateBaseAmount returns the persisted order amount that was funded
+// by the user. It is kept independent from PaymentService for reconciliation
+// and unit tests; subscription fulfillment may still use configured recharge
+// units through the service method above.
+func affiliateRebateBaseAmount(o *dbent.PaymentOrder) float64 {
+	if o == nil {
+		return 0
+	}
+	switch o.OrderType {
+	case payment.OrderTypeBalance:
+		return paymentOrderAmountWithoutBonus(o)
+	case payment.OrderTypeSubscription:
+		return o.Amount
+	default:
+		return 0
 	}
 }
 
