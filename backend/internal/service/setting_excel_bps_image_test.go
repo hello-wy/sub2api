@@ -29,7 +29,9 @@ func (r *excelBPSImageSettingsRepo) GetMultiple(_ context.Context, keys []string
 	defer r.mu.Unlock()
 	values := make(map[string]string, len(keys))
 	for _, key := range keys {
-		values[key] = r.values[key]
+		if value, exists := r.values[key]; exists {
+			values[key] = value
+		}
 	}
 	return values, r.err
 }

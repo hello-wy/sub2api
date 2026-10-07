@@ -60,8 +60,12 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 	}
 
 	modelForBPS := gjson.GetBytes(body, "model").String()
-	if accountUsesPrismBrowser(account, s.cfg) && account.IsPrismBrowserEnabledForModel(modelForBPS) {
-		return s.forwardPrismBrowser(ctx, c, account, body, startTime)
+	prism, err := s.settingService.prismBrowserRuntimeForAccount(ctx, account, modelForBPS)
+	if err != nil {
+		return nil, err
+	}
+	if prism.Enabled {
+		return s.forwardPrismBrowser(ctx, c, prismBrowserRequest{Account: account, Body: body, Runtime: prism, Started: startTime})
 	}
 	if c.GetBool(bpsAccountProbeRequiredContextKey) &&
 		(!account.IsExcelBPSEnabledForModel(modelForBPS) || basispoints.NativeFallbackReason(body) != "") {

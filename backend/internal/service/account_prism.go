@@ -2,8 +2,6 @@ package service
 
 import (
 	"strings"
-
-	"github.com/Wei-Shaw/sub2api/internal/config"
 )
 
 const PrismBrowserModelsKey = "openai_prism_browser_models"
@@ -25,16 +23,6 @@ func prismBrowserResponsesURL(baseURL string) string {
 		return base
 	}
 	return base + "/responses"
-}
-
-func accountUsesPrismBrowser(account *Account, cfg *config.Config) bool {
-	if account == nil || cfg == nil || !cfg.Gateway.PrismBrowser.Enabled || account.Platform != PlatformOpenAI || account.Type != AccountTypeOAuth {
-		return false
-	}
-	if value, ok := account.Extra["openai_prism_browser"]; !ok || value != true {
-		return false
-	}
-	return true
 }
 
 // IsPrismBrowserEnabledForModel applies account mapping before the explicit

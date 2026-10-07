@@ -44,6 +44,18 @@ export default {
         },
       },
       features: {
+        prismBrowser: {
+          title: 'Prism 浏览器桥',
+          description: '管理 Prism 全局开关。升级后需要在此重新启用，并在 OpenAI OAuth 账号中勾选 Prism 浏览器协议。',
+          enabled: '启用 Prism 浏览器桥',
+          enabledHint: '保存后立即生效，无需重启。仅系统和账号开关都开启时，支持的模型才会使用 Prism。',
+          baseUrl: '适配器地址',
+          baseUrlHint: '使用本机数字回环地址和端口，例如 http://127.0.0.1:8319/v1。适配器需单独运行。',
+          apiKey: '适配器密钥',
+          apiKeyHint: '至少 32 个字符，与适配器 PRISM_ADAPTER_API_KEY 保持一致。留空保留已有密钥。',
+          keyConfigured: '已配置，留空保留',
+          keyUnconfigured: '尚未配置，请填写适配器密钥',
+        },
         excelBpsImages: {
           title: 'Excel / BPS 图片中转',
           description: '将上传的 base64 图片和工具截图自动转为当前服务器的临时 HTTPS 链接.',

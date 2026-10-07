@@ -2,8 +2,6 @@ package service
 
 import (
 	"testing"
-
-	"github.com/Wei-Shaw/sub2api/internal/config"
 )
 
 func TestPrismBrowserResponsesURL(t *testing.T) {
@@ -22,29 +20,6 @@ func TestPrismBrowserResponsesURL(t *testing.T) {
 				t.Fatalf("prismBrowserResponsesURL(%q) = %q, want %q", tt.base, got, tt.want)
 			}
 		})
-	}
-}
-
-func TestAccountUsesPrismBrowserRequiresServerAndAccountSwitch(t *testing.T) {
-	cfg := &config.Config{}
-	cfg.Gateway.PrismBrowser.Enabled = true
-	account := &Account{Platform: PlatformOpenAI, Type: AccountTypeOAuth, Extra: map[string]any{"openai_prism_browser": true}}
-	if !accountUsesPrismBrowser(account, cfg) {
-		t.Fatal("enabled OpenAI account should use Prism browser adapter")
-	}
-	account.Extra["openai_prism_browser"] = false
-	if accountUsesPrismBrowser(account, cfg) {
-		t.Fatal("disabled account switch should keep the normal route")
-	}
-	account.Extra["openai_prism_browser"] = true
-	cfg.Gateway.PrismBrowser.Enabled = false
-	if accountUsesPrismBrowser(account, cfg) {
-		t.Fatal("disabled server adapter must prevent Prism routing")
-	}
-	cfg.Gateway.PrismBrowser.Enabled = true
-	account.Type = AccountTypeAPIKey
-	if accountUsesPrismBrowser(account, cfg) {
-		t.Fatal("API key accounts must not use the OAuth Prism bridge")
 	}
 }
 

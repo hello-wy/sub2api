@@ -19,6 +19,13 @@ import (
 
 const prismBrowserMaxResponseBytes = 2 << 20
 
+type prismBrowserRequest struct {
+	Account *Account
+	Body    []byte
+	Runtime PrismBrowserRuntime
+	Started time.Time
+}
+
 func prismBrowserAdapterURL(baseURL string) (string, error) {
 	parsed, err := url.Parse(prismBrowserResponsesURL(baseURL))
 	if err != nil || parsed.Scheme != "http" || parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" || parsed.Opaque != "" {
@@ -34,18 +41,18 @@ func prismBrowserAdapterURL(baseURL string) (string, error) {
 	return parsed.String(), nil
 }
 
-func (s *OpenAIGatewayService) forwardPrismBrowser(ctx context.Context, c *gin.Context, account *Account, body []byte, started time.Time) (*OpenAIForwardResult, error) {
+func (s *OpenAIGatewayService) forwardPrismBrowser(ctx context.Context, c *gin.Context, request prismBrowserRequest) (*OpenAIForwardResult, error) {
 	if isOpenAIResponsesCompactPath(c) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"type": "invalid_request_error", "message": "Prism adapter does not support responses/compact"}})
 		return nil, errors.New("prism adapter does not support responses/compact")
 	}
-	model := strings.TrimSpace(gjson.GetBytes(body, "model").String())
-	stream := gjson.GetBytes(body, "stream").Bool()
+	model := strings.TrimSpace(gjson.GetBytes(request.Body, "model").String())
+	stream := gjson.GetBytes(request.Body, "stream").Bool()
 	if model == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"type": "invalid_request_error", "message": "model is required"}})
 		return nil, errors.New("prism adapter model is required")
 	}
-	responseBody, upstreamHeaders, status, err := s.callPrismBrowser(ctx, account, body)
+	responseBody, upstreamHeaders, status, err := s.callPrismBrowser(ctx, request)
 	if err != nil {
 		return nil, err
 	}
@@ -77,33 +84,33 @@ func (s *OpenAIGatewayService) forwardPrismBrowser(ctx context.Context, c *gin.C
 		Model:           model,
 		UpstreamModel:   model,
 		Stream:          stream,
-		Duration:        time.Since(started),
+		Duration:        time.Since(request.Started),
 	}, nil
 }
 
-func (s *OpenAIGatewayService) callPrismBrowser(ctx context.Context, account *Account, body []byte) ([]byte, http.Header, int, error) {
-	endpoint, err := prismBrowserAdapterURL(s.cfg.Gateway.PrismBrowser.BaseURL)
+func (s *OpenAIGatewayService) callPrismBrowser(ctx context.Context, request prismBrowserRequest) ([]byte, http.Header, int, error) {
+	endpoint, err := prismBrowserAdapterURL(request.Runtime.BaseURL)
 	if err != nil {
 		return nil, nil, 0, err
 	}
-	key := strings.TrimSpace(s.cfg.Gateway.PrismBrowser.APIKey)
+	key := request.Runtime.APIKey
 	if key == "" {
 		return nil, nil, 0, errors.New("prism adapter key is not configured")
 	}
-	token, _, err := s.GetAccessToken(ctx, account)
+	token, _, err := s.GetAccessToken(ctx, request.Account)
 	if err != nil {
 		return nil, nil, 0, err
 	}
 	if token == "" || strings.ContainsAny(token, "\r\n") {
 		return nil, nil, 0, errors.New("invalid Prism OAuth token")
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(request.Body))
 	if err != nil {
 		return nil, nil, 0, err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+key)
-	req.Header.Set("X-Prism-Account-ID", strconv.FormatInt(account.ID, 10))
+	req.Header.Set("X-Prism-Account-ID", strconv.FormatInt(request.Account.ID, 10))
 	req.Header.Set("X-Prism-OAuth-Token", token)
 	// The token must never pass through an account proxy, environment proxy,
 	// plugin transport, or an HTTP redirect.

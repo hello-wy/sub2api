@@ -99,6 +99,10 @@ func (s *SettingService) refreshCachedSettingsAfterWrite(ctx context.Context, se
 }
 
 func (s *SettingService) buildSystemSettingsUpdates(ctx context.Context, settings *SystemSettings) (map[string]string, error) {
+	prism, err := s.prismBrowserSettingsForUpdate(ctx, settings)
+	if err != nil {
+		return nil, err
+	}
 	imageRelay, err := normalizeExcelBPSImageRelaySettings(settings.ExcelBPSImageRelayEnabled, settings.ExcelBPSImageBaseURL)
 	if err != nil {
 		return nil, err
@@ -637,6 +641,12 @@ func (s *SettingService) buildSystemSettingsUpdates(ctx context.Context, setting
 	}
 
 	updates[SettingKeyAllowUserViewErrorRequests] = strconv.FormatBool(settings.AllowUserViewErrorRequests)
+	updates[SettingKeyPrismBrowserEnabled] = strconv.FormatBool(prism.Enabled)
+	updates[SettingKeyPrismBrowserBaseURL] = prism.BaseURL
+	// An empty key input keeps the configured key, as with other secret settings.
+	if prism.APIKey != "" {
+		updates[SettingKeyPrismBrowserAPIKey] = prism.APIKey
+	}
 	updates[SettingKeyExcelBPSImageRelayEnabled] = strconv.FormatBool(imageRelay.Enabled)
 	updates[SettingKeyExcelBPSImageBaseURL] = imageRelay.BaseURL
 	updates[SettingKeyExcelBPSImageBodyLimitMiB] = strconv.Itoa(settings.ExcelBPSImageBodyLimitMiB)

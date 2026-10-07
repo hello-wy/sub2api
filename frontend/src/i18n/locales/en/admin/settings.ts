@@ -44,6 +44,18 @@ export default {
         },
       },
       features: {
+        prismBrowser: {
+          title: 'Prism browser bridge',
+          description: 'Manage the global Prism switch. Re-enable it here after upgrading and select the Prism browser protocol on each OpenAI OAuth account.',
+          enabled: 'Enable Prism browser bridge',
+          enabledHint: 'Saves apply immediately without restart. Supported models use Prism when both the system and account switches are enabled.',
+          baseUrl: 'Adapter URL',
+          baseUrlHint: 'Use a numeric loopback address with a port, such as http://127.0.0.1:8319/v1. Run the adapter separately.',
+          apiKey: 'Adapter key',
+          apiKeyHint: 'At least 32 characters, matching PRISM_ADAPTER_API_KEY on the adapter. Leave blank to keep the existing key.',
+          keyConfigured: 'Configured; leave blank to keep',
+          keyUnconfigured: 'Not configured; enter the adapter key',
+        },
         excelBpsImages: {
           title: 'Excel / BPS Image Relay',
           description: 'Automatically convert uploaded base64 images and tool screenshots to temporary HTTPS links hosted by this server.',

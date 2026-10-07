@@ -7162,6 +7162,12 @@
 
 	        <!-- Tab: Features (功能开关) -->
         <div v-show="activeTab === 'features'" class="space-y-6">
+        <PrismBrowserSettings
+          v-model:enabled="form.prism_browser_enabled"
+          v-model:base-url="form.prism_browser_base_url"
+          v-model:api-key="form.prism_browser_api_key"
+          :api-key-configured="form.prism_browser_api_key_configured"
+        />
         <div class="card" data-testid="excel-bps-image-settings">
           <div class="border-b border-gray-100 px-6 py-4 dark:border-dark-700">
             <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
@@ -9531,6 +9537,7 @@ import {
   type RechargeBonusTierDraft,
 } from "@/utils/rechargeBonus";
 import OpenAIFastPolicyUserSelector from "@/views/admin/settings/OpenAIFastPolicyUserSelector.vue";
+import PrismBrowserSettings from "@/views/admin/settings/PrismBrowserSettings.vue";
 import PelicanShowcaseSettings from "@/views/admin/settings/PelicanShowcaseSettings.vue";
 import TicketRebateSettings, { type TicketRebateRule } from "@/views/admin/settings/TicketRebateSettings.vue";
 import {
@@ -10596,6 +10603,7 @@ type SettingsForm = Omit<
   channel_monitor_hide_user_ranking: boolean;
   pelican_showcase_enabled: boolean;
   pelican_showcase_config: PelicanShowcaseConfig;
+  prism_browser_api_key: string;
   smtp_password: string;
   turnstile_secret_key: string;
   tencent_captcha_app_secret_key: string;
@@ -10953,6 +10961,10 @@ const form = reactive<SettingsForm>({
   affiliate_enabled: false,
   // Allow user view error requests
   allow_user_view_error_requests: false,
+  prism_browser_enabled: false,
+  prism_browser_base_url: 'http://127.0.0.1:8319/v1',
+  prism_browser_api_key_configured: false,
+  prism_browser_api_key: '',
   excel_bps_image_relay_enabled: false,
   excel_bps_image_base_url: '',
   excel_bps_image_body_limit_mib: 64,
@@ -12040,6 +12052,7 @@ async function loadSettings() {
         : [10, 20, 50, 100],
     );
     registrationEmailSuffixWhitelistDraft.value = "";
+    form.prism_browser_api_key = "";
     form.smtp_password = "";
     smtpPasswordManuallyEdited.value = false;
     form.turnstile_secret_key = "";
@@ -12773,6 +12786,11 @@ async function saveSettings() {
       daily_checkin_reward_ranges: JSON.stringify(dailyCheckinRewardRanges.value),
       daily_checkin_streak_rules: JSON.stringify(dailyCheckinStreakRules.value),
       daily_checkin_cycle_days: form.daily_checkin_cycle_days,
+      prism_browser_enabled: form.prism_browser_enabled,
+      prism_browser_base_url: form.prism_browser_base_url.trim(),
+      ...(form.prism_browser_api_key.trim()
+        ? { prism_browser_api_key: form.prism_browser_api_key.trim() }
+        : {}),
       excel_bps_image_relay_enabled: form.excel_bps_image_relay_enabled,
       excel_bps_image_base_url: form.excel_bps_image_base_url.trim(),
       excel_bps_image_body_limit_mib: form.excel_bps_image_body_limit_mib,
@@ -12862,6 +12880,7 @@ async function saveSettings() {
         : [10, 20, 50, 100],
     );
     registrationEmailSuffixWhitelistDraft.value = "";
+    form.prism_browser_api_key = "";
     form.smtp_password = "";
     smtpPasswordManuallyEdited.value = false;
     form.turnstile_secret_key = "";

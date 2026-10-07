@@ -644,7 +644,7 @@ export default {
         baseUrlHint: 'Leave default for official OpenAI API',
         prismBrowser: 'Use Prism browser protocol automatically',
         prismBrowserDesc: 'Use this OpenAI OAuth account with the server-managed Prism browser adapter. No separate Prism credentials are needed.',
-        prismBrowserManagedEndpoint: 'Enabled: selected supported models route through the local Prism adapter.',
+        prismBrowserManagedEndpoint: 'Account enabled: also enable Prism under System Settings → Features to route supported models through the adapter.',
         apiKeyHint: 'Your OpenAI API Key',
         oauthPassthrough: 'Auto passthrough (auth only)',
         excelBPS: 'Excel / BPS protocol',

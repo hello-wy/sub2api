@@ -408,6 +408,9 @@ type UpdateSettingsRequest struct {
 	AuthSourceDingTalkPlatformQuotas map[string]*service.DefaultPlatformQuotaSetting `json:"auth_source_default_dingtalk_platform_quotas"`
 
 	AllowUserViewErrorRequests *bool   `json:"allow_user_view_error_requests"`
+	PrismBrowserEnabled        *bool   `json:"prism_browser_enabled"`
+	PrismBrowserBaseURL        *string `json:"prism_browser_base_url"`
+	PrismBrowserAPIKey         *string `json:"prism_browser_api_key"`
 	ExcelBPSImageRelayEnabled  *bool   `json:"excel_bps_image_relay_enabled"`
 	ExcelBPSImageBaseURL       *string `json:"excel_bps_image_base_url"`
 	ExcelBPSImageBodyLimitMiB  *int    `json:"excel_bps_image_body_limit_mib"`
@@ -1767,6 +1770,9 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		MaxClaudeCodeVersion:                   req.MaxClaudeCodeVersion,
 		AllowUngroupedKeyScheduling:            req.AllowUngroupedKeyScheduling,
 		BackendModeEnabled:                     req.BackendModeEnabled,
+		PrismBrowserEnabled:                    boolSetting(req.PrismBrowserEnabled, previousSettings.PrismBrowserEnabled),
+		PrismBrowserBaseURL:                    stringSetting(req.PrismBrowserBaseURL, previousSettings.PrismBrowserBaseURL),
+		PrismBrowserAPIKey:                     stringSetting(req.PrismBrowserAPIKey, ""),
 		ExcelBPSImageRelayEnabled: func() bool {
 			if req.ExcelBPSImageRelayEnabled != nil {
 				return *req.ExcelBPSImageRelayEnabled
@@ -2599,17 +2605,20 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 
 		AffiliateEnabled: updatedSettings.AffiliateEnabled,
 
-		RiskControlEnabled:          updatedSettings.RiskControlEnabled,
-		CyberSessionBlockEnabled:    updatedSettings.CyberSessionBlockEnabled,
-		CyberPolicyUserAllowlist:    updatedSettings.CyberPolicyUserAllowlist,
-		CyberSessionBlockTTLSeconds: updatedSettings.CyberSessionBlockTTLSeconds,
-		AccountSchedulingThresholds: updatedSettings.AccountSchedulingThresholds,
-		AllowUserViewErrorRequests:  updatedSettings.AllowUserViewErrorRequests,
-		ExcelBPSImageRelayEnabled:   updatedSettings.ExcelBPSImageRelayEnabled,
-		ExcelBPSImageBaseURL:        updatedSettings.ExcelBPSImageBaseURL,
-		ExcelBPSImageBodyLimitMiB:   updatedSettings.ExcelBPSImageBodyLimitMiB,
-		ExcelBPSImageBudgetMiB:      updatedSettings.ExcelBPSImageBudgetMiB,
-		ExcelBPSImageMaxRequests:    updatedSettings.ExcelBPSImageMaxRequests,
+		RiskControlEnabled:           updatedSettings.RiskControlEnabled,
+		CyberSessionBlockEnabled:     updatedSettings.CyberSessionBlockEnabled,
+		CyberPolicyUserAllowlist:     updatedSettings.CyberPolicyUserAllowlist,
+		CyberSessionBlockTTLSeconds:  updatedSettings.CyberSessionBlockTTLSeconds,
+		AccountSchedulingThresholds:  updatedSettings.AccountSchedulingThresholds,
+		AllowUserViewErrorRequests:   updatedSettings.AllowUserViewErrorRequests,
+		PrismBrowserEnabled:          updatedSettings.PrismBrowserEnabled,
+		PrismBrowserBaseURL:          updatedSettings.PrismBrowserBaseURL,
+		PrismBrowserAPIKeyConfigured: updatedSettings.PrismBrowserAPIKeyConfigured,
+		ExcelBPSImageRelayEnabled:    updatedSettings.ExcelBPSImageRelayEnabled,
+		ExcelBPSImageBaseURL:         updatedSettings.ExcelBPSImageBaseURL,
+		ExcelBPSImageBodyLimitMiB:    updatedSettings.ExcelBPSImageBodyLimitMiB,
+		ExcelBPSImageBudgetMiB:       updatedSettings.ExcelBPSImageBudgetMiB,
+		ExcelBPSImageMaxRequests:     updatedSettings.ExcelBPSImageMaxRequests,
 	}
 	if fastPolicy, err := h.settingService.GetOpenAIFastPolicySettings(c.Request.Context()); err != nil {
 		slog.Error("openai_fast_policy_settings_get_failed", "error", err)

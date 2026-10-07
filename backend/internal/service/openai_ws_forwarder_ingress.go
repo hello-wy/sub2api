@@ -86,7 +86,11 @@ func (s *OpenAIGatewayService) ProxyResponsesWebSocketFromClient(
 	if account.IsExcelBPSEnabledForModel(gjson.GetBytes(firstClientMessage, "model").String()) {
 		return NewOpenAIWSClientCloseError(coderws.StatusPolicyViolation, "Excel BPS models require HTTP/SSE", nil)
 	}
-	if accountUsesPrismBrowser(account, s.cfg) && account.IsPrismBrowserEnabledForModel(gjson.GetBytes(firstClientMessage, "model").String()) {
+	prism, err := s.settingService.prismBrowserRuntimeForAccount(ctx, account, gjson.GetBytes(firstClientMessage, "model").String())
+	if err != nil {
+		return err
+	}
+	if prism.Enabled {
 		return NewOpenAIWSClientCloseError(coderws.StatusPolicyViolation, "Prism browser models require HTTP/SSE", nil)
 	}
 	// A handler may reuse the same gin context across account failover attempts.

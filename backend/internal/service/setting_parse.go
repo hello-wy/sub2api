@@ -280,6 +280,9 @@ func (s *SettingService) InitializeDefaultSettings(ctx context.Context) error {
 		SettingKeyOpenAIAdvancedSchedulerWeightSessionSticky:         "",
 
 		SettingKeyAllowUserViewErrorRequests: "false",
+		SettingKeyPrismBrowserEnabled:        "false",
+		SettingKeyPrismBrowserBaseURL:        s.parsePrismBrowserSettings(nil).BaseURL,
+		SettingKeyPrismBrowserAPIKey:         s.parsePrismBrowserSettings(nil).APIKey,
 		SettingKeyExcelBPSImageRelayEnabled:  "false",
 		SettingKeyExcelBPSImageBaseURL:       "",
 		SettingKeyExcelBPSImageBodyLimitMiB:  strconv.Itoa(DefaultExcelBPSImageBodyLimitMiB),
@@ -1056,6 +1059,11 @@ func (s *SettingService) parseSettings(settings map[string]string) *SystemSettin
 	result.DailyCheckinCycleDays = dailyCheckinSettings.CycleDays
 
 	result.AllowUserViewErrorRequests = settings[SettingKeyAllowUserViewErrorRequests] == "true" // default false
+	prism := s.parsePrismBrowserSettings(settings)
+	result.PrismBrowserEnabled = prism.Enabled
+	result.PrismBrowserBaseURL = prism.BaseURL
+	result.PrismBrowserAPIKey = prism.APIKey
+	result.PrismBrowserAPIKeyConfigured = prism.APIKey != ""
 	result.ExcelBPSImageRelayEnabled = settings[SettingKeyExcelBPSImageRelayEnabled] == "true"
 	result.ExcelBPSImageBaseURL = settings[SettingKeyExcelBPSImageBaseURL]
 	result.ExcelBPSImageBodyLimitMiB, _ = parseExcelBPSImageCapacity(settings[SettingKeyExcelBPSImageBodyLimitMiB], DefaultExcelBPSImageBodyLimitMiB)

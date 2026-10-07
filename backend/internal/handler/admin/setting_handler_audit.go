@@ -33,6 +33,15 @@ func (h *SettingHandler) auditSettingsUpdate(c *gin.Context, before *service.Sys
 
 func diffSettings(before *service.SystemSettings, after *service.SystemSettings, beforeAuthSourceDefaults *service.AuthSourceDefaultSettings, afterAuthSourceDefaults *service.AuthSourceDefaultSettings, req UpdateSettingsRequest) []string {
 	changed := make([]string, 0, 20)
+	if before.PrismBrowserEnabled != after.PrismBrowserEnabled {
+		changed = append(changed, "prism_browser_enabled")
+	}
+	if before.PrismBrowserBaseURL != after.PrismBrowserBaseURL {
+		changed = append(changed, "prism_browser_base_url")
+	}
+	if req.PrismBrowserAPIKey != nil && before.PrismBrowserAPIKey != after.PrismBrowserAPIKey {
+		changed = append(changed, "prism_browser_api_key")
+	}
 	if before.RegistrationEnabled != after.RegistrationEnabled {
 		changed = append(changed, "registration_enabled")
 	}

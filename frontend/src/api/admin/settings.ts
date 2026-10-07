@@ -820,6 +820,9 @@ export interface SystemSettings {
 
   // Allow user view error requests
   allow_user_view_error_requests: boolean;
+  prism_browser_enabled: boolean;
+  prism_browser_base_url: string;
+  prism_browser_api_key_configured: boolean;
   excel_bps_image_relay_enabled: boolean;
   excel_bps_image_base_url: string;
   excel_bps_image_body_limit_mib: number;
@@ -1152,6 +1155,9 @@ export interface UpdateSettingsRequest {
   openai_fast_policy_settings?: OpenAIFastPolicySettings;
 
   allow_user_view_error_requests?: boolean;
+  prism_browser_enabled?: boolean;
+  prism_browser_base_url?: string;
+  prism_browser_api_key?: string;
   excel_bps_image_relay_enabled?: boolean;
   excel_bps_image_base_url?: string;
   excel_bps_image_body_limit_mib?: number;
