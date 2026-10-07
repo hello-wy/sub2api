@@ -6,6 +6,10 @@ on:
       - main
   workflow_dispatch:
 
+concurrency:
+  group: deploy-${{ github.repository }}
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -17,6 +21,7 @@ jobs:
           username: root
           password: ${{ secrets.SERVER_PASSWORD }}
           script: |
+            set -eu
             cd /root/sub2api/deploy
             git pull --ff-only origin main
             STATE_KIT_PUBLISHERS='{"state-kit-release-v1":"MGeztZt8xeQAikuzJG9+fdADZmioulH5Ls2Baom1ATA="}'
@@ -26,9 +31,4 @@ jobs:
               printf '\nPLUGINS_TRUSTED_PUBLISHERS_JSON=%s\n' "$STATE_KIT_PUBLISHERS" >> .env
             fi
             docker compose config --quiet
-            docker compose down --remove-orphans
-            stale_containers="$(docker ps -aq --filter 'name=_sub2api$')"
-            if [ -n "$stale_containers" ]; then
-              docker rm -f $stale_containers
-            fi
             docker compose up -d --build
