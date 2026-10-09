@@ -221,17 +221,21 @@ func (u *UsageLog) TotalTokens() int {
 	return u.InputTokens + u.OutputTokens + u.CacheCreationTokens + u.CacheReadTokens
 }
 
-// TokensPerSecond returns the generated output-token throughput for this request.
-// The request duration includes the full request lifecycle, including time to first token.
+// TokensPerSecond estimates output throughput after the first token arrives.
+// Missing timing and windows shorter than 100ms cannot provide a useful rate:
+// buffered/terminal-only responses otherwise produce artificially huge values.
 func (u *UsageLog) TokensPerSecond() *float64 {
-	if u == nil || u.OutputTokens <= 0 || u.DurationMs == nil || *u.DurationMs <= 0 {
+	if u == nil || u.OutputTokens <= 0 || u.DurationMs == nil || u.FirstTokenMs == nil {
 		return nil
 	}
-	seconds := float64(*u.DurationMs) / 1000
-	if seconds <= 0 {
+	if *u.FirstTokenMs < 0 || *u.DurationMs <= *u.FirstTokenMs {
 		return nil
 	}
-	tps := float64(u.OutputTokens) / seconds
+	outputMs := *u.DurationMs - *u.FirstTokenMs
+	if outputMs < 100 {
+		return nil
+	}
+	tps := float64(u.OutputTokens) / (float64(outputMs) / 1000)
 	return &tps
 }
 

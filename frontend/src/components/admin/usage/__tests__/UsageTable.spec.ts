@@ -611,7 +611,7 @@ describe('admin UsageTable TPS', () => {
     const wrapper = mount(UsageTable, {
       props: {
         data: [
-          { ...baseImageRow, request_id: 'req-tps', tps: 12.345 },
+          { ...baseImageRow, request_id: 'req-tps', tps: 12.345, output_tokens: 12345, duration_ms: 1001000, first_token_ms: 1000 },
           { ...baseImageRow, request_id: 'req-no-tps', tps: null },
         ],
         loading: false,
@@ -910,78 +910,78 @@ describe('admin UsageTable latency TPS', () => {
   const barClasses = (wrapper: ReturnType<typeof mountLatency>, requestId: string) =>
     wrapper.find(`[data-row="${requestId}"] [data-testid="latency-bar"]`).classes()
 
-  it('shows average output throughput over the total duration for streaming rows', () => {
+  it('shows output throughput excluding initial waiting', () => {
     const wrapper = mountLatency([
       { request_id: 'req-tps-stream', output_tokens: 872, duration_ms: 31_260, first_token_ms: 2_910 },
     ])
 
     expect(wrapper.text()).toContain('usage.latencyTps')
     const cell = tpsCell(wrapper, 'req-tps-stream')
-    expect(cell.text()).toBe('27.9 t/s')
-    expect(cell.attributes('title')).toBe('usage.latencyTpsHint')
+    expect(cell.text()).toBe('30.8 t/s')
+    expect(cell.attributes('title')).toBeUndefined()
     expect(cell.classes()).toContain('text-emerald-600')
   })
 
-  it('colors the TPS text and the bottom bar segment red below 10 t/s and yellow below 20 t/s', () => {
+  it('uses token-aware colors consistently for TPS text and the bottom bar', () => {
     const wrapper = mountLatency([
-      // first token 12s (warn), total 17s (good), 1.5 t/s (critical)
-      { request_id: 'req-tps-slow', output_tokens: 25, duration_ms: 17_000, first_token_ms: 12_000 },
-      // first token 2s (good), total 12s (good), 12.5 t/s (warn)
-      { request_id: 'req-tps-mid', output_tokens: 150, duration_ms: 12_000, first_token_ms: 2_000 },
+      { request_id: 'short-good', output_tokens: 25, duration_ms: 17_000, first_token_ms: 12_000 },
+      { request_id: 'long-warn', output_tokens: 100, duration_ms: 32_000, first_token_ms: 12_000 },
+      { request_id: 'long-slow', output_tokens: 1000, duration_ms: 212_000, first_token_ms: 12_000 },
+      { request_id: 'long-critical', output_tokens: 1000, duration_ms: 312_000, first_token_ms: 12_000 },
     ])
-
-    expect(tpsCell(wrapper, 'req-tps-slow').text()).toBe('1.5 t/s')
-    expect(tpsCell(wrapper, 'req-tps-slow').classes()).toContain('text-red-600')
-    expect(barClasses(wrapper, 'req-tps-slow')).toEqual(
-      expect.arrayContaining(['from-amber-400', 'via-emerald-500', 'to-red-500']),
-    )
-
-    expect(tpsCell(wrapper, 'req-tps-mid').text()).toBe('12.5 t/s')
-    expect(tpsCell(wrapper, 'req-tps-mid').classes()).toContain('text-amber-600')
-    expect(barClasses(wrapper, 'req-tps-mid')).toEqual(
-      expect.arrayContaining(['from-emerald-500', 'via-emerald-500', 'to-amber-400']),
-    )
+    // The same 5 t/s is healthy for 25 tokens, yellow for 100, orange for 1000.
+    for (const [id, text, color] of [
+      ['short-good', '5.0 t/s', 'emerald'],
+      ['long-warn', '5.0 t/s', 'amber'],
+      ['long-slow', '5.0 t/s', 'orange'],
+      ['long-critical', '3.3 t/s', 'red'],
+    ]) {
+      expect(tpsCell(wrapper, id).text()).toBe(text)
+      expect(tpsCell(wrapper, id).classes()).toContain(`text-${color}-600`)
+      expect(barClasses(wrapper, id)).toContain(`to-${color}-${color === 'amber' ? 400 : 500}`)
+      expect(barClasses(wrapper, id)).toContain('from-amber-400')
+    }
   })
 
   it('lets bar segments without first-token or TPS data follow the total-duration color', () => {
     const wrapper = mountLatency([
-      // no first token, total 70s (warn), 1400 tokens / 70s = 20 t/s (good)
+      // no first token, total 70s (warn), throughput unavailable
       { request_id: 'req-bar-sync', output_tokens: 1_400, duration_ms: 70_000, first_token_ms: null },
       // image row: no first token and no TPS, total 40s (good)
       { ...baseImageRow, request_id: 'req-bar-image', duration_ms: 40_000, first_token_ms: null },
     ])
 
     expect(barClasses(wrapper, 'req-bar-sync')).toEqual(
-      expect.arrayContaining(['from-amber-400', 'via-amber-400', 'to-emerald-500']),
+      expect.arrayContaining(['from-amber-400', 'via-amber-400', 'to-amber-400']),
     )
     expect(barClasses(wrapper, 'req-bar-image')).toEqual(
       expect.arrayContaining(['from-emerald-500', 'via-emerald-500', 'to-emerald-500']),
     )
   })
 
-  it('uses the same average and hint when first token is missing', () => {
+  it('omits throughput when first token is missing', () => {
     const wrapper = mountLatency([
       { request_id: 'req-tps-sync', output_tokens: 500, duration_ms: 10_000, first_token_ms: null },
     ])
 
     const cell = tpsCell(wrapper, 'req-tps-sync')
-    expect(cell.text()).toBe('50.0 t/s')
-    expect(cell.attributes('title')).toBe('usage.latencyTpsHint')
+    expect(cell.text()).toBe('-')
+    expect(cell.attributes('title')).toBeUndefined()
   })
 
-  it('keeps buffered and terminal-only output averages and health colors meaningful', () => {
+  it('omits unstable rates from buffered and terminal-only output', () => {
     const wrapper = mountLatency([
       { request_id: 'req-tps-buffered', output_tokens: 1_095, duration_ms: 9_250, first_token_ms: 9_240 },
       { request_id: 'req-tps-terminal', output_tokens: 73, duration_ms: 6_761, first_token_ms: 6_760 },
       { request_id: 'req-tps-same-ms', output_tokens: 73, duration_ms: 6_760, first_token_ms: 6_760 },
     ])
 
-    expect(tpsCell(wrapper, 'req-tps-buffered').text()).toBe('118 t/s')
+    expect(tpsCell(wrapper, 'req-tps-buffered').text()).toBe('-')
     for (const requestId of ['req-tps-terminal', 'req-tps-same-ms']) {
-      expect(tpsCell(wrapper, requestId).text()).toBe('10.8 t/s')
-      expect(tpsCell(wrapper, requestId).attributes('title')).toBe('usage.latencyTpsHint')
-      expect(tpsCell(wrapper, requestId).classes()).toContain('text-amber-600')
-      expect(barClasses(wrapper, requestId)).toContain('to-amber-400')
+      expect(tpsCell(wrapper, requestId).text()).toBe('-')
+      expect(tpsCell(wrapper, requestId).attributes('title')).toBeUndefined()
+      expect(tpsCell(wrapper, requestId).classes()).toContain('text-gray-400')
+      expect(barClasses(wrapper, requestId)).toContain('to-emerald-500')
     }
   })
 

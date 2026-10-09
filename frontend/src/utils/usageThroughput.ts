@@ -1,16 +1,19 @@
 import type { UsageLog } from '@/types'
 
-type UsageThroughputRow = Pick<UsageLog, 'tps' | 'output_tokens' | 'duration_ms'>
+type UsageThroughputRow = Pick<UsageLog, 'output_tokens' | 'duration_ms' | 'first_token_ms'>
 
-/** Return the API value, or derive TPS for legacy API payloads. */
+/** Estimate post-first-token throughput; keep in sync with UsageLog.TokensPerSecond.
+ * Derive from timing fields so older servers cannot supply the former total-duration rate.
+ */
 export function getUsageTokensPerSecond(row: UsageThroughputRow): number | null {
-  if (row.tps != null && Number.isFinite(row.tps) && row.tps > 0) {
-    return row.tps
-  }
-  if (row.output_tokens <= 0 || row.duration_ms == null || row.duration_ms <= 0) {
-    return null
-  }
-  return row.output_tokens / (row.duration_ms / 1000)
+  const { output_tokens: tokens, duration_ms: duration, first_token_ms: firstToken } = row
+  if (!Number.isFinite(tokens) || tokens <= 0 || duration == null || firstToken == null
+    || !Number.isFinite(duration) || !Number.isFinite(firstToken) || firstToken < 0) return null
+  const outputMs = duration - firstToken
+  // Suppress unstable rates from buffered/terminal-only responses.
+  if (outputMs < 100) return null
+  const rate = tokens / (outputMs / 1000)
+  return Number.isFinite(rate) ? rate : null
 }
 
 /** Match the compact usage display: one decimal below 100 t/s, integers above it. */
