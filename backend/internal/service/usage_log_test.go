@@ -115,10 +115,11 @@ func TestUsageLogTokensPerSecond(t *testing.T) {
 	t.Parallel()
 
 	duration := 2500
-	log := &UsageLog{OutputTokens: 50, DurationMs: &duration}
+	firstToken := 2000
+	log := &UsageLog{OutputTokens: 50, DurationMs: &duration, FirstTokenMs: &firstToken}
 	got := log.TokensPerSecond()
 	require.NotNil(t, got)
-	require.InDelta(t, 20, *got, 0.0001)
+	require.InDelta(t, 100, *got, 0.0001)
 }
 
 func TestUsageLogTokensPerSecondReturnsNilWithoutUsableRate(t *testing.T) {
@@ -133,4 +134,24 @@ func TestUsageLogTokensPerSecondReturnsNilWithoutUsableRate(t *testing.T) {
 	} {
 		require.Nil(t, log.TokensPerSecond())
 	}
+}
+
+func TestUsageLogTokensPerSecondTimingBoundaries(t *testing.T) {
+	duration := 2500
+	for _, tc := range []struct {
+		first int
+		want  float64
+	}{
+		{-1, 0}, {2600, 0}, {2500, 0}, {2499, 0}, {2490, 0}, {2401, 0}, {2400, 500}, {0, 20},
+	} {
+		log := &UsageLog{OutputTokens: 50, DurationMs: &duration, FirstTokenMs: &tc.first}
+		got := log.TokensPerSecond()
+		if tc.want == 0 {
+			require.Nil(t, got)
+		} else {
+			require.NotNil(t, got)
+			require.InDelta(t, tc.want, *got, 0.0001)
+		}
+	}
+	require.Nil(t, (&UsageLog{OutputTokens: 50, DurationMs: &duration}).TokensPerSecond())
 }

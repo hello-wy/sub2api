@@ -251,8 +251,7 @@
                 v-if="formatUsageTokensPerSecond(row)"
                 data-testid="latency-tps"
                 class="font-medium tabular-nums"
-                :class="LATENCY_TEXT_CLASSES[tpsSeverity(getUsageTokensPerSecond(row) ?? 0)]"
-                :title="t('usage.latencyTpsHint')"
+                :class="LATENCY_TEXT_CLASSES[tpsSeverity(getUsageTokensPerSecond(row) ?? 0, row.output_tokens)]"
               >{{ formatUsageTokensPerSecond(row) }}</span>
               <span v-else data-testid="latency-tps" class="text-gray-400 dark:text-gray-500">-</span>
             </div>
@@ -752,7 +751,7 @@ const latencyBarClasses = (row: AdminUsageLog): string[] => {
     'bg-gradient-to-b from-30% via-50% to-70%',
     LATENCY_BAR_FROM_CLASSES[row.first_token_ms != null ? firstTokenSeverity(row.first_token_ms) : duration],
     LATENCY_BAR_VIA_CLASSES[duration],
-    LATENCY_BAR_TO_CLASSES[tps != null ? tpsSeverity(tps) : duration],
+    LATENCY_BAR_TO_CLASSES[tps != null ? tpsSeverity(tps, row.output_tokens) : duration],
   ]
 }
 

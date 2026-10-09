@@ -23,12 +23,29 @@ describe('latencyHealth', () => {
     expect(durationSeverity(300_000)).toBe('critical')
   })
 
-  it('classifies output speed at 10/20 t/s boundaries (higher is better)', () => {
-    expect(tpsSeverity(0)).toBe('critical')
-    expect(tpsSeverity(9.99)).toBe('critical')
-    expect(tpsSeverity(10)).toBe('warn')
-    expect(tpsSeverity(19.99)).toBe('warn')
-    expect(tpsSeverity(20)).toBe('good')
-    expect(tpsSeverity(500)).toBe('good')
+  it.each([25, 100, 1000, 10000])('classifies dynamic TPS boundaries for %i output tokens', (tokens) => {
+    const yellow = tokens / (10 + tokens / 20)
+    const orange = tokens / (30 + tokens / 10)
+    const red = tokens / (60 + tokens / 5)
+    expect(tpsSeverity(yellow + 0.001, tokens)).toBe('good')
+    expect(tpsSeverity(yellow, tokens)).toBe('warn')
+    expect(tpsSeverity(orange + 0.001, tokens)).toBe('warn')
+    expect(tpsSeverity(orange, tokens)).toBe('slow')
+    expect(tpsSeverity(red + 0.001, tokens)).toBe('slow')
+    expect(tpsSeverity(red, tokens)).toBe('critical')
+  })
+
+  it('tolerates short output while applying stronger expectations to long output', () => {
+    expect(tpsSeverity(5, 25)).toBe('good')
+    expect(tpsSeverity(5, 100)).toBe('warn')
+    expect(tpsSeverity(5, 1000)).toBe('slow')
+    expect(tpsSeverity(3, 1000)).toBe('critical')
+  })
+
+  it('handles unusable inputs defensively', () => {
+    expect(tpsSeverity(0, 100)).toBe('critical')
+    expect(tpsSeverity(NaN, 100)).toBe('critical')
+    expect(tpsSeverity(20, 0)).toBe('critical')
+    expect(tpsSeverity(20, Infinity)).toBe('critical')
   })
 })

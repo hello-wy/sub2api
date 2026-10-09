@@ -3,7 +3,7 @@
  *
  * 首 Token（TTFT）：10s 内正常，10-30s 偏慢，30-60s 缓慢，60s 及以上严重。
  * 总耗时：流式请求整体时长天然更长，阈值放宽为 1min / 3min / 5min。
- * 平均 TPS：低于 10 t/s 为严重，10–20 t/s 偏慢，20 t/s 及以上正常。
+ * TPS：按输出量动态分四档；输出阶段耗时预算 = 10/30/60s 余量 + Token 数 ÷ 20/10/5 t/s。
  */
 export type LatencySeverity = 'good' | 'warn' | 'slow' | 'critical'
 
@@ -38,14 +38,25 @@ export const firstTokenSeverity = (ms: number): LatencySeverity =>
 export const durationSeverity = (ms: number): LatencySeverity =>
   classify(ms, DURATION_THRESHOLDS_MS)
 
-export const TPS_THRESHOLDS = {
+// Long-output reference rates. Short outputs receive a fixed time allowance,
+// using the same 10/30/60s scale as first-token health (not measured TTFT).
+export const TPS_REFERENCE_RATES = {
   warn: 20,
-  critical: 10,
+  slow: 10,
+  critical: 5,
 } as const
 
-export const tpsSeverity = (tps: number): LatencySeverity => {
-  if (tps < TPS_THRESHOLDS.critical) return 'critical'
-  if (tps < TPS_THRESHOLDS.warn) return 'warn'
+export const tpsSeverity = (tps: number, outputTokens: number): LatencySeverity => {
+  if (!Number.isFinite(tps) || tps <= 0 || !Number.isFinite(outputTokens) || outputTokens <= 0) {
+    return 'critical'
+  }
+  // N / (allowance + N / referenceRate): continuous thresholds that approach
+  // the reference rates for long outputs, without abrupt token-count buckets.
+  const threshold = (level: keyof typeof TPS_REFERENCE_RATES) =>
+    outputTokens / (FIRST_TOKEN_THRESHOLDS_MS[level] / 1000 + outputTokens / TPS_REFERENCE_RATES[level])
+  if (tps <= threshold('critical')) return 'critical'
+  if (tps <= threshold('slow')) return 'slow'
+  if (tps <= threshold('warn')) return 'warn'
   return 'good'
 }
 
