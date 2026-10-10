@@ -36,7 +36,7 @@ func RegisterAdminRoutes(
 
 		// 仪表盘
 		registerDashboardRoutes(admin, h)
-		registerBusinessLedgerRoutes(admin, h)
+		registerBusinessRoutes(admin, h)
 
 		// 用户管理
 		registerUserManagementRoutes(admin, h)
@@ -300,15 +300,6 @@ func registerDashboardRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		dashboard.POST("/users-usage", h.Admin.Dashboard.GetBatchUsersUsage)
 		dashboard.POST("/api-keys-usage", h.Admin.Dashboard.GetBatchAPIKeysUsage)
 		dashboard.GET("/user-breakdown", h.Admin.Dashboard.GetUserBreakdown)
-		dashboard.GET("/business-analytics", h.Admin.Dashboard.GetBusinessAnalytics)
-		dashboard.GET("/business-settings", h.Admin.Dashboard.GetBusinessAnalyticsSettings)
-		dashboard.GET("/business-api-key-cost-rates", h.Admin.Dashboard.GetBusinessAPIKeyCostRates)
-		dashboard.POST("/business-api-key-cost-rates", h.Admin.Dashboard.RejectLegacyBusinessWrite)
-		dashboard.DELETE("/business-api-key-cost-rates/:id", h.Admin.Dashboard.RejectLegacyBusinessWrite)
-		dashboard.GET("/business-costs", h.Admin.Dashboard.ListBusinessCosts)
-		dashboard.POST("/business-costs", h.Admin.Dashboard.RejectLegacyBusinessWrite)
-		dashboard.DELETE("/business-costs/:id", h.Admin.Dashboard.RejectLegacyBusinessWrite)
-		dashboard.POST("/business-capacity-snapshot", h.Admin.Dashboard.CaptureBusinessCapacitySnapshot)
 		dashboard.POST("/aggregation/backfill", h.Admin.Dashboard.BackfillAggregation)
 	}
 }
@@ -944,22 +935,14 @@ func channelMonitorModeV2Guard(settingService *service.SettingService) gin.Handl
 	}
 }
 
-func registerBusinessLedgerRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
+func registerBusinessRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 	b := admin.Group("/business")
-	b.GET("/overview", h.Admin.Dashboard.GetBusinessLedgerOverview)
-	b.GET("/records", h.Admin.Dashboard.ListBusinessLedgerRecords)
-	b.GET("/pending", h.Admin.Dashboard.ListBusinessLedgerPending)
-	b.GET("/issues", h.Admin.Dashboard.ListBusinessLedgerIssues)
-	b.POST("/cost-repairs/preview", h.Admin.Dashboard.PreviewBusinessCostRepair)
-	b.POST("/cost-repairs", h.Admin.Dashboard.QueueBusinessCostRepair)
-	b.GET("/cost-repairs", h.Admin.Dashboard.ListBusinessCostRepairs)
-	b.POST("/bindings/batch", h.Admin.Dashboard.CreateBusinessCostBindings)
-	b.POST("/records", h.Admin.Dashboard.CreateBusinessLedgerRecord)
-	b.GET("/configuration", h.Admin.Dashboard.GetBusinessCostConfiguration)
-	b.POST("/pools", h.Admin.Dashboard.CreateBusinessCostPool)
-	b.PUT("/pools/:id", h.Admin.Dashboard.UpdateBusinessCostPool)
-	b.POST("/bindings", h.Admin.Dashboard.CreateBusinessCostBinding)
-	b.POST("/rules", h.Admin.Dashboard.CreateBusinessCostRule)
-	b.GET("/entities", h.Admin.Dashboard.SearchBusinessEntities)
-	b.GET("/events/:id", h.Admin.Dashboard.GetBusinessEventTrace)
+	b.GET("/overview", h.Admin.Dashboard.GetOperatingOverview)
+	b.GET("/settings", h.Admin.Dashboard.GetOperatingSettings)
+	b.POST("/initialize", h.Admin.Dashboard.InitializeOperating)
+	b.GET("/records", h.Admin.Dashboard.GetOperatingRecords)
+	b.POST("/records", h.Admin.Dashboard.CreateOperatingRecord)
+	b.POST("/records/:id/reverse", h.Admin.Dashboard.ReverseOperatingRecord)
+	b.GET("/terms", h.Admin.Dashboard.GetOperatingTerms)
+	b.PUT("/terms/:id", h.Admin.Dashboard.ConfigureOperatingTerm)
 }

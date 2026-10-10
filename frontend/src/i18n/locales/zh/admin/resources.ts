@@ -544,8 +544,9 @@ export default {
 
     // Business Analytics
     businessAnalytics: {
+      operating: {"estimate": "经营估算利润", "summary": "管理口径估算：消费额度确认收入，手工成本与赠送面值扣减。赠送面值不是现金支出；请勿再次手工登记同一赠送。期间报表按所选日期统计，余额和订阅为当前快照，累计估算利润截至当前。", "overview": "经营概览", "records": "手工账目", "settings": "期初与口径", "cumulative": "累计估算利润", "opening": "期初估算利润", "revenue": "确认收入", "cost": "总成本（含赠送）", "pending": "待确认", "empty": "所选区间暂无数据", "currency": "人民币（元）"},
       title: '经营分析',
-      description: '以真实收款、采购和费用凭据核对人民币收入、成本与利润'
+      description: '汇总消费收入、手工成本和赠送成本，查看余额与订阅待消费价值'
     },
 
     // Usage Records

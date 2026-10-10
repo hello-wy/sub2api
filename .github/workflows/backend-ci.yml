@@ -68,7 +68,8 @@ jobs:
           --health-timeout 5s
           --health-retries 12
     env:
-      BUSINESS_LEDGER_TEST_DSN: postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable
+      OPERATING_REQUIRE_POSTGRES: "1"
+      OPERATING_STATISTICS_TEST_DSN: postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-go@v6

@@ -60,7 +60,7 @@ func TestBusinessLedgerSubscriptionAccrualAndUnconsumedRevenue(t *testing.T) {
 	start := time.Date(2026, 8, 20, 0, 0, 0, 0, time.UTC)
 	end := start.AddDate(0, 0, 30)
 	p := NewBusinessProjection()
-	p.Terms["1:1"] = &BusinessTerm{Key: "1:1", EventID: 1, GroupID: 9, Start: start, End: end, Value: decimal.NewFromInt(90), Quality: "confirmed"}
+	p.Terms["1:1"] = &LedgerTerm{Key: "1:1", EventID: 1, GroupID: 9, Start: start, End: end, Value: decimal.NewFromInt(90), Quality: "confirmed"}
 	report := BuildBusinessLedgerReport(p, nil, start, start.AddDate(0, 0, 1), time.UTC, end)
 	require.Equal(t, "3", report.Revenue.String())
 	require.Len(t, report.Models, 1)
@@ -248,7 +248,7 @@ func TestBusinessLedgerPartiallyUnknownSubscriptionShowsKnownIncomeAndUniqueGaps
 	p := NewBusinessProjection()
 	start := time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
 	terminated := start.AddDate(0, 0, 10)
-	p.Terms["4:1"] = &BusinessTerm{Key: "4:1", EventID: 1, SubscriptionID: 4, Version: 1,
+	p.Terms["4:1"] = &LedgerTerm{Key: "4:1", EventID: 1, SubscriptionID: 4, Version: 1,
 		Start: start, End: start.AddDate(0, 0, 30), Value: decimal.NewFromInt(60), Quality: "unknown", TerminatedAt: &terminated}
 	report := BuildBusinessLedgerReport(p, nil, start, start.AddDate(0, 0, 11), time.UTC, start.AddDate(0, 0, 11))
 	require.Equal(t, "60", report.Revenue.String())

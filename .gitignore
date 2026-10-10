@@ -140,6 +140,7 @@ docs/*
 !docs/ASYNC_IMAGE_TASKS.md
 !docs/BATCH_IMAGE_MVP.md
 !docs/BUSINESS_LEDGER.md
+!docs/BUSINESS_ANALYTICS.md
 !docs/COMPOSITE_GROUPS.md
 !docs/PLUGIN_DEVELOPMENT.md
 !docs/channel-monitor-v2-safe-defaults.md
@@ -164,3 +165,8 @@ issues/
 .vite/
 # 本地闭源插件开发目录及构建产物不进入 Sub2API 仓库
 /plugins/
+
+# Frozen operating ledger export tool
+!/scripts/
+/scripts/*
+!/scripts/export-operating-legacy.py

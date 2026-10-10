@@ -102,7 +102,7 @@ func (f *BusinessFunds) Take(amount decimal.Decimal) BusinessFunds {
 	return BusinessFunds{Paid: paid, Gift: gift, Unknown: unknown.Add(amount.Sub(n)), Value: value, Sources: append([]int64{}, f.Sources...)}
 }
 
-type BusinessTerm struct {
+type LedgerTerm struct {
 	FundingSources []int64         `json:"funding_event_ids"`
 	Key            string          `json:"key"`
 	EventID        int64           `json:"event_id"`
@@ -137,7 +137,7 @@ type BusinessProjection struct {
 	Wallets       map[int64]*BusinessFunds  `json:"wallets"`
 	Held          map[int64]*BusinessFunds  `json:"held"`
 	Pools         map[int64]*BusinessFunds  `json:"pools"`
-	Terms         map[string]*BusinessTerm  `json:"terms"`
+	Terms         map[string]*LedgerTerm    `json:"terms"`
 	Expenses      []BusinessExpense         `json:"expenses"`
 	Seen          map[string]bool           `json:"seen"`
 	RefundFunds   map[int64]*BusinessFunds  `json:"refund_funds"`
@@ -148,7 +148,7 @@ type BusinessProjection struct {
 }
 
 func NewBusinessProjection() *BusinessProjection {
-	return &BusinessProjection{Wallets: map[int64]*BusinessFunds{}, Held: map[int64]*BusinessFunds{}, Pools: map[int64]*BusinessFunds{}, Terms: map[string]*BusinessTerm{}, Seen: map[string]bool{}, TicketFunds: map[int64]*BusinessFunds{}, Expenses: []BusinessExpense{}, RefundFunds: map[int64]*BusinessFunds{}, BatchFunds: map[string]*BusinessFunds{}, RefundAmounts: map[int64]decimal.Decimal{}}
+	return &BusinessProjection{Wallets: map[int64]*BusinessFunds{}, Held: map[int64]*BusinessFunds{}, Pools: map[int64]*BusinessFunds{}, Terms: map[string]*LedgerTerm{}, Seen: map[string]bool{}, TicketFunds: map[int64]*BusinessFunds{}, Expenses: []BusinessExpense{}, RefundFunds: map[int64]*BusinessFunds{}, BatchFunds: map[string]*BusinessFunds{}, RefundAmounts: map[int64]decimal.Decimal{}}
 }
 func businessFund(m map[int64]*BusinessFunds, id int64) *BusinessFunds {
 	if m[id] == nil {
@@ -220,7 +220,7 @@ func (p *BusinessProjection) revenue(e BusinessEvent, f BusinessFunds, kind stri
 	}
 }
 
-type BusinessRecordInput struct {
+type LedgerRecordInput struct {
 	IdempotencyKey string         `json:"idempotency_key"`
 	Type           string         `json:"type"`
 	At             time.Time      `json:"occurred_at"`

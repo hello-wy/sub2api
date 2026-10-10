@@ -126,10 +126,6 @@ type DashboardHandlerDependencies struct {
 func ProvideDashboardHandler(deps DashboardHandlerDependencies) *admin.DashboardHandler {
 	handler := admin.NewDashboardHandler(deps.DashboardService, deps.AggregationService)
 	handler.SetBusinessAnalyticsService(deps.BusinessService)
-	if deps.BusinessService != nil {
-		deps.BusinessService.Ledger().SetBalanceCache(deps.BillingCache)
-		deps.BusinessService.Ledger().Start()
-	}
 	return handler
 }
 

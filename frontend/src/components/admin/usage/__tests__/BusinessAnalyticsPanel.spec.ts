@@ -1,156 +1,45 @@
 import { mount, flushPromises } from '@vue/test-utils'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { defineComponent, ref } from 'vue'
+import { createI18n } from 'vue-i18n'
+import zh from '@/i18n/locales/zh/index'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import BusinessAnalyticsPanel from '../BusinessAnalyticsPanel.vue'
-import BusinessPanelNavigation, { type BusinessTab } from '../BusinessPanelNavigation.vue'
-import type { BusinessOverview } from '@/api/admin/business'
-
-const api = vi.hoisted(() => ({
-  overview: vi.fn(), records: vi.fn(), configuration: vi.fn(), pending: vi.fn(), trace: vi.fn(), issues: vi.fn(), repairJobs: vi.fn(),
-}))
-vi.mock('@/api/admin/business', () => ({ businessAPI: api }))
-vi.mock('@/api/admin/dashboard', () => ({ getBusinessAnalytics: vi.fn() }))
-const Dialog = defineComponent({ props: ['show'], template: '<div v-if="show"><slot /></div>' })
-function overview(overrides: Partial<BusinessOverview> = {}): BusinessOverview {
-  return {
-    start_at: '2026-08-01T00:00:00Z', end_at: '2026-09-01T00:00:00Z', enabled_at: '2026-08-01T00:00:00Z', updated_at: '2026-08-31T00:00:00Z', revision: 1, currency: 'CNY', timezone: 'Asia/Shanghai',
-    cash_in_cny: '180', cash_refund_cny: '0', cash_out_cny: '6', cash_net_cny: '174',
-    recognized_revenue_cny: '18', usage_cost_cny: '6', fixed_cost_cny: '0', operating_cost_cny: '0', known_profit_cny: '12', profit_cny: null, margin: null,
-    gift_granted_credits: '100', gift_used_credits: '10', gift_cost_cny: '2', discount_cny: '20',
-    wallet_deferred_cny: '162', subscription_deferred_cny: '0', prepaid_supplier_cny: '0', unknown_wallet_credits: '10', prepaid_expense_cny: '0', gift_outstanding_credits: '90',
-    quality: { cash: 'confirmed', revenue: 'unknown', cost: 'confirmed', attribution: 'direct', missing_count: 1, estimated_count: 0 },
-    entries: [], daily: [], groups: [], models: [], accounts: [], plans: [], ...overrides,
-  }
+import { businessAPI, type BusinessOverview, type BusinessSettings } from '@/api/admin/business'
+vi.mock('@/api/admin/business', () => ({ businessAPI: { overview:vi.fn(), settings:vi.fn(), initialize:vi.fn(), records:vi.fn(), record:vi.fn(), reverse:vi.fn(), terms:vi.fn(), configureTerm:vi.fn() } }))
+const settings: BusinessSettings = { enabled_at:'2026-09-01T00:00:00+08:00', timezone:'Asia/Shanghai', opening_revenue:'200', opening_private_revenue:'50', opening_cost:'100' }
+const report = (): BusinessOverview => ({ settings:{...settings}, start_date:'2026-09-01', end_date:'2026-09-28', updated_at:'2026-09-28T12:00:00+08:00', summary:{date:'',balance_revenue:'20',subscription_revenue:'10',other_revenue:'8',manual_cost:'10',gift_cost:'25',revenue:'38',cost:'35',known_profit:'3',profit:'3',missing:0}, daily:[],cumulative_profit:'153',cumulative_known_profit:'153', positions:{balance:'1000',frozen:'7',debt:'3',subscription_value:'90',known_subscription_value:'90',suspended_value:'0',suspended_count:0,active_subscriptions:1,missing_subscriptions:0}, capacity:[],rewards:[{source:'usage_rebate',amount:'25'}],pending_terms:0,manual_receipts:'1000' })
+const render = () => {
+ const operating = Object.fromEntries(Object.entries(zh.admin.businessAnalytics.operating).map(([k,v]) => [k, () => v]))
+ const messages = { zh: { admin: { businessAnalytics: { operating } } } }
+ return mount(BusinessAnalyticsPanel, { global: { plugins: [createI18n({legacy:false,locale:'zh',messages})], stubs: {BusinessTrendChart:true} } })
 }
-function mountPanel() {
-  return mount(BusinessAnalyticsPanel, { props: { startDate: '2026-08-01', endDate: '2026-08-31' }, global: { stubs: { BaseDialog: Dialog, BusinessRecordDialog: true, BusinessImportDialog: true, BusinessConfigurationPanel: true, BusinessLedgerCharts: true } } })
-}
-beforeEach(() => {
-  vi.clearAllMocks()
-  api.overview.mockResolvedValue(overview())
-  api.records.mockResolvedValue([{ id: 1, event_type: 'expense', occurred_at: '2026-08-01T00:00:00Z', payload: { amount_cny: '99', notes: '服务器凭据' } }])
-  api.configuration.mockResolvedValue({ pools: [], rules: [], bindings: [], enabled_at: '', timezone: 'Asia/Shanghai' })
-  api.pending.mockResolvedValue([])
-  api.issues.mockResolvedValue({ items: [], total: 0, processing_count: 0, calculation_error: false, revision: 1 })
-  api.repairJobs.mockResolvedValue([])
-  api.trace.mockResolvedValue([])
+let wrappers: ReturnType<typeof render>[] = []
+const show = () => { const w=render();wrappers.push(w);return w }
+beforeEach(() => {vi.resetAllMocks();vi.mocked(businessAPI.settings).mockResolvedValue({...settings});vi.mocked(businessAPI.overview).mockResolvedValue(report());vi.mocked(businessAPI.records).mockResolvedValue([]);vi.mocked(businessAPI.terms).mockResolvedValue([])})
+afterEach(() => {wrappers.forEach(w=>w.unmount());wrappers=[]})
+describe('经营统计新口径', () => {
+ it('分别展示经营利润、存量与仅收款金额',async()=>{const w=show();await flushPromises();expect(w.get('.profit-metric strong').text()).toContain('3.00');expect(w.get('.cumulative strong').text()).toContain('153.00');expect(w.get('.positions').text()).toContain('1,000.00');expect(w.get('.explanation').text()).toContain('仅作收款记录的线下金额：¥1,000.00');expect(w.text()).not.toContain('成本分摊');expect(w.emitted('dates')?.[0]).toEqual(['2026-09-01','2026-09-28'])})
+ it('缺失订阅口径时不把已知差额冒充完整利润',async()=>{const r=report();r.summary.profit=null;r.summary.missing=1;r.pending_terms=1;r.cumulative_profit=null;r.positions.subscription_value=null;vi.mocked(businessAPI.overview).mockResolvedValue(r);const w=show();await flushPromises();expect(w.get('.profit-metric strong').text()).toBe('待确认');expect(w.get('.notice').text()).toContain('需要补充');expect(w.get('.positions').text()).toContain('待确认')})
+ it('读取期初失败时禁止误启用并提供重试',async()=>{vi.mocked(businessAPI.settings).mockRejectedValue(new Error('网络异常'));const w=show();await flushPromises();expect(w.get('[role=alert]').text()).toContain('网络异常');await w.findAll('.tabs button')[2].trigger('click');expect(w.get('.opening .primary-button').attributes('disabled')).toBeDefined();expect(businessAPI.initialize).not.toHaveBeenCalled()})
+ it('初始化需要确认并以十进制字符串保存三个历史总数',async()=>{vi.mocked(businessAPI.settings).mockResolvedValue({...settings,enabled_at:null});const w=show();await flushPromises();await w.get('.welcome button').trigger('click');const inputs=w.findAll('.opening input[type=number]');await inputs[0].setValue('200');await inputs[1].setValue('50');await inputs[2].setValue('100');expect(w.get('.opening .primary-button').attributes('disabled')).toBeDefined();await w.get('.check-label input').setValue(true);await w.get('.opening form').trigger('submit');await flushPromises();expect(businessAPI.initialize).toHaveBeenCalledWith({timezone:'Asia/Shanghai',opening_revenue:'200',opening_private_revenue:'50',opening_cost:'100'})})
+ it('保存超时重试复用幂等键，线下收款不会提交为确认收入',async()=>{vi.mocked(businessAPI.record).mockRejectedValueOnce(new Error('网络超时'));const w=show();await flushPromises();await w.get('.actions .primary-button').trigger('click');await w.get('.entry-form select').setValue('receipt');await w.get('[data-test=record-amount]').setValue('100');await w.get('.entry-form input[maxlength="100"]').setValue('线下充值');await w.get('.entry-form').trigger('submit');await flushPromises();const first=vi.mocked(businessAPI.record).mock.calls[0][0];expect(first.kind).toBe('receipt');expect(first.amount).toBe('100');expect(first.source_key).not.toBe('');expect(w.get('.entry-form [role=alert]').text()).toContain('网络超时');await w.get('.entry-form').trigger('submit');await flushPromises();expect(vi.mocked(businessAPI.record).mock.calls[1][0].source_key).toBe(first.source_key)})
+ it('快速切换日期时丢弃较早请求的响应',async()=>{let resolveOld:(v:BusinessOverview)=>void=()=>{};vi.mocked(businessAPI.overview).mockReturnValueOnce(new Promise(r=>{resolveOld=r}));const w=show();await flushPromises();const fresh=report();fresh.summary.profit='88';vi.mocked(businessAPI.overview).mockResolvedValueOnce(fresh);await w.setProps({startDate:'2026-09-20',endDate:'2026-09-28'});await flushPromises();resolveOld(report());await flushPromises();expect(w.get('.profit-metric strong').text()).toContain('88.00')})
+ it('冲销需要原因且只提交反向记录',async()=>{vi.mocked(businessAPI.records).mockResolvedValue([{id:7,source_key:'cost-7',kind:'cost',amount:'10',date:'2026-09-28',category:'采购',notes:'凭据',reverses_id:null,reversed:false,created_at:'2026-09-28T12:00:00Z'}]);const w=show();await flushPromises();await w.findAll('.tabs button')[1].trigger('click');await w.get('.text-button').trigger('click');await w.get('.reverse-form input').setValue('录入金额有误');await w.get('.reverse-form').trigger('submit');await flushPromises();expect(businessAPI.reverse).toHaveBeenCalledWith(7,'录入金额有误')})
 })
-describe('人民币经营账', () => {
-  it('外置滑块切换面板，面板内跳转同步更新滑块', async () => {
-    const Host = defineComponent({
-      components: { BusinessAnalyticsPanel, BusinessPanelNavigation },
-      setup: () => ({ activeTab: ref<BusinessTab>('overview') }),
-      template: '<BusinessPanelNavigation v-model="activeTab" /><BusinessAnalyticsPanel v-model:active-tab="activeTab" start-date="2026-08-01" end-date="2026-08-31" :show-header="false" :show-tabs="false" />',
-    })
-    const wrapper = mount(Host, { global: { stubs: { BaseDialog: Dialog, BusinessRecordDialog: true, BusinessImportDialog: true, BusinessConfigurationPanel: true, BusinessLedgerCharts: true } } })
-    await flushPromises()
-    expect(wrapper.findAll('nav[aria-label="经营分析子页"]')).toHaveLength(1)
-    const navigation = wrapper.get('nav')
-    await navigation.findAll('button').find(b => b.text() === '收支与成本台账')!.trigger('click')
-    expect(wrapper.text()).toContain('服务器凭据')
-    expect(navigation.get('[aria-current="page"]').text()).toBe('收支与成本台账')
-    await navigation.findAll('button').find(b => b.text() === '经营总览')!.trigger('click')
-    await wrapper.findAll('button').find(b => b.text() === '查看待处理问题')!.trigger('click')
-    expect(wrapper.text()).toContain('期初与账单调整')
-    expect(navigation.get('[aria-current="page"]').text()).toBe('核对与配置')
-    wrapper.unmount()
-  })
-  it('汇总失败时台账与三个录入入口仍可使用', async () => {
-    api.overview.mockRejectedValue(new Error('汇总数据库超时'))
-    const wrapper = mountPanel(); await flushPromises()
-    for (const label of ['登记收款', '登记采购', '录入费用']) expect(wrapper.findAll('button').some(b => b.text() === label && !b.attributes('disabled'))).toBe(true)
-    await wrapper.findAll('button').find(b => b.text() === '收支与成本台账')!.trigger('click')
-    expect(wrapper.text()).toContain('服务器凭据')
-    await wrapper.findAll('button').find(b => b.text() === '录入费用')!.trigger('click')
-    expect(wrapper.findComponent({ name: 'BusinessRecordDialog' }).exists()).toBe(true)
-  })
-  it('缺数据时只显示已知差额，不标完整利润', async () => {
-    const wrapper = mountPanel(); await flushPromises()
-    expect(wrapper.text()).toContain('利润待核对')
-    expect(wrapper.text()).toContain('不能视为完整利润')
-    expect(wrapper.text()).not.toContain('已定价利润')
-    expect(wrapper.text()).toContain('¥12.00')
-  })
-  it('现金与利润视图使用各自的服务端金额', async () => {
-    const wrapper = mountPanel(); await flushPromises()
-    await wrapper.findAll('button').find(b => b.text() === '现金收支')!.trigger('click')
-    expect(wrapper.text()).toContain('¥174.00')
-    expect(wrapper.text()).toContain('实际退款')
-  })
-  it('分组行可以过滤到对应收入成本并追溯', async () => {
-    api.overview.mockResolvedValue(overview({
-      groups: [{ key: '7', name: '订阅分组', revenue_cny: '18', cost_cny: '6', profit_cny: '12', missing_count: 0, allocation: 'allocated' }],
-      entries: [
-        { id: '1', event_id: 88, occurred_at: '2026-08-01T00:00:00Z', kind: 'wallet_revenue', user_id: 1, account_id: 2, group_id: 7, plan_id: 0, model: 'gpt-test', amount_cny: '18', credits: '30', quality: 'confirmed', detail: {} },
-        { id: '2', event_id: 89, occurred_at: '2026-08-01T00:00:00Z', kind: 'wallet_revenue', user_id: 1, account_id: 2, group_id: 8, plan_id: 0, model: 'other-model', amount_cny: '5', credits: '5', quality: 'confirmed', detail: {} },
-      ],
-    }))
-    const wrapper = mountPanel(); await flushPromises()
-    await wrapper.findAll('button').find(b => b.text() === '盈利明细')!.trigger('click')
-    await wrapper.findAll('button').find(b => b.text() === '订阅分组')!.trigger('click')
-    expect(wrapper.text()).toContain('gpt-test'); expect(wrapper.text()).not.toContain('other-model')
-    await wrapper.findAll('button').find(b => b.text().includes('#88'))!.trigger('click')
-    expect(api.trace).toHaveBeenCalledWith(88)
-  })
-  it('快速切日期不会被较旧的请求覆盖', async () => {
-    let resolveOld!: (value: BusinessOverview) => void
-    api.overview.mockReturnValueOnce(new Promise<BusinessOverview>(resolve => { resolveOld = resolve }))
-    const wrapper = mountPanel()
-    await wrapper.setProps({ endDate: '2026-09-01' }); await flushPromises()
-    resolveOld(overview({ known_profit_cny: '9999' })); await flushPromises()
-    expect(wrapper.text()).not.toContain('9,999')
-  })
-  it('未核实成本显示缺失状态，同时保留已入账金额', async () => {
-    const report = overview()
-    api.overview.mockResolvedValue(overview({ quality: { ...report.quality, cost: 'unknown' } }))
-    const wrapper = mountPanel(); await flushPromises()
-    const cost = wrapper.get('button[aria-label="上游消耗成本，查看明细"]')
-    expect(cost.get('strong').text()).toBe('—')
-    expect(cost.text()).toContain('已入账 ¥6.00')
 
-    api.overview.mockResolvedValue(overview({ usage_cost_cny: '0', fixed_cost_cny: '3.10', operating_cost_cny: '2.20' }))
-    await wrapper.setProps({ endDate: '2026-09-01' }); await flushPromises()
-    expect(cost.get('strong').text()).toBe('¥0.00')
-    expect(wrapper.get('button[aria-label="账号及经营费用，查看明细"]').get('strong').text()).toBe('¥5.30')
-  })
-  it('空趋势提供收款与台账入口，有零金额凭据时仍显示趋势', async () => {
-    const wrapper = mountPanel(); await flushPromises()
-    expect(wrapper.text()).toContain('本期暂无已入账记录')
-    await wrapper.findAll('button').find(b => b.text() === '查看收支台账')!.trigger('click')
-    expect(wrapper.text()).toContain('服务器凭据')
-    await wrapper.findAll('button').find(b => b.text() === '经营总览')!.trigger('click')
-    api.overview.mockResolvedValue(overview({
-      entries: [{ id: 'zero', event_id: 8, occurred_at: '2026-08-01T00:00:00Z', kind: 'usage_cost', user_id: 1, account_id: 1, group_id: 1, plan_id: 0, model: 'test', amount_cny: '0', credits: '1', quality: 'confirmed', detail: {} }],
-      daily: [{ key: '2026-08-01', name: '08-01', revenue_cny: '0', cost_cny: '0', profit_cny: '0', missing_count: 0, allocation: 'direct' }],
-    }))
-    await wrapper.setProps({ endDate: '2026-09-01' }); await flushPromises()
-    expect(wrapper.text()).not.toContain('本期暂无已入账记录')
-    expect(wrapper.findComponent({ name: 'BusinessLedgerCharts' }).exists()).toBe(true)
-    await wrapper.findAll('button').find(b => b.text() === '现金收支')!.trigger('click')
-    expect(wrapper.text()).toContain('本期暂无已入账记录')
-  })
-  it('补录指引跳转至来源区，费用指引打开现有录入表单', async () => {
-    const scroll = vi.fn()
-    const original = HTMLElement.prototype.scrollIntoView
-    HTMLElement.prototype.scrollIntoView = scroll
-    try {
-      const wrapper = mountPanel(); await flushPromises()
-      await wrapper.findAll('button').find(b => b.text() === '确认来源')!.trigger('click'); await flushPromises()
-      expect(wrapper.text()).toContain('待处理问题')
-      expect(scroll).toHaveBeenCalledWith({ block: 'start' })
-      await wrapper.findAll('button').find(b => b.text() === '经营总览')!.trigger('click')
-      await wrapper.findAll('button').find(b => b.text() === '去录入')!.trigger('click')
-      expect(wrapper.findComponent({ name: 'BusinessRecordDialog' }).props('type')).toBe('expense')
-    } finally {
-      HTMLElement.prototype.scrollIntoView = original
-    }
-  })
-  it('余额组成显示未知与赠送额度，不混入付费人民币价值', async () => {
-    const wrapper = mountPanel(); await flushPromises()
-    await wrapper.findAll('button').find(b => b.text() === '查看组成')!.trigger('click')
-    expect(wrapper.text()).toContain('来源未知余额 10 额度')
-    expect(wrapper.text()).toContain('未使用赠送余额 90 额度')
-    expect(wrapper.text()).toContain('两者均不计为已确认的人民币价值')
-    expect(wrapper.text()).toContain('¥162.00')
-  })
+describe('经营统计补齐基准和分页', () => {
+ it('订阅基准保持已冻结字段并提交补齐依据', async () => {
+  vi.mocked(businessAPI.terms).mockResolvedValue([{id:9,user_id:1,group_name:'测试分组',plan_name:'月卡',funding:'paid',amount:'100',quota:null,baseline_units:'20',used_units:'25',starts_at:settings.enabled_at!,ends_at:'2026-12-01T00:00:00Z',opening:true}])
+  const w=show();await flushPromises();await w.findAll('.tabs button')[2].trigger('click');await w.get('.term-row > button').trigger('click')
+  const numbers=w.findAll('.term-form input[type=number]');expect(numbers[0].attributes('readonly')).toBeDefined();await numbers[1].setValue('1000')
+  await w.get('.term-form input[maxlength]').setValue('订单约定额度');await w.get('.term-form').trigger('submit');await flushPromises()
+  expect(businessAPI.configureTerm).toHaveBeenCalledWith(9,{amount:'100',quota:'1000',funding:'paid',notes:'订单约定额度'})
+ })
+ it('账目分页失败后保留已有记录并允许重试',async()=>{
+  const records=Array.from({length:50},(_,i)=>({id:100-i,source_key:'record-'+i,kind:'cost' as const,amount:'0.12345678',date:'2026-09-28',category:'测试采购',notes:'',reverses_id:null,reversed:false,created_at:settings.enabled_at!}))
+  vi.mocked(businessAPI.records).mockResolvedValueOnce(records).mockRejectedValueOnce(new Error('暂不可用')).mockResolvedValueOnce([])
+  const w=show();await flushPromises();await w.findAll('.tabs button')[1].trigger('click');await w.get('.load-more').trigger('click');await flushPromises()
+  expect(businessAPI.records).toHaveBeenLastCalledWith(51);expect(w.text()).toContain('暂不可用');expect(w.text()).toContain('¥0.12')
+  await w.get('.load-more').trigger('click');await flushPromises();expect(businessAPI.records).toHaveBeenLastCalledWith(51);expect(w.find('.load-more').exists()).toBe(false)
+ })
+ it('明确区分估算、当前快照与赠送面值',async()=>{const w=show();await flushPromises();expect(w.text()).toContain('经营估算利润');expect(w.text()).toContain('赠送面值不是现金支出');expect(w.text()).toContain('当前快照')})
 })

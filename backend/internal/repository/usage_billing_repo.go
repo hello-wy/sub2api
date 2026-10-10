@@ -3,8 +3,8 @@ package repository
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 
 	dbent "github.com/Wei-Shaw/sub2api/ent"
@@ -59,20 +59,16 @@ func (r *usageBillingRepository) Apply(ctx context.Context, cmd *service.UsageBi
 		return nil, err
 	}
 
-	if cmd.BusinessUsage != nil {
-		payload := cmd.BusinessUsage
-		payload["balance_cost"] = cmd.BalanceCost
-		payload["subscription_cost"] = cmd.SubscriptionCost
-		payload["subscription_term_version"] = cmd.SubscriptionTermVersion
-		payload["subscription_term_stale"] = result.SubscriptionTermStale
-		payload["billing_applied"] = true
-		raw, marshalErr := json.Marshal(payload)
-		if marshalErr != nil {
-			return nil, marshalErr
-		}
-		if _, emitErr := tx.ExecContext(ctx, "SELECT business_emit_usage($1::jsonb)", string(raw)); emitErr != nil {
-			return nil, emitErr
-		}
+	// Record only amounts actually applied to the wallet/current subscription term.
+	subscriptionCost := cmd.SubscriptionCost
+	if result.SubscriptionTermStale {
+		subscriptionCost = 0
+	}
+	_, err = tx.ExecContext(ctx, "SELECT operating_record_usage($1,$2,(SELECT group_id FROM api_keys WHERE id=$3),$4,$5,$6,$7,$8)",
+		fmt.Sprintf("usage:%d:%s", cmd.APIKeyID, cmd.RequestID), cmd.UserID, cmd.APIKeyID, cmd.SubscriptionID, cmd.SubscriptionTermVersion,
+		cmd.BalanceCost, subscriptionCost, int64(cmd.InputTokens)+int64(cmd.OutputTokens)+int64(cmd.CacheCreationTokens)+int64(cmd.CacheReadTokens))
+	if err != nil {
+		return nil, err
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -384,6 +380,10 @@ func captureUsageBillingBatchImageBalance(ctx context.Context, tx *sql.Tx, cmd *
 		RETURNING balance, frozen_balance
 	`, cmd.HoldAmount, cmd.ActualAmount, cmd.UserID).Scan(&balance, &frozen)
 	if err == nil {
+		if _, captureErr := tx.ExecContext(ctx, "SELECT operating_record_usage($1,$2,(SELECT group_id FROM api_keys WHERE id=$3),NULL,0,$4,0,0)",
+			fmt.Sprintf("batch:%d:%s", cmd.APIKeyID, cmd.BatchID), cmd.UserID, cmd.APIKeyID, cmd.ActualAmount); captureErr != nil {
+			return nil, captureErr
+		}
 		return &service.BatchImageBalanceHoldResult{NewBalance: &balance, FrozenBalance: &frozen}, nil
 	}
 	if !errors.Is(err, sql.ErrNoRows) {

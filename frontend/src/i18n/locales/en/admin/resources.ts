@@ -547,8 +547,9 @@ export default {
 
     // Business Analytics
     businessAnalytics: {
+      operating: {"estimate": "Estimated operating profit", "summary": "Management estimate: revenue follows consumption; costs include manual expenses and grants at face value. Grants are not cash outflows; do not enter them again as expenses. Period totals use the selected dates; balances, subscription positions and cumulative estimates are current.", "overview": "Overview", "records": "Manual records", "settings": "Opening balances and basis", "cumulative": "Cumulative estimated profit", "opening": "Opening estimated profit", "revenue": "Recognized revenue", "cost": "Total cost including grants", "pending": "Pending confirmation", "empty": "No data for this period", "currency": "CNY"},
       title: 'Business Analytics',
-      description: 'Reconcile CNY revenue, costs, and profit from receipts, purchases, and expenses'
+      description: 'Track consumption revenue, manual and gift costs, and outstanding balances and subscriptions'
     },
 
     // Usage Records
