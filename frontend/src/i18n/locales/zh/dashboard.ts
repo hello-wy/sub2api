@@ -405,6 +405,8 @@ export default {
     latencyDuration: '总耗时',
     latencyTps: 'TPS',
     latencyTpsHint: '估算输出 TPS = 输出 Token ÷（总耗时 − 首 Token 耗时），单位为秒。排除首 Token 前等待；缺少计时或输出窗口不足 100 毫秒时不显示。上游缓冲及计入输出用量的推理 Token 仍可能影响结果。 颜色按输出量动态分为绿/黄/橙/红：输出耗时达到 10 + Token/20、30 + Token/10、60 + Token/5 秒时依次变为黄、橙、红。',
+    outputTps: '输出 TPS',
+    outputTpsHint: '输出 Token ÷ 总耗时（包含首字等待），单位 tok/s。输出 Token 可能包含推理 Token。',
     time: '时间',
     ws: 'WS',
     stream: '流式',
