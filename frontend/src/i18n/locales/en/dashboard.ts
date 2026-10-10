@@ -400,6 +400,8 @@ export default {
     latencyDuration: 'Total',
     latencyTps: 'TPS',
     latencyTpsHint: 'Estimated output TPS = output tokens ÷ (total duration − time to first token), in seconds. Excludes the initial wait; unavailable without timing or with an output window below 100 ms. Upstream buffering and reasoning tokens included in output usage may still affect the estimate. Colors adapt to output size: output durations reaching 10 + tokens/20, 30 + tokens/10, and 60 + tokens/5 seconds turn yellow, orange, and red respectively.',
+    outputTps: 'Output TPS',
+    outputTpsHint: 'Output tokens divided by total duration, including first-token wait, in tok/s. Output tokens may include reasoning tokens.',
     time: 'Time',
     ws: 'WS',
     stream: 'Stream',
