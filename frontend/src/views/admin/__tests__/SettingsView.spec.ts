@@ -113,6 +113,9 @@ vi.mock("@/api", () => ({
       getLotteryPrizePoolSettings,
       updateLotteryPrizePoolSettings,
     },
+    users: {
+      getById: vi.fn(async (id: number) => ({ id, email: `user${id}@example.com`, username: `User ${id}` })),
+    },
     accounts: {
       getUpstreamBillingProbeSettings,
       updateUpstreamBillingProbeSettings,
@@ -1969,6 +1972,18 @@ describe("admin SettingsView payment visible method controls", () => {
       welfare_leaderboard_rank_limit: 1,
       welfare_leaderboard_reward_ratios: "[10]",
     });
+  });
+
+  it("loads and saves excluded users from welfare settings", async () => {
+    getSettings.mockResolvedValue({ ...baseSettingsResponse, welfare_excluded_user_ids: [7, 9] });
+    const wrapper = mountView();
+    await flushPromises();
+    await openOperationsTab(wrapper);
+    expect(wrapper.get('[data-testid="welfare-excluded-7"]').text()).toContain("user7@example.com");
+    await wrapper.get('[data-testid="welfare-excluded-7"] button').trigger("click");
+    await wrapper.find("form").trigger("submit.prevent");
+    await flushPromises();
+    expect(updateSettings.mock.calls[0]?.[0]).toMatchObject({ welfare_excluded_user_ids: [9] });
   });
 
   it("shows and saves the editable daily rebate time", async () => {

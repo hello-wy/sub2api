@@ -184,6 +184,7 @@ type SystemSettings struct {
 	WelfareLeaderboardRankLimit    int
 	WelfareLeaderboardRewardRatios string
 	WelfareRewardTime              string
+	WelfareExcludedUserIDs         []int64
 	TicketRebateEnabled            bool
 	TicketRebateRules              string
 	LoyaltyWeeklyRules             string

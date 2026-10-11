@@ -77,6 +77,7 @@ func (s *WelfareService) dailyRewardCandidates(ctx context.Context, day, end tim
 	rows, err := s.db.QueryContext(ctx, `SELECT u.user_id, us.email, SUM(u.actual_cost)::text
 FROM usage_logs u JOIN users us ON us.id = u.user_id
 WHERE u.created_at >= $1 AND u.created_at < $2 AND us.role <> 'admin'
+AND `+usagestats.WelfareEligibleUserSQL+`
 GROUP BY u.user_id, us.email HAVING SUM(u.actual_cost) > 0`, day, end)
 	if err != nil {
 		return nil, fmt.Errorf("load daily consumption: %w", err)

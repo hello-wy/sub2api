@@ -151,6 +151,7 @@ func (h *SettingHandler) GetSettings(c *gin.Context) {
 		WelfareLeaderboardRankLimit:                            settings.WelfareLeaderboardRankLimit,
 		WelfareLeaderboardRewardRatios:                         settings.WelfareLeaderboardRewardRatios,
 		WelfareRewardTime:                                      settings.WelfareRewardTime,
+		WelfareExcludedUserIDs:                                 settings.WelfareExcludedUserIDs,
 		TicketRebateEnabled:                                    settings.TicketRebateEnabled,
 		TicketRebateRules:                                      settings.TicketRebateRules,
 		LoyaltyWeeklyRules:                                     settings.LoyaltyWeeklyRules,

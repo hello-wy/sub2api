@@ -102,6 +102,7 @@ type SystemSettings struct {
 	WelfareLeaderboardRankLimit    int     `json:"welfare_leaderboard_rank_limit"`
 	WelfareLeaderboardRewardRatios string  `json:"welfare_leaderboard_reward_ratios"`
 	WelfareRewardTime              string  `json:"welfare_reward_time"`
+	WelfareExcludedUserIDs         []int64 `json:"welfare_excluded_user_ids"`
 	TicketRebateEnabled            bool    `json:"ticket_rebate_enabled"`
 	TicketRebateRules              string  `json:"ticket_rebate_rules"`
 	LoyaltyWeeklyRules             string  `json:"loyalty_weekly_rules"`

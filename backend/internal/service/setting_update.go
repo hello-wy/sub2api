@@ -229,6 +229,11 @@ func (s *SettingService) buildSystemSettingsUpdates(ctx context.Context, setting
 		rewardTime = DefaultWelfareRewardTime
 	}
 	updates[SettingKeyWelfareRewardTime] = rewardTime
+	excludedIDsJSON, err := marshalWelfareExcludedUserIDs(settings.WelfareExcludedUserIDs)
+	if err != nil {
+		return nil, infraerrors.BadRequest("INVALID_WELFARE_EXCLUDED_USERS", err.Error())
+	}
+	updates[SettingKeyWelfareExcludedUserIDs] = excludedIDsJSON
 	updates[SettingKeyTicketRebateEnabled] = strconv.FormatBool(settings.TicketRebateEnabled)
 	updates[SettingKeyTicketRebateRules] = settings.TicketRebateRules
 	loyaltyWeeklyRulesJSON, err := NormalizePaymentLoyaltyRulesJSON("weekly", settings.LoyaltyWeeklyRules)

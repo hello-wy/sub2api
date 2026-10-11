@@ -376,7 +376,13 @@ func (s *SettingService) GetAllSettings(ctx context.Context) (*SystemSettings, e
 		return nil, fmt.Errorf("get all settings: %w", err)
 	}
 
-	return s.parseSettings(settings), nil
+	excludedIDs, err := ParseWelfareExcludedUserIDs(settings[SettingKeyWelfareExcludedUserIDs])
+	if err != nil {
+		return nil, err
+	}
+	result := s.parseSettings(settings)
+	result.WelfareExcludedUserIDs = excludedIDs
+	return result, nil
 }
 
 // SetOnUpdateCallback sets a callback function to be called when settings are updated
