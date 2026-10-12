@@ -15,10 +15,10 @@ beforeEach(() => {
   vi.useFakeTimers()
   vi.mocked(opsAPI.listUpstreamErrors).mockReset().mockResolvedValue({ items: [], total: 0 } as never)
 })
-afterEach(() => { wrapper?.unmount(); vi.useRealTimers() })
+afterEach(() => { wrapper?.unmount(); document.body.innerHTML = ''; vi.useRealTimers() })
 async function settle() { await flushPromises(); await vi.advanceTimersByTimeAsync(400); await flushPromises() }
 function setup() {
-  wrapper = mount(OpsErrorDetailsModal, { props: { show: true, timeRange: '24h', errorType: 'upstream', groupId: 3 }, global: { stubs: { BaseDialog: { template: '<div><slot /></div>' }, OpsErrorLogTable: true } } })
+  wrapper = mount(OpsErrorDetailsModal, { attachTo: document.body, props: { show: true, timeRange: '24h', errorType: 'upstream', groupId: 3 }, global: { stubs: { BaseDialog: { template: '<div><slot /></div>' }, OpsErrorLogTable: true } } })
 }
 function select(id: string) { return wrapper.findAllComponents(Select).find(s => s.props('id') === id)! }
 
@@ -29,7 +29,7 @@ describe('Ops error detail filters', () => {
     select('ops-error-user').vm.$emit('update:modelValue', 7)
     await wrapper.get('input').setValue('request_timeout')
     await settle()
-    expect(opsAPI.listUpstreamErrors).toHaveBeenLastCalledWith(expect.objectContaining({ group_id: 3, account_id: 839, user_id: 7, q: 'request_timeout', phase: 'upstream', page: 1 }))
+    expect(opsAPI.listUpstreamErrors).toHaveBeenLastCalledWith(expect.objectContaining({ group_id: 3, account_id: 839, user_id: 7, q: 'request_timeout', page: 1 }))
     await wrapper.setProps({ show: false }); await wrapper.setProps({ show: true, resumeState: true }); await settle()
     expect(select('ops-error-account').props('modelValue')).toBe(839)
     await wrapper.findAll('button').find(b => b.text() === 'common.reset')!.trigger('click'); await settle()
@@ -40,6 +40,20 @@ describe('Ops error detail filters', () => {
     expect(params).not.toHaveProperty('q')
     select('ops-error-group').vm.$emit('update:modelValue', null); await settle()
     expect(vi.mocked(opsAPI.listUpstreamErrors).mock.calls.at(-1)![0]).not.toHaveProperty('group_id')
+  })
+
+  it('sends entity filters after real dropdown clicks and limits upstream phase choices', async () => {
+    setup(); await settle()
+    for (const [id, label] of [['account', 'cpa_不降智'], ['user', 'user@example.com']]) {
+      await select(`ops-error-${id}`).get('button').trigger('click')
+      await flushPromises()
+      const option = [...document.querySelectorAll('[role="option"]')].find(el => el.textContent?.includes(label))!
+      expect(option).toBeDefined()
+      option.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      await settle()
+    }
+    expect(opsAPI.listUpstreamErrors).toHaveBeenLastCalledWith(expect.objectContaining({ account_id: 839, user_id: 7, group_id: 3 }))
+    expect(select('ops-phase').props('options').map((option: { value: string }) => option.value)).toEqual(['', 'account_auth', 'upstream'])
   })
 
   it('searches accounts remotely and retains the selected label', async () => {

@@ -314,6 +314,9 @@ func (h *OpsHandler) ListRequestErrors(c *gin.Context) {
 		filter.StatusCodes = out
 	}
 
+	if !applyOpsErrorExtraFilters(c, filter) {
+		return
+	}
 	applyOpsErrorSortParams(c, filter)
 
 	result, err := h.opsService.GetErrorLogs(c.Request.Context(), filter)
@@ -474,6 +477,15 @@ func (h *OpsHandler) ListUpstreamErrors(c *gin.Context) {
 	// Provider-health list includes recovered inference and credential rows.
 	filter.IncludeRecoveredUpstream = true
 	filter.Owner = "provider"
+	filter.Phase = strings.TrimSpace(c.Query("phase"))
+	if filter.Phase != "" && filter.Phase != "upstream" && filter.Phase != "account_auth" {
+		response.BadRequest(c, "Invalid upstream phase")
+		return
+	}
+	if owner := strings.TrimSpace(c.Query("error_owner")); owner != "" && owner != "provider" {
+		response.BadRequest(c, "Invalid upstream error_owner")
+		return
+	}
 	filter.Source = strings.TrimSpace(c.Query("error_source"))
 	filter.Query = strings.TrimSpace(c.Query("q"))
 
@@ -528,6 +540,9 @@ func (h *OpsHandler) ListUpstreamErrors(c *gin.Context) {
 		filter.StatusCodes = out
 	}
 
+	if !applyOpsErrorExtraFilters(c, filter) {
+		return
+	}
 	applyOpsErrorSortParams(c, filter)
 
 	result, err := h.opsService.GetErrorLogs(c.Request.Context(), filter)
@@ -773,4 +788,37 @@ func parseOpsDuration(v string) (time.Duration, bool) {
 	default:
 		return 0, false
 	}
+}
+
+// applyOpsErrorExtraFilters keeps split error endpoints aligned with their UI filters.
+func applyOpsErrorExtraFilters(c *gin.Context, filter *service.OpsErrorLogFilter) bool {
+	for _, field := range []struct {
+		name   string
+		target **int64
+	}{
+		{"user_id", &filter.UserID}, {"api_key_id", &filter.APIKeyID},
+	} {
+		if raw := strings.TrimSpace(c.Query(field.name)); raw != "" {
+			id, err := strconv.ParseInt(raw, 10, 64)
+			if err != nil || id <= 0 {
+				response.BadRequest(c, "Invalid "+field.name)
+				return false
+			}
+			*field.target = &id
+		}
+	}
+	filter.Model = strings.TrimSpace(c.Query("model"))
+	filter.UserQuery = strings.TrimSpace(c.Query("user_query"))
+	if raw := strings.ToLower(strings.TrimSpace(c.Query("status_codes_other"))); raw != "" {
+		switch raw {
+		case "1", "true", "yes":
+			filter.StatusCodesOther = true
+		case "0", "false", "no":
+			filter.StatusCodesOther = false
+		default:
+			response.BadRequest(c, "Invalid status_codes_other")
+			return false
+		}
+	}
+	return true
 }
