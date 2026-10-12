@@ -31,7 +31,7 @@ const emit = defineEmits<{
 }>()
 
 function isDashboardTimeRange(value: unknown): value is DashboardTimeRange {
-  return value === 'today' | '24h' || value === '7d' || value === '30d'
+  return value === 'today' || value === '24h' || value === '7d' || value === '30d'
 }
 
 function handleUpdate(value: unknown) {
