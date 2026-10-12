@@ -149,19 +149,20 @@ describe('admin DashboardView', () => {
     vi.useRealTimers()
   })
 
-  it('默认使用最近 24 小时并在空数据时保留完整仪表盘结构', async () => {
+  it('默认仅统计今日并在空数据时保留完整仪表盘结构', async () => {
     const wrapper = mountDashboard()
     await flushPromises()
 
     const now = new Date()
-    const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000)
 
     expect(getSnapshotV2).toHaveBeenCalledTimes(1)
     expect(getSnapshotV2).toHaveBeenCalledWith(expect.objectContaining({
-      start_date: formatLocalDate(yesterday),
+      start_date: formatLocalDate(now),
       end_date: formatLocalDate(now),
       granularity: 'hour'
     }))
+    expect(getUserSpendingRanking).toHaveBeenCalledWith({ start_date: formatLocalDate(now), end_date: formatLocalDate(now), limit: 6 })
+    expect(wrapper.find('select').element.value).toBe('today')
     const thirtyDaysAgo = new Date(now)
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29)
     expect(getUsageTrend).toHaveBeenCalledWith({
@@ -189,6 +190,18 @@ describe('admin DashboardView', () => {
     expect(wrapper.text()).toContain('用户使用趋势（Top 10）')
     expect(wrapper.text()).toContain('该时间范围暂无模型使用数据')
     expect(wrapper.text()).toContain('该时间范围暂无用户使用数据')
+  })
+
+  it('跨过本地午夜后刷新，模型与用户排名使用同一个新日期', async () => {
+    vi.setSystemTime(new Date(2026, 9, 12, 23, 59, 59))
+    const wrapper = mountDashboard()
+    await flushPromises()
+    vi.setSystemTime(new Date(2026, 9, 13, 0, 0, 1))
+    await wrapper.get('.refresh-button').trigger('click')
+    await flushPromises()
+    expect(getSnapshotV2).toHaveBeenLastCalledWith(expect.objectContaining({ start_date: '2026-10-13', end_date: '2026-10-13' }))
+    expect(getUserSpendingRanking).toHaveBeenLastCalledWith({ start_date: '2026-10-13', end_date: '2026-10-13', limit: 6 })
+    wrapper.unmount()
   })
 
   it('展示真实趋势、模型分布和用户排名，并支持跳转到用户用量', async () => {
@@ -268,8 +281,9 @@ describe('admin DashboardView', () => {
     await flushPromises()
 
     expect(getSnapshotV2).toHaveBeenLastCalledWith(expect.objectContaining({
-      granularity: 'day'
+      granularity: 'day', start_date: '2026-07-09', end_date: '2026-07-15'
     }))
+    expect(getUserSpendingRanking).toHaveBeenLastCalledWith({ start_date: '2026-07-09', end_date: '2026-07-15', limit: 6 })
     expect(getUserSpendingRanking).toHaveBeenCalledTimes(2)
   })
 })

@@ -86,7 +86,7 @@
 
           <article class="dashboard-card distribution-card">
             <div class="card-heading">
-              <div><h2>模型使用分布</h2><p>按 Token 使用量排序</p></div>
+              <div><h2>模型使用分布</h2><p>{{ rangeLabel }} · 按 Token 使用量排序</p></div>
               <router-link to="/admin/usage">查看更多</router-link>
             </div>
             <div v-if="modelStats.length" class="model-list">
@@ -100,7 +100,7 @@
 
           <article class="dashboard-card recent-card">
             <div class="card-heading">
-              <div><h2>高用量用户（Top 6）</h2><p>当前时间范围内消耗前六</p></div>
+              <div><h2>高用量用户（Top 6）</h2><p>{{ rangeLabel }} · 按实际费用排序</p></div>
               <router-link to="/admin/usage">查看全部</router-link>
             </div>
             <div v-if="rankingLoading" class="compact-loading"><LoadingSpinner size="sm" /></div>
@@ -176,11 +176,12 @@ const rankingItems = ref<UserSpendingRankingItem[]>([])
 const paymentStats = ref<PaymentDashboardStats | null>(null)
 
 const formatLocalDate = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-const timeRange = ref<DashboardTimeRange>('24h')
-const rangeOptions: Array<{ value: DashboardTimeRange; label: string }> = [{ value: '24h', label: '最近 24 小时' }, { value: '7d', label: '最近 7 天' }, { value: '30d', label: '最近 30 天' }]
+const timeRange = ref<DashboardTimeRange>('today')
+const rangeOptions: Array<{ value: DashboardTimeRange; label: string }> = [{ value: 'today', label: '今日' }, { value: '7d', label: '最近 7 天' }, { value: '30d', label: '最近 30 天' }]
+const rangeLabel = computed(() => rangeOptions.find(option => option.value === timeRange.value)?.label || '')
 const endDate = ref('')
 const startDate = ref('')
-const granularity = computed<'hour' | 'day'>(() => timeRange.value === '24h' ? 'hour' : 'day')
+const granularity = computed<'hour' | 'day'>(() => timeRange.value === 'today' ? 'hour' : 'day')
 const maxModelTokens = computed(() => Math.max(...modelStats.value.map((item) => item.total_tokens), 1))
 const totalModelTokens = computed(() => modelStats.value.reduce((total, item) => total + item.total_tokens, 0))
 const displayName = computed(() => authStore.user?.username || authStore.user?.email?.split('@')[0] || '管理员')
@@ -220,7 +221,7 @@ const goToUserUsage = (userId: number) => void router.push({ path: '/admin/usage
 const updateDateRange = () => {
   const end = new Date()
   const start = new Date(end)
-  start.setHours(start.getHours() - (timeRange.value === '24h' ? 24 : timeRange.value === '7d' ? 6 * 24 : 29 * 24))
+  start.setDate(start.getDate() - (timeRange.value === 'today' ? 0 : timeRange.value === '7d' ? 6 : 29))
   startDate.value = formatLocalDate(start)
   endDate.value = formatLocalDate(end)
 }
@@ -290,10 +291,10 @@ const loadPaymentStats = async () => {
     paymentStatsLoading.value = false
   }
 }
-const loadDashboard = () => { void loadSnapshot(); void loadRanking(); void loadDailyTrend(); void loadPaymentStats() }
-const applyTimeRange = () => { updateDateRange(); loadDashboard() }
+const loadDashboard = () => { updateDateRange(); void loadSnapshot(); void loadRanking(); void loadDailyTrend(); void loadPaymentStats() }
+const applyTimeRange = () => loadDashboard()
 
-onMounted(() => { updateDateRange(); loadDashboard() })
+onMounted(loadDashboard)
 </script>
 
 <style scoped>
