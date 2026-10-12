@@ -996,10 +996,10 @@ func buildOpsErrorLogsWhere(filter *service.OpsErrorLogFilter) (string, []any) {
 	}
 
 	if q := strings.TrimSpace(filter.Query); q != "" {
-		like := "%" + q + "%"
+		like := "%" + escapeLikePattern(q) + "%"
 		args = append(args, like)
 		n := itoa(len(args))
-		clauses = append(clauses, "(e.request_id ILIKE $"+n+" OR e.client_request_id ILIKE $"+n+" OR e.error_message ILIKE $"+n+")")
+		clauses = append(clauses, "(e.request_id ILIKE $"+n+" OR e.client_request_id ILIKE $"+n+" OR e.error_message ILIKE $"+n+" OR e.upstream_error_message ILIKE $"+n+" OR e.error_type ILIKE $"+n+" OR e.provider_error_code ILIKE $"+n+" OR e.provider_error_type ILIKE $"+n+")")
 	}
 
 	if userQuery := strings.TrimSpace(filter.UserQuery); userQuery != "" {

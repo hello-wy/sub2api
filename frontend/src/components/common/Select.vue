@@ -381,6 +381,7 @@ watch(() => props.disabled, (disabled) => {
 
 watch(isOpen, (open) => {
   if (open) {
+    document.dispatchEvent(new CustomEvent('select:open', { detail: instanceId }))
     calculateDropdownPosition()
     // Reset focused index to current selection or first item
     if (filteredOptions.value.length === 0) {
@@ -466,6 +467,7 @@ const onDropdownKeyDown = (e: KeyboardEvent) => {
       break
     case 'Escape':
       e.preventDefault()
+      e.stopPropagation()
       isOpen.value = false
       triggerRef.value?.focus()
       break
@@ -501,12 +503,18 @@ const handleClickOutside = (event: MouseEvent) => {
   }
 }
 
+const handleOtherSelectOpen = (event: Event) => {
+  if ((event as CustomEvent<string>).detail !== instanceId) isOpen.value = false
+}
+
 onMounted(() => {
-  document.addEventListener('click', handleClickOutside)
+  document.addEventListener('click', handleClickOutside, true)
+  document.addEventListener('select:open', handleOtherSelectOpen)
 })
 
 onUnmounted(() => {
-  document.removeEventListener('click', handleClickOutside)
+  document.removeEventListener('click', handleClickOutside, true)
+  document.removeEventListener('select:open', handleOtherSelectOpen)
   window.removeEventListener('scroll', updateTriggerRect, { capture: true })
   window.removeEventListener('resize', calculateDropdownPosition)
   if (remoteSearchTimer) {

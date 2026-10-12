@@ -290,6 +290,12 @@ export default {
       },
       // Error Details Modal
       errorDetails: {
+        searchgroup: 'Search group names',
+        searchaccount: 'Search account names',
+        searchuser: 'Search username or email',
+        ownerLabel: 'Owner',
+        viewLabel: 'Scope',
+        loadFailed: 'Loading failed. Click to retry',
         upstreamErrors: 'Upstream Errors',
         requestErrors: 'Request Errors',
         unresolved: 'Unresolved',
@@ -312,7 +318,7 @@ export default {
           internal: 'Internal'
         },
         total: 'Total:',
-        searchPlaceholder: 'Search request_id / client_request_id / message',
+        searchPlaceholder: 'Search request IDs, error messages or error types',
       },
       // Error Detail Modal
       errorDetail: {
