@@ -290,6 +290,12 @@ export default {
       },
       // Error Details Modal
       errorDetails: {
+        searchgroup: '搜索分组名称',
+        searchaccount: '搜索账号名称',
+        searchuser: '搜索用户名或邮箱',
+        ownerLabel: '责任方',
+        viewLabel: '统计范围',
+        loadFailed: '加载失败，点击重试',
         upstreamErrors: '上游错误',
         requestErrors: '请求错误',
         unresolved: '未解决',
@@ -312,7 +318,7 @@ export default {
           internal: '内部'
         },
         total: '总计：',
-        searchPlaceholder: '搜索 request_id / client_request_id / message'
+        searchPlaceholder: '搜索请求 ID、错误消息或错误类型'
       },
       // Error Detail Modal
       errorDetail: {
@@ -428,6 +434,7 @@ export default {
           kind: '类型',
           platform: '平台',
           model: '模型',
+          account: '账号',
           duration: '耗时',
           status: '状态码',
           requestId: '请求ID',

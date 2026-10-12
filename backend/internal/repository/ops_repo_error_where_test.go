@@ -46,3 +46,15 @@ func TestBuildOpsErrorLogsWhere_UserQueryUsesExistsSubquery(t *testing.T) {
 		t.Fatalf("where should include EXISTS user email condition: %s", where)
 	}
 }
+
+func TestBuildOpsErrorLogsWhere_QuerySearchesUpstreamAndEscapesWildcards(t *testing.T) {
+	where, args := buildOpsErrorLogsWhere(&service.OpsErrorLogFilter{Query: "request_timeout%"})
+	for _, column := range []string{"upstream_error_message", "error_type", "provider_error_code", "provider_error_type"} {
+		if !strings.Contains(where, "e."+column+" ILIKE $1") {
+			t.Fatalf("missing %s in %s", column, where)
+		}
+	}
+	if args[0] != `%request\_timeout\%%` {
+		t.Fatalf("unexpected pattern: %v", args[0])
+	}
+}
