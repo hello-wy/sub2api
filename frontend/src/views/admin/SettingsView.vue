@@ -8653,7 +8653,7 @@
                   </div>
                 </div>
               </div>
-              <WelfareExcludedUsers v-model="form.welfare_excluded_user_ids" />
+              <WelfareExcludedUsers v-model="form.welfare_excluded_user_ids" v-model:visible-user-ids="form.welfare_leaderboard_visible_user_ids" />
               <TicketRebateSettings v-model:enabled="form.ticket_rebate_enabled" v-model:rules="ticketRebateRules" />
             </div>
           </div>
@@ -10666,6 +10666,7 @@ const form = reactive<SettingsForm>({
   welfare_leaderboard_reward_ratios: "[1.0, 0.5, 0.2]",
   welfare_reward_time: "23:55",
   welfare_excluded_user_ids: [],
+  welfare_leaderboard_visible_user_ids: [],
   ticket_rebate_enabled: false,
   ticket_rebate_rules: '[{"amount_threshold":5,"ticket_count":1}]',
   loyalty_weekly_rules: serializeLoyaltyRules("weekly", loyaltyWeeklyRules.value),
@@ -12788,6 +12789,7 @@ async function saveSettings() {
       welfare_leaderboard_reward_ratios: JSON.stringify(welfareRatios.value),
       welfare_reward_time: form.welfare_reward_time,
       welfare_excluded_user_ids: [...form.welfare_excluded_user_ids],
+      welfare_leaderboard_visible_user_ids: [...form.welfare_leaderboard_visible_user_ids],
       ticket_rebate_enabled: form.ticket_rebate_enabled,
       ticket_rebate_rules: JSON.stringify(ticketRebateRules.value),
       loyalty_weekly_rules: serializeLoyaltyRules("weekly", loyaltyWeeklyRules.value),

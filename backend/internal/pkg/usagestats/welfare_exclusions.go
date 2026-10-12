@@ -6,3 +6,10 @@ const WelfareExcludedUserIDsSQL = `SELECT jsonb_array_elements_text(value::jsonb
 // WelfareEligibleUserSQL filters before ranking/limiting and before settling
 // daily rebates. The usage_logs table must use the alias u.
 const WelfareEligibleUserSQL = `u.user_id NOT IN (` + WelfareExcludedUserIDsSQL + `)`
+
+const WelfareVisibleUserIDsSQL = `SELECT jsonb_array_elements_text(value::jsonb)::bigint
+	FROM settings WHERE key = 'welfare_leaderboard_visible_user_ids'`
+
+// Visible excluded users still have no reward eligibility.
+const WelfareHiddenUserIDsSQL = WelfareExcludedUserIDsSQL + ` EXCEPT ` + WelfareVisibleUserIDsSQL
+const WelfareVisibleUserSQL = `u.user_id NOT IN (` + WelfareHiddenUserIDsSQL + `)`

@@ -38,8 +38,24 @@ describe('WelfareExcludedUsers', () => {
     await wrapper.get('[data-testid="welfare-exclusions-confirm"]').trigger('click')
     expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([[7, 9]])
     await wrapper.setProps({ modelValue: [7, 9] })
-    await wrapper.get('[data-testid="welfare-excluded-7"] button').trigger('click')
+    await wrapper.get('[data-testid="welfare-excluded-7"] button.btn-ghost').trigger('click')
     expect(wrapper.emitted('update:modelValue')?.[1]).toEqual([[9]])
+  })
+
+  it('keeps reward exclusion while toggling visibility and removes the saved switch with a user', async () => {
+    const wrapper = mountEditor([7, 9])
+    await flushPromises()
+    expect(wrapper.get('[data-testid="welfare-visible-7"]').attributes('aria-checked')).toBe('false')
+    await wrapper.get('[data-testid="welfare-visible-7"]').trigger('click')
+    expect(wrapper.emitted('update:visibleUserIds')?.[0]).toEqual([[7]])
+    expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+    await wrapper.setProps({ visibleUserIds: [7] })
+    expect(wrapper.get('[data-testid="welfare-visible-7"]').attributes('aria-checked')).toBe('true')
+    await wrapper.get('[data-testid="welfare-visible-7"]').trigger('click')
+    expect(wrapper.emitted('update:visibleUserIds')?.[1]).toEqual([[]])
+    await wrapper.get('[data-testid="welfare-excluded-7"] button.btn-ghost').trigger('click')
+    expect(wrapper.emitted('update:visibleUserIds')?.[2]).toEqual([[]])
+    expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([[9]])
   })
 
   it('shows API failures and retries loading stored users', async () => {

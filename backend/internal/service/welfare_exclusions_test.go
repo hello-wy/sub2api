@@ -7,7 +7,6 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/Wei-Shaw/sub2api/internal/config"
-	"github.com/Wei-Shaw/sub2api/internal/pkg/usagestats"
 	"github.com/stretchr/testify/require"
 )
 
@@ -44,12 +43,15 @@ func TestDailyRewardCandidatesApplyExclusionsBeforeSettlement(t *testing.T) {
 	end := day.Add(23 * time.Hour)
 	mock.ExpectQuery("SELECT u.user_id, us.email, SUM.*welfare_excluded_user_ids").
 		WithArgs(day, end).
-		WillReturnRows(sqlmock.NewRows([]string{"user_id", "email", "sum"}).AddRow(9, "user@example.com", "20"))
-	ranking := []usagestats.UserSpendingRankingItem{{UserID: 9, ActualCost: 20}}
-	candidates, err := svc.dailyRewardCandidates(context.Background(), day, end, ranking, []float64{0.5})
+		WillReturnRows(sqlmock.NewRows([]string{"user_id", "email", "sum"}).
+			AddRow(9, "user@example.com", "20").AddRow(10, "next@example.com", "15"))
+	candidates, err := svc.dailyRewardCandidates(context.Background(), dailyRewardOptions{day: day, end: end, rankLimit: 1, ratios: []float64{0.5, 1}})
 	require.NoError(t, err)
-	require.Len(t, candidates, 1)
+	require.Len(t, candidates, 2)
 	require.Equal(t, int64(9), candidates[0].userID)
 	require.Equal(t, 10.0, candidates[0].amount)
+	require.Equal(t, 1, candidates[0].rank)
+	require.Zero(t, candidates[1].amount)
+	require.Zero(t, candidates[1].rank)
 	require.NoError(t, mock.ExpectationsWereMet())
 }

@@ -329,7 +329,7 @@ func initializeApplication(buildInfo handler.BuildInfo) (*Application, error) {
 	paymentHandler := admin.NewPaymentHandler(paymentService, paymentConfigService)
 	affiliateHandler := admin.NewAffiliateHandler(affiliateService, adminService)
 	welfareRepository := repository.NewWelfareRepository(client, db)
-	welfareService := service.ProvideWelfareService(welfareRepository, userService, dashboardService, settingRepository, leaderLockCache, db, client, configConfig)
+	welfareService := service.ProvideWelfareService(welfareRepository, userService, settingRepository, leaderLockCache, db, client, configConfig)
 	welfareHandler := admin.NewWelfareHandler(welfareService)
 	complianceHandler := admin.NewComplianceHandler(settingService)
 	auditLogRepository := repository.NewAuditLogRepository(db)

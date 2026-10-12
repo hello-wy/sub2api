@@ -181,19 +181,20 @@ type SystemSettings struct {
 	DefaultSubscriptions         []DefaultSubscriptionSetting
 
 	// 排行榜福利设置
-	WelfareLeaderboardRankLimit    int
-	WelfareLeaderboardRewardRatios string
-	WelfareRewardTime              string
-	WelfareExcludedUserIDs         []int64
-	TicketRebateEnabled            bool
-	TicketRebateRules              string
-	LoyaltyWeeklyRules             string
-	LoyaltyPermanentRules          string
-	DailyCheckinRewardMin          float64
-	DailyCheckinRewardMax          float64
-	DailyCheckinRewardRanges       string
-	DailyCheckinStreakRules        string
-	DailyCheckinCycleDays          int
+	WelfareLeaderboardRankLimit      int
+	WelfareLeaderboardRewardRatios   string
+	WelfareRewardTime                string
+	WelfareExcludedUserIDs           []int64
+	WelfareLeaderboardVisibleUserIDs []int64
+	TicketRebateEnabled              bool
+	TicketRebateRules                string
+	LoyaltyWeeklyRules               string
+	LoyaltyPermanentRules            string
+	DailyCheckinRewardMin            float64
+	DailyCheckinRewardMax            float64
+	DailyCheckinRewardRanges         string
+	DailyCheckinStreakRules          string
+	DailyCheckinCycleDays            int
 
 	// Model fallback configuration
 	EnableModelFallback      bool   `json:"enable_model_fallback"`

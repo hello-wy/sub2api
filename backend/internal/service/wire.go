@@ -738,14 +738,13 @@ func ProvideBackupService(
 func ProvideWelfareService(
 	welfareRepo WelfareRepository,
 	userService *UserService,
-	dashboardSvc *DashboardService,
 	settingRepo SettingRepository,
 	lockCache LeaderLockCache,
 	db *sql.DB,
 	entClient *dbent.Client,
 	cfg *config.Config,
 ) *WelfareService {
-	svc := NewWelfareService(welfareRepo, userService, dashboardSvc, settingRepo, lockCache, db, entClient, cfg)
+	svc := NewWelfareService(welfareRepo, userService, settingRepo, lockCache, db, entClient, cfg)
 	svc.Start()
 	return svc
 }

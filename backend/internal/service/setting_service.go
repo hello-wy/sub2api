@@ -380,7 +380,15 @@ func (s *SettingService) GetAllSettings(ctx context.Context) (*SystemSettings, e
 	if err != nil {
 		return nil, err
 	}
+	visibleIDs, err := ParseWelfareVisibleUserIDs(settings[SettingKeyWelfareLeaderboardVisibleUserIDs])
+	if err != nil {
+		return nil, err
+	}
+	if err := ValidateWelfareVisibility(excludedIDs, visibleIDs); err != nil {
+		return nil, err
+	}
 	result := s.parseSettings(settings)
+	result.WelfareLeaderboardVisibleUserIDs = visibleIDs
 	result.WelfareExcludedUserIDs = excludedIDs
 	return result, nil
 }

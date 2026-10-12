@@ -234,6 +234,11 @@ func (s *SettingService) buildSystemSettingsUpdates(ctx context.Context, setting
 		return nil, infraerrors.BadRequest("INVALID_WELFARE_EXCLUDED_USERS", err.Error())
 	}
 	updates[SettingKeyWelfareExcludedUserIDs] = excludedIDsJSON
+	visibleIDsJSON, err := marshalWelfareVisibleUserIDs(settings.WelfareLeaderboardVisibleUserIDs)
+	if err != nil {
+		return nil, infraerrors.BadRequest("INVALID_WELFARE_VISIBILITY", err.Error())
+	}
+	updates[SettingKeyWelfareLeaderboardVisibleUserIDs] = visibleIDsJSON
 	updates[SettingKeyTicketRebateEnabled] = strconv.FormatBool(settings.TicketRebateEnabled)
 	updates[SettingKeyTicketRebateRules] = settings.TicketRebateRules
 	loyaltyWeeklyRulesJSON, err := NormalizePaymentLoyaltyRulesJSON("weekly", settings.LoyaltyWeeklyRules)

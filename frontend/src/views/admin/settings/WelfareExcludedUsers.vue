@@ -7,7 +7,7 @@
       </button>
     </div>
     <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-      {{ text('排除的用户不参与消费排行榜及每日消费返利（金额和抽奖券）。修改后请保存设置。', 'Excluded users do not participate in spending rankings or daily rebates (balance and tickets). Save settings to apply changes.') }}
+      {{ text('排除的用户不发放每日消费返利（金额和抽奖券），可单独设置是否在排行榜展示，默认不展示。修改后请保存设置。', 'Excluded users receive no daily rebates (balance or tickets). Choose whether to show each user on the leaderboard; hidden by default. Save settings to apply changes.') }}
     </p>
     <p v-if="detailsError" role="alert" class="mt-3 text-sm text-red-600">{{ detailsError }}</p>
     <button v-if="detailsError" type="button" class="btn btn-secondary btn-sm mt-2" @click="loadDetails">
@@ -20,9 +20,15 @@
           <p class="truncate font-medium text-gray-900 dark:text-white">{{ userDetails[id]?.email || `#${id}` }}</p>
           <p class="text-xs text-gray-500">#{{ id }}<span v-if="userDetails[id]?.username"> · {{ userDetails[id].username }}</span></p>
         </div>
-        <button type="button" class="btn btn-ghost btn-sm" :aria-label="`${text('移除', 'Remove')} #${id}`" @click="removeUser(id)">
-          {{ text('移除', 'Remove') }}
-        </button>
+        <div class="flex shrink-0 flex-wrap items-center justify-end gap-3">
+          <label class="flex items-center gap-2 text-xs text-gray-500">
+            {{ text('排行榜展示', 'Show on leaderboard') }}
+            <Toggle :model-value="visibleUserIds.includes(id)" :aria-label="`${text('排行榜展示', 'Show on leaderboard')} #${id}`" :data-testid="`welfare-visible-${id}`" @update:model-value="setVisibility(id, $event)" />
+          </label>
+          <button type="button" class="btn btn-ghost btn-sm" :aria-label="`${text('移除', 'Remove')} #${id}`" @click="removeUser(id)">
+            {{ text('移除', 'Remove') }}
+          </button>
+        </div>
       </li>
     </ul>
     <BaseDialog :show="showSearch" :title="text('搜索并选择排除用户', 'Select users to exclude')" @close="closeSearch">
@@ -63,10 +69,14 @@ import { useI18n } from 'vue-i18n'
 import { adminAPI } from '@/api'
 import type { AdminUser } from '@/types'
 import BaseDialog from '@/components/common/BaseDialog.vue'
+import Toggle from '@/components/common/Toggle.vue'
 
 const SEARCH_PAGE_SIZE = 20
-const props = defineProps<{ modelValue: number[] }>()
-const emit = defineEmits<{ 'update:modelValue': [value: number[]] }>()
+const props = withDefaults(defineProps<{ modelValue: number[]; visibleUserIds?: number[] }>(), { visibleUserIds: () => [] })
+const emit = defineEmits<{
+  'update:modelValue': [value: number[]]
+  'update:visibleUserIds': [value: number[]]
+}>()
 const { locale } = useI18n()
 const text = (zh: string, en: string) => locale.value.startsWith('zh') ? zh : en
 const userDetails = ref<Record<number, AdminUser>>({})
@@ -143,7 +153,13 @@ function confirmSelection(): void {
   closeSearch()
 }
 
+function setVisibility(id: number, visible: boolean): void {
+  const ids = props.visibleUserIds.filter(userID => userID !== id)
+  emit('update:visibleUserIds', visible ? [...ids, id] : ids)
+}
+
 function removeUser(id: number): void {
+  setVisibility(id, false)
   emit('update:modelValue', props.modelValue.filter(userID => userID !== id))
 }
 
