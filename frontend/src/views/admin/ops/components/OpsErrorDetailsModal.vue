@@ -101,8 +101,10 @@ const ownerSelectOptions = computed(() => {
   return [
     { value: '', label: t('common.all') },
     { value: 'provider', label: t('admin.ops.errorDetails.owner.provider') || 'provider' },
+    ...(props.errorType === 'upstream' ? [] : [
     { value: 'client', label: t('admin.ops.errorDetails.owner.client') || 'client' },
     { value: 'platform', label: t('admin.ops.errorDetails.owner.platform') || 'platform' }
+    ])
   ]
 })
 
@@ -126,7 +128,9 @@ const phaseSelectOptions = computed(() => {
     { value: 'network', label: t('admin.ops.errorDetails.phase.network') || 'network' },
     { value: 'internal', label: t('admin.ops.errorDetails.phase.internal') || 'internal' }
   ]
-  return options
+  return props.errorType === 'upstream'
+    ? options.filter(option => ['', 'upstream', 'account_auth'].includes(option.value))
+    : options
 })
 
 function close() {
@@ -209,7 +213,7 @@ function resetFilters() {
   accountId.value = null
   userId.value = null
   statusCode.value = null
-  phase.value = props.errorType === 'upstream' ? 'upstream' : ''
+  phase.value = ''
   errorOwner.value = ''
   viewMode.value = 'errors'
   page.value = 1
