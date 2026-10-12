@@ -4,6 +4,9 @@ import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const scrollableRoutes = [
+  'src/views/admin/ChannelMonitorView.vue',
+  'src/views/user/ChannelStatusV1View.vue',
+  'src/views/user/ChannelStatusV2View.vue',
   'src/views/admin/UsageView.vue',
   'src/views/admin/SettingsView.vue',
   'src/views/admin/RiskControlView.vue',
