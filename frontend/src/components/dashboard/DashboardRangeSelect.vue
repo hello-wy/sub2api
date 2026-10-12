@@ -13,7 +13,7 @@
 </template>
 
 <script lang="ts">
-export type DashboardTimeRange = '24h' | '7d' | '30d'
+export type DashboardTimeRange = 'today' | '24h' | '7d' | '30d'
 </script>
 
 <script setup lang="ts">
@@ -31,7 +31,7 @@ const emit = defineEmits<{
 }>()
 
 function isDashboardTimeRange(value: unknown): value is DashboardTimeRange {
-  return value === '24h' || value === '7d' || value === '30d'
+  return value === 'today' | '24h' || value === '7d' || value === '30d'
 }
 
 function handleUpdate(value: unknown) {
