@@ -147,6 +147,8 @@ type simpleModeGroupResponse struct {
 	Platform    string `json:"platform"`
 	Status      string `json:"status"`
 
+	I18n service.GroupI18n `json:"i18n,omitempty"`
+
 	AccountCount            int64     `json:"account_count,omitempty"`
 	ActiveAccountCount      int64     `json:"active_account_count,omitempty"`
 	RateLimitedAccountCount int64     `json:"rate_limited_account_count,omitempty"`
@@ -162,6 +164,7 @@ func groupForSimpleMode(group *service.Group) *simpleModeGroupResponse {
 	return &simpleModeGroupResponse{
 		ID: group.ID, Name: group.Name, Tag: group.Tag, Description: group.Description, Platform: group.Platform,
 		Status:             group.Status,
+		I18n:               group.I18n,
 		AccountCount:       group.AccountCount,
 		ActiveAccountCount: group.ActiveAccountCount, RateLimitedAccountCount: group.RateLimitedAccountCount,
 		SortOrder: group.SortOrder, CreatedAt: group.CreatedAt, UpdatedAt: group.UpdatedAt,
@@ -172,7 +175,7 @@ func sanitizeCreateGroupRequestForSimpleMode(req *CreateGroupRequest) {
 	if req == nil {
 		return
 	}
-	allowed := CreateGroupRequest{Name: req.Name, Tag: req.Tag, Description: req.Description, Platform: req.Platform}
+	allowed := CreateGroupRequest{Name: req.Name, Tag: req.Tag, Description: req.Description, I18n: req.I18n, Platform: req.Platform}
 	allowed.RateMultiplier = 1
 	allowed.SubscriptionType = service.SubscriptionTypeStandard
 	*req = allowed
@@ -182,7 +185,7 @@ func sanitizeUpdateGroupRequestForSimpleMode(req *UpdateGroupRequest) {
 	if req == nil {
 		return
 	}
-	*req = UpdateGroupRequest{Name: req.Name, Tag: req.Tag, Description: req.Description}
+	*req = UpdateGroupRequest{Name: req.Name, Tag: req.Tag, Description: req.Description, I18n: req.I18n}
 }
 
 // CreateGroupRequest represents create group request
@@ -201,6 +204,7 @@ type CreateGroupRequest struct {
 	MonthlyLimitUSD            optionalLimitField            `json:"monthly_limit_usd"`
 	LongContextPricingEnabled  bool                          `json:"long_context_pricing_enabled"`
 	ModelPricing               []service.ChannelModelPricing `json:"model_pricing"`
+	I18n                       service.GroupI18n             `json:"i18n"` // 名称与描述的界面语言译文
 	// 图片生成计费配置（antigravity 和 gemini 平台使用，负数表示清除配置）
 	AllowImageGeneration            bool                          `json:"allow_image_generation"`
 	AllowBatchImageGeneration       bool                          `json:"allow_batch_image_generation"`
@@ -279,6 +283,7 @@ type UpdateGroupRequest struct {
 	MonthlyLimitUSD            optionalLimitField             `json:"monthly_limit_usd"`
 	LongContextPricingEnabled  *bool                          `json:"long_context_pricing_enabled"`
 	ModelPricing               *[]service.ChannelModelPricing `json:"model_pricing"`
+	I18n                       *service.GroupI18n             `json:"i18n"` // 缺省不修改，传入则整体替换
 	// 图片生成计费配置（antigravity 和 gemini 平台使用，负数表示清除配置）
 	AllowImageGeneration            *bool                         `json:"allow_image_generation"`
 	AllowBatchImageGeneration       *bool                         `json:"allow_batch_image_generation"`
@@ -676,6 +681,7 @@ func (h *GroupHandler) Create(c *gin.Context) {
 		Name:                            req.Name,
 		Tag:                             req.Tag,
 		Description:                     req.Description,
+		I18n:                            req.I18n,
 		Platform:                        req.Platform,
 		RateMultiplier:                  req.RateMultiplier,
 		IsExclusive:                     req.IsExclusive,
@@ -824,6 +830,7 @@ func (h *GroupHandler) Update(c *gin.Context) {
 		Name:                            req.Name,
 		Tag:                             req.Tag,
 		Description:                     req.Description,
+		I18n:                            req.I18n,
 		Platform:                        req.Platform,
 		RateMultiplier:                  req.RateMultiplier,
 		IsExclusive:                     req.IsExclusive,

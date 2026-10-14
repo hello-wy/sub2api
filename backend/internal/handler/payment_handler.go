@@ -86,7 +86,7 @@ func (h *PaymentHandler) GetPlans(c *gin.Context) {
 		gi := groupInfo[p.GroupID]
 		result = append(result, planWithPlatform{
 			ID: int64(p.ID), GroupID: p.GroupID,
-			GroupPlatform: gi.Platform, GroupName: gi.Name,
+			GroupPlatform: gi.Platform, GroupName: gi.I18n.LocalizeName(c.GetHeader("Accept-Language"), gi.Name),
 			RateMultiplier: gi.RateMultiplier, PeakRateEnabled: gi.PeakRateEnabled,
 			PeakStart: gi.PeakStart, PeakEnd: gi.PeakEnd, PeakRateMultiplier: gi.PeakRateMultiplier,
 			SubscriptionQuotaResetMode: gi.SubscriptionQuotaResetMode,
@@ -142,7 +142,7 @@ func (h *PaymentHandler) GetCheckoutInfo(c *gin.Context) {
 		gi := groupInfo[p.GroupID]
 		planList = append(planList, checkoutPlan{
 			ID: int64(p.ID), GroupID: p.GroupID,
-			GroupPlatform: gi.Platform, GroupName: gi.Name,
+			GroupPlatform: gi.Platform, GroupName: gi.I18n.LocalizeName(c.GetHeader("Accept-Language"), gi.Name),
 			RateMultiplier:  gi.RateMultiplier,
 			PeakRateEnabled: gi.PeakRateEnabled, PeakStart: gi.PeakStart,
 			PeakEnd: gi.PeakEnd, PeakRateMultiplier: gi.PeakRateMultiplier,
@@ -366,7 +366,7 @@ func (h *PaymentHandler) PurchaseSubscriptionWithBalance(c *gin.Context) {
 			"order_id":     result.OrderID,
 			"amount":       result.Amount,
 			"new_balance":  result.NewBalance,
-			"subscription": dto.UserSubscriptionFromService(result.Subscription),
+			"subscription": dto.UserSubscriptionFromService(result.Subscription).Localized(c.GetHeader("Accept-Language")),
 		}, nil
 	})
 }
