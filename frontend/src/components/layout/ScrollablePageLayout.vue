@@ -1,6 +1,6 @@
 <template>
   <div class="flex h-full min-h-0 min-w-0 flex-col">
-    <div :class="['min-h-0 min-w-0 flex-1 overflow-y-auto', contentClass]">
+    <div :class="['min-h-0 min-w-0 flex-1 touch-pan-y overflow-y-auto', contentClass]">
       <slot />
     </div>
   </div>
