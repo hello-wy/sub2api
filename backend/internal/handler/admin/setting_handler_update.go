@@ -183,6 +183,8 @@ type UpdateSettingsRequest struct {
 	WelfareLeaderboardRankLimit               int                               `json:"welfare_leaderboard_rank_limit"`
 	WelfareLeaderboardRewardRatios            string                            `json:"welfare_leaderboard_reward_ratios"`
 	WelfareRewardTime                         *string                           `json:"welfare_reward_time"`
+	WelfareExcludedUserIDs                    []int64                           `json:"welfare_excluded_user_ids"`
+	WelfareLeaderboardVisibleUserIDs          []int64                           `json:"welfare_leaderboard_visible_user_ids"`
 	TicketRebateEnabled                       *bool                             `json:"ticket_rebate_enabled"`
 	TicketRebateRules                         string                            `json:"ticket_rebate_rules"`
 	LoyaltyWeeklyRules                        string                            `json:"loyalty_weekly_rules"`
@@ -673,8 +675,22 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 	req.AuthSourceDefaultWeChatSubscriptions = normalizeOptionalDefaultSubscriptions(req.AuthSourceDefaultWeChatSubscriptions)
 	req.AuthSourceDefaultDingTalkSubscriptions = normalizeOptionalDefaultSubscriptions(req.AuthSourceDefaultDingTalkSubscriptions)
 	normalizeWelfareUpdateRequest(&req, previousSettings)
+	visibleIDs, err := resolveWelfareVisibility(req, previousSettings, omitted)
+	if err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
 	if err := validateWelfareSettings(req.WelfareLeaderboardRankLimit, req.WelfareLeaderboardRewardRatios); err != nil {
 		response.BadRequest(c, err.Error())
+		return
+	}
+	req.WelfareLeaderboardVisibleUserIDs = visibleIDs
+	delete(omitted, service.SettingKeyWelfareLeaderboardVisibleUserIDs)
+	if err := service.ValidateWelfareExcludedUserIDs(req.WelfareExcludedUserIDs); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+	if !h.validateNewWelfareExclusions(c, req.WelfareExcludedUserIDs, previousSettings.WelfareExcludedUserIDs) {
 		return
 	}
 	welfareRewardTime := previousSettings.WelfareRewardTime
@@ -1621,6 +1637,8 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		WelfareLeaderboardRankLimit:         req.WelfareLeaderboardRankLimit,
 		WelfareLeaderboardRewardRatios:      req.WelfareLeaderboardRewardRatios,
 		WelfareRewardTime:                   welfareRewardTime,
+		WelfareExcludedUserIDs:              req.WelfareExcludedUserIDs,
+		WelfareLeaderboardVisibleUserIDs:    req.WelfareLeaderboardVisibleUserIDs,
 		TicketRebateEnabled:                 ticketRebateEnabled,
 		TicketRebateRules:                   req.TicketRebateRules,
 		LoyaltyWeeklyRules:                  req.LoyaltyWeeklyRules,
@@ -2344,6 +2362,8 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		WelfareLeaderboardRankLimit:                            updatedSettings.WelfareLeaderboardRankLimit,
 		WelfareLeaderboardRewardRatios:                         updatedSettings.WelfareLeaderboardRewardRatios,
 		WelfareRewardTime:                                      updatedSettings.WelfareRewardTime,
+		WelfareExcludedUserIDs:                                 updatedSettings.WelfareExcludedUserIDs,
+		WelfareLeaderboardVisibleUserIDs:                       updatedSettings.WelfareLeaderboardVisibleUserIDs,
 		TicketRebateEnabled:                                    updatedSettings.TicketRebateEnabled,
 		TicketRebateRules:                                      updatedSettings.TicketRebateRules,
 		LoyaltyWeeklyRules:                                     updatedSettings.LoyaltyWeeklyRules,

@@ -24,6 +24,7 @@ const userSpendingRankingQuery = `
 		LEFT JOIN users us ON u.user_id = us.id
 		WHERE u.created_at >= $1 AND u.created_at < $2
 		  AND COALESCE(us.role, 'user') <> 'admin'
+		  AND ` + usagestats.WelfareVisibleUserSQL + `
 		GROUP BY u.user_id, us.email
 	),
 	ranked AS (
@@ -65,6 +66,7 @@ const currentUserRankingQuery = `
 		LEFT JOIN users us ON u.user_id = us.id
 		WHERE u.created_at >= $1 AND u.created_at < $2
 		  AND COALESCE(us.role, 'user') <> 'admin'
+		  AND ` + usagestats.WelfareVisibleUserSQL + `
 		GROUP BY u.user_id, us.email
 	),
 	all_possible_users AS (
@@ -78,6 +80,7 @@ const currentUserRankingQuery = `
 			0::bigint as tokens
 		WHERE NOT EXISTS (SELECT 1 FROM user_spend WHERE user_id = $3)
 		  AND NOT EXISTS (SELECT 1 FROM users WHERE id = $3 AND role = 'admin')
+		  AND $3 NOT IN (` + usagestats.WelfareHiddenUserIDsSQL + `)
 	),
 	ranked AS (
 		SELECT

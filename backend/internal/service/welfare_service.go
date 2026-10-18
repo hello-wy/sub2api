@@ -32,14 +32,13 @@ var welfareDefaultRewardRatios = []float64{1.0, 0.5, 0.2}
 var welfareCronParser = cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
 
 type WelfareService struct {
-	welfareRepo  WelfareRepository
-	userService  *UserService
-	dashboardSvc *DashboardService
-	settingRepo  SettingRepository
-	lockCache    LeaderLockCache
-	db           *sql.DB
-	entClient    *dbent.Client
-	cfg          *config.Config
+	welfareRepo WelfareRepository
+	userService *UserService
+	settingRepo SettingRepository
+	lockCache   LeaderLockCache
+	db          *sql.DB
+	entClient   *dbent.Client
+	cfg         *config.Config
 
 	instanceID string
 	mu         sync.Mutex
@@ -53,7 +52,6 @@ type WelfareService struct {
 func NewWelfareService(
 	welfareRepo WelfareRepository,
 	userService *UserService,
-	dashboardSvc *DashboardService,
 	settingRepo SettingRepository,
 	lockCache LeaderLockCache,
 	db *sql.DB,
@@ -61,21 +59,20 @@ func NewWelfareService(
 	cfg *config.Config,
 ) *WelfareService {
 	return &WelfareService{
-		welfareRepo:  welfareRepo,
-		userService:  userService,
-		dashboardSvc: dashboardSvc,
-		settingRepo:  settingRepo,
-		lockCache:    lockCache,
-		db:           db,
-		entClient:    entClient,
-		cfg:          cfg,
-		instanceID:   uuid.NewString(),
+		welfareRepo: welfareRepo,
+		userService: userService,
+		settingRepo: settingRepo,
+		lockCache:   lockCache,
+		db:          db,
+		entClient:   entClient,
+		cfg:         cfg,
+		instanceID:  uuid.NewString(),
 	}
 }
 
 // RunRewardJob executes the daily welfare rewards calculation and distribution.
 func (s *WelfareService) RunRewardJob(ctx context.Context) {
-	if s == nil || s.db == nil || s.dashboardSvc == nil || s.welfareRepo == nil {
+	if s == nil || s.db == nil || s.welfareRepo == nil {
 		return
 	}
 
@@ -93,13 +90,9 @@ func (s *WelfareService) RunRewardJob(ctx context.Context) {
 
 	rankLimit, ratios := s.loadRewardSettings(ctx)
 	day, endTime := dailyRewardWindow(timezone.Now())
-	ranking, err := s.dashboardSvc.GetUserSpendingRanking(ctx, day, endTime, rankLimit)
-	if err != nil {
-		slog.Error("[WelfareService] failed to fetch daily user spending ranking", "error", err)
-		return
-	}
-
-	count, err := s.settleDailyRewards(ctx, day, endTime, ranking.Ranking, ratios)
+	count, err := s.settleDailyRewards(ctx, dailyRewardOptions{
+		day: day, end: endTime, rankLimit: rankLimit, ratios: ratios,
+	})
 	if err != nil {
 		slog.Error("[WelfareService] daily reward settlement failed", "error", err)
 		return

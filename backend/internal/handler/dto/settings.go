@@ -99,18 +99,20 @@ type SystemSettings struct {
 	DingTalkConnectSyncDeptAttrName        string `json:"dingtalk_connect_sync_dept_attr_name"`
 
 	// 排行榜福利设置
-	WelfareLeaderboardRankLimit    int     `json:"welfare_leaderboard_rank_limit"`
-	WelfareLeaderboardRewardRatios string  `json:"welfare_leaderboard_reward_ratios"`
-	WelfareRewardTime              string  `json:"welfare_reward_time"`
-	TicketRebateEnabled            bool    `json:"ticket_rebate_enabled"`
-	TicketRebateRules              string  `json:"ticket_rebate_rules"`
-	LoyaltyWeeklyRules             string  `json:"loyalty_weekly_rules"`
-	LoyaltyPermanentRules          string  `json:"loyalty_permanent_rules"`
-	DailyCheckinRewardMin          float64 `json:"daily_checkin_reward_min"`
-	DailyCheckinRewardMax          float64 `json:"daily_checkin_reward_max"`
-	DailyCheckinRewardRanges       string  `json:"daily_checkin_reward_ranges"`
-	DailyCheckinStreakRules        string  `json:"daily_checkin_streak_rules"`
-	DailyCheckinCycleDays          int     `json:"daily_checkin_cycle_days"`
+	WelfareLeaderboardRankLimit      int     `json:"welfare_leaderboard_rank_limit"`
+	WelfareLeaderboardRewardRatios   string  `json:"welfare_leaderboard_reward_ratios"`
+	WelfareRewardTime                string  `json:"welfare_reward_time"`
+	WelfareExcludedUserIDs           []int64 `json:"welfare_excluded_user_ids"`
+	WelfareLeaderboardVisibleUserIDs []int64 `json:"welfare_leaderboard_visible_user_ids"`
+	TicketRebateEnabled              bool    `json:"ticket_rebate_enabled"`
+	TicketRebateRules                string  `json:"ticket_rebate_rules"`
+	LoyaltyWeeklyRules               string  `json:"loyalty_weekly_rules"`
+	LoyaltyPermanentRules            string  `json:"loyalty_permanent_rules"`
+	DailyCheckinRewardMin            float64 `json:"daily_checkin_reward_min"`
+	DailyCheckinRewardMax            float64 `json:"daily_checkin_reward_max"`
+	DailyCheckinRewardRanges         string  `json:"daily_checkin_reward_ranges"`
+	DailyCheckinStreakRules          string  `json:"daily_checkin_streak_rules"`
+	DailyCheckinCycleDays            int     `json:"daily_checkin_cycle_days"`
 
 	WeChatConnectEnabled                   bool   `json:"wechat_connect_enabled"`
 	WeChatConnectAppID                     string `json:"wechat_connect_app_id"`

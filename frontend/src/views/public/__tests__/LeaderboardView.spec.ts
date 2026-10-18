@@ -38,6 +38,27 @@ describe('LeaderboardView range switcher', () => {
     vi.useRealTimers()
   })
 
+  it('shows spending and ranks without pending states or reward details', async () => {
+    const ranking = Array.from({ length: 4 }, (_, index) => ({
+      rank: index + 1, user_id: index + 1, email: `user${index}@example.com`,
+      actual_cost: 100 - index, requests: 1, tokens: 2,
+      ...(index === 0 ? { amount_rebate: 100, ticket_count: 10 } : {})
+    }))
+    getUserSpendingRanking.mockResolvedValue({
+      ranking, user_ranking: { ...ranking[0], user_id: 7, rank: 12 },
+      total_actual_cost: 394, total_requests: 4, total_tokens: 8
+    })
+    const wrapper = mount(LeaderboardView, {
+      global: { stubs: { AppLayout: { template: '<main><slot /></main>' } } }
+    })
+    await flushPromises()
+    expect(wrapper.text()).toContain('$100.00')
+    expect(wrapper.text()).toContain('$97.00')
+    expect(wrapper.text()).not.toMatch(/待结算|返利|返现|抽奖券/)
+    expect(wrapper.find('.rebate-trigger').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
   it('loads today by default and reloads yesterday when selected', async () => {
     const wrapper = mount(LeaderboardView, {
       global: {

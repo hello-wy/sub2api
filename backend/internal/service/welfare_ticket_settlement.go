@@ -22,12 +22,19 @@ type dailyRewardCandidate struct {
 	amount      float64
 }
 
-func (s *WelfareService) settleDailyRewards(ctx context.Context, day, end time.Time, ranking []usagestats.UserSpendingRankingItem, ratios []float64) (int, error) {
+type dailyRewardOptions struct {
+	day       time.Time
+	end       time.Time
+	rankLimit int
+	ratios    []float64
+}
+
+func (s *WelfareService) settleDailyRewards(ctx context.Context, options dailyRewardOptions) (int, error) {
 	enabled, rules, err := s.loadTicketRebateSettings(ctx)
 	if err != nil {
 		return 0, err
 	}
-	candidates, err := s.dailyRewardCandidates(ctx, day, end, ranking, ratios)
+	candidates, err := s.dailyRewardCandidates(ctx, options)
 	if err != nil {
 		return 0, err
 	}
@@ -35,8 +42,8 @@ func (s *WelfareService) settleDailyRewards(ctx context.Context, day, end time.T
 	failed := 0
 	var firstError error
 	for _, candidate := range candidates {
-		if err := s.settleDailyReward(ctx, day, candidate, enabled, rules); err != nil {
-			slog.Error("[WelfareService] user settlement failed", "user_id", candidate.userID, "date", day.Format(time.DateOnly), "error", err)
+		if err := s.settleDailyReward(ctx, options.day, candidate, enabled, rules); err != nil {
+			slog.Error("[WelfareService] user settlement failed", "user_id", candidate.userID, "date", options.day.Format(time.DateOnly), "error", err)
 			failed++
 			if firstError == nil {
 				firstError = err
@@ -73,34 +80,29 @@ func (s *WelfareService) loadTicketRebateSettings(ctx context.Context) (bool, []
 	return true, rules, err
 }
 
-func (s *WelfareService) dailyRewardCandidates(ctx context.Context, day, end time.Time, ranking []usagestats.UserSpendingRankingItem, ratios []float64) ([]dailyRewardCandidate, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT u.user_id, us.email, SUM(u.actual_cost)::text
-FROM usage_logs u JOIN users us ON us.id = u.user_id
-WHERE u.created_at >= $1 AND u.created_at < $2 AND us.role <> 'admin'
-GROUP BY u.user_id, us.email HAVING SUM(u.actual_cost) > 0`, day, end)
+func (s *WelfareService) dailyRewardCandidates(ctx context.Context, options dailyRewardOptions) ([]dailyRewardCandidate, error) {
+	rows, err := s.db.QueryContext(ctx, usagestats.WelfareRewardCandidatesSQL, options.day, options.end)
 	if err != nil {
 		return nil, fmt.Errorf("load daily consumption: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
-	byUser := make(map[int64]dailyRewardCandidate, len(ranking))
-	for i, item := range ranking {
-		if i < len(ratios) && ratios[i] > 0 {
-			byUser[item.UserID] = dailyRewardCandidate{rank: i + 1, amount: item.ActualCost * ratios[i]}
-		}
-	}
 	var candidates []dailyRewardCandidate
 	for rows.Next() {
-		var userID int64
-		var email, raw string
-		if err := rows.Scan(&userID, &email, &raw); err != nil {
+		var candidate dailyRewardCandidate
+		var raw string
+		if err := rows.Scan(&candidate.userID, &candidate.email, &raw); err != nil {
 			return nil, err
 		}
 		consumption, err := decimal.NewFromString(raw)
 		if err != nil {
 			return nil, err
 		}
-		candidate := byUser[userID]
-		candidate.userID, candidate.email, candidate.consumption = userID, email, consumption
+		candidate.consumption = consumption
+		index := len(candidates)
+		if index < options.rankLimit && index < len(options.ratios) && options.ratios[index] > 0 {
+			candidate.rank = index + 1
+			candidate.amount = consumption.InexactFloat64() * options.ratios[index]
+		}
 		candidates = append(candidates, candidate)
 	}
 	return candidates, rows.Err()

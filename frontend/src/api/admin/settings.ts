@@ -477,6 +477,8 @@ export interface SystemSettings {
   welfare_leaderboard_rank_limit: number;
   welfare_leaderboard_reward_ratios: string;
   welfare_reward_time: string;
+  welfare_excluded_user_ids: number[];
+  welfare_leaderboard_visible_user_ids: number[];
   ticket_rebate_enabled: boolean;
   ticket_rebate_rules: string;
   loyalty_weekly_rules: string;
@@ -855,6 +857,8 @@ export interface UpdateSettingsRequest {
   welfare_leaderboard_rank_limit?: number;
   welfare_leaderboard_reward_ratios?: string;
   welfare_reward_time?: string;
+  welfare_excluded_user_ids?: number[];
+  welfare_leaderboard_visible_user_ids?: number[];
   ticket_rebate_enabled?: boolean;
   ticket_rebate_rules?: string;
   loyalty_weekly_rules?: string;

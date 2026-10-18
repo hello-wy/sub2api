@@ -299,6 +299,7 @@ describe('admin GroupsView column settings', () => {
 
     expect(columnKeys(wrapper)).toEqual([
       'name',
+      'tag',
       'platform',
       'billing_type',
       'rate_multiplier',
@@ -366,6 +367,7 @@ describe('admin GroupsView column settings', () => {
 
     expect(columnKeys(wrapper)).toEqual([
       'name',
+      'tag',
       'id',
       'platform',
       'billing_type',
@@ -385,6 +387,7 @@ describe('admin GroupsView column settings', () => {
 
     expect(columnKeys(wrapper)).toEqual([
       'name',
+      'tag',
       'platform',
       'billing_type',
       'rate_multiplier',
@@ -408,6 +411,7 @@ describe('admin GroupsView column settings', () => {
 
     expect(columnKeys(wrapper)).toEqual([
       'name',
+      'tag',
       'platform',
       'billing_type',
       'rate_multiplier',
@@ -430,6 +434,7 @@ describe('admin GroupsView column settings', () => {
 
     expect(columnKeys(wrapper)).toEqual([
       'name',
+      'tag',
       'id',
       'platform',
       'billing_type',
