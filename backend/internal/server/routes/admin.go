@@ -583,6 +583,7 @@ func registerSettingsRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 	{
 		adminSettings.GET("", h.Admin.Setting.GetSettings)
 		adminSettings.PUT("", h.Admin.Setting.UpdateSettings)
+		adminSettings.PUT("/canvas", h.Admin.Setting.UpdateCanvasSettings)
 		adminSettings.GET("/lottery", h.Admin.Setting.GetLotteryPrizePool)
 		adminSettings.PUT("/lottery", h.Admin.Setting.UpdateLotteryPrizePool)
 		adminSettings.POST("/test-smtp", h.Admin.Setting.TestSMTPConnection)
