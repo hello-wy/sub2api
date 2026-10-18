@@ -3,9 +3,10 @@ package service
 import (
 	"context"
 	"encoding/json"
-	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"net/url"
 	"strings"
+
+	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 )
 
 const SettingKeyCanvas = "canvas_integration"
@@ -55,5 +56,11 @@ func (s *SettingService) UpdateCanvasSettings(ctx context.Context, settings Canv
 	if err != nil {
 		return err
 	}
-	return s.settingRepo.Set(ctx, SettingKeyCanvas, string(data))
+	if err := s.settingRepo.Set(ctx, SettingKeyCanvas, string(data)); err != nil {
+		return err
+	}
+	if s.onUpdate != nil {
+		s.onUpdate()
+	}
+	return nil
 }

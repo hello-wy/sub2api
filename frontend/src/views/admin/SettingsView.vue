@@ -7173,6 +7173,7 @@
           </div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">画布地址
             <input v-model="canvasIntegrationUrl" type="url" class="mt-2 w-full rounded-lg border border-gray-300 bg-transparent px-3 py-2 dark:border-dark-600" placeholder="http://127.0.0.1:3010/" />
+            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">启用后，画布地址的域名会自动加入嵌入白名单；修改地址或关闭画布后同步更新。保存后请刷新页面。</p>
           </label>
           <p class="text-xs text-gray-500 dark:text-gray-400">例如 <code>http://127.0.0.1:3010/</code>。该配置保存在服务器，对所有用户生效。</p>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">画布 API 站点（Base URL）
