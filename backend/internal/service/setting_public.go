@@ -783,9 +783,14 @@ func safeRawJSONArray(raw string) json.RawMessage {
 }
 
 // GetFrameSrcOrigins returns deduplicated http(s) origins from home_content URL,
-// purchase_subscription_url, and all custom_menu_items URLs. Used by the router layer for CSP frame-src injection.
+// purchase_subscription_url, custom_menu_items URLs, and the enabled canvas URL.
+// Used by the router layer for CSP frame-src injection.
 func (s *SettingService) GetFrameSrcOrigins(ctx context.Context) ([]string, error) {
 	settings, err := s.GetPublicSettings(ctx)
+	if err != nil {
+		return nil, err
+	}
+	canvas, err := s.GetCanvasSettings(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -813,6 +818,9 @@ func (s *SettingService) GetFrameSrcOrigins(ctx context.Context) ([]string, erro
 	// all custom menu items (including admin-only, since CSP must allow all iframes)
 	for _, item := range parseCustomMenuItemURLs(settings.CustomMenuItems) {
 		addOrigin(item)
+	}
+	if canvas.Enabled {
+		addOrigin(canvas.URL)
 	}
 
 	return origins, nil
