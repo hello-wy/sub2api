@@ -132,7 +132,9 @@ func (s *BusinessAnalyticsService) Overview(ctx context.Context, startDate, endD
 		}
 	}
 	err = rows.Err()
-	rows.Close()
+	if closeErr := rows.Close(); err == nil {
+		err = closeErr
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -179,7 +181,9 @@ func (s *BusinessAnalyticsService) Overview(ctx context.Context, startDate, endD
 		result.Rewards = append(result.Rewards, r)
 	}
 	err = rows.Err()
-	rows.Close()
+	if closeErr := rows.Close(); err == nil {
+		err = closeErr
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -309,7 +313,9 @@ func readBusinessCapacity(ctx context.Context, q businessQuery, now time.Time, z
 		}
 	}
 	err = rows.Err()
-	rows.Close()
+	if closeErr := rows.Close(); err == nil {
+		err = closeErr
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -336,7 +342,9 @@ func readBusinessCapacity(ctx context.Context, q businessQuery, now time.Time, z
 		}
 	}
 	err = rows.Err()
-	rows.Close()
+	if closeErr := rows.Close(); err == nil {
+		err = closeErr
+	}
 	if err != nil {
 		return nil, err
 	}
