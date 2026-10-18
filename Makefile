@@ -1,15 +1,13 @@
 .PHONY: build build-backend build-frontend test test-backend test-frontend test-frontend-critical
 
 FRONTEND_CRITICAL_VITEST := \
+	src/components/layout/__tests__/AppSidebar.spec.ts \
+	src/utils/__tests__/canvas-bridge.spec.ts \
+	src/views/user/__tests__/CanvasView.spec.ts \
 	src/views/admin/ops/components/__tests__/OpsErrorDetailsModal.spec.ts \
 	src/views/admin/__tests__/DashboardView.spec.ts \
-	src/components/admin/usage/__tests__/BusinessConfigurationPanel.spec.ts \
-	src/components/admin/usage/__tests__/BusinessIssuesPanel.spec.ts \
-	src/components/admin/usage/__tests__/BusinessCostRepairDialog.spec.ts \
 	src/components/modelPlaza/__tests__ \
 	src/components/admin/usage/__tests__/BusinessAnalyticsPanel.spec.ts \
-	src/components/admin/usage/__tests__/BusinessRecordDialog.spec.ts \
-	src/components/admin/usage/__tests__/BusinessLedgerCSV.spec.ts \
 	src/i18n/__tests__/localeKeyCompleteness.spec.ts \
 	src/api/__tests__/client.spec.ts \
 	src/api/__tests__/tokenRefresh.spec.ts \

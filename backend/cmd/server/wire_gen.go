@@ -549,12 +549,6 @@ func provideCleanup(
 		}
 
 		parallelSteps := []cleanupStep{
-			{name: "business-ledger", fn: func() error {
-				if businessAnalytics != nil {
-					businessAnalytics.Ledger().Stop()
-				}
-				return nil
-			}},
 			{"PluginManager", func() error {
 				if pluginManager != nil {
 					pluginManager.Stop()

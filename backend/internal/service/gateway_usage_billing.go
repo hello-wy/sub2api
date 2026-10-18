@@ -301,8 +301,6 @@ func buildUsageBillingCommand(requestID string, usageLog *UsageLog, p *postUsage
 		RequestPayloadHash: strings.TrimSpace(p.RequestPayloadHash),
 	}
 	if usageLog != nil {
-		cmd.BusinessUsage = NewBusinessUsageSnapshot(usageLog)
-		cmd.BusinessUsage["request_id"] = requestID
 		cmd.Model = usageLog.Model
 		cmd.BillingType = usageLog.BillingType
 		cmd.InputTokens = usageLog.InputTokens

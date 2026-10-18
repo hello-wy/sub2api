@@ -102,7 +102,7 @@
             target="_blank"
             rel="noopener noreferrer"
             class="btn btn-secondary btn-sm custom-open-fab"
-            :style="openButtonPosition ? { left: `${openButtonPosition.x}px`, top: `${openButtonPosition.y}px`, right: 'auto' } : undefined"
+            :style="openButtonPosition ? { left: `${openButtonPosition.x}px`, top: `${openButtonPosition.y}px`, right: 'auto', bottom: 'auto' } : undefined"
             @pointerdown="startButtonDrag"
             @pointermove="moveButtonDrag"
             @pointerup="endButtonDrag"
@@ -524,7 +524,7 @@ onUnmounted(() => {
 }
 
 .custom-open-fab {
-  @apply absolute right-3 top-3 z-10 w-max max-w-full touch-none select-none transition-colors;
+  @apply absolute right-3 bottom-3 z-10 w-max max-w-full touch-none select-none transition-colors;
   @apply shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/80 dark:supports-[backdrop-filter]:bg-dark-800/80;
 }
 

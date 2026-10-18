@@ -9,7 +9,7 @@ import (
 
 // prepareBill fixes the list of covered cost entries and the booked comparison
 // amount. A subsequent invoice/price edit cannot silently change this comparison.
-func (s *BusinessLedgerService) prepareBill(ctx context.Context, input *BusinessRecordInput) error {
+func (s *BusinessLedgerService) prepareBill(ctx context.Context, input *LedgerRecordInput) error {
 	if input.Type != "reconciliation" || input.Payload["bill_amount_cny"] == nil {
 		return nil
 	}

@@ -871,7 +871,7 @@ func refundResponseID(resp *payment.RefundResponse) string {
 
 func (s *PaymentService) RollbackRefund(ctx context.Context, p *RefundPlan, gErr error) bool {
 	if p.DeductionType == payment.DeductionTypeBalance && p.BalanceToDeduct > 0 {
-		if err := s.withBusinessWalletContext(ctx, p.OrderID, "refund_release", func(txctx context.Context) error {
+		if err := s.withRefundWalletTransaction(ctx, func(txctx context.Context) error {
 			return s.userRepo.UpdateBalance(txctx, p.Order.UserID, p.BalanceToDeduct)
 		}); err != nil {
 			slog.Error("[CRITICAL] rollback failed", "orderID", p.OrderID, "amount", p.BalanceToDeduct, "error", err)

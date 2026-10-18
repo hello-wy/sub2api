@@ -560,7 +560,7 @@ func (p *BusinessProjection) subscription(e BusinessEvent, events []BusinessEven
 		p.Terms[key] = &clone
 		return
 	}
-	term := &BusinessTerm{Key: key, EventID: e.ID, UserID: e.UserID, SubscriptionID: id, Version: version, GroupID: bInt(e.Payload, "group_id"), GroupName: bString(e.Payload, "group_name"), Start: start, End: end, OriginalEnd: end, Quality: "unknown"}
+	term := &LedgerTerm{Key: key, EventID: e.ID, UserID: e.UserID, SubscriptionID: id, Version: version, GroupID: bInt(e.Payload, "group_id"), GroupName: bString(e.Payload, "group_name"), Start: start, End: end, OriginalEnd: end, Quality: "unknown"}
 	order := bMap(e.Payload, "order")
 	if order != nil {
 		term.OrderID = bInt(order, "id")

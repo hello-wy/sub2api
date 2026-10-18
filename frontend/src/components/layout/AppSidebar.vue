@@ -197,6 +197,7 @@
 </template>
 
 <script setup lang="ts">
+import { useCanvasStore } from "@/stores/canvas"
 import { computed, h, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
@@ -716,6 +717,8 @@ const flagPluginManagement = makeSidebarFlag(FeatureFlags.pluginManagement)
 const flagOpsMonitoring = () => adminSettingsStore.opsMonitoringEnabled
 const flagAdminPayment = () => adminSettingsStore.paymentEnabled
 const flagBatchImageAccess = () => canUseBatchImage.value
+const canvasStore = useCanvasStore()
+const canvasEnabled = computed(() => canvasStore.settings.enabled)
 
 // buildSelfNavItems 构造用户自己的导航项（用户端主菜单和管理员的"我的账户"子菜单共享这组声明）。
 // withDashboard=true 时包含仪表盘（用户端），false 时不含（管理员的个人区已经有独立仪表盘入口）。
@@ -746,6 +749,7 @@ function buildSelfNavItems(withDashboard: boolean): NavItem[] {
       icon: null,
       iconSvg: item.icon_svg,
     })),
+    ...(canvasEnabled.value ? [{ path: '/canvas', label: '无限画布', icon: GalleryIcon }] : []),
   )
   return items
 }
@@ -857,6 +861,7 @@ const adminNavItems = computed((): NavItem[] => {
     for (const cm of customMenuItemsForAdmin.value) {
       filtered.push({ path: `/custom/${cm.id}`, label: cm.label, icon: null, iconSvg: cm.icon_svg })
     }
+    if (canvasEnabled.value) filtered.push({ path: '/canvas', label: '无限画布', icon: GalleryIcon })
     return filtered
   }
 
@@ -957,6 +962,7 @@ onMounted(() => {
   void refreshCheckinReminder()
   void refreshLotteryMenu()
   window.addEventListener('lottery-settings-updated', handleLotterySettingsUpdated)
+  void canvasStore.fetchSettings().catch(() => {})
   // Restore sidebar scroll position after route change re-mounts the component
   if (appStore.sidebarScrollTop > 0 && sidebarNavRef.value) {
     void nextTick(() => {

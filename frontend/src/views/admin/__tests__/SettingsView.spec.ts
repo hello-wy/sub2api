@@ -93,6 +93,16 @@ const {
 }));
 
 const localeRef = vi.hoisted(() => ({ value: "zh-CN" }));
+const canvasMocks = vi.hoisted(() => ({
+  fetchSettings: vi.fn().mockResolvedValue({ enabled: true, url: 'https://canvas.example', api_base_url: 'https://old-gateway.example' }),
+  saveSettings: vi.fn().mockResolvedValue(undefined),
+}));
+vi.mock('@/stores/canvas', () => ({ useCanvasStore: () => canvasMocks }));
+vi.mock('vue-router', async (importOriginal) => ({
+  ...await importOriginal<typeof import('vue-router')>(),
+  useRoute: () => ({ query: {} }),
+}));
+
 
 vi.mock("@/api", () => ({
   adminAPI: {
@@ -820,6 +830,18 @@ describe("admin SettingsView payment visible method controls", () => {
     });
     fetchPublicSettings.mockResolvedValue(undefined);
     adminSettingsFetch.mockResolvedValue(undefined);
+  });
+
+  it("loads and saves the administrator-configured canvas API site", async () => {
+    const wrapper = mountView();
+    await flushPromises();
+    const input = wrapper.findAll('label').find(label => label.text().startsWith('画布 API 站点'))!.get('input');
+    expect((input.element as HTMLInputElement).value).toBe('https://old-gateway.example');
+    await input.setValue('https://new-gateway.example');
+    await wrapper.findAll('button').find(button => button.text() === '保存画布设置')!.trigger('click');
+    await flushPromises();
+    expect(canvasMocks.saveSettings).toHaveBeenCalledWith({ enabled: true, url: 'https://canvas.example', api_base_url: 'https://new-gateway.example' });
+    expect(showSuccess).toHaveBeenCalledWith('画布设置已保存，全站生效');
   });
 
   it("saves Pelican showcase groups and gallery limits", async () => {

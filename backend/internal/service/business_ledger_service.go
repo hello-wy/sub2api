@@ -300,7 +300,7 @@ func (s *BusinessLedgerService) Records(ctx context.Context, before int64, limit
 	return scanBusinessEvents(rows)
 }
 
-func (s *BusinessLedgerService) Record(ctx context.Context, input BusinessRecordInput, actor int64) (*BusinessEvent, error) {
+func (s *BusinessLedgerService) Record(ctx context.Context, input LedgerRecordInput, actor int64) (*BusinessEvent, error) {
 	input.At = input.At.Truncate(time.Microsecond)
 	payload := map[string]any{}
 	for k, v := range input.Payload {
@@ -498,7 +498,7 @@ func (s *BusinessLedgerService) Record(ctx context.Context, input BusinessRecord
 
 var businessDecimalPattern = regexp.MustCompile(`^-?[0-9]+(?:\.[0-9]{1,8})?$`)
 
-func validateBusinessRecord(input BusinessRecordInput) error {
+func validateBusinessRecord(input LedgerRecordInput) error {
 	if len(input.IdempotencyKey) < 8 || len(input.IdempotencyKey) > 128 {
 		return fmt.Errorf("需要 8 至 128 字符的幂等标识")
 	}
