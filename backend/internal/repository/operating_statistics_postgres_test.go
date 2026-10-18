@@ -20,6 +20,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/migrations"
 	_ "github.com/lib/pq"
 	"github.com/shopspring/decimal"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -45,7 +46,12 @@ func operatingDBBefore(t *testing.T, before func(*sql.DB)) *sql.DB {
 	u.Path = "/" + name
 	db, err := sql.Open("postgres", u.String())
 	require.NoError(t, err)
-	t.Cleanup(func() { db.Close(); admin.Exec("DROP DATABASE " + name + " WITH (FORCE)"); admin.Close() })
+	t.Cleanup(func() {
+		assert.NoError(t, db.Close())
+		_, err := admin.Exec("DROP DATABASE " + name + " WITH (FORCE)")
+		assert.NoError(t, err)
+		assert.NoError(t, admin.Close())
+	})
 	if before != nil {
 		before(db)
 	}
@@ -268,7 +274,8 @@ func TestOperatingUpgradePreservesLegacyArchive(t *testing.T) {
 		require.Equal(t, countBefore, manifest.Tables["business_events"])
 		require.NotEmpty(t, manifest.Cutover)
 		// Restore into this isolated test database with its matching external schema.
-		restore := exec.Command("pg_restore", "--clean", "--if-exists", "--no-owner", "--no-acl", "--exit-on-error", "--single-transaction", "--dbname="+u.String(), filepath.Join(destination, "legacy.dump"))
+		restore := exec.Command("pg_restore", "--clean", "--if-exists", "--no-owner", "--no-acl", "--exit-on-error", "--single-transaction", "--dbname=", filepath.Join(destination, "legacy.dump"))
+		restore.Env = env
 		output, err = restore.CombinedOutput()
 		require.NoError(t, err, string(output))
 		require.NoError(t, db.QueryRow("SELECT count(*) FROM business_events").Scan(&count))

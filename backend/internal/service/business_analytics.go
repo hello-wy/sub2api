@@ -131,7 +131,7 @@ func (s *BusinessAnalyticsService) Initialize(ctx context.Context, in BusinessSe
 	if err != nil {
 		return BusinessSettings{}, err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 	// Lock in billing order before choosing the cutoff. In-flight settlements cannot straddle the baseline.
 	if _, err = tx.ExecContext(ctx, "LOCK TABLE users, user_subscriptions IN SHARE ROW EXCLUSIVE MODE"); err != nil {
 		return BusinessSettings{}, err
@@ -203,7 +203,7 @@ func (s *BusinessAnalyticsService) Records(ctx context.Context, before int64) ([
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		var r BusinessRecord
 		if err = rows.Scan(&r.ID, &r.SourceKey, &r.Kind, &r.Amount, &r.Date, &r.Category, &r.Notes, &r.ReversesID, &r.CreatedAt, &r.Reversed); err != nil {
@@ -266,7 +266,7 @@ func (s *BusinessAnalyticsService) Terms(ctx context.Context, before int64) ([]B
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		var t BusinessTerm
 		if err = rows.Scan(&t.ID, &t.UserID, &t.GroupName, &t.PlanName, &t.Funding, &t.Amount, &t.Quota, &t.Baseline, &t.Used, &t.StartsAt, &t.EndsAt, &t.Opening); err != nil {
@@ -284,7 +284,7 @@ func (s *BusinessAnalyticsService) ConfigureTerm(ctx context.Context, id, actor 
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 	var amount, quota *decimal.Decimal
 	var funding string
 	err = tx.QueryRowContext(ctx, "SELECT amount,quota,funding FROM operating_terms WHERE id=$1 FOR UPDATE", id).Scan(&amount, &quota, &funding)

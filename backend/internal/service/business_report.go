@@ -84,7 +84,7 @@ func (s *BusinessAnalyticsService) Overview(ctx context.Context, startDate, endD
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 	cfg, err := readBusinessSettings(ctx, tx)
 	if err != nil {
 		return nil, err
@@ -121,7 +121,7 @@ func (s *BusinessAnalyticsService) Overview(ctx context.Context, startDate, endD
 	for rows.Next() {
 		var d BusinessDay
 		if err = rows.Scan(&d.Date, &d.BalanceRevenue, &d.SubscriptionRevenue, &d.OtherRevenue, &d.ManualCost, &d.GiftCost, &d.Missing); err != nil {
-			rows.Close()
+			_ = rows.Close()
 			return nil, err
 		}
 		d.finish()
@@ -173,7 +173,7 @@ func (s *BusinessAnalyticsService) Overview(ctx context.Context, startDate, endD
 	for rows.Next() {
 		var r BusinessRewardSummary
 		if err = rows.Scan(&r.Source, &r.Amount); err != nil {
-			rows.Close()
+			_ = rows.Close()
 			return nil, err
 		}
 		result.Rewards = append(result.Rewards, r)
@@ -208,7 +208,7 @@ func readBusinessPositions(ctx context.Context, q businessQuery, p *BusinessPosi
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		var status, funding string
 		var amount, quota *decimal.Decimal
@@ -289,7 +289,7 @@ func readBusinessCapacity(ctx context.Context, q businessQuery, now time.Time, z
 		var sub UserSubscription
 		if err = rows.Scan(&g.ID, &g.Name, &g.Platform, &g.DailyLimitUSD, &g.WeeklyLimitUSD, &g.MonthlyLimitUSD, &g.SubscriptionTotalLimitUSD, &g.SubscriptionQuotaResetMode,
 			&sub.StartsAt, &sub.ExpiresAt, &sub.DailyWindowStart, &sub.WeeklyWindowStart, &sub.MonthlyWindowStart, &sub.DailyUsageUSD, &sub.WeeklyUsageUSD, &sub.MonthlyUsageUSD, &sub.TotalUsageUSD); err != nil {
-			rows.Close()
+			_ = rows.Close()
 			return nil, err
 		}
 		v := groups[g.ID]
@@ -324,7 +324,7 @@ func readBusinessCapacity(ctx context.Context, q businessQuery, now time.Time, z
 	for rows.Next() {
 		var v BusinessCapacity
 		if err = rows.Scan(&v.GroupID, &v.Name, &v.Platform, &v.SevenDayAverage, &v.SevenDayPeak); err != nil {
-			rows.Close()
+			_ = rows.Close()
 			return nil, err
 		}
 		existing := groups[v.GroupID]
