@@ -28,6 +28,8 @@
 
 ## 会话生命周期
 
+- 图片与文本密钥分别按用户 ID 记住选择；未单独选择时沿用默认密钥。握手对默认、图片、文本每把不同密钥分别调用现有会话接口校验，不能用默认密钥的权限代替其他密钥校验。文本/图片模型列表和实际请求分别使用对应密钥，视频/音频仍使用默认密钥；无权限模型不自动换密钥调用。设置页只显示对应密钥名称和 ID，宿主凭据不进入持久化配置或导出。
+- 确认任意用途密钥切换后，宿主重建 iframe 并传入新会话；取消或验证失败保留原选择。点击「重新连接」由画布向精确可信宿主发送 reconnect 消息，再由宿主重建 iframe。画布内部导航或刷新可保留自身来源的 referrer，但仍必须通过精确父窗口、可信 origin、协议与请求 ID 的完整握手；不能绕过宿主认证。
 - 回到窗口或标签页会重新校验；用户名、密钥名称和凭据更新不会自动重载整页。主题、语言变化不改变 iframe URL。
 - 注销、身份或角色变化时停止旧会话；验证失败显示重新连接提示，不反复自动刷新。账号切换由宿主重建 iframe，避免混用用户存储。正在执行的请求不承诺自动撤销，后续网关请求仍受后端授权限制。
 - 关闭全站开关立即阻止新会话；已打开页面在下次回到前台/会话校验时发现关闭。此功能未增加实时推送，也不会撤销用于其他客户端的 API Key。
@@ -53,6 +55,10 @@
 - Sub2API 前端：pnpm -C frontend exec vitest run src/utils/__tests__/canvas-bridge.spec.ts src/views/user/__tests__/CanvasView.spec.ts
 - Sub2API 后端：cd backend && go test -tags unit ./internal/service ./internal/handler ./internal/handler/admin -run 'TestCanvas' -count=1
 - Canvas 会话：bun test tests/sub2api-integration.test.ts
-- Canvas 权限及持久化：cd web && node --test tests/canvas-permissions.test.cjs
+- Canvas 权限、切换与重连：cd web && node --test tests/canvas-permissions.test.cjs tests/canvas-reconnect.test.cjs
 
 本轮未执行 Canvas 构建或全量语法检查，未触发付费生成，未提交、推送或部署。真实双账号交互、生产部署和端到端计费需要人工验收。
+
+## 密钥切换与重连修复部署
+
+需同时更新 Sub2API 和 Canvas 前端，本次不需要新增后端接口。保留生产平台登录限制及精确宿主来源校验。真实双账号及计费请求仍需上线验收。
