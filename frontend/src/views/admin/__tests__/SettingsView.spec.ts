@@ -840,8 +840,27 @@ describe("admin SettingsView payment visible method controls", () => {
     await input.setValue('https://new-gateway.example');
     await wrapper.findAll('button').find(button => button.text() === '保存画布设置')!.trigger('click');
     await flushPromises();
-    expect(canvasMocks.saveSettings).toHaveBeenCalledWith({ enabled: true, url: 'https://canvas.example', api_base_url: 'https://new-gateway.example' });
+    expect(canvasMocks.saveSettings).toHaveBeenCalledWith({ enabled: true, url: 'https://canvas.example', api_base_url: 'https://new-gateway.example', upstream_retry_count: 5 });
     expect(showSuccess).toHaveBeenCalledWith('画布设置已保存，全站生效');
+  });
+
+  it("saves zero canvas retries and blocks invalid retry counts", async () => {
+    const wrapper = mountView();
+    await flushPromises();
+    const input = wrapper.get('#canvas-upstream-retries');
+    const save = wrapper.findAll('button').find(button => button.text() === '保存画布设置')!;
+    await input.setValue('0');
+    await save.trigger('click');
+    await flushPromises();
+    expect(canvasMocks.saveSettings).toHaveBeenLastCalledWith(expect.objectContaining({ upstream_retry_count: 0 }));
+    const calls = canvasMocks.saveSettings.mock.calls.length;
+    for (const value of ['6', '-1', '1.5', '']) {
+      await input.setValue(value);
+      await save.trigger('click');
+      await flushPromises();
+      expect(canvasMocks.saveSettings).toHaveBeenCalledTimes(calls);
+      expect(wrapper.text()).toContain('上游额外重试次数必须为 0–5 的整数');
+    }
   });
 
   it("saves Pelican showcase groups and gallery limits", async () => {

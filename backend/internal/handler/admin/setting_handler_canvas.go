@@ -7,7 +7,7 @@ import (
 )
 
 func (h *SettingHandler) UpdateCanvasSettings(c *gin.Context) {
-	var settings service.CanvasSettings
+	settings := service.CanvasSettings{UpstreamRetryCount: 5}
 	if err := c.ShouldBindJSON(&settings); err != nil {
 		response.BadRequest(c, "Invalid canvas settings")
 		return

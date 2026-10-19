@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { apiClient } from '@/api/client'
 
-export type CanvasSettings = { enabled: boolean; url: string; api_base_url?: string; effective_api_base_url?: string }
+export type CanvasSettings = { enabled: boolean; url: string; api_base_url?: string; effective_api_base_url?: string; upstream_retry_count?: number }
 export const useCanvasStore = defineStore('canvas', () => {
   const settings = ref<CanvasSettings>({ enabled: false, url: '' })
   let pending: Promise<CanvasSettings> | undefined

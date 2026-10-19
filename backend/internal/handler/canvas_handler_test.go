@@ -27,7 +27,7 @@ type canvasSettingRepo struct {
 }
 
 func (r canvasSettingRepo) GetMultiple(context.Context, []string) (map[string]string, error) {
-	data, _ := json.Marshal(service.CanvasSettings{Enabled: r.enabled, URL: "https://canvas.example", APIBaseURL: "https://gateway.example"})
+	data, _ := json.Marshal(service.CanvasSettings{Enabled: r.enabled, URL: "https://canvas.example", APIBaseURL: "https://gateway.example", UpstreamRetryCount: 4})
 	return map[string]string{service.SettingKeyCanvas: string(data)}, nil
 }
 func TestCanvasSessionAuthorization(t *testing.T) {
@@ -68,6 +68,7 @@ func TestCanvasSessionAuthorization(t *testing.T) {
 			require.Equal(t, tc.want, recorder.Code, recorder.Body.String())
 			if tc.want == 200 {
 				require.Contains(t, recorder.Body.String(), "gateway-only")
+				require.Contains(t, recorder.Body.String(), `"upstreamRetryCount":4`)
 				require.Contains(t, recorder.Body.String(), "https://gateway.example")
 				require.NotContains(t, recorder.Body.String(), "forged.example")
 				require.Contains(t, recorder.Body.String(), "\"role\":\"user\"")

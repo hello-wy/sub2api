@@ -57,6 +57,7 @@ func TestCanvasSettings(t *testing.T) {
 	initial, err := svc.GetCanvasSettings(ctx)
 	require.NoError(t, err)
 	require.False(t, initial.Enabled)
+	require.Equal(t, 5, initial.UpstreamRetryCount)
 	settings := CanvasSettings{Enabled: true, URL: "https://canvas.example/app"}
 	require.NoError(t, svc.UpdateCanvasSettings(ctx, settings))
 	saved, err := svc.GetCanvasSettings(ctx)
@@ -72,6 +73,29 @@ func TestCanvasSettings(t *testing.T) {
 	disabled, err := svc.GetCanvasSettings(ctx)
 	require.NoError(t, err)
 	require.False(t, disabled.Enabled)
+}
+
+func TestCanvasRetrySettings(t *testing.T) {
+	ctx := context.Background()
+	repo := &canvasSettingsRepo{authSourceDefaultsRepoStub{values: map[string]string{SettingKeyCanvas: `{"enabled":true,"url":"https://canvas.example"}`}}}
+	svc := NewSettingService(repo, &config.Config{})
+	settings, err := svc.GetCanvasSettings(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 5, settings.UpstreamRetryCount)
+	for _, count := range []int{0, 5, 2} {
+		settings.UpstreamRetryCount = count
+		require.NoError(t, svc.UpdateCanvasSettings(ctx, settings))
+		saved, err := svc.GetCanvasSettings(ctx)
+		require.NoError(t, err)
+		require.Equal(t, count, saved.UpstreamRetryCount)
+	}
+	for _, count := range []int{-1, 6} {
+		settings.UpstreamRetryCount = count
+		require.Error(t, svc.UpdateCanvasSettings(ctx, settings))
+		saved, err := svc.GetCanvasSettings(ctx)
+		require.NoError(t, err)
+		require.Equal(t, 2, saved.UpstreamRetryCount)
+	}
 }
 
 func TestCanvasFrameSrcOrigins(t *testing.T) {

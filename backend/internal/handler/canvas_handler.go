@@ -55,7 +55,8 @@ func (h *APIKeyHandler) CanvasSession(settings *service.SettingService) gin.Hand
 		response.Success(c, gin.H{
 			"user":   gin.H{"id": subject.UserID, "role": c.GetString(string(middleware.ContextKeyUserRole))},
 			"apiKey": key.Key, "keyId": key.ID, "keyName": key.Name, "canvasUrl": config.URL,
-			"baseUrl": config.EffectiveAPIBaseURL,
+			"baseUrl":            config.EffectiveAPIBaseURL,
+			"upstreamRetryCount": config.UpstreamRetryCount,
 		})
 	}
 }
