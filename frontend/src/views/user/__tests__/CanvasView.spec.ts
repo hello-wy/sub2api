@@ -118,6 +118,57 @@ async function chooseSecondKey() {
 }
 
 describe('Canvas key switching and API site', () => {
+  for (const purpose of ['text', 'image'] as const) {
+    it(`recreates the iframe and uses the selected ${purpose} key after switching and refresh`, async () => {
+      mocks.list.mockResolvedValue({ items: [key, secondKey], total: 2, page_size: 10 })
+      mocks.session.mockImplementation(async (path: string) => ({ data: {
+        user: { id: 7, role: 'user' }, apiKey: path.endsWith('/18') ? secondKey.key : key.key,
+        keyId: path.endsWith('/18') ? 18 : 12, keyName: path.endsWith('/18') ? secondKey.name : key.name,
+        canvasUrl: mocks.settings.url, baseUrl: mocks.settings.effective_api_base_url
+      } }))
+      const { frame } = await open()
+      await request(frame, { type: 'select-key', purpose })
+      expect((wrapper.get('input[value="12"]').element as HTMLInputElement).checked).toBe(true)
+      await wrapper.get('input[value="18"]').setValue()
+      await button('确认切换').trigger('click')
+      await flushPromises()
+      expect(wrapper.get('iframe').element).not.toBe(frame)
+      expect(localStorage.getItem(`sub2api:canvas-${purpose}-key:7`)).toBe('18')
+      const verify = async (current: HTMLIFrameElement, send: Awaited<ReturnType<typeof open>>['send']) => {
+        await request(current, { type: 'session' })
+        const payload = send.mock.calls.find(([data]) => data.type === 'session')![0]
+        expect(payload.session[purpose + 'Key'].apiKey).toBe(secondKey.key)
+        expect(payload.session[(purpose === 'text' ? 'image' : 'text') + 'Key'].apiKey).toBe(key.key)
+        expect(payload.session.apiKey).toBe(key.key)
+      }
+      const current = wrapper.get('iframe').element as HTMLIFrameElement
+      await verify(current, vi.spyOn(current.contentWindow!, 'postMessage'))
+      wrapper.unmount()
+      const restored = await open()
+      await verify(restored.frame, restored.send)
+    })
+  }
+  it('recreates the frame only for a reconnect request from its trusted window', async () => {
+    const { frame } = await open()
+    await request(frame, { type: 'reconnect' }, 'https://evil.example')
+    expect(wrapper.get('iframe').element).toBe(frame)
+    await request(frame, { type: 'reconnect' })
+    expect(wrapper.get('iframe').element).not.toBe(frame)
+    expect(localStorage.getItem('sub2api:canvas-key:7')).toBe('12')
+  })
+  it('never falls back to the default key if a selected text key fails server validation', async () => {
+    localStorage.setItem('sub2api:canvas-text-key:7', '18')
+    mocks.list.mockResolvedValue({ items: [key, secondKey], total: 2, page_size: 10 })
+    const session = { user: { id: 7, role: 'user' }, apiKey: key.key, keyId: 12, keyName: key.name, canvasUrl: mocks.settings.url, baseUrl: mocks.settings.effective_api_base_url }
+    mocks.session.mockImplementation(async (path: string) => {
+      if (path.endsWith('/18')) throw new Error('text key revoked')
+      return { data: session }
+    })
+    const { frame, send } = await open()
+    await request(frame, { type: 'session' })
+    expect(send.mock.calls[0][0].error).toBeTruthy()
+    expect(send.mock.calls[0][0].session).toBeUndefined()
+  })
   it('keeps connection information out of the canvas header and opens selection only for the trusted frame', async () => {
     mocks.auth.user.role = 'user'
     const { frame } = await open()
