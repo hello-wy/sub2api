@@ -1,5 +1,13 @@
 # Asynchronous Image Tasks
 
+## Canvas client retry policy
+
+Administrators can configure **Features → Infinite Canvas → Extra upstream retries** (`upstream_retry_count`) from 0 to 5, default 5; 0 disables client retries. Only administrators can save the setting. Authenticated canvas sessions receive `upstreamRetryCount` from the server; iframe messages cannot override it. Refresh or refocus the canvas to obtain an updated policy.
+
+The paired canvas client retries Agent Responses and native image HTTP operations after explicit temporary failures (429, 500, 502, 503), including typed errors inside successful HTTP/SSE responses. It uses the server's `Retry-After`, otherwise the existing three-second image polling interval. Cancellation, authentication, permission, validation, quota and moderation failures, disconnected POST requests, and ambiguous timeouts are not resubmitted. Accepted image tasks only retry status queries; terminal failed tasks retain their task ID and original cause and are never automatically resubmitted. Completed canvas tools, uploads and custom model scripts are not replayed. Exhaustion shows the original cause and retry count.
+
+This policy is independent of the gateway's existing account failover and does not change billing or task ownership. Deploy the matching canvas client to apply it.
+
 Asynchronous image tasks let clients submit long-running OpenAI-compatible image requests without keeping one HTTP connection open. This avoids proxy/CDN response timeouts such as Cloudflare 524 while preserving the existing image routing, billing, moderation, concurrency, and failover behavior.
 
 ## Endpoints

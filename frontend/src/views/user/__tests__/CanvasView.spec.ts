@@ -196,6 +196,14 @@ describe('Canvas key switching and API site', () => {
     await request(frame, { type: 'session' })
     expect(send.mock.calls[0][0].session.baseUrl).toBe('https://api.example')
   })
+  it('forwards only the server retry policy to the trusted canvas', async () => {
+    const { frame, send } = await open()
+    for (const upstreamRetryCount of [0, 5]) {
+      mocks.session.mockResolvedValue({ data: { ...nextSession(12).data, upstreamRetryCount } })
+      await request(frame, { type: 'session', upstreamRetryCount: 99 })
+      expect(send.mock.calls.at(-1)![0].session.upstreamRetryCount).toBe(upstreamRetryCount)
+    }
+  })
   it('keeps the iframe and stored key unchanged when opening and cancelling', async () => {
     const { frame, send } = await open()
     await chooseSecondKey()

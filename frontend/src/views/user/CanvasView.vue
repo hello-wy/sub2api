@@ -52,7 +52,7 @@ import { CANVAS_PROTOCOL, buildCanvasUrl, trustedCanvasMessage } from '@/utils/c
 import { detectTheme } from '@/utils/embedded-url'
 
 type CanvasSession = {
-  user: { id: number; role: 'admin' | 'user' }; apiKey: string; keyId: number; keyName: string; canvasUrl: string; baseUrl: string
+  user: { id: number; role: 'admin' | 'user' }; apiKey: string; keyId: number; keyName: string; canvasUrl: string; baseUrl: string; upstreamRetryCount?: number
 }
 const auth = useAuthStore()
 const canvas = useCanvasStore()

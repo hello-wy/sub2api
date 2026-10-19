@@ -7180,6 +7180,10 @@
             <input v-model="canvasIntegrationApiUrl" type="url" class="mt-2 w-full rounded-lg border border-gray-300 bg-transparent px-3 py-2 dark:border-dark-600" placeholder="https://api.example.com" />
           </label>
           <p class="text-xs text-gray-500 dark:text-gray-400">填写接受本站 API Key 的网关地址，不是画布网页地址或单个接口地址。留空时使用全站 API 地址；全站未设置时使用当前 API 服务地址。用户可查看地址并切换自己的密钥，不能修改此配置。</p>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300" for="canvas-upstream-retries">上游额外重试次数
+            <input id="canvas-upstream-retries" v-model.number="canvasIntegrationRetryCount" type="number" min="0" max="5" step="1" class="mt-2 w-full rounded-lg border border-gray-300 bg-transparent px-3 py-2 dark:border-dark-600" />
+          </label>
+          <p class="text-xs text-gray-500 dark:text-gray-400">默认额外重试 5 次，0 为关闭。适用于 Agent 对话、原生生图接口明确返回的临时上游错误和任务查询；取消、权限/参数错误及结果不明的提交不会自动重发。已有生图任务只重试查询；耗尽后显示具体错误。此设置不改变网关内部的账号故障转移策略。</p>
           <p v-if="canvasSettingsError" role="alert" class="text-sm text-red-500">{{ canvasSettingsError }}</p>
           <button type="button" class="btn btn-primary btn-sm" :disabled="canvasSettingsSaving || !canvasSettingsReady" @click="saveCanvasIntegration">保存画布设置</button>
         </section>
@@ -9635,6 +9639,7 @@ const canvasStore = useCanvasStore();
 const canvasIntegrationEnabled = ref(false);
 const canvasIntegrationUrl = ref("");
 const canvasIntegrationApiUrl = ref("");
+const canvasIntegrationRetryCount = ref(5);
 const canvasSettingsSaving = ref(false);
 const canvasSettingsReady = ref(false);
 const canvasSettingsError = ref("");
@@ -9644,6 +9649,7 @@ onMounted(async () => {
     canvasIntegrationEnabled.value = settings.enabled;
     canvasIntegrationUrl.value = settings.url;
     canvasIntegrationApiUrl.value = settings.api_base_url || "";
+    canvasIntegrationRetryCount.value = settings.upstream_retry_count ?? 5;
     canvasSettingsReady.value = true;
   } catch (error) {
     canvasSettingsError.value = (error as { status?: number } | null)?.status === 404
@@ -9655,7 +9661,8 @@ async function saveCanvasIntegration(): Promise<void> {
   canvasSettingsSaving.value = true;
   canvasSettingsError.value = "";
   try {
-    await canvasStore.saveSettings({ enabled: canvasIntegrationEnabled.value, url: canvasIntegrationUrl.value.trim(), api_base_url: canvasIntegrationApiUrl.value.trim() });
+    if (!Number.isInteger(canvasIntegrationRetryCount.value) || canvasIntegrationRetryCount.value < 0 || canvasIntegrationRetryCount.value > 5) throw new Error("上游额外重试次数必须为 0–5 的整数");
+    await canvasStore.saveSettings({ enabled: canvasIntegrationEnabled.value, url: canvasIntegrationUrl.value.trim(), api_base_url: canvasIntegrationApiUrl.value.trim(), upstream_retry_count: canvasIntegrationRetryCount.value });
     appStore.showSuccess("画布设置已保存，全站生效");
   } catch (error) { canvasSettingsError.value = (error as { message?: string } | null)?.message || "保存失败，请检查画布地址、API 站点和管理员权限。"; }
   finally { canvasSettingsSaving.value = false; }

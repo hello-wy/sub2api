@@ -55,7 +55,7 @@ func TestCanvasSettingsAdminAuthorization(t *testing.T) {
 			router.PUT("/api/v1/admin/settings/canvas", gin.HandlerFunc(middleware.NewAdminAuthMiddleware(auth, users, nil, nil)), handler.UpdateCanvasSettings)
 			token, err := auth.GenerateToken(context.Background(), user)
 			require.NoError(t, err)
-			request := httptest.NewRequest(http.MethodPut, "/api/v1/admin/settings/canvas", strings.NewReader(`{"enabled":true,"url":"https://canvas.example","api_base_url":"https://gateway.example","effective_api_base_url":"https://forged.example"}`))
+			request := httptest.NewRequest(http.MethodPut, "/api/v1/admin/settings/canvas", strings.NewReader(`{"upstream_retry_count":3,"enabled":true,"url":"https://canvas.example","api_base_url":"https://gateway.example","effective_api_base_url":"https://forged.example"}`))
 			request.Header.Set("Authorization", "Bearer "+token)
 			request.Header.Set("Content-Type", "application/json")
 			recorder := httptest.NewRecorder()
@@ -66,7 +66,32 @@ func TestCanvasSettingsAdminAuthorization(t *testing.T) {
 			} else {
 				require.Equal(t, http.StatusOK, recorder.Code, recorder.Body.String())
 				require.Contains(t, recorder.Body.String(), `"effective_api_base_url":"https://gateway.example"`)
+				require.Contains(t, recorder.Body.String(), `"upstream_retry_count":3`)
 				require.NotContains(t, repo.values[service.SettingKeyCanvas], "forged.example")
+			}
+		})
+	}
+}
+
+func TestCanvasRetryCountValidation(t *testing.T) {
+	for _, tc := range []struct {
+		value  string
+		status int
+	}{
+		{`0`, 200}, {`5`, 200}, {`-1`, 400}, {`6`, 400}, {`1.5`, 400}, {`"3"`, 400},
+	} {
+		t.Run(tc.value, func(t *testing.T) {
+			repo := &canvasAdminSettingsRepo{values: map[string]string{}}
+			handler := &SettingHandler{settingService: service.NewSettingService(repo, &config.Config{})}
+			router := gin.New()
+			router.PUT("/canvas", handler.UpdateCanvasSettings)
+			request := httptest.NewRequest(http.MethodPut, "/canvas", strings.NewReader(`{"upstream_retry_count":`+tc.value+`}`))
+			request.Header.Set("Content-Type", "application/json")
+			recorder := httptest.NewRecorder()
+			router.ServeHTTP(recorder, request)
+			require.Equal(t, tc.status, recorder.Code, recorder.Body.String())
+			if tc.status != 200 {
+				require.Empty(t, repo.values)
 			}
 		})
 	}
