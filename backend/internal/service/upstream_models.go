@@ -354,6 +354,40 @@ func configuredUpstreamModelsForCapabilitySync(account *Account) []string {
 	return dedupeAndSortModelIDs(models)
 }
 
+// defaultExcludedClaudeUpstreamModelIDs holds specific Claude/Anthropic model IDs that
+// should not be auto-added when syncing an account's upstream model list, even if the
+// upstream /v1/models endpoint still reports them as available. Admins can still add
+// them manually via the custom model input.
+var defaultExcludedClaudeUpstreamModelIDs = map[string]bool{
+	"claude-3-5-haiku-20241022":  true,
+	"claude-opus-4-5-20251101":   true,
+	"claude-sonnet-4-5-20250929": true,
+	"claude-haiku-4-5-20251001":  true,
+}
+
+// isDefaultExcludedClaudeUpstreamModel reports whether a Claude model ID should be
+// filtered out of upstream model sync results by default: the retired Claude 3.x
+// generation (claude-3-*) and the specific superseded IDs above.
+func isDefaultExcludedClaudeUpstreamModel(modelID string) bool {
+	if defaultExcludedClaudeUpstreamModelIDs[modelID] {
+		return true
+	}
+	return strings.HasPrefix(modelID, "claude-3-")
+}
+
+// filterDefaultExcludedClaudeUpstreamModels removes isDefaultExcludedClaudeUpstreamModel
+// matches from a Claude/Anthropic account's synced upstream model list.
+func filterDefaultExcludedClaudeUpstreamModels(modelIDs []string) []string {
+	filtered := make([]string, 0, len(modelIDs))
+	for _, modelID := range modelIDs {
+		if isDefaultExcludedClaudeUpstreamModel(modelID) {
+			continue
+		}
+		filtered = append(filtered, modelID)
+	}
+	return filtered
+}
+
 func capabilitySyncModelIDs(modelIDs []string) []string {
 	filtered := make([]string, 0, len(modelIDs))
 	for _, modelID := range modelIDs {
@@ -771,6 +805,9 @@ func (s *AccountTestService) fetchUpstreamModelList(ctx context.Context, account
 	models, err := extractModels(body)
 	if err != nil {
 		return nil, nil, newUpstreamModelSyncUpstreamError("Upstream model list response was not valid JSON", err)
+	}
+	if account.IsAnthropic() {
+		models = filterDefaultExcludedClaudeUpstreamModels(models)
 	}
 	if len(models) == 0 {
 		return nil, nil, newUpstreamModelSyncUpstreamError("Upstream returned no supported models", nil)

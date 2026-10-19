@@ -1163,6 +1163,33 @@ func TestSyncUpstreamModelCatalogAstraPartialRefreshPreservesKnownCapabilities(t
 	require.NotNil(t, repo.updates)
 }
 
+// Scenario: 渠道的 "获取模型" 从上游 /v1/models 拉回已退役/被取代的 Claude 型号时，
+// 默认不应把它们自动勾选进账号的模型列表（管理员仍可手动添加）。
+func TestSyncUpstreamModelCatalogExcludesDefaultExcludedClaudeModels(t *testing.T) {
+	t.Parallel()
+
+	upstream := &httpUpstreamRecorder{resp: &http.Response{
+		StatusCode: http.StatusOK,
+		Header:     http.Header{"Content-Type": []string{"application/json"}},
+		Body: io.NopCloser(strings.NewReader(`{"data":[
+			{"id":"claude-3-5-haiku-20241022"},
+			{"id":"claude-3-5-sonnet-20241022"},
+			{"id":"claude-opus-4-5-20251101"},
+			{"id":"claude-sonnet-4-5-20250929"},
+			{"id":"claude-haiku-4-5-20251001"},
+			{"id":"claude-sonnet-4-6-thinking"}
+		]}`)),
+	}}
+	svc := &AccountTestService{httpUpstream: upstream, cfg: upstreamModelSyncTestConfig()}
+
+	catalog, err := svc.SyncUpstreamModelCatalog(context.Background(), &Account{
+		Platform: PlatformAnthropic, Type: AccountTypeAPIKey,
+		Credentials: map[string]any{"api_key": "key", "base_url": "https://anthropic.example.com"},
+	})
+	require.NoError(t, err)
+	require.Equal(t, []string{"claude-sonnet-4-6-thinking"}, catalog.Models)
+}
+
 func TestMatchModelsDevProviderOfficialHostsWithoutAPI(t *testing.T) {
 	registry := map[string]modelsDevProvider{
 		"openai": {ID: "openai", Models: map[string]modelsDevModel{"gpt-6-astra": {ID: "gpt-6-astra"}}},
