@@ -33,11 +33,11 @@ func IsOpenAIImagesTransientUpstreamFailure(err error) bool {
 
 func (s *OpenAIGatewayService) OpenAIImagesUpstreamRetryCount(ctx context.Context) int {
 	if s == nil || s.settingService == nil {
-		return 5
+		return 0
 	}
 	settings, err := s.settingService.GetCanvasSettings(ctx)
 	if err != nil {
-		return 5
+		return 0
 	}
 	return settings.UpstreamRetryCount
 }
