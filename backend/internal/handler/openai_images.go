@@ -163,6 +163,8 @@ func (h *OpenAIGatewayHandler) Images(c *gin.Context) {
 	profitVetoCount := 0
 	failedAccountIDs := make(map[int64]struct{})
 	sameAccountRetryCount := make(map[int64]int)
+	transientRetryLimit := h.gatewayService.OpenAIImagesUpstreamRetryCount(requestCtx)
+	transientRetryCount := 0
 	var lastFailoverErr *service.UpstreamFailoverError
 	stopJSONKeepalive := func() {}
 	jsonKeepaliveStarted := false
@@ -273,6 +275,26 @@ func (h *OpenAIGatewayHandler) Images(c *gin.Context) {
 			service.SetOpsLatencyMs(c, service.OpsTimeToFirstTokenMsKey, int64(*result.FirstTokenMs))
 		}
 		if err != nil {
+			if (result == nil || result.ImageCount == 0) && transientRetryCount < transientRetryLimit &&
+				service.IsOpenAIImagesTransientUpstreamFailure(err) &&
+				service.OpenAIImagesJSONKeepaliveAdjustedWrittenSize(c) == writerSizeBeforeForward && !failoverClientGone(c) {
+				transientRetryCount++
+				h.gatewayService.ReportOpenAIAccountScheduleResult(account, openAIAccountScheduleModel(c, account, requestModel, false, result), false, nil, err)
+				retryDelay := time.Duration(transientRetryCount) * openAIImagesTransientRetryBaseDelay
+				reqLog.Warn("openai.images.transient_upstream_retry",
+					zap.Int64("account_id", account.ID),
+					zap.Int("retry_count", transientRetryCount),
+					zap.Int("retry_limit", transientRetryLimit),
+					zap.Duration("retry_delay", retryDelay),
+					zap.Error(err),
+				)
+				select {
+				case <-requestCtx.Done():
+					return
+				case <-time.After(retryDelay):
+				}
+				continue
+			}
 			if result != nil && result.ImageCount > 0 {
 				reqLog.Warn("openai.images.forward_partial_error_with_image_result",
 					zap.Int64("account_id", account.ID),
@@ -439,6 +461,8 @@ func (h *OpenAIGatewayHandler) Images(c *gin.Context) {
 		return
 	}
 }
+
+var openAIImagesTransientRetryBaseDelay = 3 * time.Second
 
 func (h *OpenAIGatewayHandler) openAIImagesJSONKeepaliveInterval() time.Duration {
 	if h.cfg == nil || h.cfg.Gateway.ImageNonstreamKeepaliveInterval <= 0 {

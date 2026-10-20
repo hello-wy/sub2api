@@ -1875,7 +1875,7 @@ func (s *OpenAIGatewayService) forwardOpenAIImagesOAuth(
 			Kind:               "request_error",
 			Message:            safeErr,
 		})
-		return nil, fmt.Errorf("upstream request failed: %s", safeErr)
+		return nil, openAIImagesUpstreamRequestError(err)
 	}
 	if resp.StatusCode >= 400 {
 		respBody := s.readUpstreamErrorBody(resp)
