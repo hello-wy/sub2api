@@ -23,6 +23,7 @@ type ChannelMonitorRepository interface {
 	Create(ctx context.Context, m *ChannelMonitor) error
 	GetByID(ctx context.Context, id int64) (*ChannelMonitor, error)
 	Update(ctx context.Context, m *ChannelMonitor) error
+	UpdateSortOrder(ctx context.Context, monitorIDs []int64) error
 	Delete(ctx context.Context, id int64) error
 	List(ctx context.Context, params ChannelMonitorListParams) ([]*ChannelMonitor, int64, error)
 	FindByDuplicateOperationID(ctx context.Context, operationID string) (*ChannelMonitor, error)
@@ -142,6 +143,22 @@ func (s *ChannelMonitorService) Get(ctx context.Context, id int64) (*ChannelMoni
 	}
 	s.decryptInPlace(m)
 	return m, nil
+}
+
+// UpdateSortOrder updates presentation only, without rescheduling probes or
+// rewriting monitor credentials, identity, or historical data.
+func (s *ChannelMonitorService) UpdateSortOrder(ctx context.Context, monitorIDs []int64) error {
+	if len(monitorIDs) == 0 || len(monitorIDs) > 10000 {
+		return ErrChannelMonitorInvalidOrder
+	}
+	seen := make(map[int64]struct{}, len(monitorIDs))
+	for _, id := range monitorIDs {
+		if _, duplicate := seen[id]; id <= 0 || duplicate {
+			return ErrChannelMonitorInvalidOrder
+		}
+		seen[id] = struct{}{}
+	}
+	return s.repo.UpdateSortOrder(ctx, monitorIDs)
 }
 
 // Create 创建监控（内部加密 api_key）。

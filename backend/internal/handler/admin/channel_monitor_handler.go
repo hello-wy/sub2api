@@ -38,6 +38,22 @@ func NewChannelMonitorHandler(monitorService *service.ChannelMonitorService) *Ch
 
 // --- Request / Response ---
 
+// UpdateSortOrder saves the IDs in their requested display order.
+func (h *ChannelMonitorHandler) UpdateSortOrder(c *gin.Context) {
+	var req struct {
+		MonitorIDs []int64 `json:"monitor_ids" binding:"required,min=1,max=10000,dive,gt=0"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+	if err := h.monitorService.UpdateSortOrder(c.Request.Context(), req.MonitorIDs); err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, gin.H{"message": "Sort order updated successfully"})
+}
+
 type channelMonitorCreateRequest struct {
 	Name             string            `json:"name" binding:"required,max=100"`
 	Provider         string            `json:"provider" binding:"required,oneof=openai anthropic gemini grok antigravity kimi zhipu deepseek minimax opencode_go"`

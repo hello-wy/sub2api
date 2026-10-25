@@ -160,6 +160,33 @@ func (r *channelMonitorRepository) Delete(ctx context.Context, id int64) error {
 	return nil
 }
 
+// UpdateSortOrder saves the entire submitted order atomically. A monitor deleted
+// while the dialog was open aborts the update instead of leaving a partial order.
+func (r *channelMonitorRepository) UpdateSortOrder(ctx context.Context, monitorIDs []int64) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	result, err := tx.ExecContext(ctx, `
+		UPDATE channel_monitors AS m
+		SET sort_order = ((ordered.position - 1) * 10)::integer, updated_at = NOW()
+		FROM unnest($1::bigint[]) WITH ORDINALITY AS ordered(id, position)
+		WHERE m.id = ordered.id
+	`, pq.Array(monitorIDs))
+	if err != nil {
+		return fmt.Errorf("update monitor sort order: %w", err)
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected != int64(len(monitorIDs)) {
+		return service.ErrChannelMonitorNotFound
+	}
+	return tx.Commit()
+}
+
 func (r *channelMonitorRepository) List(ctx context.Context, params service.ChannelMonitorListParams) ([]*service.ChannelMonitor, int64, error) {
 	q := r.client.ChannelMonitor.Query()
 	if params.Provider != "" {

@@ -79,9 +79,17 @@ func TestChannelMonitorSortOrderPreservesHistory(t *testing.T) {
 	require.NoError(t, repo.Update(ctx, loaded))
 	assertOrder([]int64{monitors[0].ID, monitors[1].ID, monitors[2].ID})
 	require.JSONEq(t, before, snapshot())
+	// Drag sorting only changes order fields, and a stale/deleted ID rolls the
+	// entire batch back without partially reordering any surviving monitor.
+	require.NoError(t, repo.UpdateSortOrder(ctx, []int64{monitors[2].ID, monitors[0].ID, monitors[1].ID}))
+	assertOrder([]int64{monitors[2].ID, monitors[0].ID, monitors[1].ID})
+	require.JSONEq(t, before, snapshot())
+	require.ErrorIs(t, repo.UpdateSortOrder(ctx, []int64{monitors[1].ID, 1 << 62}), service.ErrChannelMonitorNotFound)
+	assertOrder([]int64{monitors[2].ID, monitors[0].ID, monitors[1].ID})
+	require.JSONEq(t, before, snapshot())
 	reloaded, err := repo.GetByID(ctx, monitors[0].ID)
 	require.NoError(t, err)
 	require.Equal(t, createdAt, reloaded.CreatedAt)
 	require.Equal(t, &checkedAt, reloaded.LastCheckedAt)
-	require.Zero(t, reloaded.SortOrder)
+	require.Equal(t, 10, reloaded.SortOrder)
 }

@@ -347,7 +347,13 @@ export async function listHistory(
   return data
 }
 
+/** Save IDs in display order. The server assigns ordering values atomically. */
+export async function updateSortOrder(monitorIDs: number[]): Promise<void> {
+  await apiClient.put('/admin/channel-monitors/sort-order', { monitor_ids: monitorIDs })
+}
+
 export const channelMonitorAPI = {
+  updateSortOrder,
   list,
   get,
   create,

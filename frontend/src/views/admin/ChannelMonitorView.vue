@@ -60,6 +60,7 @@
           @reload="reload"
           @create="openCreateDialog"
           @manage-templates="showTemplateManager = true"
+          @sort="showSortDialog = true"
           @search-input="handleSearch"
         />
       </template>
@@ -137,6 +138,8 @@
       </TablePageLayout>
     </div>
 
+    <MonitorSortDialog :show="showSortDialog" @close="showSortDialog = false" @saved="reload" />
+
     <MonitorFormDialog
       :show="showDialog"
       :monitor="editing"
@@ -194,6 +197,7 @@ import HelpTooltip from '@/components/common/HelpTooltip.vue'
 import Icon from '@/components/icons/Icon.vue'
 import Toggle from '@/components/common/Toggle.vue'
 import MonitorFiltersBar from '@/components/admin/monitor/MonitorFiltersBar.vue'
+import MonitorSortDialog from '@/components/admin/monitor/MonitorSortDialog.vue'
 import MonitorFormDialog from '@/components/admin/monitor/MonitorFormDialog.vue'
 import MonitorTemplateManagerDialog from '@/components/admin/monitor/MonitorTemplateManagerDialog.vue'
 import MonitorRunResultDialog from '@/components/admin/monitor/MonitorRunResultDialog.vue'
@@ -225,6 +229,7 @@ const providerFilter = ref<Provider | ''>('')
 const enabledFilter = ref<'' | 'true' | 'false'>('')
 const pagination = reactive({ page: 1, page_size: getPersistedPageSize(), total: 0 })
 
+const showSortDialog = ref(false)
 const showDialog = ref(false)
 const showTemplateManager = ref(false)
 const editing = ref<ChannelMonitor | null>(null)
@@ -238,7 +243,6 @@ let abortController: AbortController | null = null
 let searchTimeout: ReturnType<typeof setTimeout> | null = null
 
 const columns = computed<Column[]>(() => [
-  { key: 'sort_order', label: t('admin.channelMonitor.form.sortOrder'), sortable: false },
   { key: 'name', label: t('admin.channelMonitor.columns.name'), sortable: false },
   { key: 'provider', label: t('admin.channelMonitor.columns.provider'), sortable: false },
   { key: 'primary_model', label: t('admin.channelMonitor.columns.primaryModel'), sortable: false },

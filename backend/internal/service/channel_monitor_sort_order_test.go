@@ -3,10 +3,32 @@
 package service
 
 import (
+	"context"
 	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
 )
+
+type monitorOrderRepoStub struct {
+	ChannelMonitorRepository
+	ids []int64
+}
+
+func (r *monitorOrderRepoStub) UpdateSortOrder(_ context.Context, ids []int64) error {
+	r.ids = append([]int64(nil), ids...)
+	return nil
+}
+
+func TestMonitorSortOrderBatchValidation(t *testing.T) {
+	repo := &monitorOrderRepoStub{}
+	svc := NewChannelMonitorService(repo, nil)
+	for _, ids := range [][]int64{nil, {}, {1, 1}, {0}, {-1}, make([]int64, 10001)} {
+		require.ErrorIs(t, svc.UpdateSortOrder(context.Background(), ids), ErrChannelMonitorInvalidOrder)
+		require.Nil(t, repo.ids)
+	}
+	require.NoError(t, svc.UpdateSortOrder(context.Background(), []int64{42, 7, 8}))
+	require.Equal(t, []int64{42, 7, 8}, repo.ids)
+}
 
 func TestMonitorSortOrderValidation(t *testing.T) {
 	for _, order := range []int{0, 10, 2147483647} {
