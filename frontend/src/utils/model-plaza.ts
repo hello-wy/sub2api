@@ -101,9 +101,20 @@ export function plazaV1Status(model: PlazaModel, group: ModelPlazaGroup, monitor
   const historyRange = { start: new Date(now - 7 * 86400000).toISOString(), end: new Date(now).toISOString() }
   const candidates = monitors.filter(row => identity(row.provider) === identity(model.platform)
     && identity(row.group_name) === identity(group.name)
-    && identity(row.primary_model) === identity(model.name))
+    && (identity(row.primary_model) === identity(model.name)
+      || row.extra_models.some(extra => identity(extra.model) === identity(model.name))))
   if (candidates.length !== 1) return { ...unknownPlazaStatus('7d'), historyRange }
   const row = candidates[0]
+  if (identity(row.primary_model) !== identity(model.name)) {
+    const extra = row.extra_models.find(extra => identity(extra.model) === identity(model.name))!
+    // V1 extras expose only current status and latency; never borrow the primary's history/TPS.
+    return {
+      ...unknownPlazaStatus('7d'),
+      health: probeHealth(extra.status),
+      latency: extra.latency_ms,
+      historyRange,
+    }
+  }
   const history = [...row.timeline].sort((a, b) => a.checked_at.localeCompare(b.checked_at))
   return {
     health: probeHealth(row.primary_status),

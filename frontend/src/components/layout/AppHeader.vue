@@ -43,15 +43,16 @@
           <span class="header-tool-label">{{ t('header.qqGroup') }}</span>
         </a>
 
-        <button
-          type="button"
+        <a
+          href="/tutorial/"
+          target="_blank"
+          rel="noopener noreferrer"
           class="header-tool-button header-tool-optional"
-          disabled
-          :title="t('header.tutorialSoon')"
+          :title="t('header.tutorial')"
         >
           <Icon name="book" size="md" />
           <span class="header-tool-label">{{ t('header.tutorial') }}</span>
-        </button>
+        </a>
 
         <!-- Model Plaza Entry -->
         <router-link

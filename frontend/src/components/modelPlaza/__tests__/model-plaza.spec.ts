@@ -80,6 +80,14 @@ describe('plaza monitor identity and units', () => {
     expect(bars[22].health).toBe('unknown')
     expect(bars[23].health).toBe('healthy')
   })
+  it('uses each extra model status without borrowing primary metrics or history', () => {
+    const probe: UserMonitorView = { id:16, name:'Kimi', provider:'kimi', group_name:'Kimi', primary_model:'kimi-k3', primary_status:'failed', primary_latency_ms:500, primary_ping_latency_ms:10, primary_throughput_tps:20, availability_7d:98, extra_models:[{ model:'kimi-k2.8', status:'operational', latency_ms:3206 }], timeline:[{ status:'failed', latency_ms:500, ping_latency_ms:10, checked_at:'2026-09-26T00:00:00Z' }] }
+    const m = model({ platform:'kimi', name:'kimi-k2.8' })
+    const g = group({ name:'Kimi', platform:'kimi' })
+    expect(plazaV1Status(m,g,[probe])).toMatchObject({ health:'healthy', latency:3206, throughput:null, availability:null, updatedAt:null, history:[] })
+    expect(plazaV1Status(m,g,[probe,probe]).health).toBe('unknown')
+    expect(plazaV1Status(m,group({ name:'other', platform:'kimi' }),[probe]).health).toBe('unknown')
+  })
   it('does not borrow ambiguous or ungrouped V1 probe results', () => {
     const probe: UserMonitorView = { id:1, name:'channel', provider:'openai', group_name:'OpenAI 标准', primary_model:'gpt-test', primary_status:'degraded', primary_latency_ms:120, primary_ping_latency_ms:10, primary_throughput_tps:20, availability_7d:98.2, extra_models:[], timeline:[{ status:'operational', latency_ms:100, ping_latency_ms:10, checked_at:'2026-09-26T00:00:00Z' }] }
     expect(plazaV1Status(model(),group(),[probe])).toMatchObject({ health:'warning', availability:98.2, throughput:20, window:'7d' })

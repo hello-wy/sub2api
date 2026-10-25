@@ -77,6 +77,28 @@ function injectPublicSettings(backendUrl: string): Plugin {
   }
 }
 
+/** Match the backend's directory-index serving for the standalone tutorial. */
+function serveTutorialIndex(): Plugin {
+  return {
+    name: 'serve-tutorial-index',
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use((request, response, next) => {
+        const url = new URL(request.url || '/', 'http://localhost')
+        if (url.pathname === '/tutorial') {
+          response.writeHead(302, { Location: `/tutorial/${url.search}` })
+          response.end()
+          return
+        }
+        if (url.pathname === '/tutorial/') {
+          request.url = `/tutorial/index.html${url.search}`
+        }
+        next()
+      })
+    }
+  }
+}
+
 export default defineConfig(({ mode }) => {
   // 加载环境变量
   const env = loadEnv(mode, process.cwd(), '')
@@ -85,6 +107,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [
+      serveTutorialIndex(),
       vue(),
       checker({
         vueTsc: true

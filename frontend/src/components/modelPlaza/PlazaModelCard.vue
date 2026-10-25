@@ -1,7 +1,7 @@
 <template>
   <article class="plaza-model-card" :class="{ 'model-list-row': view === 'list' }" :data-model="activeModel.name" @click="handleCardClick">
     <header class="model-heading">
-      <span class="provider-mark" :style="activeModel.platform === 'deepseek' ? { color: platformAccentColor(activeModel.platform) } : undefined"><PlatformIcon :platform="activeModel.platform" size="lg" /></span>
+      <span class="provider-mark"><PlatformIcon colored :platform="activeModel.platform" size="lg" /></span>
       <div class="model-identity">
         <h3><button type="button" aria-haspopup="dialog" :title="activeModel.name" @click="$emit('details', activeKey)">{{ activeModel.name }}</button></h3>
         <span v-if="priceMode === 'paid'" class="rate-tag" :title="independentImage ? t('modelPlaza.gallery.independentImage') : t('modelPlaza.gallery.rateHint')">{{ t('modelPlaza.filters.rateLabel') }} {{ rate }}×</span>
@@ -54,7 +54,6 @@ import Icon from '@/components/icons/Icon.vue'
 import PlazaStatusFooter from './PlazaStatusFooter.vue'
 import { useClipboard } from '@/composables/useClipboard'
 import { formatScaled } from '@/utils/pricing'
-import { platformAccentColor } from '@/utils/platformColors'
 import { plazaPrices, plazaRate, plazaHasStatusData, type PlazaPriceMode, type PlazaStatus, type PlazaModelVariant } from '@/utils/model-plaza'
 import type { PlazaModel, ModelPlazaGroup } from '@/api/modelPlaza'
 

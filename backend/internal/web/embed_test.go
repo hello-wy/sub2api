@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	"github.com/Wei-Shaw/sub2api/internal/server/middleware"
 	"github.com/gin-gonic/gin"
@@ -21,6 +22,32 @@ import (
 
 func init() {
 	gin.SetMode(gin.TestMode)
+}
+
+func TestFrontendServerStandaloneTutorial(t *testing.T) {
+	dist := fstest.MapFS{
+		"tutorial/index.html":    {Data: []byte(`<h1>SolidAPI tutorial</h1>`)},
+		"tutorial/assets/app.js": {Data: []byte(`const tutorial = true;`)},
+	}
+	server := &FrontendServer{distFS: dist, fileServer: http.FileServer(http.FS(dist))}
+	router := gin.New()
+	router.Use(server.Middleware())
+
+	for _, path := range []string{"/tutorial/", "/tutorial/?client=claude"} {
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, path, nil))
+		assert.Equal(t, http.StatusOK, w.Code)
+		assert.Contains(t, w.Body.String(), "SolidAPI tutorial")
+	}
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/tutorial", nil))
+	assert.Equal(t, http.StatusMovedPermanently, w.Code)
+	assert.Equal(t, "tutorial/", w.Header().Get("Location"))
+
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/tutorial/assets/app.js", nil))
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "const tutorial = true")
 }
 
 func TestInjectSiteTitle(t *testing.T) {

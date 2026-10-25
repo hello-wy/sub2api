@@ -16,7 +16,7 @@
           :disabled="p !== 'all' && !platformEnabled(p)"
           @click="$emit('update:platform', p)"
         >
-          <PlatformIcon v-if="p !== 'all'" :platform="p as GroupPlatform" size="xs" />
+          <PlatformIcon v-if="p !== 'all'" :platform="p as GroupPlatform" colored size="xs" />
           {{ p === 'all' ? t('modelPlaza.filters.all') : p }}
         </button>
       </div>
