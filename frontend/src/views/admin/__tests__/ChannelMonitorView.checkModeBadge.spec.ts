@@ -73,6 +73,7 @@ function makeMonitor(overrides: Partial<ChannelMonitor> = {}): ChannelMonitor {
     primary_model: 'gpt-4o-mini',
     extra_models: [],
     group_name: '',
+    sort_order: 0,
     enabled: true,
     interval_seconds: 60,
     jitter_seconds: 0,

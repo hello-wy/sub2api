@@ -600,6 +600,8 @@ export default {
         extraModelsPlaceholder: 'Press Enter to add extra model',
         groupName: 'Group Name',
         groupNamePlaceholder: 'Optional, used to group rows in user view',
+        sortOrder: 'Display order',
+        sortOrderHint: 'Lower numbers appear first; ties use monitor ID. Changing the order preserves monitoring history.',
         intervalSeconds: 'Interval (seconds)',
         intervalSecondsHint: 'Range: 15 - 3600 seconds',
         jitterSeconds: 'Random Jitter (± seconds)',

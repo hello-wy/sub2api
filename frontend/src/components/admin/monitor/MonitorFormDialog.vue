@@ -154,6 +154,12 @@
       </div>
 
       <div>
+        <label for="monitor-sort-order" class="input-label">{{ t('admin.channelMonitor.form.sortOrder') }}</label>
+        <input id="monitor-sort-order" v-model.number="form.sort_order" type="number" min="0" max="2147483647" step="1" required class="input" />
+        <p class="mt-1 text-xs text-gray-400">{{ t('admin.channelMonitor.form.sortOrderHint') }}</p>
+      </div>
+
+      <div>
         <label class="input-label">{{ t('admin.channelMonitor.form.intervalSeconds') }} <span class="text-red-500">*</span></label>
         <input v-model.number="form.interval_seconds" type="number" min="15" max="3600" required class="input" />
         <p class="mt-1 text-xs text-gray-400">{{ t('admin.channelMonitor.form.intervalSecondsHint') }}</p>
@@ -328,6 +334,7 @@ interface MonitorForm {
   api_key: string
   primary_model: string
   extra_models: string[]
+  sort_order: number
   group_name: string
   interval_seconds: number
   jitter_seconds: number
@@ -349,6 +356,7 @@ const form = reactive<MonitorForm>({
   api_key: '',
   primary_model: '',
   extra_models: [],
+  sort_order: 0,
   group_name: '',
   interval_seconds: systemDefaultInterval.value,
   jitter_seconds: 0,
@@ -736,6 +744,7 @@ function resetForm() {
   form.api_key = ''
   form.primary_model = ''
   form.extra_models = []
+  form.sort_order = 0
   form.group_name = ''
   form.interval_seconds = systemDefaultInterval.value
   form.jitter_seconds = 0
@@ -758,6 +767,7 @@ function loadFromMonitor(m: ChannelMonitor) {
   form.api_key = ''
   form.primary_model = m.primary_model
   form.extra_models = [...(m.extra_models || [])]
+  form.sort_order = m.sort_order ?? 0
   form.group_name = m.group_name || ''
   form.interval_seconds = m.interval_seconds || systemDefaultInterval.value
   form.jitter_seconds = m.jitter_seconds || 0
@@ -826,6 +836,7 @@ function buildPayload(): CreateParams {
     api_key: usesProbePart.value ? form.api_key.trim() : '',
     primary_model: usesProbePart.value ? form.primary_model.trim() : 'quota',
     extra_models: usesProbePart.value ? form.extra_models : [],
+    sort_order: form.sort_order,
     group_name: form.group_name.trim(),
     enabled: form.enabled,
     interval_seconds: form.interval_seconds,

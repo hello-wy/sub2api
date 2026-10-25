@@ -86,6 +86,7 @@ function makeMonitor(overrides: Partial<ChannelMonitor> = {}): ChannelMonitor {
     primary_model: 'gpt-4o-mini',
     extra_models: [],
     group_name: '',
+    sort_order: 0,
     enabled: true,
     interval_seconds: 60,
     jitter_seconds: 0,
@@ -372,5 +373,41 @@ describe('MonitorFormDialog linked account selector', () => {
       check_mode: 'probe',
       account_id: null,
     }))
+  })
+})
+
+describe('MonitorFormDialog display order', () => {
+  beforeEach(() => {
+    listTemplates.mockReset().mockResolvedValue({ items: [] })
+    accountsList.mockReset().mockResolvedValue({ items: [] })
+    monitorCreate.mockReset().mockResolvedValue({})
+    monitorUpdate.mockReset().mockResolvedValue({})
+  })
+
+  it('loads and saves display order using the existing monitor ID', async () => {
+    const wrapper = mountDialog(makeMonitor({ sort_order: 30 }))
+    await flushPromises()
+    expect((wrapper.get('#monitor-sort-order').element as HTMLInputElement).value).toBe('30')
+    await wrapper.get('#monitor-sort-order').setValue('10')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    expect(monitorUpdate).toHaveBeenCalledWith(42, expect.objectContaining({ sort_order: 10 }))
+    expect(monitorCreate).not.toHaveBeenCalled()
+  })
+
+  it('allows resetting the display order to zero', async () => {
+    const wrapper = mountDialog(makeMonitor({ sort_order: 30 }))
+    await flushPromises()
+    await wrapper.get('#monitor-sort-order').setValue('0')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    expect(monitorUpdate).toHaveBeenCalledWith(42, expect.objectContaining({ sort_order: 0 }))
+  })
+
+  it('resets display order when opening a new monitor', async () => {
+    const wrapper = mountDialog(makeMonitor({ sort_order: 30 }))
+    await flushPromises()
+    await wrapper.setProps({ monitor: null })
+    expect((wrapper.get('#monitor-sort-order').element as HTMLInputElement).value).toBe('0')
   })
 })

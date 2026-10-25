@@ -77,6 +77,10 @@ func (ChannelMonitor) Fields() []ent.Field {
 			MaxLen(100),
 		field.Bool("enabled").
 			Default(true),
+		field.Int("sort_order").
+			Default(0).
+			Range(0, 2147483647).
+			Comment("Display order, ascending; ties are ordered by monitor ID"),
 		field.Int("interval_seconds").
 			Range(15, 3600),
 		field.Int("jitter_seconds").

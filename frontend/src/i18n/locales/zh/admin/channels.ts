@@ -600,6 +600,8 @@ export default {
         extraModelsPlaceholder: '回车添加附加模型',
         groupName: '分组名称',
         groupNamePlaceholder: '可选，用于在用户视图中聚合显示',
+        sortOrder: '显示顺序',
+        sortOrderHint: '数值越小越靠前；相同时按监控 ID 排序。修改顺序会保留现有监测历史。',
         intervalSeconds: '检测间隔 (秒)',
         intervalSecondsHint: '范围：15 - 3600 秒',
         jitterSeconds: '随机抖动 (± 秒)',
