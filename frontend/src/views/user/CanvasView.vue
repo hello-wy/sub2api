@@ -8,7 +8,7 @@
       <p v-else-if="!loading && !frameUrl" role="alert" class="text-sm text-red-500">画布地址无效，请在功能开关中检查画布地址。</p>
       <p v-else-if="!loading && !keys.length" class="text-sm">没有可用于画布的 API Key，请在密钥管理中配置有效密钥及分组。</p>
       <iframe v-if="canvas.settings.enabled && frameUrl && selectedKeyId && !loading" :key="frameVersion" ref="frame" :src="frameUrl"
-        title="无限画布" class="min-h-0 w-full flex-1 border-0" allowfullscreen referrerpolicy="origin" />
+        title="无限画布" class="min-h-0 w-full flex-1 border-0" allowfullscreen referrerpolicy="origin" @load="syncTheme" />
       <BaseDialog :show="showKeyPicker" :title="keyPickerTitle" width="normal" @close="closeKeyPicker">
         <p class="text-sm text-gray-500 dark:text-gray-400">{{ selectedKeyId ? '确认后将重新连接画布，请先结束正在进行的生成或 Agent 对话。已提交的生成任务不保证取消。' : '请选择你自己的有效 API Key，之后会记住本次选择。' }}</p>
         <p class="mt-3 break-all text-xs text-gray-500 dark:text-gray-400">API 站点：{{ configuredBaseUrl }}（管理员统一设置）</p>
@@ -80,6 +80,7 @@ const pickerError = ref('')
 const frameVersion = ref(0)
 let version = 0
 let pickerVersion = 0
+let themeObserver: MutationObserver | null = null
 const initialTheme = detectTheme()
 const initialLocale = locale.value
 const configuredBaseUrl = computed(() => (canvas.settings.effective_api_base_url || buildGatewayUrl('/')).replace(/\/+$/, ''))
@@ -87,6 +88,10 @@ const frameUrl = computed(() => {
   try { const url = canvas.settings.url; return url ? buildCanvasUrl(url, initialTheme, initialLocale) : '' }
   catch { return '' }
 })
+
+function syncTheme() {
+  if (frameUrl.value) frame.value?.contentWindow?.postMessage({ protocol: CANVAS_PROTOCOL, type: 'theme', theme: detectTheme() }, new URL(frameUrl.value).origin)
+}
 
 async function fetchAvailableKeys(): Promise<ApiKey[]> {
   const all: ApiKey[] = []
@@ -205,7 +210,7 @@ async function onMessage(event: MessageEvent) {
       return { apiKey: key.apiKey, keyId: key.keyId, keyName: key.keyName }
     }
     error.value = ''
-    target?.postMessage({ protocol: CANVAS_PROTOCOL, type: 'session', requestId: request.requestId, session: { ...session, baseUrl, imageKey: sessionKey(imageId), textKey: sessionKey(textId) } }, event.origin)
+    target?.postMessage({ protocol: CANVAS_PROTOCOL, type: 'session', requestId: request.requestId, theme: detectTheme(), session: { ...session, baseUrl, imageKey: sessionKey(imageId), textKey: sessionKey(textId) } }, event.origin)
   } catch {
     if (requestVersion !== version || selectedId !== selectedKeyId.value || target !== frame.value?.contentWindow) return
     error.value = '画布身份验证失败，请检查画布开关、登录状态和所选密钥，或重新选择密钥。'
@@ -258,11 +263,14 @@ watch(() => auth.user?.role, (role, previousRole) => {
 watch(() => canvas.settings.enabled, enabled => { if (!enabled) { invalidateFrame(); closeKeyPicker() } })
 function refreshSettings() { if (auth.user?.id) void canvas.fetchSettings().catch(() => {}) }
 onMounted(() => {
+  themeObserver = new MutationObserver(syncTheme)
+  themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
   window.addEventListener('message', onMessage)
   window.addEventListener('focus', refreshSettings)
   void initialize()
 })
 onUnmounted(() => {
+  themeObserver?.disconnect()
   version++
   pickerVersion++
   window.removeEventListener('message', onMessage)
