@@ -3025,3 +3025,7 @@ var (
 	_ service.UsageLogRepository         = (*stubUsageLogRepo)(nil)
 	_ service.SettingRepository          = (*stubSettingRepo)(nil)
 )
+
+func (s *stubAccountRepo) CountByPlatform(context.Context) ([]service.AccountPlatformCount, error) {
+	return []service.AccountPlatformCount{}, nil
+}

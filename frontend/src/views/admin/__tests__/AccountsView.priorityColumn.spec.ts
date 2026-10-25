@@ -10,6 +10,7 @@ const { listAccounts } = vi.hoisted(() => ({
 vi.mock('@/api/admin', () => ({
   adminAPI: {
     accounts: {
+      getPlatformCounts: vi.fn(async () => []),
       list: listAccounts,
       listWithEtag: vi.fn(),
       getBatchTodayStats: vi.fn().mockResolvedValue({ stats: {} }),

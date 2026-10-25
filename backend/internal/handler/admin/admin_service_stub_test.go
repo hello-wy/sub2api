@@ -837,3 +837,7 @@ var _ service.AdminService = (*stubAdminService)(nil)
 func (s *stubAdminService) ListCodexGateways(context.Context) ([]string, error) {
 	return []string{}, nil
 }
+
+func (s *stubAdminService) GetAccountPlatformCounts(context.Context) ([]service.AccountPlatformCount, error) {
+	return []service.AccountPlatformCount{}, nil
+}

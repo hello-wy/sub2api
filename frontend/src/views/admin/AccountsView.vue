@@ -161,6 +161,12 @@
             </template>
           </AccountTableActions>
         </div>
+        <AccountProviderFilters
+          v-model="params.platform"
+          class="mt-3"
+          :platform-counts="accountPlatformCounts"
+          @change="debouncedReload"
+        />
         <div
           v-if="hasPendingListSync"
           class="mt-2 flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-700/40 dark:bg-amber-900/20 dark:text-amber-200"
@@ -558,6 +564,7 @@ import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import { CreateAccountModal, EditAccountModal, BulkEditAccountModal, SyncFromCrsModal, TempUnschedStatusModal } from '@/components/account'
 import AccountTableActions from '@/components/admin/account/AccountTableActions.vue'
 import AccountTableFilters from '@/components/admin/account/AccountTableFilters.vue'
+import AccountProviderFilters from '@/components/admin/account/AccountProviderFilters.vue'
 import AccountBulkActionsBar from '@/components/admin/account/AccountBulkActionsBar.vue'
 import AccountActionMenu from '@/components/admin/account/AccountActionMenu.vue'
 import ImportDataModal from '@/components/admin/account/ImportDataModal.vue'
@@ -1213,7 +1220,24 @@ type AccountLoadOptions = {
   refreshTodayStats?: boolean
 }
 
+const accountPlatformCounts = ref<import('@/api/admin/accounts').AccountPlatformCount[]>([])
+let platformCountsController: AbortController | null = null
+const refreshAccountPlatformCounts = async () => {
+  platformCountsController?.abort()
+  const controller = new AbortController()
+  platformCountsController = controller
+  try {
+    const counts = await adminAPI.accounts.getPlatformCounts({ signal: controller.signal })
+    if (!controller.signal.aborted) accountPlatformCounts.value = counts
+  } catch (error) {
+    if (!controller.signal.aborted) console.error('Failed to load account provider counts:', error)
+  } finally {
+    if (platformCountsController === controller) platformCountsController = null
+  }
+}
+
 const load = async (options: AccountLoadOptions = {}) => {
+  void refreshAccountPlatformCounts()
   const requestParams = params as any
   syncAccountListDerivedParams()
   hasPendingListSync.value = false
@@ -1225,6 +1249,7 @@ const load = async (options: AccountLoadOptions = {}) => {
 }
 
 const reload = async () => {
+  void refreshAccountPlatformCounts()
   syncAccountListDerivedParams()
   hasPendingListSync.value = false
   resetAutoRefreshCache()
@@ -1500,6 +1525,7 @@ const refreshAccountsIncrementally = async () => {
   if (autoRefreshFetching.value) return
   syncAccountListDerivedParams()
   autoRefreshFetching.value = true
+  void refreshAccountPlatformCounts()
   try {
     const result = await adminAPI.accounts.listWithEtag(
       pagination.page,
@@ -2672,6 +2698,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  platformCountsController?.abort()
   upstreamBillingRateAbortController?.abort()
   if (usageBatchFlushTimer !== null) {
     clearTimeout(usageBatchFlushTimer)

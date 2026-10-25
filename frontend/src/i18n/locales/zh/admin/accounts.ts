@@ -1,5 +1,6 @@
 export default {
     accounts: {
+      providerShortcuts: '快捷切换供应商',
       codexGateway: {
         label: "Codex 请求出口",
         official: "官方直连（默认）",

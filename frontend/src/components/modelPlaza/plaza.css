@@ -1,0 +1,30 @@
+.plaza-gallery, .plaza-model-details {
+  --plaza-ink: #182235;
+  --plaza-muted: #68758a;
+  --plaza-blue: #2563eb;
+  --plaza-green: #118463;
+  --plaza-amber: #a66a0a;
+  --plaza-red: #d43d51;
+  --plaza-line: #e4e8ef;
+  --plaza-soft-line: #eef0f4;
+  --plaza-hover-line: #b6c7e2;
+  --plaza-surface: #fff;
+  --plaza-subtle: #f8f9fc;
+  --plaza-selected: #eef4ff;
+  --plaza-numbers: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+  color: var(--plaza-ink);
+}
+.dark .plaza-gallery, .dark .plaza-model-details {
+  --plaza-ink: #e4eaf4;
+  --plaza-muted: #97a4b8;
+  --plaza-blue: #82adff;
+  --plaza-green: #5bd3ae;
+  --plaza-amber: #ecc16d;
+  --plaza-red: #ff92a1;
+  --plaza-line: #2c374b;
+  --plaza-soft-line: #263145;
+  --plaza-hover-line: #4c6386;
+  --plaza-surface: #182132;
+  --plaza-subtle: #141d2c;
+  --plaza-selected: #223650;
+}

@@ -1,8 +1,14 @@
 <template>
-  <div class="plaza-gallery">
-    <header v-if="!embedded" class="plaza-page-title">
+  <div class="plaza-gallery" :class="{ 'plaza-embedded': embedded }">
+    <header class="plaza-page-title">
+      <span class="plaza-eyebrow">MODEL LIBRARY</span>
       <h1>{{ t('modelPlaza.title') }}</h1>
-      <p>{{ t('modelPlaza.description') }}</p>
+      <p>{{ t('modelPlaza.gallery.catalogDescription') }}</p>
+      <div v-if="!loading && !error" class="catalog-stats">
+        <span><strong>{{ modelCount(entries) }}</strong> {{ t('modelPlaza.gallery.modelsLabel') }}</span>
+        <span><strong>{{ providerOptions.length - 1 }}</strong> {{ t('modelPlaza.gallery.providers') }}</span>
+        <span><strong>{{ nonEmptyGroups.length }}</strong> {{ t('modelPlaza.gallery.groupsLabel') }}</span>
+      </div>
     </header>
     <div class="plaza-workspace">
       <aside class="plaza-filters">
@@ -15,7 +21,6 @@
         </div>
         <div id="plaza-filter-groups" :class="{ 'filters-closed': !filtersOpen }">
           <PlazaFilterSection v-model="platform" :title="t('modelPlaza.gallery.providers')" :options="providerOptions" />
-          <PlazaFilterSection v-model="tag" :title="t('modelPlaza.gallery.tags')" :options="tagOptions" />
           <PlazaFilterSection v-model="groupId" :title="t('modelPlaza.gallery.groups')" :options="groupOptions">
             <label v-if="rates.length > 1" class="rate-filter">
               <span>{{ t('modelPlaza.filters.rateLabel') }}</span>
@@ -23,26 +28,40 @@
             </label>
           </PlazaFilterSection>
           <PlazaFilterSection v-model="billing" :title="t('modelPlaza.gallery.billing')" :options="billingOptions" />
-          <PlazaFilterSection v-model="health" :title="t('modelPlaza.gallery.channelStatus')" :options="healthOptions" />
         </div>
       </aside>
 
       <section class="plaza-results" :aria-label="t('modelPlaza.title')" :aria-busy="loading">
-        <div class="plaza-toolbar">
-          <label class="plaza-search">
-            <Icon name="search" size="sm" />
-            <input v-model="search" type="search" :placeholder="t('modelPlaza.gallery.search')" :aria-label="t('modelPlaza.filters.searchPlaceholder')" />
-            <span class="result-count" aria-live="polite" :title="t('modelPlaza.gallery.allModels')"><span class="sr-only">{{ t('modelPlaza.gallery.allModels') }}</span>{{ filtered.length }}</span>
-          </label>
-          <div class="price-switch" role="group" :aria-label="t('modelPlaza.gallery.priceMode')">
-            <button v-for="mode in (['paid', 'official'] as const)" :key="mode" type="button" :aria-pressed="priceMode === mode" :class="{ active: priceMode === mode }" @click="priceMode = mode">{{ t('modelPlaza.gallery.' + mode) }}</button>
+        <div class="plaza-catalog-header">
+          <PlazaProviderBanner
+            :platform="platform"
+            :title="platform === 'all' ? t('modelPlaza.gallery.allModels') : platformLabel(platform)"
+            :count="filtered.length"
+            :loading="loading"
+            :error="error"
+          />
+          <div class="plaza-toolbar">
+            <label class="plaza-search">
+              <Icon name="search" size="md" />
+              <input v-model="search" type="search" :placeholder="t('modelPlaza.gallery.search')" :aria-label="t('modelPlaza.filters.searchPlaceholder')" />
+            </label>
+            <label class="sort-control">
+              <span class="sr-only">{{ t('modelPlaza.gallery.sortLabel') }}</span>
+              <select v-model="sort"><option value="name">{{ t('modelPlaza.gallery.sortName') }}</option><option value="price">{{ t('modelPlaza.gallery.sortPrice') }}</option></select>
+            </label>
+            <div class="price-switch" role="group" :aria-label="t('modelPlaza.gallery.priceMode')">
+              <button v-for="mode in (['paid', 'official'] as const)" :key="mode" type="button" :aria-pressed="priceMode === mode" :class="{ active: priceMode === mode }" @click="priceMode = mode">{{ t('modelPlaza.gallery.' + mode) }}</button>
+            </div>
+            <button class="billing-help-button" type="button" aria-haspopup="dialog" @click="showHelp = true"><Icon name="infoCircle" size="xs" /> {{ t('modelPlaza.gallery.help') }}</button>
+            <div class="view-switch" role="group" :aria-label="t('modelPlaza.gallery.view')">
+              <button v-for="mode in (['grid', 'list'] as const)" :key="mode" type="button" :class="{ active: view === mode }" :aria-pressed="view === mode" :aria-label="t('modelPlaza.gallery.' + mode)" :title="t('modelPlaza.gallery.' + mode)" @click="view = mode">
+                <Icon :name="mode" size="sm" /><span>{{ t('modelPlaza.gallery.' + mode + 'Label') }}</span>
+              </button>
+            </div>
           </div>
-          <button class="billing-help-button" type="button" aria-haspopup="dialog" @click="showHelp = true"><Icon name="infoCircle" size="xs" /> {{ t('modelPlaza.gallery.help') }}</button>
-          <div class="view-switch" role="group" :aria-label="t('modelPlaza.gallery.view')">
-            <button v-for="mode in (['grid', 'list'] as const)" :key="mode" type="button" :class="{ active: view === mode }" :aria-pressed="view === mode" :aria-label="t('modelPlaza.gallery.' + mode)" :title="t('modelPlaza.gallery.' + mode)" @click="view = mode">
-              <Icon :name="mode" size="sm" /><span>{{ t('modelPlaza.gallery.' + mode + 'Label') }}</span>
-            </button>
-          </div>
+        </div>
+        <div v-if="activeFilters.length" class="active-filters">
+          <button v-for="filter in activeFilters" :key="filter.key" type="button" @click="filter.clear()" :aria-label="t('modelPlaza.gallery.removeFilter', { label: filter.label })">{{ filter.label }}<Icon name="x" size="xs" /></button>
         </div>
         <PlazaBillingGuide :show="showHelp" :entries="entries" @close="showHelp = false">
           <div v-if="descriptionHtml" class="plaza-description" v-html="descriptionHtml"></div>
@@ -61,7 +80,7 @@
         </div>
         <template v-else-if="filtered.length">
           <div class="plaza-card-grid" :class="{ 'list-view': view === 'list' }">
-            <PlazaModelCard v-for="item in pageItems" :key="item.key" :model="item.model" :group="item.group" :price-mode="priceMode" :view="view" :status="item.status" :show-throughput="showThroughput" />
+            <PlazaModelCard v-for="item in pageItems" :key="item.key" :model="item.model" :group="item.group" :variants="item.variants" :price-mode="priceMode" :view="view" :status="item.status" :show-throughput="true" @details="openDetails(item, $event)" />
           </div>
           <Pagination v-if="filtered.length > pageSize" v-model:page="page" class="plaza-pagination" :total="filtered.length" :page-size="pageSize" :show-page-size-selector="false" />
         </template>
@@ -71,6 +90,7 @@
         </div>
       </section>
     </div>
+    <PlazaModelDetails :variants="detailVariants" :selected-key="detailKey" :price-mode="priceMode" :show-throughput="true" @close="detailVariantKeys = []" />
   </div>
 </template>
 
@@ -83,13 +103,15 @@ import Icon from '@/components/icons/Icon.vue'
 import Pagination from '@/components/common/Pagination.vue'
 import PlazaFilterSection, { type PlazaFilterOption } from './PlazaFilterSection.vue'
 import PlazaModelCard from './PlazaModelCard.vue'
+import PlazaProviderBanner from './PlazaProviderBanner.vue'
+import PlazaModelDetails from './PlazaModelDetails.vue'
+import './plaza.css'
 import PlazaBillingGuide from './PlazaBillingGuide.vue'
 import { useAuthStore } from '@/stores/auth'
 import { usePlazaStatus } from '@/composables/usePlazaStatus'
-import { isChannelMonitorThroughputHidden } from '@/utils/featureFlags'
-import { plazaRate, type PlazaPriceMode } from '@/utils/model-plaza'
+import { plazaRate, plazaPrices, type PlazaPriceMode, type PlazaModelVariant } from '@/utils/model-plaza'
 import { platformLabel } from '@/utils/platformColors'
-import type { ModelPlazaResponse, PlazaModel, ModelPlazaGroup } from '@/api/modelPlaza'
+import type { ModelPlazaResponse } from '@/api/modelPlaza'
 
 const props = defineProps<{ response: ModelPlazaResponse | null; loading: boolean; error?: boolean; embedded?: boolean }>()
 defineEmits<{ retry: [] }>()
@@ -97,114 +119,148 @@ const { t } = useI18n()
 const auth = useAuthStore()
 const isAuthenticated = computed(() => auth.isAuthenticated)
 const monitor = usePlazaStatus()
-const showThroughput = computed(() => !isChannelMonitorThroughputHidden())
-const platform = ref('all'), groupId = ref('all'), tag = ref('all'), rate = ref('all'), billing = ref('all'), health = ref('all')
+const platform = ref('all'), groupId = ref('all'), rate = ref('all'), billing = ref('all')
 const search = ref(''), view = ref<'grid' | 'list'>('grid'), priceMode = ref<PlazaPriceMode>('paid')
 const filtersOpen = ref(false), showHelp = ref(false), page = ref(1)
 const pageSize = 12
+const sort = ref<'name' | 'price'>('name')
+const detailVariantKeys = ref<string[]>([])
+const detailVariants = computed(() => detailVariantKeys.value.map(key => entries.value.find(entry => entry.key === key)).filter((entry): entry is PlazaEntry => !!entry))
+const detailKey = ref('')
+function openDetails(item: DisplayEntry, key: string) { detailVariantKeys.value = item.variants.map(variant => variant.key); detailKey.value = key }
 const descriptionHtml = computed(() => {
   const md = props.response?.description?.trim()
   return md ? DOMPurify.sanitize(marked.parse(md) as string) : ''
 })
-function tags(model: PlazaModel, group: ModelPlazaGroup) {
-  return [
-    ...(model.pricing?.intervals && model.pricing.intervals.length > 1 ? ['tiered'] : []),
-    ...(model.time_pricing?.periods.length ? ['timePricing'] : []),
-    ...(group.is_exclusive ? ['exclusive'] : []),
-    ...(group.subscription_type === 'subscription' ? ['subscription'] : []),
-  ]
-}
-const entries = computed(() => (props.response?.groups ?? []).flatMap(group => group.models.map(model => ({
+type PlazaEntry = PlazaModelVariant & { billing: string }
+const entries = computed<PlazaEntry[]>(() => (props.response?.groups ?? []).flatMap(group => group.models.map(model => ({
   key: JSON.stringify([group.id, model.platform, model.name]), group, model,
-  tags: tags(model, group), billing: model.pricing?.billing_mode ?? 'token',
+  billing: model.pricing?.billing_mode ?? 'token',
   status: monitor.statusFor(model, group),
 }))))
-const allOption = (label: string, count = entries.value.length): PlazaFilterOption => ({ value:'all', label:t('modelPlaza.gallery.' + label), badge:count })
+const modelIdentity = (entry: PlazaEntry) => `${entry.model.platform.trim().normalize('NFKC').toLowerCase()}\u0000${entry.model.name.trim().normalize('NFKC').toLowerCase()}`
+const modelCount = (items: PlazaEntry[]) => new Set(items.map(modelIdentity)).size
+const nonEmptyGroups = computed(() => (props.response?.groups ?? []).filter(group => group.models.length))
+type DisplayEntry = PlazaEntry & { variants: PlazaEntry[] }
+function entryPrice(entry: PlazaEntry) {
+  const prices = plazaPrices(entry.model, entry.group, priceMode.value)[0]
+  return prices.request ?? prices.input ?? prices.output ?? Number.POSITIVE_INFINITY
+}
+function representative(a: PlazaEntry, b: PlazaEntry) {
+  return entryPrice(a) - entryPrice(b) || plazaRate(a.group, a.model) - plazaRate(b.group, b.model)
+    || a.group.name.localeCompare(b.group.name) || a.key.localeCompare(b.key)
+}
+const visibleEntries = computed<DisplayEntry[]>(() => {
+  const q = search.value.trim().toLowerCase()
+  const matching = entries.value.filter(e =>
+    (platform.value === 'all' || e.model.platform === platform.value)
+    && (groupId.value === 'all' || String(e.group.id) === groupId.value)
+    && (billing.value === 'all' || e.billing === billing.value)
+    && (rate.value === 'all' || String(plazaRate(e.group)) === rate.value)
+    && (!q || [e.model.name, e.group.name, platformLabel(e.model.platform)].some(v => v.toLowerCase().includes(q))))
+  if (groupId.value !== 'all') return matching.map(item => ({ ...item, variants: [item] }))
+  const grouped = new Map<string, PlazaEntry[]>()
+  for (const item of matching) {
+    const identity = modelIdentity(item)
+    grouped.set(identity, [...(grouped.get(identity) ?? []), item])
+  }
+  return [...grouped.values()].map(items => {
+    const sorted = [...items].sort(representative)
+    return { ...sorted[0], key: `model:${modelIdentity(sorted[0])}`, variants: sorted }
+  })
+})
+const allOption = (label: string, count = modelCount(entries.value)): PlazaFilterOption => ({ value:'all', label:t('modelPlaza.gallery.' + label), badge:count })
 const providerOptions = computed(() => [allOption('allProviders'), ...[...new Set(entries.value.map(e => e.model.platform))].sort().map(value => ({
-  value, label:platformLabel(value), platform:value, badge:entries.value.filter(e => e.model.platform === value).length,
+  value, label:platformLabel(value), platform:value, badge:modelCount(entries.value.filter(e => e.model.platform === value)),
 }))])
 const providerEntries = computed(() => entries.value.filter(e => platform.value === 'all' || e.model.platform === platform.value))
 const availableGroups = computed(() => {
   const ids = new Set(providerEntries.value.map(e => e.group.id))
   return (props.response?.groups ?? []).filter(g => ids.has(g.id))
 })
-const groupOptions = computed(() => [allOption('allGroups', providerEntries.value.length), ...availableGroups.value.map(g => ({ value:String(g.id), label:g.name, badge:'×' + plazaRate(g) }))])
-const tagOptions = computed(() => [allOption('allTags'), ...['tiered','timePricing','exclusive','subscription'].filter(value => entries.value.some(e => e.tags.includes(value))).map(value => ({ value, label:t('modelPlaza.gallery.' + value), badge:entries.value.filter(e => e.tags.includes(value)).length }))])
-const billingOptions = computed(() => [allOption('allBilling'), ...[...new Set(entries.value.map(e => e.billing))].map(value => ({ value, label:t('modelPlaza.gallery.billingModes.' + value), badge:entries.value.filter(e => e.billing === value).length }))])
-const healthOptions = computed(() => [allOption('allStatus'), ...['healthy','warning','critical','unknown'].map(value => ({ value, label:t('modelPlaza.gallery.health.' + value), badge:entries.value.filter(e => e.status.health === value).length }))])
+const groupOptions = computed(() => [allOption('allGroups', modelCount(providerEntries.value)), ...availableGroups.value.map(g => ({ value:String(g.id), label:g.name, badge:'×' + plazaRate(g) }))])
+const billingOptions = computed(() => [allOption('allBilling'), ...[...new Set(entries.value.map(e => e.billing))].map(value => ({ value, label:t('modelPlaza.gallery.billingModes.' + value), badge:modelCount(entries.value.filter(e => e.billing === value)) }))])
 const rates = computed(() => [...new Set(availableGroups.value.map(g => plazaRate(g)))].sort((a,b) => a-b))
-const filtered = computed(() => {
-  const q = search.value.trim().toLowerCase()
-  const list = entries.value.filter(e =>
-    (platform.value === 'all' || e.model.platform === platform.value)
-    && (groupId.value === 'all' || String(e.group.id) === groupId.value)
-    && (tag.value === 'all' || e.tags.includes(tag.value))
-    && (billing.value === 'all' || e.billing === billing.value)
-    && (rate.value === 'all' || String(plazaRate(e.group)) === rate.value)
-    && (health.value === 'all' || e.status.health === health.value)
-    && (!q || [e.model.name, e.group.name, platformLabel(e.model.platform)].some(v => v.toLowerCase().includes(q))))
-  return list.sort((a,b) => plazaRate(a.group) - plazaRate(b.group) || a.group.name.localeCompare(b.group.name) || a.model.name.localeCompare(b.model.name))
+const filtered = computed(() => [...visibleEntries.value].sort((a,b) =>
+  (sort.value === 'price' ? representative(a, b) : 0)
+  || a.model.name.localeCompare(b.model.name, undefined, { numeric: true }) || a.model.platform.localeCompare(b.model.platform)))
+const activeFilters = computed(() => {
+  const sections = [
+    { key: 'platform', selected: platform, options: providerOptions },
+    { key: 'group', selected: groupId, options: groupOptions },
+    { key: 'billing', selected: billing, options: billingOptions },
+  ]
+  const chips = sections.filter(section => section.selected.value !== 'all').map(section => ({
+    key: section.key, label: section.options.value.find(option => option.value === section.selected.value)?.label ?? section.selected.value,
+    clear: () => { section.selected.value = 'all' },
+  }))
+  if (rate.value !== 'all') chips.push({ key: 'rate', label: `${rate.value}×`, clear: () => { rate.value = 'all' } })
+  if (search.value.trim()) chips.push({ key: 'search', label: search.value.trim(), clear: () => { search.value = '' } })
+  return chips
 })
 const pageItems = computed(() => filtered.value.slice((page.value - 1) * pageSize,page.value * pageSize))
-watch([search,platform,groupId,tag,rate,billing,health,priceMode], () => { page.value = 1 })
+watch([search,platform,groupId,rate,billing,priceMode,sort], () => { page.value = 1 })
 watch(() => filtered.value.length, count => { page.value = Math.min(page.value, Math.max(1,Math.ceil(count/pageSize))) })
-watch([providerOptions,groupOptions,tagOptions,billingOptions,rates], () => {
-  for (const [selected, options] of [[platform,providerOptions],[groupId,groupOptions],[tag,tagOptions],[billing,billingOptions]] as const) {
+watch([providerOptions,groupOptions,billingOptions,rates], () => {
+  for (const [selected, options] of [[platform,providerOptions],[groupId,groupOptions],[billing,billingOptions]] as const) {
     if (!options.value.some(o => o.value === selected.value)) selected.value = 'all'
   }
   if (rate.value !== 'all' && !rates.value.includes(Number(rate.value))) rate.value = 'all'
 })
-function reset() { platform.value = groupId.value = tag.value = rate.value = billing.value = health.value = 'all'; search.value = ''; page.value = 1 }
+function reset() { platform.value = groupId.value = rate.value = billing.value = 'all'; search.value = ''; page.value = 1 }
 </script>
 
 <style scoped>
-.plaza-gallery { --plaza-ink:#263c56; --plaza-muted:#75869d; --plaza-blue:#1677ff; --plaza-line:#e1e7ef; --plaza-rail:#fff; --plaza-selected:#f0f3f7; --plaza-button:rgb(255 255 255 / .8); --plaza-glass:linear-gradient(135deg,rgb(255 255 255 / .82),rgb(255 255 255 / .58)); --plaza-glass-edge:rgb(255 255 255 / .92); color:var(--plaza-ink); }
-.plaza-page-title { margin-bottom:1.5rem; } .plaza-page-title h1 { font-size:1.65rem; font-weight:700; letter-spacing:-.035em; } .plaza-page-title p { margin-top:.35rem; color:var(--plaza-muted); font-size:.85rem; }
-.plaza-workspace { display:grid; grid-template-columns:20rem minmax(0,1fr); border:1px solid var(--plaza-glass-edge); border-radius:1.3rem; overflow:hidden; background:radial-gradient(ellipse at 38% 30%,rgb(171 204 249 / .43),transparent 65%),radial-gradient(ellipse at 100% 85%,rgb(173 225 229 / .33),transparent 60%),#f1f6fc; }
-.plaza-filters { padding:1.4rem 1.25rem; background:var(--plaza-rail); }
-.plaza-filters, .plaza-filters :deep(*) { @apply font-sans; }
-.filters-heading { display:flex; align-items:center; justify-content:space-between; padding-bottom:1rem; border-bottom:1px solid var(--plaza-line); }
-.desktop-filter-title { font-size:1.2rem; font-weight:650; color:var(--plaza-ink); }
-.filters-toggle { display:none; align-items:center; gap:.5rem; color:var(--plaza-ink); font-size:1.2rem; font-weight:650; }
-.reset-filters { font-size:.875rem; font-weight:500; color:var(--plaza-muted); } .reset-filters:hover { color:var(--plaza-blue); }
+.plaza-page-title { padding:1.25rem 1rem 2.25rem; text-align:center; }
+.plaza-eyebrow { display:block; margin-bottom:.8rem; font-family:var(--plaza-numbers); color:var(--plaza-blue); font-size:.62rem; font-weight:500; letter-spacing:.18em; }
+.plaza-page-title h1 { font-size:clamp(1.75rem,3vw,2.65rem); line-height:1.2; font-weight:700; letter-spacing:-.045em; }
+.plaza-page-title>p { margin:.85rem auto 0; max-width:38rem; color:var(--plaza-muted); font-size:.85rem; line-height:1.8; }
+.catalog-stats { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:.6rem 1.3rem; margin-top:.9rem; color:var(--plaza-muted); font-size:.7rem; }
+.catalog-stats>span+span { border-left:1px solid var(--plaza-line); padding-left:1.3rem; }
+.catalog-stats strong { color:var(--plaza-ink); font-family:var(--plaza-numbers); font-weight:600; margin-right:.2rem; }
+.plaza-search { display:flex; flex:1 1 16rem; align-items:center; gap:.5rem; min-width:0; padding:0 .75rem; height:2.25rem; border-radius:.65rem; border:1px solid transparent; background:var(--plaza-subtle); color:var(--plaza-muted); }
+.plaza-search input { width:100%; min-width:0; height:100%; border:0; background:transparent; font-size:.8rem; color:var(--plaza-ink); outline:none; box-shadow:none; padding:0; }
+.plaza-search:focus-within { border-color:var(--plaza-blue); outline:3px solid var(--plaza-selected); }
+.plaza-workspace { display:grid; grid-template-columns:18.5rem minmax(0,1fr); gap:1.5rem; align-items:start; }
+.plaza-filters { min-width:0; padding:1rem .85rem 1.25rem; border:1px solid var(--plaza-line); border-radius:1rem; background:var(--plaza-surface); }
+.filters-heading { display:flex; align-items:center; justify-content:space-between; padding-bottom:1.1rem; border-bottom:1px solid var(--plaza-soft-line); }
+.desktop-filter-title { font-size:1rem; font-weight:650; }
+.filters-toggle { display:none; align-items:center; gap:.5rem; color:var(--plaza-ink); font-size:.85rem; font-weight:600; }
+.reset-filters { font-size:.75rem; color:var(--plaza-muted); } .reset-filters:hover { color:var(--plaza-blue); }
 .mobile-chevron { display:none; }
-.rate-filter { display:flex; gap:.5rem; align-items:center; justify-content:space-between; margin-top:.75rem; font-size:.8125rem; color:var(--plaza-muted); }
-.rate-filter select { max-width:65%; padding:.3rem; border-radius:.4rem; border:1px solid var(--plaza-line); background:var(--plaza-button); }
-.plaza-results { container:plaza-results / inline-size; padding:1.3rem; min-width:0; }
-.plaza-toolbar { display:flex; gap:.5rem; align-items:center; margin-bottom:1rem; }
-.plaza-search { display:flex; flex:1 1 10rem; min-width:0; gap:.6rem; align-items:center; padding:0 .85rem; height:2.5rem; border-radius:.75rem; border:1px solid var(--plaza-glass-edge); background:var(--plaza-button); color:var(--plaza-muted); }
-.plaza-search input { width:100%; min-width:0; border:0; background:transparent; font-size:.8rem; color:var(--plaza-ink); outline:none; box-shadow:none; padding:0; }
-.plaza-search:focus-within { outline:2px solid #1677ff; outline-offset:2px; }
-.price-switch { display:flex; height:2.5rem; align-items:center; flex-shrink:0; padding:.25rem; background:var(--plaza-button); border:1px solid var(--plaza-glass-edge); border-radius:.75rem; }
-.price-switch button { padding:.45rem .7rem; font-size:.76rem; border-radius:.5rem; color:var(--plaza-muted); font-weight:600; white-space:nowrap; }
-.price-switch .active { background:#1677ff; color:white; box-shadow:0 3px 7px rgb(22 119 255 / .14); }
-.billing-help-button { display:flex; align-items:center; justify-content:center; flex-shrink:0; gap:.4rem; height:2.5rem; padding:0 .85rem; white-space:nowrap; border:1px solid #c6dcff; border-radius:.7rem; color:#1265db; background:#fff; box-shadow:0 2px 7px rgb(22 119 255 / .06); font-size:.75rem; font-weight:600; cursor:pointer; transition:background .18s,box-shadow .18s; }
-.billing-help-button:hover { background:#fff; border-color:#1677ff; color:#0758cb; box-shadow:0 3px 12px rgb(22 119 255 / .16); }
-.billing-help-button:active { background:#f0f6ff; }
+.rate-filter { display:flex; gap:.5rem; align-items:center; justify-content:space-between; margin-top:.75rem; font-size:.7rem; color:var(--plaza-muted); }
+.rate-filter select { max-width:65%; padding:.3rem 1.7rem .3rem .5rem; border-radius:.4rem; border:1px solid var(--plaza-line); background-color:var(--plaza-surface); color:var(--plaza-ink); font-size:.7rem; }
+.plaza-results { container:plaza-results / inline-size; min-width:0; }
+.plaza-catalog-header { margin-bottom:1.4rem; border:1px solid var(--plaza-line); border-radius:.9rem; overflow:hidden; background:var(--plaza-surface); box-shadow:0 2px 3px rgb(15 23 42 / .025); }
+.plaza-toolbar { display:flex; flex-wrap:wrap; gap:.5rem; align-items:center; padding:.65rem; }
+.sort-control select { height:2.25rem; max-width:10rem; padding:.35rem 1.7rem .35rem .6rem; border:1px solid var(--plaza-line); border-radius:.5rem; background-color:var(--plaza-surface); color:var(--plaza-muted); font-size:.7rem; }
+.price-switch,.view-switch { display:flex; flex-shrink:0; height:2.25rem; align-items:center; padding:.2rem; gap:.15rem; background:var(--plaza-surface); border:1px solid var(--plaza-line); border-radius:.5rem; }
+.price-switch button,.view-switch button { display:flex; align-items:center; justify-content:center; gap:.3rem; height:100%; padding:0 .55rem; font-size:.7rem; border-radius:.3rem; color:var(--plaza-muted); white-space:nowrap; }
+.price-switch button.active,.view-switch button.active { background:var(--plaza-selected); color:var(--plaza-blue); font-weight:600; }
+.view-switch button { padding:0 .45rem; }
+.view-switch button span { display:none; }
+.billing-help-button { display:flex; align-items:center; justify-content:center; flex-shrink:0; gap:.3rem; height:2.25rem; padding:0 .7rem; white-space:nowrap; border:1px solid var(--plaza-line); border-radius:.5rem; color:var(--plaza-muted); background:var(--plaza-surface); font-size:.7rem; }
+.billing-help-button:hover { color:var(--plaza-blue); border-color:var(--plaza-hover-line); }
+.active-filters { display:flex; flex-wrap:wrap; gap:.5rem; margin:0 0 1rem; }
+.active-filters button { display:flex; align-items:center; gap:.4rem; max-width:100%; padding:.3rem .55rem; border:1px solid var(--plaza-line); border-radius:.4rem; background:var(--plaza-surface); color:var(--plaza-muted); font-size:.65rem; overflow-wrap:anywhere; }
+.active-filters button:hover { border-color:var(--plaza-hover-line); color:var(--plaza-blue); }
 .plaza-description { margin-top:.75rem; }
-.plaza-notice { margin:0 0 1rem; font-size:.74rem; color:var(--plaza-muted); }
-.result-count { flex-shrink:0; min-width:1.5rem; padding:.15rem .4rem; border-radius:.35rem; background:var(--plaza-selected); font-size:.68rem; font-weight:500; font-variant-numeric:tabular-nums; }
-.view-switch { display:flex; flex-shrink:0; height:2.5rem; align-items:stretch; padding:.2rem; gap:.2rem; background:var(--plaza-button); border:1px solid var(--plaza-glass-edge); border-radius:.75rem; }
-.view-switch button { display:flex; align-items:center; justify-content:center; gap:.35rem; padding:0 .65rem; border-radius:.5rem; color:var(--plaza-ink); font-size:.75rem; font-weight:500; white-space:nowrap; cursor:pointer; transition:background .18s,color .18s,box-shadow .18s; }
-.view-switch button:hover { background:var(--plaza-selected); color:var(--plaza-blue); }
-.view-switch button.active { background:#1677ff; color:#fff; font-weight:600; box-shadow:0 2px 7px rgb(22 119 255 / .18); }
-.plaza-card-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,21rem),1fr)); gap:1.15rem; align-items:stretch; }
-.plaza-card-grid.list-view { grid-template-columns:1fr; gap:.7rem; }
-.plaza-empty { min-height:20rem; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1rem; color:var(--plaza-muted); font-size:.85rem; }
-.plaza-empty button { padding:.6rem 1rem; border:1px solid var(--plaza-line); background:var(--plaza-button); border-radius:.6rem; color:var(--plaza-blue); }
-.plaza-pagination { margin-top:1.2rem; }
-.model-skeleton { height:17rem; padding:1.25rem; border:1px solid var(--plaza-glass-edge); border-radius:1.2rem; background:var(--plaza-glass); }
-.model-skeleton>div { width:70%; height:1.5rem; margin-bottom:2.1rem; border-radius:.5rem; background:var(--plaza-selected); animation:plaza-pulse 1.5s ease-in-out infinite; }
-.model-skeleton>div:nth-child(2) { width:90%; height:4rem; } .model-skeleton>div:nth-child(3) { height:.9rem; width:100%; }
-button:focus-visible,select:focus-visible { outline:2px solid #1677ff; outline-offset:3px; }
+.plaza-notice { margin:0 0 1rem; font-size:.7rem; color:var(--plaza-muted); line-height:1.7; }
+.plaza-card-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1rem; align-items:stretch; }
+.plaza-card-grid.list-view { grid-template-columns:1fr; gap:.8rem; }
+.plaza-empty { min-height:24rem; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1rem; border:1px dashed var(--plaza-line); border-radius:1rem; color:var(--plaza-muted); font-size:.85rem; }
+.plaza-empty button { padding:.6rem 1rem; border:1px solid var(--plaza-line); background:var(--plaza-surface); border-radius:.5rem; color:var(--plaza-blue); }
+.plaza-pagination { margin-top:1.4rem; }
+.model-skeleton { height:22rem; padding:1.25rem; border:1px solid var(--plaza-line); border-radius:1rem; background:var(--plaza-surface); }
+.model-skeleton>div { width:70%; height:2rem; margin-bottom:2rem; border-radius:.5rem; background:var(--plaza-subtle); animation:plaza-pulse 1.5s ease-in-out infinite; }
+.model-skeleton>div:nth-child(2) { width:100%; height:8rem; } .model-skeleton>div:nth-child(3) { height:1rem; width:85%; }
+button:focus-visible,select:focus-visible { outline:2px solid var(--plaza-blue); outline-offset:3px; }
 @keyframes plaza-pulse { 50% { opacity:.4; } }
-:global(.dark .plaza-gallery) { --plaza-ink:#dce7f6; --plaza-muted:#9cacc2; --plaza-blue:#72aaff; --plaza-line:#33445a; --plaza-rail:#172435; --plaza-selected:#263449; --plaza-button:rgb(33 49 69 / .8); --plaza-glass:linear-gradient(135deg,rgb(37 56 78 / .86),rgb(29 45 63 / .7)); --plaza-glass-edge:rgb(138 169 200 / .18); }
-:global(.dark .plaza-workspace) { background:radial-gradient(ellipse at 40% 30%,rgb(40 86 142 / .25),transparent 70%),#142235; }
-@media (min-width:1750px) { .plaza-card-grid:not(.list-view) { grid-template-columns:repeat(3,minmax(0,1fr)); } }
-@media (max-width:1100px) { .plaza-workspace { grid-template-columns:18rem minmax(0,1fr); } .plaza-filters,.plaza-results { padding:1rem; } }
-@media (min-width:768px) and (max-width:1199px) { .plaza-toolbar { flex-wrap:wrap; } .plaza-search { flex-basis:calc(100% - 13rem); } }
-@media (max-width:767px) { .plaza-workspace { grid-template-columns:minmax(0,1fr); } .filters-closed { display:none; } .mobile-chevron { display:block; } .filters-heading { padding-bottom:0; border:0; } .filters-toggle { display:flex; font-size:1rem; } .desktop-filter-title { display:none; } .plaza-filters { border-bottom:1px solid var(--plaza-line); } .plaza-toolbar { flex-wrap:wrap; } .plaza-search { flex-basis:100%; } .view-switch { margin-left:auto; } .price-switch { flex:1; } .price-switch button { flex:1; } .plaza-results { padding:.85rem; } }
-@media (prefers-reduced-motion:reduce) { .model-skeleton>div { animation:none; } .billing-help-button,.view-switch button { transition:none; } }
+@container plaza-results (max-width:52rem) { .plaza-card-grid:not(.list-view) { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@container plaza-results (max-width:34rem) { .plaza-card-grid:not(.list-view) { grid-template-columns:1fr; } }
+@media (max-width:1100px) { .plaza-workspace { grid-template-columns:16rem minmax(0,1fr); gap:1rem; } .plaza-filters { padding:1rem .5rem; } }
+@media (max-width:767px) { .plaza-workspace { grid-template-columns:minmax(0,1fr); } .plaza-filters { padding:1rem; border:1px solid var(--plaza-line); border-radius:.8rem; } .filters-closed { display:none; } .mobile-chevron { display:block; } .filters-heading { padding-bottom:0; border:0; } .filters-toggle { display:flex; } .desktop-filter-title { display:none; } .plaza-page-title { padding:.5rem 0 1.4rem; } .plaza-eyebrow { font-size:.6rem; } .plaza-page-title>p { font-size:.75rem; } .plaza-search { flex-basis:100%; height:2.5rem; } .plaza-toolbar { gap:.4rem; } .sort-control { margin-left:auto; } .price-switch { margin-right:auto; } .plaza-card-grid { gap:.8rem; } }
+@media (prefers-reduced-motion:reduce) { .model-skeleton>div { animation:none; } }
 .plaza-description {
   line-height: 1.7;
   overflow-wrap: anywhere;

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { plazaPrices, plazaV1Status, plazaV2Status, plazaHistory } from '@/utils/model-plaza'
+import { plazaPrices, plazaV1Status, plazaV2Status, plazaHistory, plazaHasStatusData, unknownPlazaStatus } from '@/utils/model-plaza'
 import type { MonitorMatrixResponse } from '@/api/channelMonitorV2'
 import type { UserMonitorView } from '@/api/channelMonitor'
 import { group, model, matrixRow, metric } from './fixtures'
@@ -56,6 +56,30 @@ describe('plaza monitor identity and units', () => {
   it('leaves rates unknown when there are no requests', () => {
     expect(plazaV2Status(model(),group(),matrix([matrixRow({ metrics:metric({ request_count:0 }) })]))).toMatchObject({ availability:null, throughput:null })
   })
+  it('keeps the selected range and trailing gaps when aggregation is behind', () => {
+    const data = matrix([matrixRow({ buckets:[{
+      bucket_start:'2026-09-25T03:00:00Z', metrics:metric(), health:matrixRow().health,
+    }] })])
+    data.coverage.requested_end = '2026-09-26T00:00:00Z'
+    data.coverage.data_through = '2026-09-25T04:00:00Z'
+    const bars = plazaHistory(plazaV2Status(model(),group(),data))
+    expect(bars).toHaveLength(24)
+    expect(bars[3].health).toBe('healthy')
+    expect(bars.slice(4).every(bar => bar.health === 'unknown')).toBe(true)
+    expect(bars[23].endAt).toBe('2026-09-26T00:00:00.000Z')
+    delete data.coverage.requested_end
+    expect(plazaHistory(plazaV2Status(model(),group(),data))).toEqual(bars)
+    expect(plazaHistory(plazaV2Status(model({ name:'missing' }),group(),data)).map(bar => bar.at)).toEqual(bars.map(bar => bar.at))
+  })
+  it('preserves redacted bucket health and leaves unknown buckets gray', () => {
+    const data = matrix([matrixRow({ buckets:[
+      { bucket_start:'2026-09-25T23:00:00Z', metrics:metric({ request_count:0 }), health:matrixRow().health },
+      { bucket_start:'2026-09-25T22:00:00Z', metrics:metric({ request_count:0 }), health:{ ...matrixRow().health, overall:'unknown' } },
+    ] })])
+    const bars = plazaHistory(plazaV2Status(model(),group(),data))
+    expect(bars[22].health).toBe('unknown')
+    expect(bars[23].health).toBe('healthy')
+  })
   it('does not borrow ambiguous or ungrouped V1 probe results', () => {
     const probe: UserMonitorView = { id:1, name:'channel', provider:'openai', group_name:'OpenAI 标准', primary_model:'gpt-test', primary_status:'degraded', primary_latency_ms:120, primary_ping_latency_ms:10, primary_throughput_tps:20, availability_7d:98.2, extra_models:[], timeline:[{ status:'operational', latency_ms:100, ping_latency_ms:10, checked_at:'2026-09-26T00:00:00Z' }] }
     expect(plazaV1Status(model(),group(),[probe])).toMatchObject({ health:'warning', availability:98.2, throughput:20, window:'7d' })
@@ -64,13 +88,51 @@ describe('plaza monitor identity and units', () => {
   })
 })
 
-describe('plaza history compression', () => {
+describe('plaza history time slots', () => {
+  const start = Date.parse('2026-09-25T00:00:00Z')
+  const range = { start:new Date(start).toISOString(), end:new Date(start + 86400000).toISOString() }
+  const time = (hours: number) => new Date(start + hours * 3600000).toISOString()
+  it('always renders 24 slots, including empty and single-point histories', () => {
+    const status = { ...unknownPlazaStatus(), historyRange:range }
+    expect(plazaHistory(status)).toHaveLength(24)
+    expect(plazaHistory(status).every(bar => bar.health === 'unknown')).toBe(true)
+    status.history = [{ at:time(23), health:'healthy' }]
+    const bars = plazaHistory(status)
+    expect(bars).toHaveLength(24)
+    expect(bars.slice(0,23).every(bar => bar.health === 'unknown')).toBe(true)
+    expect(bars[23].health).toBe('healthy')
+  })
+  it('aligns sparse, unsorted points by time with the latest on the right', () => {
+    const bars = plazaHistory({ ...unknownPlazaStatus(), historyRange:range, history:[
+      { at:time(23), health:'critical' },
+      { at:time(0), health:'healthy' },
+      { at:time(5), health:'warning' },
+      { at:time(-1), health:'critical' },
+      { at:time(24), health:'critical' },
+      { at:'invalid', health:'critical' },
+    ] })
+    expect(bars.map(bar => bar.health)).toEqual(Array.from({ length:24 }, (_, i) => i === 0 ? 'healthy' : i === 5 ? 'warning' : i === 23 ? 'critical' : 'unknown'))
+    expect(bars[0].at).toBe(time(0))
+    expect(bars[23].endAt).toBe(time(24))
+    expect(bars.every(bar => Date.parse(bar.endAt) - Date.parse(bar.at) === 3600000)).toBe(true)
+  })
   it('keeps a single failed bucket visible within a dense history', () => {
-    const history = Array.from({ length:288 }, (_,i) => ({ health:i === 137 ? 'critical' as const : 'healthy' as const, at:String(i) }))
-    const bars = plazaHistory(history)
+    const history = Array.from({ length:288 }, (_,i) => ({ health:i === 137 ? 'critical' as const : 'healthy' as const, at:time(i / 12) }))
+    const bars = plazaHistory({ ...unknownPlazaStatus(), historyRange:range, history:history.reverse() })
     expect(bars).toHaveLength(24)
     expect(bars.filter(b => b.health === 'critical')).toHaveLength(1)
-    expect(bars[0].at).toBe('0')
-    expect(bars[23].endAt).toBe('287')
+    expect(bars[11].health).toBe('critical')
+    expect(bars[0].at).toBe(time(0))
+    expect(bars[23].endAt).toBe(time(24))
+  })
+})
+
+describe('plaza monitoring coverage', () => {
+  it('counts real metrics while health is unknown and excludes empty history placeholders', () => {
+    expect(plazaHasStatusData(unknownPlazaStatus())).toBe(false)
+    expect(plazaHasStatusData({ ...unknownPlazaStatus(), throughput:0 })).toBe(true)
+    expect(plazaHasStatusData({ ...unknownPlazaStatus(), latency:1250 })).toBe(true)
+    expect(plazaHasStatusData({ ...unknownPlazaStatus(), history:[{health:'unknown', at:'2026-10-25'}] })).toBe(false)
+    expect(plazaHasStatusData({ ...unknownPlazaStatus(), health:'critical' })).toBe(true)
   })
 })

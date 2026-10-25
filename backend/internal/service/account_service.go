@@ -152,12 +152,23 @@ type AccountBillingSettingsRepository interface {
 	) error
 }
 
+// AccountPlatformCount is a global count of non-deleted accounts for one provider.
+type AccountPlatformCount struct {
+	Platform string `json:"platform"`
+	Count    int64  `json:"count"`
+}
+
+type AccountPlatformCountsRepository interface {
+	CountByPlatform(ctx context.Context) ([]AccountPlatformCount, error)
+}
+
 // AdminAccountRepository makes the account-duplication write capability an explicit
 // construction dependency without forcing read-only gateway test doubles to implement it.
 type AdminAccountRepository interface {
 	AccountRepository
 	AccountDuplicateRepository
 	AccountBillingSettingsRepository
+	AccountPlatformCountsRepository
 }
 
 // AccountBulkUpdate describes the fields that can be updated in a bulk operation.
