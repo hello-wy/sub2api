@@ -44,6 +44,10 @@ beforeEach(() => {
 afterEach(() => { wrapper?.unmount(); document.body.innerHTML = ''; localStorage.clear() })
 
 describe('Canvas host session', () => {
+  it('delegates clipboard access to the embedded canvas', async () => {
+    const { frame } = await open()
+    expect(frame.getAttribute('allow')).toBe('clipboard-read; clipboard-write')
+  })
   it('uses fresh backend role and sends only the selected user gateway key', async () => {
     const { frame, send } = await open()
     await request(frame, { type: 'session', role: 'admin' })
