@@ -11,7 +11,7 @@ func (r *accountRepository) CountByPlatform(ctx context.Context) ([]service.Acco
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	counts := make([]service.AccountPlatformCount, 0)
 	for rows.Next() {
 		var count service.AccountPlatformCount
