@@ -1,5 +1,6 @@
 export default {
     accounts: {
+      providerShortcuts: 'Quick provider filters',
       codexGateway: {
         label: "Codex request gateway",
         official: "Official endpoint (default)",

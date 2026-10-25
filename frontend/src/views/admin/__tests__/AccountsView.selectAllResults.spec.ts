@@ -26,6 +26,7 @@ const {
 vi.mock('@/api/admin', () => ({
   adminAPI: {
     accounts: {
+      getPlatformCounts: vi.fn(async () => []),
       list: listAccounts,
       listWithEtag,
       getBatchTodayStats,

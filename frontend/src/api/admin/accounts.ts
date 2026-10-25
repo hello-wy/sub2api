@@ -71,6 +71,17 @@ export async function list(
   return data
 }
 
+export interface AccountPlatformCount {
+  platform: string
+  count: number
+}
+
+/** Global non-deleted account totals, independent of list filters and pagination. */
+export async function getPlatformCounts(options?: { signal?: AbortSignal }): Promise<AccountPlatformCount[]> {
+  const { data } = await apiClient.get<AccountPlatformCount[]>('/admin/accounts/platform-counts', options)
+  return data
+}
+
 export interface AccountListWithEtagResult {
   notModified: boolean
   etag: string | null
@@ -1137,6 +1148,7 @@ export async function refreshOpenCodeGoUsage(id: number): Promise<OpenCodeGoUsag
 }
 
 export const accountsAPI = {
+  getPlatformCounts,
   listCodexGateways,
   list,
   listWithEtag,

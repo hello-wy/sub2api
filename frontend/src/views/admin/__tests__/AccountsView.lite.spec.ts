@@ -3,6 +3,9 @@ import { DOMWrapper, flushPromises, mount } from '@vue/test-utils'
 import { defineComponent } from 'vue'
 
 import AccountsView from '../AccountsView.vue'
+import { adminAPI } from '@/api/admin'
+import AccountTableFilters from '@/components/admin/account/AccountTableFilters.vue'
+import AccountProviderFilters from '@/components/admin/account/AccountProviderFilters.vue'
 import AccountActionMenu from '@/components/admin/account/AccountActionMenu.vue'
 
 const {
@@ -32,6 +35,7 @@ const {
 vi.mock('@/api/admin', () => ({
   adminAPI: {
     accounts: {
+      getPlatformCounts: vi.fn().mockResolvedValue([]),
       list: listAccounts,
       getById,
       listWithEtag,
@@ -103,6 +107,7 @@ function mountView(stubActionMenu = true) {
         DataTable: DataTableStub,
         AccountTableActions: { template: '<div><slot name="after" /></div>' },
         AccountTableFilters: true,
+        AccountProviderFilters: true,
         AccountBulkActionsBar: true,
         Pagination: true,
         ConfirmDialog: true,
@@ -159,6 +164,7 @@ const fullAccount = {
 describe('admin AccountsView lite account list', () => {
   beforeEach(() => {
     localStorage.clear()
+    vi.mocked(adminAPI.accounts.getPlatformCounts).mockReset().mockResolvedValue([])
     listAccounts.mockReset().mockResolvedValue({ items: [listRow], total: 1, page: 1, page_size: 20, pages: 1 })
     listWithEtag.mockReset().mockResolvedValue({ notModified: true, etag: 'compact-etag', data: null })
     getById.mockReset().mockResolvedValue(fullAccount)
@@ -186,6 +192,41 @@ describe('admin AccountsView lite account list', () => {
       expect.objectContaining({ lite: '1' }),
       expect.objectContaining({ signal: expect.any(AbortSignal) })
     )
+    wrapper.unmount()
+  })
+
+  it('loads global provider counts separately from the filtered page and refreshes after account creation', async () => {
+    const counts = [{ platform: 'openai', count: 45 }, { platform: 'deepseek', count: 2 }]
+    vi.mocked(adminAPI.accounts.getPlatformCounts).mockResolvedValueOnce(counts)
+    const wrapper = mountView()
+    await flushPromises()
+    const filters = wrapper.getComponent(AccountProviderFilters)
+    expect(filters.props('platformCounts')).toEqual(counts)
+    // This provider is absent from the single visible row but remains available as a shortcut.
+    expect(filters.props('platformCounts')?.some(provider => provider.platform === 'deepseek')).toBe(true)
+    vi.mocked(adminAPI.accounts.getPlatformCounts).mockResolvedValueOnce([{ platform: 'openai', count: 46 }])
+    wrapper.getComponent({ name: 'CreateAccountModal' }).vm.$emit('created')
+    await flushPromises()
+    expect(filters.props('platformCounts')).toEqual([{ platform: 'openai', count: 46 }])
+    wrapper.unmount()
+  })
+
+  it('returns to page one and preserves other filters when choosing a provider shortcut', async () => {
+    listAccounts.mockResolvedValue({ items: [listRow], total: 45, page: 1, page_size: 20, pages: 3 })
+    const wrapper = mountView()
+    await flushPromises()
+    const filters = wrapper.getComponent(AccountTableFilters)
+    filters.vm.$emit('update:filters', { ...filters.props('filters'), status: 'active', search: 'existing' })
+    wrapper.getComponent({ name: 'Pagination' }).vm.$emit('update:page', 2)
+    await flushPromises()
+    expect(listAccounts).toHaveBeenLastCalledWith(2, 20, expect.objectContaining({ status: 'active', search: 'existing' }), expect.anything())
+    vi.useFakeTimers()
+    const providers = wrapper.getComponent(AccountProviderFilters)
+    providers.vm.$emit('update:modelValue', 'deepseek')
+    providers.vm.$emit('change')
+    await vi.advanceTimersByTimeAsync(300)
+    await flushPromises()
+    expect(listAccounts).toHaveBeenLastCalledWith(1, 20, expect.objectContaining({ platform: 'deepseek', status: 'active', search: 'existing' }), expect.anything())
     wrapper.unmount()
   })
 
