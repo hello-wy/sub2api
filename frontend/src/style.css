@@ -6,6 +6,25 @@
 @tailwind components;
 @tailwind utilities;
 
+:root[data-theme-transition]::view-transition-group(root) {
+  animation-duration: 400ms;
+}
+
+:root[data-theme-transition]::view-transition-old(root),
+:root[data-theme-transition]::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+:root[data-theme-transition]::view-transition-old(root) {
+  z-index: 1;
+}
+
+:root[data-theme-transition]::view-transition-new(root) {
+  z-index: 2;
+  clip-path: circle(0px at var(--theme-transition-origin));
+}
+
 @layer base {
   * {
     @apply border-gray-200 dark:border-dark-700;

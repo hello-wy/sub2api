@@ -254,7 +254,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, computed, nextTick, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAppStore, useAuthStore, useOnboardingStore, useSubscriptionStore } from '@/stores'
@@ -285,6 +285,7 @@ const dropdownOpen = ref(false)
 const dropdownRef = ref<HTMLElement | null>(null)
 const isDark = ref(document.documentElement.classList.contains('dark'))
 let themeObserver: MutationObserver | null = null
+let themeTransitioning = false
 const contactInfo = computed(() => appStore.contactInfo)
 const siteVersion = computed(() => appStore.siteVersion)
 const modelPlazaEnabled = computed(() => isFeatureFlagEnabled(FeatureFlags.modelPlaza))
@@ -359,11 +360,39 @@ function toggleMobileSidebar() {
   appStore.toggleMobileSidebar()
 }
 
-function toggleTheme() {
-  const nextIsDark = !document.documentElement.classList.contains('dark')
-  document.documentElement.classList.toggle('dark', nextIsDark)
-  localStorage.setItem('theme', nextIsDark ? 'dark' : 'light')
-  isDark.value = nextIsDark
+async function toggleTheme(event: MouseEvent) {
+  if (themeTransitioning) return
+  const root = document.documentElement
+  const nextIsDark = !root.classList.contains('dark')
+  const applyTheme = async () => {
+    root.classList.toggle('dark', nextIsDark)
+    localStorage.setItem('theme', nextIsDark ? 'dark' : 'light')
+    isDark.value = nextIsDark
+    await nextTick()
+  }
+  if (!document.startViewTransition || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    await applyTheme()
+    return
+  }
+  const { left, top, width, height } = (event.currentTarget as HTMLElement).getBoundingClientRect()
+  const x = left + width / 2
+  const y = top + height / 2
+  const radius = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y))
+  themeTransitioning = true
+  root.dataset.themeTransition = 'active'
+  root.style.setProperty('--theme-transition-origin', `${x}px ${y}px`)
+  const transition = document.startViewTransition(applyTheme)
+  try {
+    await transition.ready
+    await root.animate({ clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] }, { duration: 400, easing: 'ease-in-out', fill: 'forwards', pseudoElement: '::view-transition-new(root)' }).finished
+    await transition.finished
+  } catch {
+    transition.skipTransition()
+  } finally {
+    delete root.dataset.themeTransition
+    root.style.removeProperty('--theme-transition-origin')
+    themeTransitioning = false
+  }
 }
 
 function toggleDropdown() {

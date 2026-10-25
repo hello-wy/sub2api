@@ -75,12 +75,17 @@ describe('Canvas host session', () => {
     expect(mocks.list).not.toHaveBeenCalled()
   })
   it('keeps iframe stable when the parent theme changes', async () => {
-    const { frame } = await open()
+    const { frame, send } = await open()
     const src = frame.src
     document.documentElement.classList.toggle('dark')
     await flushPromises()
     expect(wrapper.get('iframe').element).toBe(frame)
     expect(frame.src).toBe(src)
+    expect(send).toHaveBeenCalledWith({ protocol: CANVAS_PROTOCOL, type: 'theme', theme: document.documentElement.classList.contains('dark') ? 'dark' : 'light' }, 'http://127.0.0.1:3010')
+    send.mockClear()
+    frame.dispatchEvent(new Event('load'))
+    await flushPromises()
+    expect(send.mock.calls[0][0].theme).toBe(document.documentElement.classList.contains('dark') ? 'dark' : 'light')
   })
   it('invalidates the old session on role downgrade', async () => {
     const { send } = await open()
