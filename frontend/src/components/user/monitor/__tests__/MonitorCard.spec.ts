@@ -23,6 +23,7 @@ vi.mock('@/composables/useChannelMonitorFormat', () => ({
     providerLabel: (value: string) => value,
     providerBadgeClass: () => 'provider-class',
     formatLatency: (value: number | null) => value == null ? '—' : String(value),
+    formatMonitorModel: (value: string) => value,
   }),
 }))
 

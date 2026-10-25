@@ -36,7 +36,7 @@
       class="grid gap-5 grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
     >
       <MonitorCard
-        v-for="item in items"
+        v-for="item in sortedItems"
         :key="item.id"
         :item="item"
         :window="window"
@@ -49,6 +49,7 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { UserMonitorView, UserMonitorDetail } from '@/api/channelMonitor'
 import EmptyState from '@/components/common/EmptyState.vue'
@@ -67,6 +68,12 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+
+const providerOrder: Record<string, number> = { openai: 0, anthropic: 1, gemini: 2, deepseek: 3 }
+const sortedItems = computed(() => [...props.items].sort((a, b) =>
+  (providerOrder[a.provider] ?? 4) - (providerOrder[b.provider] ?? 4)
+  || a.provider.localeCompare(b.provider),
+))
 
 function resolveAvailability(item: UserMonitorView): number | null {
   if (props.window === '7d') {
