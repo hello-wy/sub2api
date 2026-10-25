@@ -31,8 +31,7 @@
         <div class="flex max-w-full shrink-0 flex-wrap items-center justify-end gap-2">
           <LocaleSwitcher />
           <a
-            v-if="docUrl"
-            :href="docUrl"
+            :href="docUrl || '/tutorial/'"
             target="_blank"
             rel="noopener noreferrer"
             class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 dark:text-dark-400 dark:hover:bg-dark-800"
@@ -318,7 +317,7 @@ const navItems = computed<Array<{ label: string, href: string, icon: IconName, i
   { label: '模型价格', href: '/models', icon: 'creditCard', internal: true },
   ...(showModelPlazaEntry.value ? [{ label: t('nav.modelPlaza'), href: '/model-plaza', icon: 'grid' as IconName, internal: true }] : []),
   { label: '运行状态', href: '/monitor', icon: 'chart', internal: true },
-  { label: '文档', href: docUrl.value || '/docs', icon: 'book', internal: !docUrl.value, external: Boolean(docUrl.value) }
+  { label: '文档', href: docUrl.value || '/tutorial/', icon: 'book', external: Boolean(docUrl.value) }
 ])
 
 const providerLogos: LogoItem[] = [

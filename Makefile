@@ -1,6 +1,7 @@
 .PHONY: build build-backend build-frontend test test-backend test-frontend test-frontend-critical
 
 FRONTEND_CRITICAL_VITEST := \
+	src/views/public/__tests__/TutorialSite.spec.ts \
 	src/components/common/__tests__/PlatformIcon.spec.ts \
 	src/components/user/monitor/__tests__/MonitorCard.spec.ts \
 	src/components/layout/__tests__/AppSidebar.spec.ts \

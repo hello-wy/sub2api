@@ -21,6 +21,7 @@
           >
             <Icon :name="isDark ? 'sun' : 'moon'" size="sm" />
           </button>
+          <a href="/tutorial/" class="docs-icon-button" title="Codex / Claude Code 图文教程" aria-label="Codex / Claude Code 图文教程"><Icon name="book" size="sm" /></a>
           <router-link to="/login" class="docs-login">进入控制台 <Icon name="arrowRight" size="xs" /></router-link>
         </div>
       </div>

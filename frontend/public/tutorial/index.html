@@ -1,0 +1,650 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="SolidAPI 官方接入指南：在 Windows 和 macOS 上配置 Codex、Claude Code 与 CC Switch，查看图文步骤和常见问题。" />
+    <meta name="theme-color" content="#ffffff" />
+    <title>Codex 接入教程 - SolidAPI</title>
+    <link rel="icon" href="/brand/solidapi-mark.png" />
+    <link rel="stylesheet" href="assets/style.css?v=solidapi-20261026" />
+    <script src="site.config.js?v=solidapi-20261026"></script>
+    <script src="assets/app.js?v=solidapi-20261026" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">跳到主要内容</a>
+
+    <header class="mobile-header">
+      <a class="brand compact-brand" href="#top" aria-label="返回教程顶部">
+        <img class="brand-lockup" src="/brand/solidapi-lockup-light.png" alt="SolidAPI" width="180" height="60" />
+      </a>
+      <button class="icon-button" id="menu-toggle" type="button" aria-label="打开目录" aria-expanded="false" aria-controls="site-nav">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 6h16"></path><path d="M4 12h16"></path><path d="M4 18h16"></path></svg>
+      </button>
+    </header>
+
+    <aside class="sidebar" id="site-nav" aria-label="教程目录">
+      <div class="sidebar-inner">
+        <a class="brand desktop-brand" href="#top" aria-label="返回教程顶部">
+          <img class="brand-lockup" src="/brand/solidapi-lockup-light.png" alt="SolidAPI" width="180" height="60" />
+        </a>
+        <div class="nav-context">
+          <span>开发者中心</span>
+          <a class="nav-context-link" href="/keys">进入控制台 ↗</a>
+        </div>
+        <nav class="doc-nav">
+          <div data-client-nav="codex">
+            <p class="nav-label">CC Switch 快捷配置</p>
+            <a class="nav-link is-active" href="#quick-start">快速配置</a>
+            <a class="nav-link" href="#install">下载安装</a>
+            <a class="nav-link" href="#create-key">创建密钥</a>
+            <a class="nav-link" href="#configure">导入配置</a>
+            <a class="nav-link" href="#test">连接测试</a>
+            <p class="nav-label">手动修改配置文件</p>
+            <a class="nav-link" href="#config-file">配置文件位置</a>
+            <a class="nav-link" href="#manual">复制并修改配置</a>
+            <a class="nav-link" href="#troubleshooting">常见问题</a>
+          </div>
+          <div data-client-nav="claude" hidden>
+            <p class="nav-label">Claude Code 配置</p>
+            <a class="nav-link" href="#claude-code">安装与配置</a>
+            <a class="nav-link" href="#troubleshooting">常见问题</a>
+          </div>
+        </nav>
+
+        <nav class="platform-links" aria-label="SolidAPI 网站导航">
+          <a href="/home">返回官网</a>
+          <a href="/docs">全部使用文档 ↗</a>
+        </nav>
+
+        <div class="sidebar-help">
+          <svg aria-hidden="true"><use href="assets/icons.svg#circle-help"></use></svg>
+          <div>
+            <strong>仍然无法使用？</strong>
+            <a id="support-link" href="#troubleshooting"><span data-support-text>联系平台客服</span></a>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <div class="mobile-scrim" id="mobile-scrim" hidden></div>
+
+    <main id="main-content" class="content-shell">
+      <div class="content" id="top">
+        <div class="client-tabs" role="tablist" aria-label="选择接入客户端">
+          <button id="client-tab-codex" type="button" role="tab" aria-selected="true" aria-controls="quick-start" data-client-tab="codex"><span class="client-tab-mark" aria-hidden="true">C</span>Codex</button>
+          <button id="client-tab-claude" type="button" role="tab" aria-selected="false" aria-controls="claude-code" data-client-tab="claude"><span class="client-tab-mark claude-mark" aria-hidden="true">AI</span>Claude Code</button>
+        </div>
+
+        <div class="page-heading">
+          <div>
+            <p class="eyebrow" id="tutorial-eyebrow">快速开始</p>
+            <h1 data-page-title>Codex 接入教程</h1>
+            <p class="lede" id="tutorial-lede">跟随下面的步骤，在 Windows 或 macOS 上完成安装、导入和连接测试。</p>
+          </div>
+          <div class="heading-status" aria-label="预计完成时间">
+            <span class="status-dot" aria-hidden="true"></span>
+            预计 5 分钟
+          </div>
+        </div>
+
+        <section class="quick-start" id="quick-start" aria-labelledby="quick-title" data-client-section="codex">
+          <div class="section-heading compact-heading">
+            <div>
+              <p class="section-kicker">推荐方式</p>
+            <h2 id="quick-title">从密钥页一键导入到 CC Switch</h2>
+            </div>
+            <div class="security-chip">
+              <svg aria-hidden="true"><use href="assets/icons.svg#shield-check"></use></svg>
+              导入后由 CC Switch 本地保存
+            </div>
+          </div>
+
+          <ol class="flow-strip" aria-label="配置流程">
+            <li><span>1</span>安装工具</li>
+            <li><span>2</span>创建密钥</li>
+            <li><span>3</span>一键导入</li>
+            <li><span>4</span>连接测试</li>
+          </ol>
+
+          <div class="setup-panel">
+            <div class="setup-copy">
+              <span class="step-badge">最快路径</span>
+              <h3>创建密钥后，直接点击“导入到 CCS”</h3>
+              <p>密钥页会把当前密钥和接口配置交给 CC Switch。教程页面不需要你再次粘贴密钥，也不会接触密钥内容。</p>
+            </div>
+            <div class="setup-methods">
+              <div class="launch-card">
+                <div class="launch-icon" aria-hidden="true"><svg><use href="assets/icons.svg#external-link"></use></svg></div>
+                <div>
+                  <strong>请在你的密钥列表中操作</strong>
+                  <p>找到要使用的密钥，点击右侧“导入到 CCS”。</p>
+                </div>
+                <a class="primary-button" id="keys-page-button" href="#create-key">查看操作位置 <svg aria-hidden="true"><use href="assets/icons.svg#arrow-right"></use></svg></a>
+              </div>
+
+              <div class="method-divider"><span>或者手动填写</span></div>
+
+              <form class="setup-form" id="setup-form" novalidate>
+                <div class="method-title">没有 CCS？也可以手动配置</div>
+                <label for="api-base-url">Codex API 地址（以 /v1 结尾）</label>
+                <input id="api-base-url" name="apiBaseUrl" type="url" inputmode="url" autocomplete="url" placeholder="https://your-solidapi-host/v1" />
+
+                <label for="api-key">API 密钥</label>
+                <div class="secret-field">
+                  <input id="api-key" name="apiKey" type="password" autocomplete="off" spellcheck="false" placeholder="粘贴你的 API 密钥" />
+                  <button class="field-icon-button" id="toggle-key" type="button" aria-label="显示密钥" title="显示密钥">
+                    <svg aria-hidden="true"><use href="assets/icons.svg#eye"></use></svg>
+                  </button>
+                </div>
+
+                <div class="form-message" id="form-message" role="status" aria-live="polite"></div>
+                <button class="secondary-button manual-import-button" id="configure-button" type="submit">
+                  生成并打开 CC Switch
+                  <svg aria-hidden="true"><use href="assets/icons.svg#arrow-right"></use></svg>
+                </button>
+              </form>
+            </div>
+          </div>
+        </section>
+
+        <section class="doc-section" id="install" aria-labelledby="install-title" data-client-section="codex">
+          <div class="section-heading">
+            <div class="section-number">01</div>
+            <div>
+              <p class="section-kicker">准备工具</p>
+              <h2 id="install-title">下载安装</h2>
+              <p>需要安装 Codex 和 CC Switch。选择你的电脑系统后，使用对应的下载入口。</p>
+            </div>
+          </div>
+
+          <div class="segmented-control" role="tablist" aria-label="选择操作系统">
+            <button id="tab-windows" type="button" role="tab" aria-selected="true" aria-controls="panel-windows" data-os="windows">Windows</button>
+            <button id="tab-macos" type="button" role="tab" aria-selected="false" aria-controls="panel-macos" data-os="macos">macOS</button>
+          </div>
+
+          <div class="os-panel" id="panel-windows" role="tabpanel" aria-labelledby="tab-windows">
+            <div class="download-row">
+              <div class="app-identity codex-identity" aria-hidden="true">C</div>
+              <div class="download-copy">
+                <strong>Codex</strong>
+                <span>Windows 10 及以上</span>
+              </div>
+              <a class="secondary-button download-link-codex" href="#" target="_blank" rel="noopener noreferrer">
+                <svg aria-hidden="true"><use href="assets/icons.svg#download"></use></svg>
+                下载
+              </a>
+            </div>
+            <div class="download-row">
+              <div class="app-identity switch-identity" aria-hidden="true">CC</div>
+              <div class="download-copy">
+                <strong>CC Switch</strong>
+                <span>请选择 Windows 安装版</span>
+              </div>
+              <a class="secondary-button download-link-ccswitch" href="#" target="_blank" rel="noopener noreferrer">
+                <svg aria-hidden="true"><use href="assets/icons.svg#download"></use></svg>
+                下载
+              </a>
+            </div>
+          </div>
+
+          <div class="os-panel" id="panel-macos" role="tabpanel" aria-labelledby="tab-macos" hidden>
+            <div class="download-row">
+              <div class="app-identity codex-identity" aria-hidden="true">C</div>
+              <div class="download-copy">
+                <strong>Codex</strong>
+                <span>macOS 12 及以上</span>
+              </div>
+              <a class="secondary-button download-link-codex" href="#" target="_blank" rel="noopener noreferrer">
+                <svg aria-hidden="true"><use href="assets/icons.svg#download"></use></svg>
+                下载
+              </a>
+            </div>
+            <div class="download-row">
+              <div class="app-identity switch-identity" aria-hidden="true">CC</div>
+              <div class="download-copy">
+                <strong>CC Switch</strong>
+                <span>请选择 macOS DMG 安装版</span>
+              </div>
+              <a class="secondary-button download-link-ccswitch" href="#" target="_blank" rel="noopener noreferrer">
+                <svg aria-hidden="true"><use href="assets/icons.svg#download"></use></svg>
+                下载
+              </a>
+            </div>
+          </div>
+
+          <aside class="notice notice-neutral">
+            <svg aria-hidden="true"><use href="assets/icons.svg#shield-check"></use></svg>
+            <p>CC Switch 是第三方开源配置工具。建议使用官方安装包，并在安装完成后再继续下面的操作。</p>
+          </aside>
+        </section>
+
+        <section class="doc-section" id="create-key" aria-labelledby="key-title" data-client-section="codex">
+          <div class="section-heading">
+            <div class="section-number">02</div>
+            <div>
+              <p class="section-kicker">准备凭证</p>
+              <h2 id="key-title">创建 API 密钥</h2>
+              <p>进入平台的密钥管理页面，新建一枚密钥。创建后，在对应密钥的操作栏点击“导入到 CCS”。</p>
+            </div>
+          </div>
+
+          <div class="instruction-grid">
+            <div class="instruction-copy">
+              <ol class="instruction-list">
+                <li><span>1</span><p>打开平台的<strong>密钥管理</strong>页面。</p></li>
+                <li><span>2</span><p>点击<strong>创建密钥</strong>，名称可填写“我的电脑”。</p></li>
+                <li><span>3</span><p>点击右侧<strong>导入到 CCS</strong>，不要再手动复制密钥。</p></li>
+              </ol>
+              <a class="secondary-button key-page-link" href="#" hidden>
+                <svg aria-hidden="true"><use href="assets/icons.svg#key-round"></use></svg>
+                前往密钥管理
+              </a>
+            </div>
+            <figure class="screenshot-frame wide-screenshot">
+              <img src="assets/screenshots/create-key.png" alt="API 密钥列表中导入到 CCS 的操作位置" width="1685" height="353" loading="lazy" />
+              <figcaption>点击箭头所指的“导入到 CCS”，即可唤起 CC Switch。</figcaption>
+            </figure>
+          </div>
+        </section>
+
+        <section class="doc-section" id="configure" aria-labelledby="configure-title" data-client-section="codex">
+          <div class="section-heading">
+            <div class="section-number">03</div>
+            <div>
+              <p class="section-kicker">写入配置</p>
+              <h2 id="configure-title">导入到 CC Switch</h2>
+              <p>点击“导入到 CCS”后，浏览器会直接唤起 CC Switch。你只需要在 CC Switch 中确认导入。</p>
+            </div>
+          </div>
+
+          <div class="instruction-grid reverse-grid">
+            <figure class="screenshot-frame">
+              <img src="assets/screenshots/import-config.png" alt="CC Switch 导入 Codex 配置界面示意图" width="1200" height="720" loading="lazy" />
+              <figcaption>核对供应商名称、端点和应用类型后确认导入。</figcaption>
+            </figure>
+            <div class="instruction-copy">
+              <ol class="instruction-list">
+                <li><span>1</span><p>浏览器询问是否打开 CC Switch 时，选择<strong>允许</strong>。</p></li>
+                <li><span>2</span><p>在导入确认窗口中核对应用为 <strong>Codex</strong>。</p></li>
+                <li><span>3</span><p>确认导入并启用刚添加的供应商。</p></li>
+              </ol>
+              <a class="text-link" href="#create-key">回到密钥页操作 <svg aria-hidden="true"><use href="assets/icons.svg#arrow-right"></use></svg></a>
+            </div>
+          </div>
+        </section>
+
+        <section class="doc-section" id="test" aria-labelledby="test-title" data-client-section="codex">
+          <div class="section-heading">
+            <div class="section-number">04</div>
+            <div>
+              <p class="section-kicker">完成</p>
+              <h2 id="test-title">重启并测试连接</h2>
+              <p>完全退出正在运行的 Codex，再重新打开。进入对话后选择平台支持的模型并发送测试消息。</p>
+            </div>
+          </div>
+
+          <div class="instruction-grid">
+            <div class="instruction-copy success-copy">
+              <div class="success-mark" aria-hidden="true"><svg><use href="assets/icons.svg#check"></use></svg></div>
+              <h3>收到正常回复即表示配置成功</h3>
+              <p>如果模型列表暂时没有更新，关闭 Codex 后重新打开一次，再检查 CC Switch 中当前供应商是否已经启用。</p>
+            </div>
+            <figure class="screenshot-frame">
+              <img src="assets/screenshots/test-connection.png" alt="Codex 成功回复测试消息的界面示意图" width="1200" height="720" loading="lazy" />
+              <figcaption>连接成功界面示意。</figcaption>
+            </figure>
+          </div>
+        </section>
+
+        <section class="doc-section" id="config-file" aria-labelledby="config-file-title" data-client-section="codex">
+          <div class="section-heading">
+            <div class="section-number muted-number">05</div>
+            <div>
+              <p class="section-kicker">快捷定位</p>
+              <h2 id="config-file-title">找到 Codex 配置文件</h2>
+              <p>需要手动查看或修改配置时，按你的系统使用下面任意一种方式打开 <code>config.toml</code>。</p>
+            </div>
+          </div>
+
+          <div class="config-file-grid">
+            <article class="config-card">
+              <div class="config-card-head">
+                <div class="os-badge windows-badge">⊞</div>
+                <div><strong>Windows</strong><span>资源管理器或 PowerShell</span></div>
+              </div>
+              <div class="config-path-label">配置文件路径</div>
+              <div class="path-copy-row">
+                <code id="windows-config-path">%USERPROFILE%\.codex\config.toml</code>
+                <button class="copy-button light-copy-button" type="button" data-copy-target="windows-config-path" aria-label="复制 Windows 配置文件路径" title="复制路径"><svg aria-hidden="true"><use href="assets/icons.svg#copy"></use></svg></button>
+              </div>
+              <ol class="shortcut-list">
+                <li><span>1</span><p>按 <kbd>Win</kbd> + <kbd>R</kbd>，粘贴 <code>%USERPROFILE%\.codex</code>，回车。</p></li>
+                <li><span>2</span><p>PowerShell 直接打开：<code id="windows-open-command">notepad "$HOME\.codex\config.toml"</code></p></li>
+              </ol>
+              <button class="text-copy-button" type="button" data-copy-target="windows-open-command"><svg aria-hidden="true"><use href="assets/icons.svg#copy"></use></svg>复制 PowerShell 命令</button>
+            </article>
+
+            <article class="config-card">
+              <div class="config-card-head">
+                <div class="os-badge macos-badge">⌘</div>
+                <div><strong>macOS</strong><span>隐藏目录：Finder 或终端</span></div>
+              </div>
+              <div class="config-path-label">配置文件路径</div>
+              <div class="path-copy-row">
+                <code id="macos-config-path">~/.codex/config.toml</code>
+                <button class="copy-button light-copy-button" type="button" data-copy-target="macos-config-path" aria-label="复制 macOS 配置文件路径" title="复制路径"><svg aria-hidden="true"><use href="assets/icons.svg#copy"></use></svg></button>
+              </div>
+              <ol class="shortcut-list">
+                <li><span>1</span><p>打开 Finder 的“前往”→“前往文件夹”，或按 <kbd>⌘</kbd> + <kbd>⇧</kbd> + <kbd>G</kbd>，输入 <code>~/.codex</code> 后回车。隐藏目录也可以这样直接进入。</p></li>
+                <li><span>2</span><p>按 <kbd>⌘</kbd> + <kbd>Space</kbd> 搜索“终端”并回车，在终端输入 <code id="macos-open-folder-command">open ~/.codex</code>，即可在 Finder 中打开隐藏目录。</p></li>
+                <li><span>3</span><p>想显示隐藏文件，在 Finder 按 <kbd>⌘</kbd> + <kbd>⇧</kbd> + <kbd>.</kbd>；终端直接编辑：<code id="macos-open-command">open -e ~/.codex/config.toml</code></p></li>
+              </ol>
+              <button class="text-copy-button" type="button" data-copy-target="macos-open-folder-command"><svg aria-hidden="true"><use href="assets/icons.svg#copy"></use></svg>复制打开文件夹命令</button>
+              <button class="text-copy-button" type="button" data-copy-target="macos-open-command"><svg aria-hidden="true"><use href="assets/icons.svg#copy"></use></svg>复制终端命令</button>
+            </article>
+          </div>
+
+          <aside class="notice notice-neutral config-file-notice">
+            <svg aria-hidden="true"><use href="assets/icons.svg#circle-help"></use></svg>
+            <p>macOS 的 <code>.codex</code> 文件夹默认隐藏，这是正常现象。优先使用 Finder 的“前往文件夹”输入 <code>~/.codex</code>，或按 <kbd>⌘</kbd> + <kbd>⇧</kbd> + <kbd>.</kbd> 显示隐藏文件。如果仍看不到 <code>config.toml</code>，先启动一次 Codex，或先用 CC Switch 完成一次导入。</p>
+          </aside>
+        </section>
+
+        <section class="doc-section" id="manual" aria-labelledby="manual-title" data-client-section="codex">
+          <div class="section-heading">
+            <div class="section-number muted-number">06</div>
+            <div>
+              <p class="section-kicker">推荐备用方式</p>
+              <h2 id="manual-title">从密钥页复制配置</h2>
+              <p>如果一键导入没有反应，可以直接在密钥页使用“使用密钥”，按系统复制配置文件内容。</p>
+            </div>
+          </div>
+
+          <div class="instruction-grid manual-copy-steps">
+            <div class="instruction-copy">
+              <ol class="instruction-list">
+                <li><span>1</span><p>在密钥列表找到要使用的密钥，点击操作栏的<strong>使用密钥</strong>。</p></li>
+                <li><span>2</span><p>切换到自己的系统标签页：macOS / Linux 或 Windows。</p></li>
+                <li><span>3</span><p>分别复制 <code>config.toml</code> 和 <code>auth.json</code> 两个代码框的完整内容。</p></li>
+                <li><span>4</span><p>按下方路径打开配置目录，粘贴并保存对应文件；目录不存在时先创建 <code>.codex</code> 文件夹。</p></li>
+              </ol>
+            </div>
+            <figure class="screenshot-frame manual-copy-shot">
+              <a href="assets/screenshots/use-key-action.png" target="_blank" rel="noopener noreferrer" title="打开完整截图">
+                <img src="assets/screenshots/use-key-action.png" alt="密钥列表中使用密钥的操作位置" width="3318" height="618" loading="lazy" />
+              </a>
+              <figcaption>点击密钥操作栏的“使用密钥”，打开系统配置复制窗口。</figcaption>
+            </figure>
+          </div>
+
+          <div class="config-file-grid copy-config-grid">
+            <article class="config-card">
+              <div class="config-card-head">
+                <div class="os-badge macos-badge">⌘</div>
+                <div><strong>macOS / Linux</strong><span>复制后放入用户目录</span></div>
+              </div>
+              <figure class="screenshot-frame config-copy-shot">
+                <a href="assets/screenshots/use-key-macos.png" target="_blank" rel="noopener noreferrer" title="打开完整截图">
+                  <img src="assets/screenshots/use-key-macos.png" alt="使用密钥窗口中的 macOS 配置内容" width="1714" height="1594" loading="lazy" />
+                </a>
+                <figcaption>点击图片可查看完整窗口；两个代码框右上角都可以单独复制。</figcaption>
+              </figure>
+              <ol class="shortcut-list">
+                <li><span>1</span><p>配置目录：<code>~/.codex</code>；文件名必须分别是 <code>config.toml</code> 和 <code>auth.json</code>。</p></li>
+                <li><span>2</span><p>可按 <kbd>⌘</kbd> + <kbd>Space</kbd> 搜索“终端”，输入 <code>open ~/.codex</code> 打开目录。</p></li>
+              </ol>
+            </article>
+
+            <article class="config-card">
+              <div class="config-card-head">
+                <div class="os-badge windows-badge">⊞</div>
+                <div><strong>Windows</strong><span>复制后放入用户目录</span></div>
+              </div>
+              <figure class="screenshot-frame config-copy-shot">
+                <a href="assets/screenshots/use-key-windows.png" target="_blank" rel="noopener noreferrer" title="打开完整截图">
+                  <img src="assets/screenshots/use-key-windows.png" alt="使用密钥窗口中的 Windows 配置内容" width="1688" height="1584" loading="lazy" />
+                </a>
+                <figcaption>点击图片可查看完整窗口；两个代码框右上角都可以单独复制。</figcaption>
+              </figure>
+              <ol class="shortcut-list">
+                <li><span>1</span><p>配置目录：<code>%USERPROFILE%\.codex</code>；文件名必须分别是 <code>config.toml</code> 和 <code>auth.json</code>。</p></li>
+                <li><span>2</span><p>按 <kbd>Win</kbd> + <kbd>R</kbd>，输入 <code>%USERPROFILE%\.codex</code> 打开目录。</p></li>
+              </ol>
+            </article>
+          </div>
+
+          <aside class="notice notice-neutral config-file-notice">
+            <svg aria-hidden="true"><use href="assets/icons.svg#shield-check"></use></svg>
+            <p><code>auth.json</code> 包含 API 密钥，复制完成后不要把文件发给别人，也不要提交到 GitHub。粘贴完成后完全退出 Codex，再重新打开测试。</p>
+          </aside>
+
+          <details class="manual-details">
+            <summary>
+              没有“使用密钥”入口？查看手动配置方法
+              <svg aria-hidden="true"><use href="assets/icons.svg#chevron-down"></use></svg>
+            </summary>
+            <div class="manual-content">
+              <p>打开用户目录中的 <code>~/.codex/config.toml</code>，加入下面的配置。接口地址和环境变量名称需要按平台文档调整。</p>
+              <div class="code-block">
+                <div class="code-toolbar">
+                  <span>config.toml</span>
+                  <button class="copy-button" type="button" data-copy-target="manual-config" title="复制配置代码">
+                    <svg aria-hidden="true"><use href="assets/icons.svg#copy"></use></svg>
+                    <span>复制</span>
+                  </button>
+                </div>
+                <pre id="manual-config"><code>model_provider = "custom"
+
+[model_providers.custom]
+name = "SolidAPI"
+base_url = "https://your-solidapi-host/v1"
+env_key = "SOLIDAPI_API_KEY"
+wire_api = "responses"</code></pre>
+              </div>
+              <p class="manual-note">还需要设置 <code>SOLIDAPI_API_KEY</code> 环境变量。将下面命令中的占位文字替换为自己的密钥；Windows 设置后请重新打开终端。</p>
+              <div class="code-block compact-code">
+                <div class="code-toolbar"><span>Windows · PowerShell</span><button class="copy-button" type="button" data-copy-target="codex-windows-env"><svg aria-hidden="true"><use href="assets/icons.svg#copy"></use></svg><span>复制</span></button></div>
+                <pre id="codex-windows-env"><code>[Environment]::SetEnvironmentVariable("SOLIDAPI_API_KEY", "你的 API 密钥", "User")</code></pre>
+              </div>
+              <div class="code-block compact-code">
+                <div class="code-toolbar"><span>macOS · ~/.zshrc</span><button class="copy-button" type="button" data-copy-target="codex-macos-env"><svg aria-hidden="true"><use href="assets/icons.svg#copy"></use></svg><span>复制</span></button></div>
+                <pre id="codex-macos-env"><code>export SOLIDAPI_API_KEY="你的 API 密钥"</code></pre>
+              </div>
+              <p class="manual-note">macOS 将命令写入 <code>~/.zshrc</code> 后执行 <code>source ~/.zshrc</code>。模型名称以控制台和密钥“使用密钥”窗口生成的配置为准。</p>
+            </div>
+          </details>
+        </section>
+
+        <section class="doc-section claude-section" id="claude-code" aria-labelledby="claude-code-title" data-client-section="claude" hidden>
+          <div class="section-heading">
+            <div class="section-number muted-number">01</div>
+            <div>
+              <p class="section-kicker">开始配置</p>
+              <h2 id="claude-code-title">Claude Code 配置</h2>
+              <p>Claude Code 是命令行工具。先安装 Node.js 18+，再把平台提供的 Claude 接口地址和密钥写入用户环境变量，之后新开的终端也能直接使用。</p>
+            </div>
+          </div>
+
+          <aside class="notice notice-neutral claude-notice">
+            <svg aria-hidden="true"><use href="assets/icons.svg#circle-help"></use></svg>
+            <p>本节适用于 Claude Code，不适用于 Claude 网页版或 Claude Desktop。中转站需要提供兼容 Anthropic Messages API 的端点；接口路径以平台说明为准，不要自行追加 <code>/v1</code>。SolidAPI 使用 <code>ANTHROPIC_AUTH_TOKEN</code> 进行认证；如果之前设置过 <code>ANTHROPIC_API_KEY</code>，请先移除，避免认证冲突。</p>
+          </aside>
+
+          <div class="config-file-grid claude-grid">
+            <article class="config-card">
+              <div class="config-card-head">
+                <div class="os-badge windows-badge">⊞</div>
+                <div><strong>Windows</strong><span>PowerShell（用户级环境变量）</span></div>
+              </div>
+
+              <div class="config-path-label">1. 安装 Claude Code</div>
+              <div class="code-block compact-code">
+                <div class="code-toolbar"><span>PowerShell / Git Bash</span><button class="copy-button" type="button" data-copy-target="claude-windows-install" title="复制安装命令"><svg aria-hidden="true"><use href="assets/icons.svg#copy"></use></svg><span>复制</span></button></div>
+                <pre id="claude-windows-install"><code>npm install -g @anthropic-ai/claude-code</code></pre>
+              </div>
+
+              <div class="config-path-label">2. 持久配置（用户级）</div>
+              <div class="code-block compact-code">
+                <div class="code-toolbar"><span>PowerShell</span><button class="copy-button" type="button" data-copy-target="claude-windows-env" title="复制持久配置命令"><svg aria-hidden="true"><use href="assets/icons.svg#copy"></use></svg><span>复制</span></button></div>
+                <pre id="claude-windows-env"><code>[Environment]::SetEnvironmentVariable("ANTHROPIC_BASE_URL", "https://your-solidapi-host", "User")
+[Environment]::SetEnvironmentVariable("ANTHROPIC_AUTH_TOKEN", "你的 API 密钥", "User")</code></pre>
+              </div>
+
+              <ol class="shortcut-list">
+                <li><span>3</span><p>关闭并重新打开终端，让新的用户环境变量生效。Git Bash 或 WSL 请在各自的 <code>~/.bashrc</code> 中写入对应的 <code>export</code> 配置。</p></li>
+                <li><span>4</span><p>配置后运行 <code>claude doctor</code> 检查安装，再发送一条简单消息测试。</p></li>
+              </ol>
+            </article>
+
+            <article class="config-card">
+              <div class="config-card-head">
+                <div class="os-badge macos-badge">⌘</div>
+                <div><strong>macOS</strong><span>终端（zsh）</span></div>
+              </div>
+
+              <div class="config-path-label">1. 安装 Claude Code</div>
+              <div class="code-block compact-code">
+                <div class="code-toolbar"><span>终端</span><button class="copy-button" type="button" data-copy-target="claude-macos-install" title="复制安装命令"><svg aria-hidden="true"><use href="assets/icons.svg#copy"></use></svg><span>复制</span></button></div>
+                <pre id="claude-macos-install"><code>npm install -g @anthropic-ai/claude-code</code></pre>
+              </div>
+
+              <div class="config-path-label">2. 持久配置（写入 zsh）</div>
+              <div class="code-block compact-code">
+                <div class="code-toolbar"><span>~/.zshrc</span><button class="copy-button" type="button" data-copy-target="claude-macos-env" title="复制持久配置内容"><svg aria-hidden="true"><use href="assets/icons.svg#copy"></use></svg><span>复制</span></button></div>
+                <pre id="claude-macos-env"><code>export ANTHROPIC_BASE_URL="https://your-solidapi-host"
+export ANTHROPIC_AUTH_TOKEN="你的 API 密钥"</code></pre>
+              </div>
+
+              <ol class="shortcut-list">
+                <li><span>3</span><p>将上面两行写入 <code>~/.zshrc</code>，保存后运行 <code>source ~/.zshrc</code>；以后新开的终端会自动加载。</p></li>
+                <li><span>4</span><p>配置后运行 <code>claude doctor</code> 检查安装，再发送一条简单消息测试。</p></li>
+              </ol>
+            </article>
+          </div>
+
+          <aside class="notice notice-warning claude-security-notice">
+            <svg aria-hidden="true"><use href="assets/icons.svg#shield-check"></use></svg>
+            <p>环境变量会被本机 Claude Code 使用。不要把真实密钥写入公开仓库、截图或聊天记录；共享电脑使用完后可关闭终端，并在平台密钥页禁用或更换密钥。</p>
+          </aside>
+        </section>
+
+        <section class="doc-section" id="troubleshooting" aria-labelledby="trouble-title">
+          <div class="section-heading">
+            <div class="section-number muted-number"><svg aria-hidden="true"><use href="assets/icons.svg#circle-help"></use></svg></div>
+            <div>
+              <p class="section-kicker">排查问题</p>
+              <h2 id="trouble-title">常见问题</h2>
+              <p>先按错误提示快速检查，仍无法解决时再联系平台客服。</p>
+            </div>
+          </div>
+
+          <div class="faq-list">
+            <details>
+              <summary>点击“导入到 CCS”没有反应 <svg aria-hidden="true"><use href="assets/icons.svg#chevron-down"></use></svg></summary>
+              <p>确认 CC Switch 已经安装并至少启动过一次。仍然无反应时，重新安装 CC Switch，以恢复 <code>ccswitch://</code> 协议关联；也可以使用上面的手动填写方式。</p>
+            </details>
+            <details>
+              <summary>提示 401 或 API Key 无效 <svg aria-hidden="true"><use href="assets/icons.svg#chevron-down"></use></svg></summary>
+              <p>重新复制完整密钥，检查前后是否带有空格，并确认密钥没有被删除、禁用或用完额度。</p>
+            </details>
+            <details>
+              <summary>导入后仍然连接旧地址 <svg aria-hidden="true"><use href="assets/icons.svg#chevron-down"></use></svg></summary>
+              <p>先在 CC Switch 中确认新供应商处于“已启用”状态，然后完全退出 Codex 并重新打开。</p>
+            </details>
+            <details>
+              <summary>模型列表为空或模型不可用 <svg aria-hidden="true"><use href="assets/icons.svg#chevron-down"></use></svg></summary>
+              <p>模型由平台按密钥权限提供。刷新后仍为空时，请检查密钥权限或向平台客服确认当前可用模型。</p>
+            </details>
+            <details>
+              <summary>提示 400：请求参数无效 <svg aria-hidden="true"><use href="assets/icons.svg#chevron-down"></use></svg></summary>
+              <p>先确认接口地址是平台提供的完整地址，不要自行追加或删除路径；再检查模型名称、请求协议和客户端版本是否与平台说明一致。</p>
+            </details>
+            <details>
+              <summary>提示 403：没有权限或分组不可用 <svg aria-hidden="true"><use href="assets/icons.svg#chevron-down"></use></svg></summary>
+              <p>通常是密钥没有对应分组权限、账户被禁用，或当前模型不在套餐范围内。换一个有权限的密钥测试，并向平台客服确认分组和模型权限。</p>
+            </details>
+            <details>
+              <summary>提示 404：接口或模型不存在 <svg aria-hidden="true"><use href="assets/icons.svg#chevron-down"></use></svg></summary>
+              <p>检查端点是否复制完整，以及模型 ID 是否拼写正确。不要把其他客户端的路径直接套用到 Codex，按平台提供的 Codex 接入地址填写。</p>
+            </details>
+            <details>
+              <summary>提示 429：请求过多、余额不足或额度用完 <svg aria-hidden="true"><use href="assets/icons.svg#chevron-down"></use></svg></summary>
+              <p>先暂停重复重试，查看平台余额、额度和限流提示。多个客户端同时使用同一密钥时，也可能更容易触发频率限制。</p>
+            </details>
+            <details>
+              <summary>提示 500、502 或 503 <svg aria-hidden="true"><use href="assets/icons.svg#chevron-down"></use></svg></summary>
+              <p>这类状态通常表示上游服务或中转线路暂时异常。等待几分钟后重试；如果持续出现，请把错误时间、模型名称和完整错误码发给平台客服，不要发送 API 密钥。</p>
+            </details>
+            <details>
+              <summary>请求超时、一直转圈或网络错误 <svg aria-hidden="true"><use href="assets/icons.svg#chevron-down"></use></svg></summary>
+              <p>确认电脑可以访问接口域名，暂时关闭可能拦截请求的代理或安全软件后再试。长上下文或复杂任务也可能需要更长时间，请避免连续点击发送。</p>
+            </details>
+            <details>
+              <summary>提示不支持 Responses 或协议不匹配 <svg aria-hidden="true"><use href="assets/icons.svg#chevron-down"></use></svg></summary>
+              <p>Codex 配置需要使用平台明确支持的协议。不要凭经验把 Chat Completions 地址改成 Responses 地址；请以平台提供的 Codex 专用配置为准。</p>
+            </details>
+            <details>
+              <summary>提示模型不存在或无法选择模型 <svg aria-hidden="true"><use href="assets/icons.svg#chevron-down"></use></svg></summary>
+              <p>模型名称必须使用平台实际开放的模型 ID。先在平台模型列表或公告中确认名称，再在 Codex 中选择；不要只根据网上教程填写旧模型名。</p>
+            </details>
+            <details>
+              <summary>提示上下文过长或超过 Token 限制 <svg aria-hidden="true"><use href="assets/icons.svg#chevron-down"></use></svg></summary>
+              <p>新建一个对话、减少一次发送的文件数量，或换用平台支持更大上下文的模型。长对话可以先让 Codex 总结，再继续后面的任务。</p>
+            </details>
+            <details>
+              <summary>导入后配置没有生效 <svg aria-hidden="true"><use href="assets/icons.svg#chevron-down"></use></svg></summary>
+              <p>在 CC Switch 中确认供应商已经启用，然后完全退出 Codex（包括终端窗口）再重新打开。仍无效时，检查配置文件的修改时间和当前供应商端点。</p>
+            </details>
+            <details>
+              <summary>找不到 config.toml <svg aria-hidden="true"><use href="assets/icons.svg#chevron-down"></use></svg></summary>
+              <p>先启动一次 Codex 或完成一次 CC Switch 导入，再按“配置文件”章节定位。macOS 的 <code>.codex</code> 默认隐藏，可以用 Finder 的“前往文件夹”直接输入 <code>~/.codex</code>。</p>
+            </details>
+            <details>
+              <summary>密钥疑似泄露或误发给别人 <svg aria-hidden="true"><use href="assets/icons.svg#chevron-down"></use></svg></summary>
+              <p>立即在平台密钥管理页禁用或删除旧密钥，再创建新密钥并重新导入。不要把包含密钥的导入链接发到群聊、工单或公开网页。</p>
+            </details>
+            <details>
+              <summary>不知道应该把哪些信息发给客服 <svg aria-hidden="true"><use href="assets/icons.svg#chevron-down"></use></svg></summary>
+              <p>请提供操作系统、Codex/CC Switch 版本、发生时间、模型名称、HTTP 状态码和脱敏后的错误信息。请隐藏 API Key、邮箱、余额截图和完整导入链接。</p>
+            </details>
+            <details data-client-faq="claude">
+              <summary>Claude Code 提示“不是内部或外部命令” <svg aria-hidden="true"><use href="assets/icons.svg#chevron-down"></use></svg></summary>
+              <p>先确认 Node.js 已安装，再重新打开终端。运行 <code>node -v</code> 和 <code>npm -v</code> 检查环境；安装完成后用 <code>claude doctor</code> 检查 PATH 和安装状态。</p>
+            </details>
+            <details data-client-faq="claude">
+              <summary>Claude Code 安装时提示 npm 权限错误 <svg aria-hidden="true"><use href="assets/icons.svg#chevron-down"></use></svg></summary>
+              <p>不要直接给 npm 命令加 <code>sudo</code>。macOS 可使用 Node.js 官方安装包或 Node 版本管理器后重试；Windows 请使用 PowerShell、Git Bash 或 WSL，并确认 Node.js 为 18 或更高版本。</p>
+            </details>
+            <details data-client-faq="claude">
+              <summary>Claude Code 提示 401、403 或无效密钥 <svg aria-hidden="true"><use href="assets/icons.svg#chevron-down"></use></svg></summary>
+              <p>确认 <code>ANTHROPIC_BASE_URL</code> 是平台提供的 Claude 接口地址，密钥没有空格且仍然有效。平台要求 Bearer 认证时使用 <code>ANTHROPIC_AUTH_TOKEN</code>；不要同时设置两个认证变量。</p>
+            </details>
+            <details data-client-faq="claude">
+              <summary>Windows 配置后 Claude Code 仍然连接官方地址 <svg aria-hidden="true"><use href="assets/icons.svg#chevron-down"></use></svg></summary>
+              <p>PowerShell 使用 <code>$env:变量名=值</code>，Git Bash/WSL 使用 <code>export 变量名=值</code>，两种写法不能混用。配置后在同一个终端运行 <code>claude</code>，不要只打开新的图形终端窗口。</p>
+            </details>
+            <details data-client-faq="claude">
+              <summary>Claude Code 和 Codex 的配置能不能混用 <svg aria-hidden="true"><use href="assets/icons.svg#chevron-down"></use></svg></summary>
+              <p>不能直接混用。Codex 使用 <code>~/.codex/config.toml</code> 与 <code>auth.json</code>，Claude Code 使用 <code>ANTHROPIC_BASE_URL</code> 等环境变量；请按对应章节配置各自的端点和密钥。</p>
+            </details>
+            <details data-client-faq="claude">
+              <summary>Claude Code 提示模型不存在或 Messages API 不支持 <svg aria-hidden="true"><use href="assets/icons.svg#chevron-down"></use></svg></summary>
+              <p>Claude Code 需要平台提供兼容 Anthropic Messages API 的端点。模型 ID 必须使用平台实际开放的名称；不要把 Codex 的 Responses 配置或模型名复制到 Claude Code。</p>
+            </details>
+          </div>
+        </section>
+
+        <footer class="page-footer">
+          <div>
+            <a href="/home" data-site-name>SolidAPI</a>
+            <span id="footer-tutorial-title">Codex 接入教程</span>
+          </div>
+          <p>请勿公开分享 API 密钥或含有密钥的一键配置链接。<a href="/docs">查看全部文档 ↗</a></p>
+        </footer>
+      </div>
+    </main>
+
+    <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  </body>
+</html>

@@ -97,7 +97,7 @@ func (s *FrontendServer) Middleware() gin.HandlerFunc {
 			return
 		}
 
-		cleanPath := strings.TrimPrefix(path, "/")
+		cleanPath := strings.TrimSuffix(strings.TrimPrefix(path, "/"), "/")
 		if cleanPath == "" {
 			cleanPath = "index.html"
 		}
@@ -322,7 +322,7 @@ func ServeEmbeddedFrontend() gin.HandlerFunc {
 			return
 		}
 
-		cleanPath := strings.TrimPrefix(path, "/")
+		cleanPath := strings.TrimSuffix(strings.TrimPrefix(path, "/"), "/")
 		if cleanPath == "" {
 			cleanPath = "index.html"
 		}
