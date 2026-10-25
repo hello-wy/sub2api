@@ -8,7 +8,7 @@
       <p v-else-if="!loading && !frameUrl" role="alert" class="text-sm text-red-500">画布地址无效，请在功能开关中检查画布地址。</p>
       <p v-else-if="!loading && !keys.length" class="text-sm">没有可用于画布的 API Key，请在密钥管理中配置有效密钥及分组。</p>
       <iframe v-if="canvas.settings.enabled && frameUrl && selectedKeyId && !loading" :key="frameVersion" ref="frame" :src="frameUrl"
-        title="无限画布" class="min-h-0 w-full flex-1 border-0" allowfullscreen referrerpolicy="origin" @load="syncTheme" />
+        title="无限画布" class="min-h-0 w-full flex-1 border-0" allow="clipboard-read; clipboard-write" allowfullscreen referrerpolicy="origin" @load="syncTheme" />
       <BaseDialog :show="showKeyPicker" :title="keyPickerTitle" width="normal" @close="closeKeyPicker">
         <p class="text-sm text-gray-500 dark:text-gray-400">{{ selectedKeyId ? '确认后将重新连接画布，请先结束正在进行的生成或 Agent 对话。已提交的生成任务不保证取消。' : '请选择你自己的有效 API Key，之后会记住本次选择。' }}</p>
         <p class="mt-3 break-all text-xs text-gray-500 dark:text-gray-400">API 站点：{{ configuredBaseUrl }}（管理员统一设置）</p>
