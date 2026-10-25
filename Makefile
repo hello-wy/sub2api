@@ -1,6 +1,8 @@
 .PHONY: build build-backend build-frontend test test-backend test-frontend test-frontend-critical
 
 FRONTEND_CRITICAL_VITEST := \
+	src/components/common/__tests__/PlatformIcon.spec.ts \
+	src/components/user/monitor/__tests__/MonitorCard.spec.ts \
 	src/components/layout/__tests__/AppSidebar.spec.ts \
 	src/utils/__tests__/canvas-bridge.spec.ts \
 	src/views/user/__tests__/CanvasView.spec.ts \

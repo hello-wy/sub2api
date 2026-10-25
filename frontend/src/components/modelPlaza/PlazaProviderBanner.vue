@@ -24,7 +24,7 @@
     </div>
     <span class="provider-banner-logo" aria-hidden="true">
       <Icon v-if="platform === 'all'" name="grid" size="lg" />
-      <PlatformIcon v-else :platform="platform" size="lg" />
+      <PlatformIcon v-else colored :platform="platform" size="lg" />
     </span>
   </div>
 </template>
@@ -49,7 +49,8 @@ const bannerColor = computed(() => props.platform === 'all' || props.platform ==
 h2 { margin:0; color:#fff; font-size:1.25rem; font-weight:650; line-height:1.35; }
 .provider-model-count { padding:.15rem .55rem; border-radius:2rem; background:rgb(255 255 255 / .94); color:#253d39; font-size:.68rem; font-variant-numeric:tabular-nums; line-height:1.4; }
 p { margin:.55rem 0 0; color:rgb(255 255 255 / .88); font-size:.78rem; line-height:1.6; }
-.provider-banner-logo { display:grid; place-items:center; flex-shrink:0; width:3.5rem; height:3.5rem; border:1px solid rgb(255 255 255 / .1); border-radius:1rem; background:rgb(0 0 0 / .045); color:rgb(7 36 32 / .75); }
+.provider-banner-logo { display:grid; place-items:center; flex-shrink:0; width:3.5rem; height:3.5rem; border:1px solid rgb(255 255 255 / .1); border-radius:1rem; background:rgb(255 255 255 / .94); color:var(--provider-color); }
+.dark .provider-banner-logo { background:rgb(15 23 42 / .88); }
 .provider-banner-logo :deep(svg) { width:2.4rem; height:2.4rem; }
 @media (max-width:767px) { .plaza-provider-banner { padding:1rem; gap:.75rem; } h2 { font-size:1.1rem; } p { font-size:.72rem; } .provider-banner-logo { width:2.8rem; height:2.8rem; border-radius:.8rem; } .provider-banner-logo :deep(svg) { width:1.9rem; height:1.9rem; } }
 </style>

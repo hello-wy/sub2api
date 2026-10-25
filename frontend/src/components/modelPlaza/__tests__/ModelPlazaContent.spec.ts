@@ -21,6 +21,17 @@ vi.mock('@/composables/usePlazaStatus', () => ({
 const render = (groups = [group()]) => mount(ModelPlazaContent, { props:{ response:{ description:'', groups }, loading:false, embedded:true }, global:{ plugins:[createPinia()], stubs:{ teleport:true } } })
 describe('model plaza gallery', () => {
   beforeEach(() => { statusFor.mockReset(); statusFor.mockReturnValue(unknownPlazaStatus()) })
+  it('renders colored provider marks for Kimi and MiniMax models', () => {
+    const wrapper = render([
+      group({ id:54, name:'Kimi', platform:'kimi', models:[model({ name:'kimi-k3', platform:'kimi' })] }),
+      group({ id:55, name:'MiniMax', platform:'minimax', models:[model({ name:'minimax-m3', platform:'minimax' })] }),
+    ])
+    const marks = wrapper.findAll('.provider-mark svg')
+    expect(marks).toHaveLength(2)
+    expect(marks.every(mark => mark.classes().includes('platform-icon-colored'))).toBe(true)
+    expect(wrapper.findAll('.filter-options .platform-icon-colored').length).toBeGreaterThanOrEqual(2)
+    wrapper.unmount()
+  })
   it('switches the whole gallery between paid and official prices without simultaneous amounts', async () => {
     const wrapper = render()
     expect(wrapper.get('.price-pair').text()).toContain('$1.00')

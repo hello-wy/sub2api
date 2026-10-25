@@ -7,7 +7,7 @@
         :class="{ selected: modelValue === option.value }" :aria-pressed="modelValue === option.value"
         :title="option.label" @click="$emit('update:modelValue', option.value)"
       >
-        <span v-if="option.platform" class="option-icon" :style="{ color: platformAccentColor(option.platform) }" aria-hidden="true"><PlatformIcon :platform="option.platform" size="sm" /></span>
+        <span v-if="option.platform" class="option-icon" :style="{ color: platformAccentColor(option.platform) }" aria-hidden="true"><PlatformIcon colored :platform="option.platform" size="sm" /></span>
         <span class="option-label">{{ option.label }}</span>
         <span v-if="option.badge != null" class="option-count">{{ option.badge }}</span>
       </button>

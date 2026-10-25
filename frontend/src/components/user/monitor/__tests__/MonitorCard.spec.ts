@@ -16,12 +16,12 @@ vi.mock('@/utils/featureFlags', () => ({
 }))
 
 vi.mock('@/composables/useChannelMonitorFormat', () => ({
-  providerGradient: () => 'provider-gradient',
   useChannelMonitorFormat: () => ({
     statusLabel: (value: string) => value,
     statusBadgeClass: () => 'status-class',
     providerLabel: (value: string) => value,
     providerBadgeClass: () => 'provider-class',
+    formatMonitorModel: (model: string) => model,
     formatLatency: (value: number | null) => value == null ? '—' : String(value),
   }),
 }))

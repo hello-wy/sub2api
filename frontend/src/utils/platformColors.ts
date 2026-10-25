@@ -102,15 +102,15 @@ const BORDER_STRONG_DEFAULT = 'border-gray-300 dark:border-dark-600'
 // ── Accent (single raw color per platform; consumers derive washes/tints
 //    from it via CSS color-mix, e.g. plaza paid-price zone) ──
 const ACCENT: Record<Platform, string> = {
-  anthropic: '#f97316', // orange-500
-  openai: '#22c55e', // green-500
+  anthropic: '#D97757', // Claude brand terracotta
+  openai: '#10A37F', // OpenAI green
   antigravity: '#a855f7', // purple-500
   gemini: '#3b82f6', // blue-500
   grok: '#71717a', // zinc-500
-  kimi: '#ec4899', // pink-500
-  zhipu: '#6366f1', // indigo-500
+  kimi: '#027AFF', // Kimi brand blue
+  zhipu: '#3859FF', // Zhipu brand blue
   deepseek: '#4d6bfe', // DeepSeek brand blue
-  minimax: '#f43f5e', // rose-500
+  minimax: '#E2167E', // MiniMax gradient start
   opencode_go: '#f59e0b', // amber-500
   typesafe: '#0ea5e9', // sky-500
   command_code: '#737373', // neutral-500

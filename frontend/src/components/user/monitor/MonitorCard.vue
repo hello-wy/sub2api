@@ -8,7 +8,7 @@
     <div class="flex min-w-0 items-start gap-3">
       <span
         class="w-9 h-9 rounded-xl ring-1 ring-black/5 dark:ring-white/10 grid place-items-center flex-shrink-0"
-        :class="[providerGradient(item.provider), providerTintClass]"
+        :style="{ background: 'color-mix(in srgb, ' + platformAccentColor(item.provider) + ' 12%, transparent)' }"
       >
         <ProviderIcon :provider="item.provider" :size="20" />
       </span>
@@ -80,29 +80,14 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { UserMonitorView } from '@/api/channelMonitor'
-import {
-  useChannelMonitorFormat,
-  providerGradient,
-} from '@/composables/useChannelMonitorFormat'
+import { useChannelMonitorFormat } from '@/composables/useChannelMonitorFormat'
+import { platformAccentColor } from '@/utils/platformColors'
 import { isChannelMonitorQuotaVisible } from '@/utils/featureFlags'
 import ProviderIcon from './ProviderIcon.vue'
 import MonitorMetricPair from './MonitorMetricPair.vue'
 import MonitorAvailabilityRow from './MonitorAvailabilityRow.vue'
 import MonitorTimeline from './MonitorTimeline.vue'
 import MonitorQuotaView from '@/components/common/MonitorQuotaView.vue'
-
-// 图标配色与 utils/platformColors.ts 的平台色对齐（新 4 家）。
-const PROVIDER_TINT: Record<string, string> = {
-  openai: 'text-emerald-600 dark:text-emerald-300',
-  anthropic: 'text-orange-600 dark:text-orange-300',
-  gemini: 'text-sky-600 dark:text-sky-300',
-  grok: 'text-zinc-700 dark:text-zinc-200',
-  antigravity: 'text-purple-600 dark:text-purple-300',
-  kimi: 'text-pink-600 dark:text-pink-300',
-  zhipu: 'text-indigo-600 dark:text-indigo-300',
-  deepseek: 'text-teal-600 dark:text-teal-300',
-  opencode_go: 'text-amber-700 dark:text-amber-300',
-}
 
 const props = defineProps<{
   item: UserMonitorView
@@ -124,10 +109,6 @@ const {
   formatLatency,
   formatMonitorModel,
 } = useChannelMonitorFormat()
-
-const providerTintClass = computed(() =>
-  PROVIDER_TINT[props.item.provider] ?? 'text-gray-500 dark:text-gray-300'
-)
 
 const quotaVisible = computed(
   () => isChannelMonitorQuotaVisible() && !!props.item.latest_quota

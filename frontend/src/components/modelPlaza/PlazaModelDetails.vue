@@ -2,7 +2,7 @@
   <BaseDialog :show="!!active" :title="t('modelPlaza.gallery.details')" width="extra-wide" close-on-click-outside @close="$emit('close')">
     <div v-if="active" class="plaza-model-details">
       <header class="detail-heading">
-        <span class="detail-icon" :style="{ color: platformAccentColor(active.model.platform) }"><PlatformIcon :platform="active.model.platform" size="lg" /></span>
+        <span class="detail-icon" :style="{ color: platformAccentColor(active.model.platform) }"><PlatformIcon colored :platform="active.model.platform" size="lg" /></span>
         <div><span>{{ platformLabel(active.model.platform) }}</span><h2>{{ active.model.name }}</h2></div>
         <button type="button" class="detail-copy" @click="copyToClipboard(active.model.name)"><Icon :name="copied ? 'check' : 'copy'" size="sm" />{{ t('modelPlaza.gallery.copy') }}</button>
       </header>
