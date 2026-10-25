@@ -109,7 +109,7 @@ const ACCENT: Record<Platform, string> = {
   grok: '#71717a', // zinc-500
   kimi: '#ec4899', // pink-500
   zhipu: '#6366f1', // indigo-500
-  deepseek: '#14b8a6', // teal-500
+  deepseek: '#4d6bfe', // DeepSeek brand blue
   minimax: '#f43f5e', // rose-500
   opencode_go: '#f59e0b', // amber-500
   typesafe: '#0ea5e9', // sky-500
@@ -166,7 +166,7 @@ const ICON: Record<Platform, string> = {
   grok: 'text-zinc-800 dark:text-zinc-200',
   kimi: 'text-pink-500 dark:text-pink-400',
   zhipu: 'text-indigo-500 dark:text-indigo-400',
-  deepseek: 'text-teal-500 dark:text-teal-400',
+  deepseek: 'text-[#4d6bfe] dark:text-blue-400',
   minimax: 'text-rose-500 dark:text-rose-400',
   opencode_go: 'text-amber-500 dark:text-amber-300',
   typesafe: 'text-sky-500 dark:text-sky-300',

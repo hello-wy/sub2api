@@ -50,7 +50,20 @@ export interface PlazaStatus {
   availability: number | null
   updatedAt: string | null
   window: '24h' | '7d'
+  historyRange?: { start: string; end: string }
   history: Array<{ health: HealthState; at: string }>
+}
+export interface PlazaModelVariant {
+  key: string
+  model: PlazaModel
+  group: ModelPlazaGroup
+  status: PlazaStatus
+}
+/** Health may remain unknown until enough requests arrive, even with real metrics. */
+export function plazaHasStatusData(status: PlazaStatus): boolean {
+  return status.health !== 'unknown' || status.availability != null
+    || status.throughput != null || status.latency != null
+    || status.history.some(point => point.health !== 'unknown')
 }
 export function unknownPlazaStatus(window: '24h' | '7d' = '24h'): PlazaStatus {
   return { health: 'unknown', throughput: null, latency: null, availability: null, updatedAt: null, window, history: [] }
@@ -60,10 +73,17 @@ const probeHealth = (status: string): HealthState => ({ operational: 'healthy', 
 
 /** Exact group + platform + model only: never borrow another group's health. */
 export function plazaV2Status(model: PlazaModel, group: ModelPlazaGroup, matrix: MonitorMatrixResponse | null): PlazaStatus {
+  const start = matrix?.coverage.requested_start
+  const startMs = start ? Date.parse(start) : NaN
+  const historyRange = start && Number.isFinite(startMs) ? {
+    start,
+    // Old servers omit requested_end. Keep the requested 24h window even if aggregation lags.
+    end: matrix?.coverage.requested_end ?? new Date(startMs + 86400000).toISOString(),
+  } : undefined
   const candidates = matrix?.items.filter(row => row.group_id === group.id
     && identity(row.platform) === identity(model.platform)
     && identity(row.model ?? '') === identity(model.name)) ?? []
-  if (candidates.length !== 1) return unknownPlazaStatus()
+  if (candidates.length !== 1) return { ...unknownPlazaStatus(), historyRange }
   const row = candidates[0]
   return {
     health: row.health.overall,
@@ -72,15 +92,17 @@ export function plazaV2Status(model: PlazaModel, group: ModelPlazaGroup, matrix:
     availability: row.metrics.request_count > 0 ? Math.max(0, Math.min(100, (1 - row.metrics.error_rate) * 100)) : null,
     updatedAt: matrix!.coverage.data_through,
     window: '24h',
+    historyRange,
     history: row.buckets.map(b => ({ health: b.health.overall, at: b.bucket_start })),
   }
 }
 /** V1 has no group id/channel identity in plaza: accept only an unambiguous named-group probe. */
-export function plazaV1Status(model: PlazaModel, group: ModelPlazaGroup, monitors: UserMonitorView[]): PlazaStatus {
+export function plazaV1Status(model: PlazaModel, group: ModelPlazaGroup, monitors: UserMonitorView[], now = Date.now()): PlazaStatus {
+  const historyRange = { start: new Date(now - 7 * 86400000).toISOString(), end: new Date(now).toISOString() }
   const candidates = monitors.filter(row => identity(row.provider) === identity(model.platform)
     && identity(row.group_name) === identity(group.name)
     && identity(row.primary_model) === identity(model.name))
-  if (candidates.length !== 1) return unknownPlazaStatus('7d')
+  if (candidates.length !== 1) return { ...unknownPlazaStatus('7d'), historyRange }
   const row = candidates[0]
   const history = [...row.timeline].sort((a, b) => a.checked_at.localeCompare(b.checked_at))
   return {
@@ -90,20 +112,32 @@ export function plazaV1Status(model: PlazaModel, group: ModelPlazaGroup, monitor
     availability: history.length ? row.availability_7d : null,
     updatedAt: history.at(-1)?.checked_at ?? null,
     window: '7d',
+    historyRange,
     history: history.map(b => ({ health: probeHealth(b.status), at: b.checked_at })),
   }
 }
 
-/** Compress dense monitor timelines without dropping an outage between sampled points. */
-export function plazaHistory(history: PlazaStatus['history'], limit = 24) {
-  if (history.length <= limit) return history.map(point => ({ ...point, endAt:point.at }))
+/** Fixed time slots, oldest on the left and newest on the right; gaps never shift real data. */
+export function plazaHistory(status: PlazaStatus, limit = 24) {
+  const count = Math.max(1, Math.floor(limit))
+  const rangeEnd = Date.parse(status.historyRange?.end ?? '')
+  const end = Number.isFinite(rangeEnd) ? rangeEnd : Date.now()
+  const rangeStart = Date.parse(status.historyRange?.start ?? '')
+  const start = Number.isFinite(rangeStart) && rangeStart < end
+    ? rangeStart : end - (status.window === '7d' ? 7 : 1) * 86400000
+  const step = (end - start) / count
+  const slots = Array.from({ length:count }, (_, index) => ({
+    at:new Date(start + index * step).toISOString(),
+    endAt:new Date(start + (index + 1) * step).toISOString(),
+    health:'unknown' as HealthState,
+  }))
   const severity: Record<HealthState, number> = { unknown:0, healthy:1, warning:2, critical:3 }
-  return Array.from({ length:limit }, (_, index) => {
-    const points = history.slice(Math.floor(index * history.length / limit), Math.floor((index + 1) * history.length / limit))
-    return {
-      at:points[0].at,
-      endAt:points[points.length - 1].at,
-      health:points.reduce((worst, point) => severity[point.health] > severity[worst] ? point.health : worst, 'unknown' as HealthState),
-    }
-  })
+  for (const point of status.history) {
+    const at = Date.parse(point.at)
+    if (!Number.isFinite(at) || at < start || at >= end) continue
+    const slot = slots[Math.min(count - 1, Math.floor((at - start) / step))]
+    // Retain brief outages when several source buckets fall within one display slot.
+    if (severity[point.health] > severity[slot.health]) slot.health = point.health
+  }
+  return slots
 }

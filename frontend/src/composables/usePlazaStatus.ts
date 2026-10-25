@@ -12,6 +12,7 @@ export function usePlazaStatus() {
   const app = useAppStore()
   const matrix = ref<MonitorMatrixResponse | null>(null)
   const probes = ref<UserMonitorView[]>([])
+  const refreshedAt = ref(Date.now())
   const failed = ref(false)
   const loading = ref(false)
   const mode = computed(() => getChannelMonitorMode())
@@ -37,7 +38,10 @@ export function usePlazaStatus() {
           if (current === generation) matrix.value = data
         } else {
           const data = await list({ signal: controller.signal })
-          if (current === generation) probes.value = data.items
+          if (current === generation) {
+            probes.value = data.items
+            refreshedAt.value = Date.now()
+          }
         }
         if (current === generation) failed.value = false
       } catch {
@@ -58,6 +62,6 @@ export function usePlazaStatus() {
   onScopeDispose(() => { stop(); generation++; controller?.abort(); clearTimeout(timer) })
   const statusFor = (model: PlazaModel, group: ModelPlazaGroup) => mode.value === 'v2'
     ? plazaV2Status(model, group, matrix.value)
-    : plazaV1Status(model, group, probes.value)
+    : plazaV1Status(model, group, probes.value, refreshedAt.value)
   return { statusFor, failed, loading, enabled, mode }
 }
