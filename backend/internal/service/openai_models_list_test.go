@@ -167,6 +167,32 @@ func TestFetchOpenAIModelsListCacheWindowsAndSingleflight(t *testing.T) {
 	require.Equal(t, http.StatusBadGateway, infraerrors.Code(err))
 }
 
+func TestRefreshCachedOpenAIModelsReusesCompletedRefresh(t *testing.T) {
+	s := &OpenAIGatewayService{}
+	request := openAIModelsRequest{url: "https://models.example/v1/models", accountID: 7, standardModelsList: true}
+	cacheKey := buildOpenAIModelsCacheKey(request)
+	_, state := s.openAIModelsCache.get(cacheKey, time.Now())
+	require.Equal(t, openAIModelsCacheMiss, state)
+
+	// Another request finishes refreshing after this request observes a miss,
+	// but before it joins the singleflight group.
+	cached := &OpenAIModelsResponse{Body: []byte(`{"data":[{"id":"shared-model"}]}`)}
+	s.openAIModelsCache.set(cacheKey, cached, time.Now())
+	var calls atomic.Int32
+	resultCh := s.refreshCachedOpenAIModels(cacheKey, request, func(context.Context, string) (*OpenAIModelsResponse, error) {
+		calls.Add(1)
+		return cached, nil
+	})
+	select {
+	case result := <-resultCh:
+		require.NoError(t, result.Err)
+		require.Same(t, cached, result.Val)
+	case <-time.After(2 * time.Second):
+		t.Fatal("completed cache refresh was not reused")
+	}
+	require.Zero(t, calls.Load(), "a completed refresh must prevent another upstream request")
+}
+
 func TestFetchOpenAIModelsListRevalidatesUpstreamETag(t *testing.T) {
 	var calls atomic.Int32
 	s := newCodexModelsAPIKeyTestService(&codexModelsHTTPUpstreamStub{do: func(req *http.Request, _ string, _ int64, _ int) (*http.Response, error) {
