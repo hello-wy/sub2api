@@ -4,8 +4,7 @@
       <span class="provider-mark" :style="activeModel.platform === 'deepseek' ? { color: platformAccentColor(activeModel.platform) } : undefined"><PlatformIcon :platform="activeModel.platform" size="lg" /></span>
       <div class="model-identity">
         <h3><button type="button" aria-haspopup="dialog" :title="activeModel.name" @click="$emit('details', activeKey)">{{ activeModel.name }}</button></h3>
-        <span v-if="discount != null" class="discount-tag" :title="t('modelPlaza.gallery.discountHint')">{{ t('modelPlaza.gallery.discount', { value: discount, percent: Number((100 - discount * 10).toFixed(2)) }) }}</span>
-        <span v-else-if="priceMode === 'paid'" class="rate-tag" :title="independentImage ? t('modelPlaza.gallery.independentImage') : t('modelPlaza.table.rate')">{{ rate }}×</span>
+        <span v-if="priceMode === 'paid'" class="rate-tag" :title="independentImage ? t('modelPlaza.gallery.independentImage') : t('modelPlaza.gallery.rateHint')">{{ t('modelPlaza.filters.rateLabel') }} {{ rate }}×</span>
       </div>
       <div class="model-actions">
         <div class="model-group">
@@ -80,25 +79,6 @@ const statusCount = computed(() => options.value.filter(option => plazaHasStatus
 const price = (n: number | null) => formatScaled(n, 1, 4)
 const rate = computed(() => plazaRate(activeGroup.value, activeModel.value))
 const prices = computed(() => plazaPrices(activeModel.value, activeGroup.value, props.priceMode))
-// Only show a model-wide discount when every priced tier and token type agrees.
-const discount = computed(() => {
-  if (props.priceMode !== 'paid' || activeModel.value.pricing?.billing_mode !== 'token') return null
-  const official = plazaPrices(activeModel.value, activeGroup.value, 'official')
-  if (prices.value.length !== official.length) return null
-  const ratios: number[] = []
-  for (const [index, row] of prices.value.entries()) {
-    if (row.label !== official[index].label) return null
-    for (const key of ['input', 'output', 'cacheRead', 'cacheWrite', 'cacheWrite1h'] as const) {
-      const paid = row[key], base = official[index][key]
-      if (paid == null && base == null) continue
-      if (paid == null || base == null || base < 0 || paid < 0) return null
-      if (base === 0) { if (paid !== 0) return null; continue }
-      ratios.push(paid / base)
-    }
-  }
-  if (!ratios.length || ratios[0] >= 1 || ratios.some(value => Math.abs(value - ratios[0]) > 1e-8)) return null
-  return Number((ratios[0] * 10).toPrecision(3))
-})
 const requestPricing = computed(() => props.priceMode === 'paid' && !!activeModel.value.pricing && activeModel.value.pricing.billing_mode !== 'token')
 const independentImage = computed(() => activeModel.value.pricing?.billing_mode === 'image' && activeGroup.value.image_rate_independent)
 const unit = computed(() => requestPricing.value ? t(activeModel.value.pricing?.billing_mode === 'image' ? 'modelPlaza.table.perUnitImage' : 'modelPlaza.table.perUnitRequest') : '/M')
@@ -121,8 +101,7 @@ const requestRange = computed(() => {
 h3 { min-width:0; margin:0; font-size:1rem; font-weight:650; letter-spacing:-.015em; line-height:1.5; overflow-wrap:anywhere; }
 h3 button { text-align:left; color:var(--plaza-ink); }
 h3 button:hover { color:var(--plaza-blue); }
-.discount-tag,.rate-tag { flex-shrink:0; border-radius:.2rem; padding:.05rem .3rem; font-size:.65rem; line-height:1.3; color:#df4b30; background:#fff0eb; }
-.rate-tag { color:var(--plaza-muted); background:var(--plaza-subtle); }
+.rate-tag { flex-shrink:0; border-radius:.2rem; padding:.05rem .3rem; font-size:.65rem; line-height:1.3; color:var(--plaza-muted); background:var(--plaza-subtle); }
 .model-actions { display:flex; align-items:center; gap:.35rem; padding-top:.1rem; min-width:0; }
 .model-group { min-width:0; max-width:8rem; color:var(--plaza-blue); font-size:.7rem; line-height:1.4; }
 .card-group-picker { display:block; min-width:0; }
@@ -143,7 +122,6 @@ h3 button:hover { color:var(--plaza-blue); }
 .model-tags>.neutral-tag { color:var(--plaza-muted); background:var(--plaza-subtle); }
 .plaza-model-card :deep(.plaza-status-footer) { margin:0; }
 button:focus-visible,select:focus-visible { outline:2px solid var(--plaza-blue); outline-offset:3px; }
-:global(.dark .plaza-model-card .discount-tag) { color:#ffa48d; background:#4a2c2b; }
 :global(.dark .plaza-model-card .model-tags>.billing-tag),:global(.dark .plaza-model-card .model-tags>.time-tag) { color:#c6b3ff; background:#33294d; }
 :global(.dark .plaza-model-card .model-tags>.tier-tag) { color:#e0a8ee; background:#422c4c; }
 .model-list-row { min-height:12rem; }

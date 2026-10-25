@@ -12,7 +12,7 @@ const { statusFor } = vi.hoisted(() => ({ statusFor: vi.fn() }))
 
 vi.mock('vue-i18n', async () => ({
   ...await vi.importActual('vue-i18n'),
-  useI18n: () => ({ t: (key: string, values?: { value?: number }) => key === 'modelPlaza.gallery.discount' ? `${values?.value}折` : key }),
+  useI18n: () => ({ t: (key: string) => key }),
 }))
 vi.mock('@/composables/useClipboard', () => ({ useClipboard: () => ({ copied:ref(false), copyToClipboard:vi.fn() }) }))
 vi.mock('@/composables/usePlazaStatus', () => ({
@@ -31,21 +31,23 @@ describe('model plaza gallery', () => {
     expect(wrapper.get('.model-prices').attributes('data-price-mode')).toBe('official')
     wrapper.unmount()
   })
-  it('calculates a real official-price discount and updates it with the selected group', async () => {
-    const wrapper = render([group(), group({ id:2, user_rate_multiplier:1 })])
-    expect(wrapper.get('.discount-tag').text()).toBe('3.33折')
-    await wrapper.get('.card-group-picker select').setValue(JSON.stringify([2,'openai','gpt-test']))
-    expect(wrapper.get('.discount-tag').text()).toBe('6.67折')
-    await wrapper.findAll('.price-switch button')[1].trigger('click')
+  it('uses the same labeled billing multiplier across groups and hides it for official prices', async () => {
+    const wrapper = render([group({ user_rate_multiplier:0.1 }), group({ id:2, user_rate_multiplier:1 })])
+    expect(wrapper.get('.rate-tag').text()).toBe('modelPlaza.filters.rateLabel 0.1×')
+    expect(wrapper.get('.rate-tag').attributes('title')).toBe('modelPlaza.gallery.rateHint')
     expect(wrapper.find('.discount-tag').exists()).toBe(false)
+    await wrapper.get('.card-group-picker select').setValue(JSON.stringify([2,'openai','gpt-test']))
+    expect(wrapper.get('.rate-tag').text()).toBe('modelPlaza.filters.rateLabel 1×')
+    await wrapper.findAll('.price-switch button')[1].trigger('click')
+    expect(wrapper.find('.rate-tag').exists()).toBe(false)
     wrapper.unmount()
   })
-  it('avoids a model-wide discount when different token prices have different discounts', () => {
+  it('keeps the billing multiplier label when official price ratios differ', () => {
     const inconsistent = model()
     inconsistent.official_pricing!.output_price = 16e-6
     const wrapper = render([group({ models:[inconsistent] })])
     expect(wrapper.find('.discount-tag').exists()).toBe(false)
-    expect(wrapper.get('.rate-tag').text()).toBe('0.5×')
+    expect(wrapper.get('.rate-tag').text()).toBe('modelPlaza.filters.rateLabel 0.5×')
     wrapper.unmount()
   })
   it('combines provider and search filters and resets them together', async () => {
