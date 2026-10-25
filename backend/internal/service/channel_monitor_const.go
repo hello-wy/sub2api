@@ -148,6 +148,12 @@ const (
 
 // 业务错误（统一在此声明，避免散落）。
 var (
+	ErrChannelMonitorInvalidOrder = infraerrors.BadRequest(
+		"CHANNEL_MONITOR_INVALID_ORDER", "monitor_ids must contain 1-10000 distinct positive IDs",
+	)
+	ErrChannelMonitorInvalidSortOrder = infraerrors.BadRequest(
+		"CHANNEL_MONITOR_INVALID_SORT_ORDER", "sort_order must be in [0, 2147483647]",
+	)
 	ErrChannelMonitorNotFound = infraerrors.NotFound(
 		"CHANNEL_MONITOR_NOT_FOUND", "channel monitor not found",
 	)

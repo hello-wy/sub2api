@@ -553,6 +553,15 @@ export default {
       nameRequired: '请输入监控名称',
       primaryModelRequired: '请输入主模型',
       linkedAccountRequired: '请选择关联账号',
+      sortOrder: {
+        title: '渠道排序',
+        hint: '拖动渠道调整显示顺序，也可使用上下按钮。保存后同步到用户端，现有监测历史保持不变。',
+        drag: '拖动排序',
+        moveUp: '上移 {name}',
+        moveDown: '下移 {name}',
+        saved: '渠道顺序已保存',
+        saveError: '保存渠道顺序失败，请重试',
+      },
       columns: {
         name: '名称',
         provider: '供应商',

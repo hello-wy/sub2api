@@ -553,6 +553,15 @@ export default {
       nameRequired: 'Please enter a monitor name',
       primaryModelRequired: 'Please enter a primary model',
       linkedAccountRequired: 'Please select a linked account',
+      sortOrder: {
+        title: 'Sort channels',
+        hint: 'Drag channels or use the arrow buttons to reorder them. Saving updates the user view and preserves monitoring history.',
+        drag: 'Drag to reorder',
+        moveUp: 'Move {name} up',
+        moveDown: 'Move {name} down',
+        saved: 'Channel order saved',
+        saveError: 'Failed to save channel order. Please retry.',
+      },
       columns: {
         name: 'Name',
         provider: 'Provider',

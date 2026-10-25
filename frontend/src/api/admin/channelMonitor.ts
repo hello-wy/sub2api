@@ -74,6 +74,7 @@ export interface ChannelMonitor {
   api_key_decrypt_failed?: boolean
   primary_model: string
   extra_models: string[]
+  sort_order: number
   group_name: string
   enabled: boolean
   interval_seconds: number
@@ -142,6 +143,7 @@ export interface CreateParams {
   account_id?: number | null
   primary_model: string
   extra_models?: string[]
+  sort_order?: number
   group_name?: string
   enabled?: boolean
   interval_seconds: number
@@ -345,7 +347,13 @@ export async function listHistory(
   return data
 }
 
+/** Save IDs in display order. The server assigns ordering values atomically. */
+export async function updateSortOrder(monitorIDs: number[]): Promise<void> {
+  await apiClient.put('/admin/channel-monitors/sort-order', { monitor_ids: monitorIDs })
+}
+
 export const channelMonitorAPI = {
+  updateSortOrder,
   list,
   get,
   create,
