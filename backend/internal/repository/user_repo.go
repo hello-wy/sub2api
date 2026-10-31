@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -20,6 +21,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/schema/mixins"
 	dbuser "github.com/Wei-Shaw/sub2api/ent/user"
 	"github.com/Wei-Shaw/sub2api/ent/userallowedgroup"
+	"github.com/Wei-Shaw/sub2api/ent/userattributedefinition"
 	"github.com/Wei-Shaw/sub2api/ent/usersubscription"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/pagination"
 	"github.com/Wei-Shaw/sub2api/internal/service"
@@ -601,6 +603,10 @@ func (r *userRepository) ListWithFilters(ctx context.Context, params pagination.
 		q = q.Where(dbuser.IDIn(allowedUserIDs...))
 	}
 
+	orders, err := r.userListOrder(ctx, params)
+	if err != nil {
+		return nil, nil, err
+	}
 	total, err := q.Clone().Count(userCtx)
 	if err != nil {
 		return nil, nil, err
@@ -609,7 +615,7 @@ func (r *userRepository) ListWithFilters(ctx context.Context, params pagination.
 	usersQuery := q.
 		Offset(params.Offset()).
 		Limit(params.Limit())
-	for _, order := range userListOrder(params) {
+	for _, order := range orders {
 		usersQuery = usersQuery.Order(order)
 	}
 
@@ -664,6 +670,47 @@ func (r *userRepository) ListWithFilters(ctx context.Context, params pagination.
 	}
 
 	return outUsers, paginationResultFromTotal(int64(total), params), nil
+}
+
+// 数字属性在分页前排序；不可用的属性回退到默认排序，避免旧排序配置影响列表。
+func (r *userRepository) userListOrder(ctx context.Context, params pagination.PaginationParams) ([]func(*entsql.Selector), error) {
+	key := strings.ToLower(strings.TrimSpace(params.SortBy))
+	if !strings.HasPrefix(key, "attr_") {
+		return userListOrder(params), nil
+	}
+	fallback := userListOrder(pagination.PaginationParams{SortBy: "created_at", SortOrder: "desc"})
+	id, err := strconv.ParseInt(strings.TrimPrefix(key, "attr_"), 10, 64)
+	if err != nil || id <= 0 {
+		return fallback, nil
+	}
+	def, err := r.client.UserAttributeDefinition.Query().Where(
+		userattributedefinition.IDEQ(id),
+		userattributedefinition.EnabledEQ(true),
+		userattributedefinition.TypeEQ(string(service.AttributeTypeNumber)),
+		userattributedefinition.DeletedAtIsNil(),
+	).Only(ctx)
+	if dbent.IsNotFound(err) {
+		return fallback, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	direction := "DESC"
+	if params.NormalizedSortOrder(pagination.SortOrderDesc) == pagination.SortOrderAsc {
+		direction = "ASC"
+	}
+	return []func(*entsql.Selector){func(s *entsql.Selector) {
+		userID := s.C(dbuser.FieldID)
+		// ID 来自已校验的属性定义；请求参数不直接拼接进 SQL。
+		expr := fmt.Sprintf("(SELECT user_attribute_numeric_value(value) FROM user_attribute_values WHERE user_id = %s AND attribute_id = %d)", userID, def.ID)
+		if service.IsReadOnlyUserAttributeDefinition(*defEntityToService(def)) {
+			expr = fmt.Sprintf(`(SELECT COALESCE(SUM(remaining), 0) FROM lottery_ticket_ledger
+				WHERE user_id = %s AND remaining > 0 AND revoked_at IS NULL
+				AND (expires_at IS NULL OR expires_at > NOW()))`, userID)
+		}
+		s.OrderExpr(entsql.Expr(expr + " " + direction + " NULLS LAST"))
+		s.OrderExpr(entsql.Expr(userID + " " + direction))
+	}}, nil
 }
 
 func userListOrder(params pagination.PaginationParams) []func(*entsql.Selector) {

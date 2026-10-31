@@ -7165,7 +7165,7 @@
         <section class="card space-y-4 p-6">
           <div>
             <h2 class="text-lg font-semibold text-gray-900 dark:text-white">无限画布</h2>
-            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">配置用户侧无限画布入口。用户首次进入选择自己的有效 API Key，之后记住选择。</p>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">配置用户侧无限画布入口。每位用户在画布内自行配置渠道、API 地址和密钥；Agent 分别选择文本与图片渠道。</p>
           </div>
           <div class="flex items-center justify-between gap-4">
             <div><div class="font-medium text-gray-900 dark:text-white">开启画布</div><div class="text-sm text-gray-500 dark:text-gray-400">关闭后隐藏全站入口，并停止签发画布会话。</div></div>
@@ -7176,10 +7176,6 @@
             <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">启用后，画布地址的域名会自动加入嵌入白名单；修改地址或关闭画布后同步更新。保存后请刷新页面。</p>
           </label>
           <p class="text-xs text-gray-500 dark:text-gray-400">例如 <code>http://127.0.0.1:3010/</code>。该配置保存在服务器，对所有用户生效。</p>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">画布 API 站点（Base URL）
-            <input v-model="canvasIntegrationApiUrl" type="url" class="mt-2 w-full rounded-lg border border-gray-300 bg-transparent px-3 py-2 dark:border-dark-600" placeholder="https://api.example.com" />
-          </label>
-          <p class="text-xs text-gray-500 dark:text-gray-400">填写接受本站 API Key 的网关地址，不是画布网页地址或单个接口地址。留空时使用全站 API 地址；全站未设置时使用当前 API 服务地址。用户可查看地址并切换自己的密钥，不能修改此配置。</p>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300" for="canvas-upstream-retries">上游额外重试次数
             <input id="canvas-upstream-retries" v-model.number="canvasIntegrationRetryCount" type="number" min="0" max="5" step="1" class="mt-2 w-full rounded-lg border border-gray-300 bg-transparent px-3 py-2 dark:border-dark-600" />
           </label>
@@ -9638,7 +9634,6 @@ const activeTab = ref<SettingsTab>(useRoute().query.tab === "features" ? "featur
 const canvasStore = useCanvasStore();
 const canvasIntegrationEnabled = ref(false);
 const canvasIntegrationUrl = ref("");
-const canvasIntegrationApiUrl = ref("");
 const canvasIntegrationRetryCount = ref(5);
 const canvasSettingsSaving = ref(false);
 const canvasSettingsReady = ref(false);
@@ -9648,7 +9643,6 @@ onMounted(async () => {
     const settings = await canvasStore.fetchSettings();
     canvasIntegrationEnabled.value = settings.enabled;
     canvasIntegrationUrl.value = settings.url;
-    canvasIntegrationApiUrl.value = settings.api_base_url || "";
     canvasIntegrationRetryCount.value = settings.upstream_retry_count ?? 5;
     canvasSettingsReady.value = true;
   } catch (error) {
@@ -9662,9 +9656,9 @@ async function saveCanvasIntegration(): Promise<void> {
   canvasSettingsError.value = "";
   try {
     if (!Number.isInteger(canvasIntegrationRetryCount.value) || canvasIntegrationRetryCount.value < 0 || canvasIntegrationRetryCount.value > 5) throw new Error("上游额外重试次数必须为 0–5 的整数");
-    await canvasStore.saveSettings({ enabled: canvasIntegrationEnabled.value, url: canvasIntegrationUrl.value.trim(), api_base_url: canvasIntegrationApiUrl.value.trim(), upstream_retry_count: canvasIntegrationRetryCount.value });
+    await canvasStore.saveSettings({ enabled: canvasIntegrationEnabled.value, url: canvasIntegrationUrl.value.trim(), upstream_retry_count: canvasIntegrationRetryCount.value });
     appStore.showSuccess("画布设置已保存，全站生效");
-  } catch (error) { canvasSettingsError.value = (error as { message?: string } | null)?.message || "保存失败，请检查画布地址、API 站点和管理员权限。"; }
+  } catch (error) { canvasSettingsError.value = (error as { message?: string } | null)?.message || "保存失败，请检查画布地址和管理员权限。"; }
   finally { canvasSettingsSaving.value = false; }
 }
 const welfareRatios = ref<number[]>([1.0, 0.5, 0.2]);

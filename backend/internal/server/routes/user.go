@@ -26,7 +26,6 @@ func RegisterUserRoutes(
 	authenticated.Use(gin.HandlerFunc(auditLog))
 	{
 		authenticated.GET("/canvas/settings", h.Setting.GetCanvasSettings)
-		authenticated.GET("/canvas/session/:id", h.APIKey.CanvasSession(settingService))
 		// 用户接口
 		user := authenticated.Group("/user")
 		{

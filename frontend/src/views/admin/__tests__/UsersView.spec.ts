@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 
-import type { AdminUser } from '@/types'
+import type { AdminUser, UserAttributeDefinition } from '@/types'
 import UsersView from '../UsersView.vue'
 
 const {
@@ -87,6 +87,12 @@ const createAdminUser = (overrides: Partial<AdminUser> = {}): AdminUser => ({
   ...overrides
 })
 
+const createAttribute = (overrides: Partial<UserAttributeDefinition> = {}): UserAttributeDefinition => ({
+  id: 101, key: 'score', name: '分数', type: 'number', enabled: true,
+  description: '', options: [], required: false, validation: {}, placeholder: '', display_order: 0,
+  created_at: '', updated_at: '', ...overrides
+})
+
 const DataTableStub = {
   props: ['columns', 'data', 'selectedKeys'],
   emits: ['sort', 'update:selectedKeys'],
@@ -132,14 +138,14 @@ const BulkEditUserModalStub = {
   `
 }
 
-const mountBulkDeleteView = () => mount(UsersView, {
+const mountBulkDeleteView = (realTable = false) => mount(UsersView, {
   global: {
     stubs: {
       AppLayout: { template: '<div><slot /></div>' },
       TablePageLayout: {
         template: '<div><slot name="filters" /><slot name="table" /><slot name="pagination" /></div>'
       },
-      DataTable: DataTableStub,
+      DataTable: realTable ? false : DataTableStub,
       Pagination: PaginationStub,
       ConfirmDialog: {
         props: ['show', 'message'],
@@ -227,6 +233,116 @@ describe('admin UsersView', () => {
     await flushPromises()
 
     expect(wrapper.get('[data-test="columns"]').text()).toContain('lottery_draw_attempts,lottery_wins')
+  })
+
+  it('automatically enables sorting only for enabled numeric attributes and resets the page on sort', async () => {
+    listEnabledDefinitions.mockResolvedValue([
+      createAttribute(),
+      createAttribute({ id: 102, type: 'text' }),
+      createAttribute({ id: 103, type: 'date' }),
+      createAttribute({ id: 104, enabled: false }),
+      createAttribute({ id: 105, key: 'lottery_available_tickets', read_only: true })
+    ])
+    const wrapper = mountBulkDeleteView()
+    await flushPromises()
+    const table = wrapper.findComponent(DataTableStub)
+    const columns = table.props('columns') as { key: string; sortable: boolean }[]
+    expect(columns.find(column => column.key === 'attr_101')?.sortable).toBe(true)
+    expect(columns.find(column => column.key === 'attr_102')?.sortable).toBe(false)
+    expect(columns.find(column => column.key === 'attr_103')?.sortable).toBe(false)
+    expect(columns.find(column => column.key === 'attr_104')).toBeUndefined()
+    expect(columns.find(column => column.key === 'attr_105')?.sortable).toBe(true)
+
+    wrapper.findComponent(PaginationStub).vm.$emit('update:page', 2)
+    await flushPromises()
+    for (const order of ['asc', 'desc']) {
+      table.vm.$emit('sort', 'attr_101', order)
+      await flushPromises()
+      expect(listUsers).toHaveBeenLastCalledWith(1, 20,
+        expect.objectContaining({ sort_by: 'attr_101', sort_order: order }),
+        expect.objectContaining({ signal: expect.any(AbortSignal) }))
+    }
+    wrapper.unmount()
+  })
+
+  it('waits for definitions before mounting the table and restoring a numeric attribute sort', async () => {
+    let finishDefinitions!: (definitions: UserAttributeDefinition[]) => void
+    listEnabledDefinitions.mockImplementationOnce(() => new Promise(resolve => { finishDefinitions = resolve }))
+    localStorage.setItem('admin-users-table-sort', JSON.stringify({ key: 'attr_101', order: 'asc' }))
+    const wrapper = mountBulkDeleteView()
+    await flushPromises()
+    expect(wrapper.findComponent(DataTableStub).exists()).toBe(false)
+    expect(listUsers).not.toHaveBeenCalled()
+
+    finishDefinitions([createAttribute()])
+    await flushPromises()
+    expect(wrapper.findComponent(DataTableStub).exists()).toBe(true)
+    expect(listUsers).toHaveBeenCalledTimes(1)
+    expect(listUsers).toHaveBeenLastCalledWith(1, 20,
+      expect.objectContaining({ sort_by: 'attr_101', sort_order: 'asc' }),
+      expect.objectContaining({ signal: expect.any(AbortSignal) }))
+    wrapper.unmount()
+  })
+
+  it('keeps the real table indicator, saved preference and server sort consistent across remounts', async () => {
+    listEnabledDefinitions.mockResolvedValue([createAttribute()])
+    getBatchUserAttributes.mockResolvedValue({ attributes: { 42: { 101: '2' } } })
+    localStorage.setItem('admin-users-table-sort', JSON.stringify({ key: 'attr_101', order: 'desc' }))
+    const wrapper = mountBulkDeleteView(true)
+    await flushPromises()
+    const header = wrapper.findAll('th').find(th => th.text().includes('分数'))!
+    expect(header.attributes('aria-sort')).toBe('descending')
+    expect(listUsers.mock.lastCall?.[2]).toMatchObject({ sort_by: 'attr_101', sort_order: 'desc' })
+    await header.trigger('click')
+    await flushPromises()
+    expect(header.attributes('aria-sort')).toBe('ascending')
+    expect(JSON.parse(localStorage.getItem('admin-users-table-sort')!)).toEqual({ key: 'attr_101', order: 'asc' })
+    expect(listUsers.mock.lastCall?.[2]).toMatchObject({ sort_by: 'attr_101', sort_order: 'asc' })
+    wrapper.unmount()
+
+    const restored = mountBulkDeleteView(true)
+    await flushPromises()
+    expect(restored.findAll('th').find(th => th.text().includes('分数'))!.attributes('aria-sort')).toBe('ascending')
+    expect(listUsers.mock.lastCall?.[2]).toMatchObject({ sort_by: 'attr_101', sort_order: 'asc' })
+    listEnabledDefinitions.mockResolvedValue([])
+    restored.findComponent({ name: 'UserAttributesConfigModal' }).vm.$emit('close')
+    await flushPromises()
+    expect(JSON.parse(localStorage.getItem('admin-users-table-sort')!)).toEqual({ key: 'created_at', order: 'desc' })
+    expect(listUsers.mock.lastCall?.[2]).toMatchObject({ sort_by: 'created_at', sort_order: 'desc' })
+    restored.unmount()
+  })
+
+  it.each([
+    { reason: 'deleted', definitions: [] },
+    { reason: 'disabled', definitions: [createAttribute({ enabled: false })] },
+    { reason: 'text', definitions: [createAttribute({ type: 'text' })] }
+  ])('falls back when a persisted attribute sort becomes $reason', async ({ definitions }) => {
+    listEnabledDefinitions.mockResolvedValue(definitions)
+    localStorage.setItem('admin-users-table-sort', JSON.stringify({ key: 'attr_101', order: 'asc' }))
+    const wrapper = mountBulkDeleteView()
+    await flushPromises()
+    expect(listUsers).toHaveBeenLastCalledWith(1, 20,
+      expect.objectContaining({ sort_by: 'created_at', sort_order: 'desc' }),
+      expect.objectContaining({ signal: expect.any(AbortSignal) }))
+    wrapper.unmount()
+  })
+
+  it('reloads definitions and falls back after the sorted attribute is disabled', async () => {
+    listEnabledDefinitions.mockResolvedValueOnce([createAttribute()]).mockResolvedValueOnce([])
+    localStorage.setItem('admin-users-table-sort', JSON.stringify({ key: 'attr_101', order: 'desc' }))
+    const wrapper = mountBulkDeleteView()
+    await flushPromises()
+    wrapper.findComponent(PaginationStub).vm.$emit('update:page', 2)
+    await flushPromises()
+    wrapper.findComponent({ name: 'UserAttributesConfigModal' }).vm.$emit('close')
+    await flushPromises()
+    expect(listEnabledDefinitions).toHaveBeenCalledTimes(2)
+    expect(listUsers).toHaveBeenLastCalledWith(1, 20,
+      expect.objectContaining({ sort_by: 'created_at', sort_order: 'desc' }),
+      expect.objectContaining({ signal: expect.any(AbortSignal) }))
+    expect(wrapper.findComponent(DataTableStub).props('columns')).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ key: 'attr_101' })]))
+    wrapper.unmount()
   })
 
   it('cancels bulk deletion without deleting or clearing selected users', async () => {

@@ -18,38 +18,6 @@ func (r *canvasSettingsRepo) Set(_ context.Context, key, value string) error {
 	return nil
 }
 
-func TestCanvasAPISettings(t *testing.T) {
-	ctx := context.Background()
-	repo := &canvasSettingsRepo{authSourceDefaultsRepoStub{values: map[string]string{SettingKeyAPIBaseURL: "https://global.example/"}}}
-	svc := NewSettingService(repo, &config.Config{})
-	inherited, err := svc.GetCanvasSettings(ctx)
-	require.NoError(t, err)
-	require.Empty(t, inherited.APIBaseURL)
-	require.Equal(t, "https://global.example", inherited.EffectiveAPIBaseURL)
-	require.NoError(t, svc.UpdateCanvasSettings(ctx, CanvasSettings{APIBaseURL: " https://canvas-api.example/proxy/ ", EffectiveAPIBaseURL: "https://forged.example"}))
-	saved, err := svc.GetCanvasSettings(ctx)
-	require.NoError(t, err)
-	require.Equal(t, "https://canvas-api.example/proxy", saved.APIBaseURL)
-	require.Equal(t, saved.APIBaseURL, saved.EffectiveAPIBaseURL)
-	require.NotContains(t, repo.values[SettingKeyCanvas], "forged")
-	require.NotContains(t, repo.values[SettingKeyCanvas], "effective_api_base_url")
-	for _, address := range []string{"/relative", "javascript:alert(1)", "https://user:pass@api.example", "https://api.example?key=secret", "https://api.example?", "https://api.example#token", "https://api.example#", "https://"} {
-		t.Run(address, func(t *testing.T) {
-			require.Error(t, svc.UpdateCanvasSettings(ctx, CanvasSettings{APIBaseURL: address}))
-			unchanged, err := svc.GetCanvasSettings(ctx)
-			require.NoError(t, err)
-			require.Equal(t, saved, unchanged)
-		})
-	}
-	require.NoError(t, svc.UpdateCanvasSettings(ctx, CanvasSettings{}))
-	cleared, err := svc.GetCanvasSettings(ctx)
-	require.NoError(t, err)
-	require.Equal(t, "https://global.example", cleared.EffectiveAPIBaseURL)
-	delete(repo.values, SettingKeyAPIBaseURL)
-	fallback, err := svc.GetCanvasSettings(ctx)
-	require.NoError(t, err)
-	require.Empty(t, fallback.EffectiveAPIBaseURL)
-}
 func TestCanvasSettings(t *testing.T) {
 	ctx := context.Background()
 	repo := &canvasSettingsRepo{authSourceDefaultsRepoStub{values: map[string]string{}}}
@@ -104,7 +72,7 @@ func TestCanvasFrameSrcOrigins(t *testing.T) {
 		canvas string
 		want   []string
 	}{
-		{"enabled", `{"enabled":true,"url":"https://canvas.example/editor?view=canvas","api_base_url":"https://api.example"}`, []string{"https://canvas.example"}},
+		{"enabled", `{"enabled":true,"url":"https://canvas.example/editor?view=canvas"}`, []string{"https://canvas.example"}},
 		{"disabled", `{"enabled":false,"url":"https://canvas.example/editor"}`, nil},
 		{"unset", "", nil},
 		{"port", `{"enabled":true,"url":"http://localhost:3010/canvas"}`, []string{"http://localhost:3010"}},
