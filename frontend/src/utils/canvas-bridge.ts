@@ -1,5 +1,10 @@
-/** Canvas receives only its user's gateway key, never the panel login token. */
+import type { ApiKey } from '@/types'
+
+/** Identity handshakes never contain tokens; selected personal keys are requested separately. */
 export const CANVAS_PROTOCOL = 'sub2api-canvas-v1'
+export function canvasKeyAvailable(key: ApiKey): boolean {
+  return key.status === 'active' && (!key.expires_at || Date.parse(key.expires_at) > Date.now()) && (!key.quota || key.quota_used < key.quota)
+}
 export function trustedCanvasMessage(event: MessageEvent, frame: Window | null, url: string): boolean {
   if (!frame || event.source !== frame) return false
   try {

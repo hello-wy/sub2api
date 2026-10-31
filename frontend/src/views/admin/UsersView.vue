@@ -275,6 +275,7 @@
       <!-- Users Table -->
       <template #table>
         <DataTable
+          v-if="tableReady"
           :columns="columns"
           :data="sortedUsers"
           :loading="loading"
@@ -284,8 +285,8 @@
           :selection-label="getUserSelectionLabel"
           :actions-count="7"
           :server-side-sort="true"
-          default-sort-key="created_at"
-          default-sort-order="desc"
+          :default-sort-key="sortState.sort_by"
+          :default-sort-order="sortState.sort_order"
           :sort-storage-key="USER_SORT_STORAGE_KEY"
           @sort="handleSort"
           @update:selected-keys="handleSelectedKeysUpdate"
@@ -856,6 +857,8 @@ import UserBalanceHistoryModal from '@/components/admin/user/UserBalanceHistoryM
 import GroupReplaceModal from '@/components/admin/user/GroupReplaceModal.vue'
 
 const appStore = useAppStore()
+const attributeDefinitions = ref<UserAttributeDefinition[]>([])
+const userAttributeValues = ref<Record<number, Record<number, string>>>({})
 
 // Generate dynamic attribute columns from enabled definitions
 const attributeColumns = computed<Column[]>(() =>
@@ -864,7 +867,7 @@ const attributeColumns = computed<Column[]>(() =>
     .map(def => ({
       key: `attr_${def.id}`,
       label: def.name,
-      sortable: false
+      sortable: def.type === 'number'
     }))
 )
 
@@ -1069,9 +1072,10 @@ const users = ref<AdminUser[]>([])
 const loading = ref(false)
 const searchQuery = ref('')
 const USER_SORT_STORAGE_KEY = 'admin-users-table-sort'
+const tableReady = ref(false)
 const loadInitialSortState = (): { sort_by: string; sort_order: 'asc' | 'desc' } => {
   const fallback = { sort_by: 'created_at', sort_order: 'desc' as 'asc' | 'desc' }
-  const sortable = new Set(['email', 'id', 'username', 'role', 'balance', 'concurrency', 'status', 'last_used_at', 'last_active_at', 'created_at'])
+  const sortable = new Set(columns.value.filter(column => column.sortable).map(column => column.key))
   try {
     const raw = localStorage.getItem(USER_SORT_STORAGE_KEY)
     if (!raw) return fallback
@@ -1086,7 +1090,7 @@ const loadInitialSortState = (): { sort_by: string; sort_order: 'asc' | 'desc' }
     return fallback
   }
 }
-const sortState = reactive(loadInitialSortState())
+const sortState = reactive({ sort_by: 'created_at', sort_order: 'desc' as 'asc' | 'desc' })
 
 // Groups data for the groups column and the existing "authorised group" filter (active only)
 const allGroups = ref<AdminGroup[]>([])
@@ -1356,8 +1360,6 @@ const getUserSelectionLabel = (user: AdminUser) =>
   t('admin.users.bulkLimits.selectUser', { email: user.email })
 
 // User attribute definitions and values
-const attributeDefinitions = ref<UserAttributeDefinition[]>([])
-const userAttributeValues = ref<Record<number, Record<number, string>>>({})
 const lotteryTicketsAttribute = computed(() =>
   attributeDefinitions.value.find((definition) => definition.key === 'lottery_available_tickets'),
 )
@@ -1614,7 +1616,11 @@ const loadAttributeDefinitions = async () => {
 // Handle attributes modal close - reload definitions and users
 const handleAttributesModalClose = async () => {
   showAttributesModal.value = false
+  tableReady.value = false
   await loadAttributeDefinitions()
+  Object.assign(sortState, loadInitialSortState())
+  pagination.page = 1
+  tableReady.value = true
   loadUsers()
 }
 
@@ -1938,6 +1944,8 @@ onMounted(async () => {
   await loadAttributeDefinitions()
   loadSavedFilters()
   loadSavedColumns()
+  Object.assign(sortState, loadInitialSortState())
+  tableReady.value = true
   loadUsers()
   if (hasVisibleGroupsColumn.value || visibleFilters.has('group')) {
     loadAllGroups()

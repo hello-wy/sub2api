@@ -3,12 +3,152 @@
 package repository
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
+	dbent "github.com/Wei-Shaw/sub2api/ent"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/pagination"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 )
+
+func (s *UserRepoSuite) numericSortAttribute() *dbent.UserAttributeDefinition {
+	s.T().Helper()
+	def, err := s.client.UserAttributeDefinition.Create().
+		SetKey(fmt.Sprintf("numeric_sort_%d", time.Now().UnixNano())).
+		SetName("测试数字").SetType("number").Save(s.ctx)
+	s.Require().NoError(err)
+	s.T().Cleanup(func() { _ = s.client.UserAttributeDefinition.DeleteOneID(def.ID).Exec(s.ctx) })
+	return def
+}
+
+func (s *UserRepoSuite) TestListWithFilters_NumericAttributeSortAcrossPages() {
+	def := s.numericSortAttribute()
+	values := []string{"10", "2", "-2.5", "0", "1.25", "2", "9007199254740993", "9007199254740992", "", "broken", "NaN", "Infinity", "-Infinity", "1e1000000", " \t2.50 ", "1e1"}
+	ids := make([]int64, 0, len(values)+1)
+	for i, value := range values {
+		u := s.mustCreateUser(&service.User{Email: fmt.Sprintf("numeric-sort-%02d@example.com", i)})
+		ids = append(ids, u.ID)
+		_, err := s.client.UserAttributeValue.Create().SetUserID(u.ID).SetAttributeID(def.ID).SetValue(value).Save(s.ctx)
+		s.Require().NoError(err)
+	}
+	ids = append(ids, s.mustCreateUser(&service.User{Email: "numeric-sort-missing@example.com"}).ID)
+	// 筛选外的用户不能混入全局排序或总数。
+	other := s.mustCreateUser(&service.User{Email: "unrelated@example.com"})
+	_, err := s.client.UserAttributeValue.Create().SetUserID(other.ID).SetAttributeID(def.ID).SetValue("1e99").Save(s.ctx)
+	s.Require().NoError(err)
+	for _, tc := range []struct {
+		order   string
+		indices []int
+	}{
+		{"asc", []int{2, 3, 4, 1, 5, 14, 0, 15, 7, 6, 8, 9, 10, 11, 12, 13, 16}},
+		{"desc", []int{6, 7, 15, 0, 14, 5, 1, 4, 3, 2, 16, 13, 12, 11, 10, 9, 8}},
+	} {
+		s.Run(tc.order, func() {
+			var got []int64
+			for page := 1; len(got) < len(ids); page++ {
+				users, result, err := s.repo.ListWithFilters(s.ctx, pagination.PaginationParams{
+					Page: page, PageSize: 3, SortBy: fmt.Sprintf("attr_%d", def.ID), SortOrder: tc.order,
+				}, service.UserListFilters{Search: "numeric-sort-"})
+				s.Require().NoError(err)
+				s.Require().Equal(int64(len(ids)), result.Total)
+				s.Require().NotEmpty(users)
+				for _, u := range users {
+					got = append(got, u.ID)
+				}
+			}
+			want := make([]int64, 0, len(ids))
+			for _, index := range tc.indices {
+				want = append(want, ids[index])
+			}
+			s.Require().Equal(want, got)
+		})
+	}
+	users, _, err := s.repo.ListWithFilters(s.ctx, pagination.PaginationParams{
+		Page: 1, PageSize: 10, SortBy: fmt.Sprintf("attr_%d", def.ID), SortOrder: "asc",
+	}, service.UserListFilters{Attributes: map[int64]string{def.ID: "1.25"}})
+	s.Require().NoError(err)
+	s.Require().Len(users, 1)
+	s.Require().Equal(ids[4], users[0].ID)
+}
+
+func (s *UserRepoSuite) TestListWithFilters_NumericAttributeSortFallback() {
+	first := s.mustCreateUser(&service.User{Email: "fallback-first@example.com"})
+	last := s.mustCreateUser(&service.User{Email: "fallback-last@example.com"})
+	def := s.numericSortAttribute()
+	key := fmt.Sprintf("attr_%d", def.ID)
+	check := func(sortBy string) {
+		s.T().Helper()
+		users, _, err := s.repo.ListWithFilters(s.ctx, pagination.PaginationParams{
+			Page: 1, PageSize: 10, SortBy: sortBy, SortOrder: "asc",
+		}, service.UserListFilters{})
+		s.Require().NoError(err)
+		s.Require().Len(users, 2)
+		s.Require().Equal([]int64{last.ID, first.ID}, []int64{users[0].ID, users[1].ID})
+	}
+	for _, invalid := range []string{"attr_0", "attr_-1", "attr_9223372036854775808", "attr_999999999", "attr_1; DROP TABLE users"} {
+		check(invalid)
+	}
+	_, err := s.client.UserAttributeDefinition.UpdateOneID(def.ID).SetEnabled(false).Save(s.ctx)
+	s.Require().NoError(err)
+	check(key)
+	_, err = s.client.UserAttributeDefinition.UpdateOneID(def.ID).SetEnabled(true).SetType("text").Save(s.ctx)
+	s.Require().NoError(err)
+	check(key)
+	_, err = s.client.UserAttributeDefinition.UpdateOneID(def.ID).SetType("number").SetDeletedAt(time.Now()).Save(s.ctx)
+	s.Require().NoError(err)
+	check(key)
+}
+
+func (s *UserRepoSuite) TestListWithFilters_NumericAttributeSortUsesLotteryLedger() {
+	def := s.numericSortAttribute()
+	_, err := s.client.UserAttributeDefinition.UpdateOneID(def.ID).SetName("剩余抽奖次数").Save(s.ctx)
+	s.Require().NoError(err)
+	zero := s.mustCreateUser(&service.User{Email: "tickets-zero@example.com"})
+	low := s.mustCreateUser(&service.User{Email: "tickets-low@example.com"})
+	high := s.mustCreateUser(&service.User{Email: "tickets-high@example.com"})
+	same := s.mustCreateUser(&service.User{Email: "tickets-same@example.com"})
+	for i, tc := range []struct {
+		userID               int64
+		remaining            int
+		expiresAt, revokedAt any
+	}{
+		{low.ID, 2, nil, nil}, {high.ID, 6, nil, nil}, {high.ID, 4, time.Now().Add(time.Hour), nil},
+		{same.ID, 2, nil, nil}, {zero.ID, 100, time.Now().Add(-time.Hour), nil},
+		{zero.ID, 100, nil, time.Now()}, {zero.ID, 0, nil, nil},
+	} {
+		_, err := integrationDB.ExecContext(s.ctx, `INSERT INTO lottery_ticket_ledger
+			(user_id, delta, remaining, source_type, source_ref, expires_at, revoked_at)
+			VALUES ($1, $2, $2, 'admin', $3, $4, $5)`, tc.userID, tc.remaining, fmt.Sprintf("sort-%d-%d", def.ID, i), tc.expiresAt, tc.revokedAt)
+		s.Require().NoError(err)
+	}
+	// 属性表和旧汇总故意与账本相反，确保不误用缓存/手工属性。
+	_, err = s.client.UserAttributeValue.Create().SetUserID(zero.ID).SetAttributeID(def.ID).SetValue("9999").Save(s.ctx)
+	s.Require().NoError(err)
+	_, err = integrationDB.ExecContext(s.ctx, "INSERT INTO lottery_user_states(user_id, available_tickets) VALUES ($1, 9999)", zero.ID)
+	s.Require().NoError(err)
+	standard, err := NewUserAttributeDefinitionRepository(s.client).GetByKey(s.ctx, service.LotteryAvailableTicketsAttributeKey)
+	s.Require().NoError(err)
+	for _, attributeID := range []int64{def.ID, standard.ID} {
+		for _, tc := range []struct {
+			order string
+			want  []int64
+		}{
+			{"asc", []int64{zero.ID, low.ID, same.ID, high.ID}},
+			{"desc", []int64{high.ID, same.ID, low.ID, zero.ID}},
+		} {
+			users, _, err := s.repo.ListWithFilters(s.ctx, pagination.PaginationParams{
+				Page: 1, PageSize: 10, SortBy: fmt.Sprintf("attr_%d", attributeID), SortOrder: tc.order,
+			}, service.UserListFilters{})
+			s.Require().NoError(err)
+			var got []int64
+			for _, u := range users {
+				got = append(got, u.ID)
+			}
+			s.Require().Equal(tc.want, got)
+		}
+	}
+}
 
 func (s *UserRepoSuite) mustInsertUsageLog(userID int64, createdAt time.Time) {
 	s.T().Helper()

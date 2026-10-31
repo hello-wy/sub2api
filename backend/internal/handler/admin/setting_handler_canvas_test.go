@@ -65,7 +65,7 @@ func TestCanvasSettingsAdminAuthorization(t *testing.T) {
 				require.Empty(t, repo.values)
 			} else {
 				require.Equal(t, http.StatusOK, recorder.Code, recorder.Body.String())
-				require.Contains(t, recorder.Body.String(), `"effective_api_base_url":"https://gateway.example"`)
+				require.NotContains(t, recorder.Body.String(), "api_base_url")
 				require.Contains(t, recorder.Body.String(), `"upstream_retry_count":3`)
 				require.NotContains(t, repo.values[service.SettingKeyCanvas], "forged.example")
 			}
