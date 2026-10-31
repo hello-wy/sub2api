@@ -6,7 +6,7 @@ import { CANVAS_PROTOCOL } from '@/utils/canvas-bridge'
 
 const mocks = vi.hoisted(() => ({
   auth: { user: { id: 7, role: 'admin' }, token: 'panel-token-must-not-leak' },
-  current: vi.fn(), push: vi.fn(), fetchSettings: vi.fn(), settings: { enabled: true, url: 'http://127.0.0.1:3010/' },
+  current: vi.fn(), push: vi.fn(), fetchSettings: vi.fn(), settings: { enabled: true, url: 'http://127.0.0.1:3010/', upstream_retry_count: 2 },
   listKeys: vi.fn(), getKey: vi.fn()
 }))
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => reactive(mocks.auth) }))
@@ -111,7 +111,7 @@ describe('Canvas host session', () => {
     await request(frame, { type: 'session', role: 'admin' })
     const payload = send.mock.calls[0][0]
     expect(payload.session.user.role).toBe('user')
-    expect(payload.session).toEqual({ user: { id: 7, role: 'user' } })
+    expect(payload.session).toEqual({ user: { id: 7, role: 'user' }, upstreamRetryCount: 2 })
     expect(mocks.current).toHaveBeenCalled()
     expect(mocks.fetchSettings).toHaveBeenCalledTimes(2)
     expect(JSON.stringify(payload)).not.toContain(mocks.auth.token)

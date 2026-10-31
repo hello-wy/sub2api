@@ -90,7 +90,7 @@ async function onMessage(event: MessageEvent) {
       return
     }
     error.value = ''
-    target?.postMessage({ protocol: CANVAS_PROTOCOL, type: 'session', requestId: request.requestId, theme: detectTheme(), session: { user: { id: user.id, role: user.role } } }, event.origin)
+    target?.postMessage({ protocol: CANVAS_PROTOCOL, type: 'session', requestId: request.requestId, theme: detectTheme(), session: { user: { id: user.id, role: user.role }, upstreamRetryCount: settings.upstream_retry_count } }, event.origin)
   } catch (cause) {
     if (!current()) return
     const status = (cause as { status?: number } | null)?.status
