@@ -20,6 +20,7 @@ jobs:
           host: 152.53.55.111
           username: root
           password: ${{ secrets.SERVER_PASSWORD }}
+          command_timeout: 30m
           script: |
             set -eu
             cd /root/sub2api/deploy
