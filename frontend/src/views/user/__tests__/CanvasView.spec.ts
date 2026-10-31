@@ -177,7 +177,7 @@ describe('Canvas personal configuration boundary', () => {
     expect(wrapper.find('input[type="radio"]').exists()).toBe(false)
     expect(localStorage.length).toBe(0)
     await request(frame, { type: 'session' })
-    expect(send.mock.calls.at(-1)![0].session).toEqual({ user: { id: 7, role: 'user' } })
+    expect(send.mock.calls.at(-1)![0].session).toEqual({ user: { id: 7, role: 'user' }, upstreamRetryCount: 2 })
   })
   it('recreates the frame only for a trusted reconnect request', async () => {
     const { frame } = await open()
@@ -190,7 +190,7 @@ describe('Canvas personal configuration boundary', () => {
     const { frame, send } = await open()
     mocks.current.mockResolvedValue({ data: { id: 7, role: 'user', email: 'private@example.com', apiKey: 'secret-key', token: mocks.auth.token } })
     await request(frame, { type: 'session' })
-    expect(send.mock.calls.at(-1)![0].session).toEqual({ user: { id: 7, role: 'user' } })
+    expect(send.mock.calls.at(-1)![0].session).toEqual({ user: { id: 7, role: 'user' }, upstreamRetryCount: 2 })
     expect(JSON.stringify(send.mock.calls)).not.toContain('secret-key')
     expect(JSON.stringify(send.mock.calls)).not.toContain('private@example.com')
   })
