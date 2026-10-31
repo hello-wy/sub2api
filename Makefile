@@ -52,6 +52,7 @@ FRONTEND_CRITICAL_VITEST := \
 	src/components/user/profile/__tests__/ProfileInfoCard.spec.ts \
 	src/components/user/profile/__tests__/ProfileIdentityBindingsSection.spec.ts \
 	src/views/admin/__tests__/SettingsView.spec.ts \
+	src/views/admin/__tests__/UsersView.spec.ts \
 	src/views/admin/settings/__tests__/WelfareExcludedUsers.spec.ts \
 	src/views/public/__tests__/LeaderboardView.spec.ts \
 	src/views/admin/__tests__/AccountsView.priorityColumn.spec.ts \
