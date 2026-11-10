@@ -119,39 +119,51 @@ func TestUsageLogTokensPerSecond(t *testing.T) {
 	log := &UsageLog{OutputTokens: 50, DurationMs: &duration, FirstTokenMs: &firstToken}
 	got := log.TokensPerSecond()
 	require.NotNil(t, got)
-	require.InDelta(t, 100, *got, 0.0001)
+	require.InDelta(t, 20, *got, 0.0001)
 }
 
 func TestUsageLogTokensPerSecondReturnsNilWithoutUsableRate(t *testing.T) {
 	t.Parallel()
 
 	zero := 0
+	duration := 2500
 	for _, log := range []*UsageLog{
 		nil,
 		{OutputTokens: 10},
-		{OutputTokens: 0, DurationMs: &zero},
+		{OutputTokens: 0, DurationMs: &duration},
+		{OutputTokens: -1, DurationMs: &duration},
 		{OutputTokens: 10, DurationMs: &zero},
 	} {
 		require.Nil(t, log.TokensPerSecond())
 	}
 }
 
-func TestUsageLogTokensPerSecondTimingBoundaries(t *testing.T) {
+func TestUsageLogTokensPerSecondIgnoresFirstTokenTiming(t *testing.T) {
+	t.Parallel()
+
 	duration := 2500
-	for _, tc := range []struct {
-		first int
-		want  float64
-	}{
-		{-1, 0}, {2600, 0}, {2500, 0}, {2499, 0}, {2490, 0}, {2401, 0}, {2400, 500}, {0, 20},
-	} {
-		log := &UsageLog{OutputTokens: 50, DurationMs: &duration, FirstTokenMs: &tc.first}
+	for _, first := range []int{-1, 2600, 2500, 2499, 2490, 2401, 2400, 0} {
+		log := &UsageLog{OutputTokens: 50, DurationMs: &duration, FirstTokenMs: &first}
 		got := log.TokensPerSecond()
-		if tc.want == 0 {
+		require.NotNil(t, got)
+		require.InDelta(t, 20, *got, 0.0001)
+	}
+
+	got := (&UsageLog{OutputTokens: 50, DurationMs: &duration}).TokensPerSecond()
+	require.NotNil(t, got)
+	require.InDelta(t, 20, *got, 0.0001)
+}
+
+func TestUsageLogTokensPerSecondDurationBoundaries(t *testing.T) {
+	t.Parallel()
+
+	for _, duration := range []int{-1, 0, 1, 99, 100} {
+		got := (&UsageLog{OutputTokens: 50, DurationMs: &duration}).TokensPerSecond()
+		if duration <= 0 {
 			require.Nil(t, got)
 		} else {
 			require.NotNil(t, got)
-			require.InDelta(t, tc.want, *got, 0.0001)
+			require.InDelta(t, 50/(float64(duration)/1000), *got, 0.0001)
 		}
 	}
-	require.Nil(t, (&UsageLog{OutputTokens: 50, DurationMs: &duration}).TokensPerSecond())
 }

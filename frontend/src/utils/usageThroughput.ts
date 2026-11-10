@@ -1,18 +1,15 @@
 import type { UsageLog } from '@/types'
 
-type UsageThroughputRow = Pick<UsageLog, 'output_tokens' | 'duration_ms' | 'first_token_ms'>
+type UsageThroughputRow = Pick<UsageLog, 'output_tokens' | 'duration_ms'>
 
-/** Estimate post-first-token throughput; keep in sync with UsageLog.TokensPerSecond.
- * Derive from timing fields so older servers cannot supply the former total-duration rate.
+/** Calculate output throughput over the total duration; keep in sync with UsageLog.TokensPerSecond.
+ * Derive from timing fields so older servers cannot supply a rate that excludes the initial wait.
  */
 export function getUsageTokensPerSecond(row: UsageThroughputRow): number | null {
-  const { output_tokens: tokens, duration_ms: duration, first_token_ms: firstToken } = row
-  if (!Number.isFinite(tokens) || tokens <= 0 || duration == null || firstToken == null
-    || !Number.isFinite(duration) || !Number.isFinite(firstToken) || firstToken < 0) return null
-  const outputMs = duration - firstToken
-  // Suppress unstable rates from buffered/terminal-only responses.
-  if (outputMs < 100) return null
-  const rate = tokens / (outputMs / 1000)
+  const { output_tokens: tokens, duration_ms: duration } = row
+  if (!Number.isFinite(tokens) || tokens <= 0 || duration == null
+    || !Number.isFinite(duration) || duration <= 0) return null
+  const rate = tokens / (duration / 1000)
   return Number.isFinite(rate) ? rate : null
 }
 
