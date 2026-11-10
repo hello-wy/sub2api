@@ -38,9 +38,9 @@ func TestUsageLogFromService_IncludesTokensPerSecond(t *testing.T) {
 	userDTO := UsageLogFromService(log)
 	adminDTO := UsageLogFromServiceAdmin(log)
 	require.NotNil(t, userDTO.TokensPerSecond)
-	require.InDelta(t, 100, *userDTO.TokensPerSecond, 0.0001)
+	require.InDelta(t, 20, *userDTO.TokensPerSecond, 0.0001)
 	require.NotNil(t, adminDTO.TokensPerSecond)
-	require.InDelta(t, 100, *adminDTO.TokensPerSecond, 0.0001)
+	require.InDelta(t, 20, *adminDTO.TokensPerSecond, 0.0001)
 }
 
 func TestUsageLogFromService_PreservesNativeCompactionAndStream(t *testing.T) {

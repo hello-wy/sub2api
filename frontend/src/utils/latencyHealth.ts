@@ -5,7 +5,7 @@ import type { UsageLog } from '@/types'
  *
  * 首 Token（TTFT）：10s 内正常，10-30s 偏慢，30-60s 缓慢，60s 及以上严重。
  * 总耗时：流式请求整体时长天然更长，阈值放宽为 1min / 3min / 5min。
- * TPS：按输出量动态分四档；输出阶段耗时预算 = 10/30/60s 余量 + Token 数 ÷ 20/10/5 t/s。
+ * TPS：按输出量动态分四档；总耗时预算 = 10/30/60s 余量 + Token 数 ÷ 20/10/5 t/s。
  */
 export type LatencySeverity = 'good' | 'warn' | 'slow' | 'critical'
 
