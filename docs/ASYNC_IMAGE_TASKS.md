@@ -24,6 +24,10 @@ The aliases are `/images/generations/async`, `/images/edits/async`, and `/images
 
 Only OpenAI and Grok groups are supported. Requests use the same JSON or multipart payload as the corresponding synchronous endpoint. Streaming image requests are rejected because a polled task returns one final JSON result.
 
+### 兼容图片模型映射
+
+OpenAI API Key 账号支持直接调用 `nano-banana-pro`，也支持在账号侧将 `gemini-3-pro-image` 映射为 `nano-banana-pro`。JSON 文生图和 multipart 参考图编辑均保留该映射；这类兼容模型只能通过 API Key 账号转发，不适用于 OAuth / Setup Token 原生图片账号。客户端模型名还需满足所在分组的模型白名单与定价配置。
+
 ## Enabling the feature (object storage)
 
 Asynchronous image tasks are **disabled by default** and gated on object storage. When the switch is off — or the S3 credentials are incomplete — the async endpoints return `404` and never create a task or write to Redis. This is deliberate: without offloading, large `b64_json` results (several MB each, e.g. `gpt-image-1`) would accumulate in Redis and exhaust its memory.
