@@ -102,13 +102,13 @@ describe("SubscriptionPlanCard", () => {
   });
 
   // #4607：管理端保存的单位是复数（months/weeks），此前用户侧只匹配单数
-  // 'month'，「1 个月」的套餐卡片被显示成「1天」。测试环境的 vue-i18n 为
-  // runtime-only 构建，t() 原样返回 key，故按 key 断言单位分支。
+  // 'month'，「1 个月」的套餐卡片被显示成「1天」。按上方测试消息渲染出的
+  // 单位文案断言各分支。
   it("renders plural admin-form validity units instead of mislabeled days (#4607)", () => {
-    expect(mountPlanCard("openai", 0, { validity_days: 1, validity_unit: "months" }).text()).toContain("/ payment.perMonth");
-    expect(mountPlanCard("openai", 0, { validity_days: 3, validity_unit: "months" }).text()).toContain("/ 3payment.months");
-    expect(mountPlanCard("openai", 0, { validity_days: 2, validity_unit: "weeks" }).text()).toContain("/ 2payment.weeks");
-    expect(mountPlanCard("openai", 0, { validity_days: 30, validity_unit: "day" }).text()).toContain("/ 30payment.days");
+    expect(mountPlanCard("openai", { validity_days: 1, validity_unit: "months" }).text()).toContain("/ month");
+    expect(mountPlanCard("openai", { validity_days: 3, validity_unit: "months" }).text()).toContain("/ 3months");
+    expect(mountPlanCard("openai", { validity_days: 2, validity_unit: "weeks" }).text()).toContain("/ 2weeks");
+    expect(mountPlanCard("openai", { validity_days: 30, validity_unit: "day" }).text()).toContain("/ 30days");
   });
 
   it("uses the configured currency symbol while preserving USD for legacy plans", () => {
@@ -122,13 +122,13 @@ describe("SubscriptionPlanCard", () => {
 
   it("always uses the subscribe action", () => {
     const wrapper = mountPlanCard("openai");
-    expect(wrapper.findAll("button").at(-1)?.text()).toBe("wallet.subscribeAction");
+    expect(wrapper.findAll("button").at(-1)?.text()).toBe("Subscribe");
   });
 
   it("selects the payment source and subscribes directly inside the card", async () => {
     const wrapper = mountPlanCard("openai");
     const balanceButton = wrapper.findAll("button").find(button =>
-      button.text().includes("wallet.subscriptionPaymentBalance"),
+      button.text().includes("Balance payment"),
     );
 
     await balanceButton?.trigger("click");
@@ -141,11 +141,11 @@ describe("SubscriptionPlanCard", () => {
   it("disables balance subscription when the available balance is insufficient", async () => {
     const wrapper = mountPlanCard("openai", 0, { availableBalance: 5 });
     const balanceButton = wrapper.findAll("button").find(button =>
-      button.text().includes("wallet.subscriptionPaymentBalance"),
+      button.text().includes("Balance payment"),
     );
 
     await balanceButton?.trigger("click");
-    expect(wrapper.text()).toContain("wallet.subscriptionBalanceInsufficientShort");
+    expect(wrapper.text()).toContain("Insufficient balance");
     expect(wrapper.findAll("button").at(-1)?.attributes("disabled")).toBeDefined();
   });
 
@@ -166,11 +166,11 @@ describe("SubscriptionPlanCard", () => {
     expect(wrapper.text()).toContain("¥9.20");
 
     const balanceButton = wrapper.findAll("button").find(button =>
-      button.text().includes("wallet.subscriptionPaymentBalance"),
+      button.text().includes("Balance payment"),
     );
     await balanceButton?.trigger("click");
 
-    expect(wrapper.text()).toContain("wallet.subscriptionBalanceNoDiscount");
+    expect(wrapper.text()).toContain("No discount");
     expect(wrapper.text()).toContain("$25.00");
     expect(wrapper.text()).toContain("$20.00");
     expect(wrapper.text()).toContain("$5.00");
@@ -215,11 +215,11 @@ describe("SubscriptionPlanCard", () => {
       "items-center",
       "justify-end",
     ]));
-    expect(badge?.element.parentElement?.textContent).toContain("/ 30payment.days");
+    expect(badge?.element.parentElement?.textContent).toContain("/ 30days");
     expect(badge?.element.parentElement?.parentElement?.classList).toContain("shrink-0");
     expect(price?.element.parentElement?.parentElement?.classList).toContain("shrink-0");
     expect(wrapper.get("p").text()).toBe("Includes advanced models and priority support.");
-    expect(wrapper.findAll("button").at(-1)?.text()).toBe("wallet.subscribeAction");
+    expect(wrapper.findAll("button").at(-1)?.text()).toBe("Subscribe");
   });
 
   it("keeps short plan titles compact and aligned", () => {
@@ -235,6 +235,6 @@ describe("SubscriptionPlanCard", () => {
       "items-center",
       "justify-end",
     ]));
-    expect(badge?.element.parentElement?.textContent).toContain("/ 30payment.days");
+    expect(badge?.element.parentElement?.textContent).toContain("/ 30days");
   });
 });
