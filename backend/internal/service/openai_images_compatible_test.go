@@ -21,7 +21,7 @@ import (
 
 func TestCompatibleImagesGeminiModels(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	for _, model := range []string{"gemini-2.5-flash-image", "gemini-2.5-flash-image-preview", "gemini-3-pro-image", "gemini-3.1-flash-image", "gemini-nano-banana", "gemini-nano-banana-2.1", "gemini-omni-flash"} {
+	for _, model := range []string{"gemini-2.5-flash-image", "gemini-2.5-flash-image-preview", "gemini-3-pro-image", "gemini-3.1-flash-image", "gemini-nano-banana", "gemini-nano-banana-2.1", "gemini-omni-flash", "nano-banana-pro"} {
 		t.Run(model, func(t *testing.T) {
 			body := []byte(fmt.Sprintf(`{"model":%q,"prompt":"draw"}`, model))
 			c, _ := gin.CreateTestContext(httptest.NewRecorder())
@@ -35,7 +35,7 @@ func TestCompatibleImagesGeminiModels(t *testing.T) {
 			require.False(t, isOpenAIImageGenerationModel(model), "compatible image IDs must not enter native Responses normalization")
 		})
 	}
-	for _, model := range []string{"gemini-2.5-pro", "gemini-2.5-flash", "gemini-3-pro-imageless", "gemini-nano-bananax-2.1", "custom-gemini-nano-banana-2.1", "gemini-omni-flash-text", "custom-gemini-omni-flash", "unknown-image", "gpt-5.5"} {
+	for _, model := range []string{"gemini-2.5-pro", "gemini-2.5-flash", "gemini-3-pro-imageless", "gemini-nano-bananax-2.1", "custom-gemini-nano-banana-2.1", "gemini-omni-flash-text", "custom-gemini-omni-flash", "nano-banana-pro-text", "custom-nano-banana-pro", "unknown-image", "gpt-5.5"} {
 		t.Run("reject_"+model, func(t *testing.T) {
 			body := []byte(fmt.Sprintf(`{"model":%q,"prompt":"draw"}`, model))
 			c, _ := gin.CreateTestContext(httptest.NewRecorder())
@@ -48,8 +48,8 @@ func TestCompatibleImagesGeminiModels(t *testing.T) {
 
 func TestCompatibleImagesForwardGemini(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	for _, model := range []string{"gemini-3-pro-image", "gemini-3.1-flash-image", "gemini-nano-banana-2.1", "gemini-omni-flash", "gpt-image-2.5-flare", "gpt-image-2.5-sunburst"} {
-		for _, kind := range []string{"generation", "json_edit", "multipart_edit", "composite_multipart_alias", "channel_mapping", "account_mapping"} {
+	for _, model := range []string{"gemini-3-pro-image", "gemini-3.1-flash-image", "gemini-nano-banana-2.1", "gemini-omni-flash", "gpt-image-2.5-flare", "gpt-image-2.5-sunburst", "nano-banana-pro"} {
+		for _, kind := range []string{"generation", "json_edit", "multipart_edit", "composite_multipart_alias", "channel_mapping", "account_mapping", "gemini_account_mapping", "gemini_account_mapping_multipart"} {
 			t.Run(model+"/"+kind, func(t *testing.T) {
 				endpoint := openAIImagesGenerationsEndpoint
 				contentType := "application/json"
@@ -61,6 +61,10 @@ func TestCompatibleImagesForwardGemini(t *testing.T) {
 				}
 				if kind == "account_mapping" {
 					requestModel = "gpt-image-2"
+					credentials["model_mapping"] = map[string]any{requestModel: model}
+				}
+				if strings.HasPrefix(kind, "gemini_account_mapping") {
+					requestModel = "gemini-3-pro-image"
 					credentials["model_mapping"] = map[string]any{requestModel: model}
 				}
 				body := []byte(fmt.Sprintf(`{"model":%q,"prompt":"draw","size":"1024x1024","custom_field":"preserved"}`, requestModel))
@@ -130,7 +134,7 @@ func TestCompatibleImagesForwardGemini(t *testing.T) {
 }
 
 func TestCompatibleImagesNativeAccountsRejectGeminiBeforeForwarding(t *testing.T) {
-	for _, imageModel := range []string{"gemini-3-pro-image", "gemini-3.1-flash-image", "gemini-nano-banana-2.1", "gemini-omni-flash"} {
+	for _, imageModel := range []string{"gemini-3-pro-image", "gemini-3.1-flash-image", "gemini-nano-banana-2.1", "gemini-omni-flash", "nano-banana-pro"} {
 		for _, typ := range []string{AccountTypeOAuth, AccountTypeSetupToken} {
 			for _, mapping := range []bool{false, true} {
 				t.Run(fmt.Sprintf("%s/%s/mapping=%t", imageModel, typ, mapping), func(t *testing.T) {
