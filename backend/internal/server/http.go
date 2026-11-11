@@ -10,6 +10,7 @@ import (
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/Wei-Shaw/sub2api/internal/handler"
+	pkghttputil "github.com/Wei-Shaw/sub2api/internal/pkg/httputil"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/websearch"
 	middleware2 "github.com/Wei-Shaw/sub2api/internal/server/middleware"
 	"github.com/Wei-Shaw/sub2api/internal/service"
@@ -111,6 +112,17 @@ func configureTrustedProxies(r *gin.Engine, cfg config.ServerConfig) {
 // ProvideHTTPServer 提供 HTTP 服务器
 func ProvideHTTPServer(cfg *config.Config, router *gin.Engine) *http.Server {
 	httpHandler := http.Handler(router)
+	server := &http.Server{
+		Addr:           cfg.Server.Address(),
+		Handler:        httpHandler,
+		MaxHeaderBytes: cfg.Server.MaxHeaderBytes,
+		// ReadHeaderTimeout: 读取请求头的超时时间，防止慢速请求头攻击
+		ReadHeaderTimeout: time.Duration(cfg.Server.ReadHeaderTimeout) * time.Second,
+		// IdleTimeout: 空闲连接超时时间，释放不活跃的连接资源
+		IdleTimeout: time.Duration(cfg.Server.IdleTimeout) * time.Second,
+		// 注意：不设置 WriteTimeout，因为流式响应可能持续十几分钟
+		// 请求体使用逐次读取的 idle deadline，不设置覆盖整个大请求上传的 ReadTimeout。
+	}
 	globalMaxSize := cfg.Server.MaxRequestBodySize
 	if globalMaxSize <= 0 {
 		globalMaxSize = cfg.Gateway.MaxBodySize
@@ -144,19 +156,11 @@ func ProvideHTTPServer(cfg *config.Config, router *gin.Engine) *http.Server {
 		)
 	}
 
-	return &http.Server{
-		Addr:           cfg.Server.Address(),
-		Handler:        httpHandler,
-		MaxHeaderBytes: cfg.Server.MaxHeaderBytes,
-		Protocols:      protocols,
-		HTTP2:          http2Config,
-		// ReadHeaderTimeout: 读取请求头的超时时间，防止慢速请求头攻击
-		ReadHeaderTimeout: time.Duration(cfg.Server.ReadHeaderTimeout) * time.Second,
-		// IdleTimeout: 空闲连接超时时间，释放不活跃的连接资源
-		IdleTimeout: time.Duration(cfg.Server.IdleTimeout) * time.Second,
-		// 注意：不设置 WriteTimeout，因为流式响应可能持续十几分钟
-		// 不设置 ReadTimeout，因为大请求体可能需要较长时间读取
-	}
+	server.Protocols = protocols
+	server.HTTP2 = http2Config
+	httpHandler = pkghttputil.WithBodyReadTimeout(httpHandler, time.Duration(cfg.Gateway.RequestBodyReadTimeoutSeconds)*time.Second)
+	server.Handler = pkghttputil.WithWriteTimeout(httpHandler, time.Duration(cfg.Gateway.DownstreamWriteTimeoutSeconds)*time.Second)
+	return server
 }
 
 func derefInt64(p *int64) int64 {
