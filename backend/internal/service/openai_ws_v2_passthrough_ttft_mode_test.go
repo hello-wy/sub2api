@@ -71,19 +71,13 @@ func runOpenAIWSPassthroughTTFTModeCase(t *testing.T, mode string) {
 
 	const reasoningDelay = 600 * time.Millisecond
 	const tolerance = 250 * time.Millisecond
-	// The second turn's events wait so its response.create is accepted first.
 	turns := [][]openAIWSTTFTModeTestEvent{
 		openAIWSTTFTModeTestTurn("resp_ttft_1", 0, reasoningDelay),
 		openAIWSTTFTModeTestTurn("resp_ttft_2", 200*time.Millisecond, reasoningDelay),
 	}
 
-	upstreamConn := &openAIWSCaptureConn{}
-	for _, turn := range turns {
-		for _, event := range turn {
-			upstreamConn.events = append(upstreamConn.events, []byte(event.payload))
-			upstreamConn.readDelays = append(upstreamConn.readDelays, event.delay)
-		}
-	}
+	upstreamConn := newStagedPassthroughConn()
+	upstreamConn.frames = make(chan stagedPassthroughFrame, len(turns[0]))
 
 	cfg := &config.Config{}
 	cfg.Security.URLAllowlist.Enabled = false
@@ -102,7 +96,7 @@ func runOpenAIWSPassthroughTTFTModeCase(t *testing.T, mode string) {
 		cache:                     &stubGatewayCache{},
 		openaiWSResolver:          NewOpenAIWSProtocolResolver(cfg),
 		toolCorrector:             NewCodexToolCorrector(),
-		openaiWSPassthroughDialer: &openAIWSCaptureDialer{conn: upstreamConn},
+		openaiWSPassthroughDialer: &stagedPassthroughDialer{conn: upstreamConn},
 	}
 	account := &Account{
 		ID: 454, Name: "openai-ws-ttft-mode", Platform: PlatformOpenAI, Type: AccountTypeAPIKey,
@@ -148,6 +142,14 @@ func runOpenAIWSPassthroughTTFTModeCase(t *testing.T, mode string) {
 		writeCtx, cancelWrite := context.WithTimeout(context.Background(), 3*time.Second)
 		require.NoError(t, clientConn.Write(writeCtx, coderws.MessageText, request))
 		cancelWrite()
+		// Start each response's delays only after this turn reaches upstream.
+		// A continuously reading capture connection can otherwise consume the
+		// second turn's delay before response.create starts its TTFT clock.
+		requirePassthroughUpstreamWrite(t, upstreamConn, 3*time.Second)
+		for _, event := range turn {
+			time.Sleep(event.delay)
+			upstreamConn.Send(event.payload)
+		}
 		for {
 			readCtx, cancelRead := context.WithTimeout(context.Background(), 5*time.Second)
 			_, message, readErr := clientConn.Read(readCtx)
