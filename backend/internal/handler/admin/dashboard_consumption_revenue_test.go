@@ -20,7 +20,10 @@ func TestDashboardConsumptionRevenueCacheAndFailure(t *testing.T) {
 	require.Nil(t, h.todayConsumptionRevenue(context.Background()))
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
-	defer db.Close()
+	t.Cleanup(func() {
+		mock.ExpectClose()
+		require.NoError(t, db.Close())
+	})
 	h.SetBusinessAnalyticsService(service.NewBusinessAnalyticsService(db))
 	start := timezone.Today()
 	mock.ExpectQuery("WITH day_usage").WithArgs(start, start.AddDate(0, 0, 1)).WillReturnError(errors.New("database unavailable"))
