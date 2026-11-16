@@ -248,6 +248,7 @@ describe('admin DashboardView', () => {
     expect(wrapper.text()).toContain('128,420')
     expect(wrapper.findAll('.hero-card')[0].text()).toContain('2.84M')
     expect(wrapper.findAll('.hero-card')[0].text()).toContain('消费折合 ¥57.50')
+    expect(wrapper.findAll('.hero-card')[0].text()).toContain('扣费 $124.82')
     expect(wrapper.findAll('.hero-card')[0].text()).toContain('成本 $86.40')
     expect(wrapper.findAll('.hero-card')[0].text()).toContain('标准 $156.75')
     expect(wrapper.text()).toContain('gpt-5')

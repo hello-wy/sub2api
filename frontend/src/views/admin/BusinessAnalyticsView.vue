@@ -13,11 +13,14 @@
 </template>
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useRoute } from 'vue-router'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import ScrollablePageLayout from '@/components/layout/ScrollablePageLayout.vue'
 import DateRangePicker from '@/components/common/DateRangePicker.vue'
 import BusinessAnalyticsPanel from '@/components/admin/usage/BusinessAnalyticsPanel.vue'
-const startDate = ref('')
-const endDate = ref('')
+const route = useRoute()
+const queryDate = (value: unknown) => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : ''
+const startDate = ref(queryDate(route.query.start_date))
+const endDate = ref(queryDate(route.query.end_date))
 function setDates(start: string, end: string) { if (!startDate.value && !endDate.value) { startDate.value = start; endDate.value = end } }
 </script>

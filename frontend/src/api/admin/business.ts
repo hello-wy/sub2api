@@ -51,7 +51,17 @@ export interface BusinessTerm {
  starts_at: string; ends_at: string; opening: boolean
 }
 export interface BusinessTermInput { amount: string; quota: string; funding: 'paid' | 'gift'; notes: string }
+export interface ConsumptionRevenueComponent {
+ source: 'balance' | 'subscription'; group_id: number | null; group_name: string
+ reason: string; requests: number; credits: string; revenue_cny: string; unpriced_credits: string
+}
+export interface ConsumptionRevenueReport {
+ start_date: string; end_date: string; timezone: string; updated_at: string
+ summary: { balance_cny: string; subscription_cny: string; total_cny: string; unpriced_credits: string }
+ actual_credits: string; requests: number; components: ConsumptionRevenueComponent[]
+}
 export const businessAPI = {
+ consumptionRevenue: async (params: {start_date?: string; end_date?: string}) => (await apiClient.get<ConsumptionRevenueReport>('/admin/business/consumption-revenue', {params})).data,
  overview: async (params: {start_date?: string; end_date?: string}) => (await apiClient.get<BusinessOverview>('/admin/business/overview', {params})).data,
  settings: async () => (await apiClient.get<BusinessSettings>('/admin/business/settings')).data,
  initialize: async (input: Omit<BusinessSettings, 'enabled_at'>) => (await apiClient.post<BusinessSettings>('/admin/business/initialize', input)).data,

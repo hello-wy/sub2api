@@ -20,8 +20,8 @@ type DashboardConsumptionRevenue struct {
 // Read original orders even when operating statistics have not been initialized.
 // Only explicit subscription order notes establish a purchase link. Missing
 // receipts/currency/quota remain unpriced instead of silently assuming $1=¥1.
-const dashboardConsumptionRevenueSQL = `WITH day_usage AS MATERIALIZED (
- SELECT user_id,subscription_id,billing_type,created_at,actual_cost AS credits
+const consumptionRevenueCTE = `WITH day_usage AS MATERIALIZED (
+ SELECT user_id,group_id,subscription_id,billing_type,created_at,actual_cost AS credits
  FROM usage_logs WHERE created_at >= $1 AND created_at < $2 AND actual_cost > 0
 ), day_subscriptions AS MATERIALIZED (
  SELECT DISTINCT subscription_id FROM day_usage WHERE subscription_id IS NOT NULL
@@ -39,11 +39,11 @@ const dashboardConsumptionRevenueSQL = `WITH day_usage AS MATERIALIZED (
 ), wallet_rates AS (
  SELECT user_id,SUM(net_paid)/NULLIF(SUM(net_units),0) AS rate FROM wallet_orders GROUP BY user_id
 ), wallet_values AS (
- SELECT SUM(u.credits) AS credits,w.rate FROM day_usage u
+ SELECT SUM(u.credits) AS credits,COUNT(*) AS requests,w.rate FROM day_usage u
  LEFT JOIN wallet_rates w ON w.user_id=u.user_id
  WHERE u.subscription_id IS NULL AND u.billing_type=0 GROUP BY u.user_id,w.rate
 ), purchases AS MATERIALIZED (
- SELECT DISTINCT s.id AS subscription_id,s.user_id,o.id AS order_id,o.fulfilled_at,
+ SELECT DISTINCT s.id AS subscription_id,s.user_id,s.group_id,o.id AS order_id,o.fulfilled_at,o.currency,o.payment_type,
  o.fulfilled_at+o.subscription_days*interval '1 day' AS ends_at,
  CASE WHEN o.payment_type='balance' THEN o.net_paid*(
    SELECT SUM(w.net_paid)/NULLIF(SUM(w.net_units),0) FROM wallet_orders w
@@ -62,7 +62,7 @@ const dashboardConsumptionRevenueSQL = `WITH day_usage AS MATERIALIZED (
  SELECT *,LEAST(ends_at,LEAD(fulfilled_at) OVER (PARTITION BY subscription_id ORDER BY fulfilled_at,order_id)) AS active_until
  FROM purchases
 ), subscription_usage AS (
- SELECT u.user_id,u.subscription_id,o.order_id,SUM(u.credits) AS credits
+ SELECT u.user_id,u.subscription_id,o.order_id,MAX(u.group_id) AS group_id,SUM(u.credits) AS credits,COUNT(*) AS requests
  FROM day_usage u LEFT JOIN subscription_orders o ON o.subscription_id=u.subscription_id
  AND o.user_id=u.user_id AND u.created_at>=o.fulfilled_at AND u.created_at<o.active_until
  WHERE u.subscription_id IS NOT NULL OR u.billing_type<>0
@@ -77,16 +77,25 @@ const dashboardConsumptionRevenueSQL = `WITH day_usage AS MATERIALIZED (
  ) p ON true
  WHERE o.active_until>$1 AND o.fulfilled_at<$2
 ), subscription_values AS (
- SELECT u.credits,o.amount,o.quota,o.previous
+ SELECT u.credits,u.requests,COALESCE(o.group_id,u.group_id) AS group_id,o.amount,o.quota,o.previous,
+ CASE WHEN u.subscription_id IS NULL THEN 'missing_subscription'
+ WHEN o.order_id IS NULL THEN 'missing_order'
+ WHEN o.amount IS NULL AND o.payment_type='balance' THEN 'missing_recharge'
+ WHEN o.amount IS NULL THEN 'unsupported_currency'
+ WHEN o.quota IS NULL OR o.quota<=0 THEN 'missing_period_quota' ELSE 'priced' END AS reason
  FROM subscription_usage u LEFT JOIN order_values o ON o.subscription_id=u.subscription_id AND o.order_id=u.order_id
 ), components AS (
- SELECT COALESCE(credits*rate,0) AS balance,0::numeric AS subscription,
+ SELECT 'balance'::text AS source,NULL::bigint AS group_id,credits,requests,
+ CASE WHEN rate IS NULL THEN 'missing_recharge' ELSE 'priced' END AS reason,
+ COALESCE(credits*rate,0) AS balance,0::numeric AS subscription,
  CASE WHEN rate IS NULL THEN credits ELSE 0 END AS unpriced FROM wallet_values
  UNION ALL
- SELECT 0,CASE WHEN quota>0 AND amount IS NOT NULL THEN
+ SELECT 'subscription',group_id,credits,requests,reason,0,CASE WHEN quota>0 AND amount IS NOT NULL THEN
  ROUND(amount*LEAST((previous+credits)/quota,1),8)-ROUND(amount*LEAST(previous/quota,1),8) ELSE 0 END,
  CASE WHEN quota IS NULL OR quota<=0 OR amount IS NULL THEN credits ELSE 0 END FROM subscription_values
-)
+)`
+
+const dashboardConsumptionRevenueSQL = consumptionRevenueCTE + `
 SELECT COALESCE(SUM(balance),0),COALESCE(SUM(subscription),0),COALESCE(SUM(unpriced),0) FROM components`
 
 func (s *BusinessAnalyticsService) DashboardConsumptionRevenue(ctx context.Context, start, end time.Time) (*DashboardConsumptionRevenue, error) {
