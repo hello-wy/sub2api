@@ -19,7 +19,8 @@ var dashboardSnapshotV2Cache = newSnapshotCache(30 * time.Second)
 
 type dashboardSnapshotV2Stats struct {
 	usagestats.DashboardStats
-	Uptime int64 `json:"uptime"`
+	Uptime                  int64                                `json:"uptime"`
+	TodayConsumptionRevenue *service.DashboardConsumptionRevenue `json:"today_consumption_revenue"`
 }
 
 type dashboardSnapshotV2Response struct {
@@ -171,8 +172,9 @@ func (h *DashboardHandler) buildSnapshotV2Response(
 			return nil, errors.New("failed to get dashboard statistics")
 		}
 		resp.Stats = &dashboardSnapshotV2Stats{
-			DashboardStats: *stats,
-			Uptime:         int64(time.Since(h.startTime).Seconds()),
+			DashboardStats:          *stats,
+			Uptime:                  int64(time.Since(h.startTime).Seconds()),
+			TodayConsumptionRevenue: h.todayConsumptionRevenue(ctx),
 		}
 	}
 

@@ -2051,6 +2051,12 @@ export interface DashboardStats {
   today_tokens: number
   today_cost: number // 今日标准计费
   today_actual_cost: number // 今日实际扣除
+  today_consumption_revenue?: {
+    balance_cny: string
+    subscription_cny: string
+    total_cny: string
+    unpriced_credits: string
+  } | null
   today_account_cost: number // 今日账号成本
 
   // 系统运行统计
