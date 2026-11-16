@@ -179,7 +179,7 @@ describe('admin DashboardView', () => {
     expect(wrapper.findAll('.metric-sparkline')).toHaveLength(0)
     expect(wrapper.findAll('.hero-card')[0].text()).toContain('今日 Token 消耗')
     expect(wrapper.findAll('.hero-card')[1].text()).toContain('今日 API 调用')
-    expect(wrapper.findAll('.hero-card')[2].text()).toContain('今日收入')
+    expect(wrapper.findAll('.hero-card')[2].text()).toContain('今日收款')
     expect(wrapper.findAll('.hero-card')[2].text()).toContain('今日订单 0')
     expect(getPaymentDashboard).toHaveBeenCalledWith()
     expect(wrapper.findAll('[data-testid="token-usage-trend"]')).toHaveLength(2)
@@ -219,7 +219,7 @@ describe('admin DashboardView', () => {
     ]
 
     getSnapshotV2.mockResolvedValueOnce({
-      stats: createDashboardStats({ total_requests: 900000, total_input_tokens: 9200000, total_output_tokens: 1540000, total_tokens: 10740000, total_actual_cost: 624.82, total_cost: 756.75, today_requests: 128420, today_input_tokens: 2300000, today_output_tokens: 540000, today_tokens: 2840000, today_actual_cost: 124.82, today_account_cost: 86.4, today_cost: 156.75 }),
+      stats: createDashboardStats({ total_requests: 900000, total_input_tokens: 9200000, total_output_tokens: 1540000, total_tokens: 10740000, total_actual_cost: 624.82, total_cost: 756.75, today_requests: 128420, today_input_tokens: 2300000, today_output_tokens: 540000, today_tokens: 2840000, today_actual_cost: 124.82, today_account_cost: 86.4, today_cost: 156.75, today_consumption_revenue: { balance_cny: '50', subscription_cny: '7.5', total_cny: '57.5', unpriced_credits: '0' } }),
       trend,
       models,
       users_trend: usersTrend
@@ -247,7 +247,7 @@ describe('admin DashboardView', () => {
     expect(wrapper.find('[data-testid="user-usage-trend"]').text()).toBe('1')
     expect(wrapper.text()).toContain('128,420')
     expect(wrapper.findAll('.hero-card')[0].text()).toContain('2.84M')
-    expect(wrapper.findAll('.hero-card')[0].text()).toContain('实际 $124.82')
+    expect(wrapper.findAll('.hero-card')[0].text()).toContain('消费折合 ¥57.50')
     expect(wrapper.findAll('.hero-card')[0].text()).toContain('成本 $86.40')
     expect(wrapper.findAll('.hero-card')[0].text()).toContain('标准 $156.75')
     expect(wrapper.text()).toContain('gpt-5')
@@ -258,6 +258,34 @@ describe('admin DashboardView', () => {
       path: '/admin/usage',
       query: expect.objectContaining({ user_id: '42' })
     }))
+  })
+
+  it('折算缺少依据时标注部分，加载失败时保留未知值', async () => {
+    getSnapshotV2.mockResolvedValueOnce({
+      stats: createDashboardStats({ today_actual_cost: 100, today_consumption_revenue: { balance_cny: '20', subscription_cny: '7.5', total_cny: '27.5', unpriced_credits: '3' } }),
+      trend: [], models: []
+    })
+    const wrapper = mountDashboard()
+    await flushPromises()
+    const amount = wrapper.get('.cost-breakdown__actual')
+    expect(amount.text()).toBe('消费折合 ¥27.50（部分）')
+    expect(amount.attributes('title')).toContain('套餐 ¥7.50')
+    expect(amount.attributes('title')).toContain('$3.00')
+    await wrapper.get('.refresh-button').trigger('click')
+    await flushPromises()
+    expect(wrapper.get('.cost-breakdown__actual').text()).toBe('消费折合 —')
+    wrapper.unmount()
+  })
+
+  it('有完整折算依据但零消费时明确显示人民币零元', async () => {
+    getSnapshotV2.mockResolvedValueOnce({
+      stats: createDashboardStats({ today_consumption_revenue: { balance_cny: '0', subscription_cny: '0', total_cny: '0', unpriced_credits: '0' } }),
+      trend: [], models: []
+    })
+    const wrapper = mountDashboard()
+    await flushPromises()
+    expect(wrapper.get('.cost-breakdown__actual').text()).toBe('消费折合 ¥0.00')
+    wrapper.unmount()
   })
 
   it('今日 Token 消耗达到十亿时使用 B 作为单位', async () => {

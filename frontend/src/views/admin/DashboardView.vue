@@ -29,8 +29,8 @@
           >
             <span>今日 Token 消耗</span>
             <strong>{{ formatTokens(stats.today_tokens) }}</strong>
-            <small class="cost-breakdown" aria-label="今日费用（积分）">
-              <span class="cost-breakdown__actual">实际 ${{ formatCost(stats.today_actual_cost) }}</span>
+            <small class="cost-breakdown" aria-label="今日消费折合人民币及美元计价费用">
+              <span class="cost-breakdown__actual" :title="consumptionRevenueHint">消费折合 {{ stats.today_consumption_revenue ? `¥${formatCost(Number(stats.today_consumption_revenue.total_cny))}` : '—' }}{{ Number(stats.today_consumption_revenue?.unpriced_credits) > 0 ? '（部分）' : '' }}</span>
               <span class="cost-breakdown__account">成本 ${{ formatCost(stats.today_account_cost) }}</span>
               <span class="cost-breakdown__standard">标准 ${{ formatCost(stats.today_cost) }}</span>
             </small>
@@ -43,7 +43,7 @@
           </article>
 
           <article class="hero-card">
-            <span>今日收入</span>
+            <span title="今日支付订单实收金额，包含尚未消费的充值和套餐预收款">今日收款</span>
             <strong>{{ paymentStats ? formatPaymentRevenue(paymentStats) : '—' }}</strong>
             <small>{{ paymentStats ? `今日订单 ${formatNumber(paymentStats.today_count)}` : '支付数据暂时无法加载' }}</small>
           </article>
@@ -197,6 +197,12 @@ const modelPercent = (tokens: number) => totalModelTokens.value > 0 ? `${Math.ro
 const formatNumber = (value: number) => Number(value || 0).toLocaleString()
 const formatTokens = (value: number) => value >= 1_000_000_000 ? `${(value / 1_000_000_000).toFixed(2)}B` : value >= 1_000_000 ? `${(value / 1_000_000).toFixed(2)}M` : value >= 1_000 ? `${(value / 1_000).toFixed(1)}K` : formatNumber(value)
 const formatCost = (value: number) => Number(value || 0).toFixed(2)
+const consumptionRevenueHint = computed(() => {
+  const revenue = stats.value?.today_consumption_revenue
+  if (!revenue) return '人民币折算暂不可用，请稍后刷新。'
+  const pending = Number(revenue.unpriced_credits) > 0 ? `；另有 $${formatCost(Number(revenue.unpriced_credits))} 缺少订单或整期额度依据，未计入` : ''
+  return `消费等效价值估算：余额 ¥${formatCost(Number(revenue.balance_cny))}，套餐 ¥${formatCost(Number(revenue.subscription_cny))}。余额按用户历史充值实付/到账额度加权均价；套餐按实付/整期额度折算并封顶。独立赠送余额未逐笔区分；套餐额度采用当前分组配置。与今日收款不等同${pending}。`
+})
 const formatDuration = (value: number) => value >= 1000 ? `${(value / 1000).toFixed(2)}s` : `${Math.round(value || 0)}ms`
 const formatPaymentRevenue = (paymentDashboard: PaymentDashboardStats) => {
   const amounts = Object.entries(paymentDashboard.today_amount).sort(([left], [right]) => left.localeCompare(right))
