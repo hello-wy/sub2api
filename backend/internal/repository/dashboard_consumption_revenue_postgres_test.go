@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/service"
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/require"
 )
 
@@ -47,6 +48,16 @@ func TestDashboardConsumptionRevenuePostgres(t *testing.T) {
 		require.Equal(t, sub, r.SubscriptionCNY.String())
 		require.Equal(t, unpriced, r.UnpricedCredits.String())
 		require.True(t, r.TotalCNY.Equal(r.BalanceCNY.Add(r.SubscriptionCNY)))
+		detail, err := svc.ConsumptionRevenueReport(context.Background(), day, day.AddDate(0, 0, 1))
+		require.NoError(t, err)
+		require.True(t, r.TotalCNY.Equal(detail.Summary.TotalCNY))
+		require.True(t, r.UnpricedCredits.Equal(detail.Summary.UnpricedCredits))
+		var requests int64
+		var actual string
+		require.NoError(t, db.QueryRow("SELECT COUNT(*),COALESCE(SUM(actual_cost),0)::text FROM usage_logs WHERE created_at >= $1 AND created_at < $2 AND actual_cost>0", day, day.AddDate(0, 0, 1)).Scan(&requests, &actual))
+		require.Equal(t, requests, detail.Requests)
+		require.True(t, detail.ActualCredits.Equal(decimal.RequireFromString(actual)))
+
 	}
 	t.Run("empty", func(t *testing.T) { check(t, "0", "0", "0") })
 	t.Run("wallet weighted net receipts includes recharge bonuses and refunds", func(t *testing.T) {

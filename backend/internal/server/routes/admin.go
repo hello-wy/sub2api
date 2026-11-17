@@ -950,6 +950,7 @@ func channelMonitorModeV2Guard(settingService *service.SettingService) gin.Handl
 func registerBusinessRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 	b := admin.Group("/business")
 	b.GET("/overview", h.Admin.Dashboard.GetOperatingOverview)
+	b.GET("/consumption-revenue", h.Admin.Dashboard.GetConsumptionRevenue)
 	b.GET("/settings", h.Admin.Dashboard.GetOperatingSettings)
 	b.POST("/initialize", h.Admin.Dashboard.InitializeOperating)
 	b.GET("/records", h.Admin.Dashboard.GetOperatingRecords)

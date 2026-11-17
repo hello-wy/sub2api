@@ -5,10 +5,12 @@
       <nav aria-label="经营分析子页" class="tabs">
         <button v-for="item in tabs" :key="item.key" type="button" :aria-current="tab === item.key ? 'page' : undefined" :class="{ selected: tab === item.key }" @click="tab = item.key">{{ item.label }}</button>
       </nav>
-      <div class="actions"><button class="quiet-button" :disabled="loading" @click="refresh">{{ loading ? '更新中…' : '刷新' }}</button><button class="secondary-button" :disabled="!settings?.enabled_at" @click="startRecord('income')">记收入</button><button class="primary-button" :disabled="!settings?.enabled_at" @click="startRecord('cost')">记一笔成本</button></div>
+      <div class="actions"><button class="quiet-button" :disabled="loading" @click="refresh()">{{ loading ? '更新中…' : '刷新' }}</button><button class="secondary-button" :disabled="!settings?.enabled_at" @click="startRecord('income')">记收入</button><button class="primary-button" :disabled="!settings?.enabled_at" @click="startRecord('cost')">记一笔成本</button></div>
     </div>
 
-    <p v-if="settingsError" class="error" role="alert">{{ settingsError }} <button @click="refresh">重试</button></p>
+    <ConsumptionRevenuePanel v-if="tab === 'overview'" ref="consumptionPanel" :start-date="startDate" :end-date="endDate" />
+
+    <p v-if="settingsError" class="error" role="alert">{{ settingsError }} <button @click="refresh()">重试</button></p>
     <div v-if="settings && !settings.enabled_at && tab !== 'settings'" class="welcome">
       <span class="welcome-label">开始记经营账</span><h2>历史用一个总数接上，今天开始清楚记录。</h2>
       <p>设置历史成本和已确认收入后，系统自动汇总消费与赠送。用户现有余额和订阅不会被重置。</p>
@@ -91,6 +93,8 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { businessAPI, type BusinessSettings, type BusinessOverview, type BusinessRecord, type BusinessRecordInput, type BusinessRecordKind, type BusinessTerm } from '@/api/admin/business'
 import BusinessTrendChart from './BusinessTrendChart.vue'
+import ConsumptionRevenuePanel from './ConsumptionRevenuePanel.vue'
+const consumptionPanel = ref<InstanceType<typeof ConsumptionRevenuePanel> | null>(null)
 const { t } = useI18n()
 const op = (key: string) => t("admin.businessAnalytics.operating." + key)
 const props = defineProps<{ startDate?: string; endDate?: string }>()
@@ -146,7 +150,7 @@ async function loadTerms(append: boolean) {
  try { const next = await businessAPI.terms(append ? terms.value.at(-1)?.id : 0); terms.value = append ? [...terms.value, ...next] : next; moreTerms.value = next.length === 50 }
  catch(e) { termsError.value = errorText(e) }
 }
-async function refresh() { await Promise.all([loadSettings(), loadOverview(), loadRecords(false), loadTerms(false)]) }
+async function refresh(refreshConsumption = true) { await Promise.all([loadSettings(), loadOverview(), loadRecords(false), loadTerms(false), ...(refreshConsumption ? [consumptionPanel.value?.refresh()] : [])]) }
 function startRecord(kind: BusinessRecordKind) { tab.value = 'records'; recordOpen.value = true; formError.value = ''; recordForm.value = {source_key: crypto.randomUUID(), kind, amount: '', date: today.value, category: '', notes: ''} }
 async function saveRecord() {
  if (saving.value) return
@@ -170,7 +174,7 @@ async function saveTerm() {
  try {await businessAPI.configureTerm(editingTerm.value.id, {...termForm.value, amount: String(termForm.value.amount), quota: String(termForm.value.quota), funding: termForm.value.funding}); editingTerm.value = null; await Promise.all([loadTerms(false),loadOverview()])} catch(e) {termError.value = errorText(e)} finally {saving.value = false}
 }
 watch(() => [props.startDate, props.endDate], () => {dayLimit.value = 31; void loadOverview()})
-onMounted(refresh)
+onMounted(() => refresh(false))
 defineExpose({refresh})
 </script>
 <style scoped>

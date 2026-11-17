@@ -31,8 +31,10 @@
             <strong>{{ formatTokens(stats.today_tokens) }}</strong>
             <small class="cost-breakdown" aria-label="今日消费折合人民币及美元计价费用">
               <span class="cost-breakdown__actual" :title="consumptionRevenueHint">消费折合 {{ stats.today_consumption_revenue ? `¥${formatCost(Number(stats.today_consumption_revenue.total_cny))}` : '—' }}{{ Number(stats.today_consumption_revenue?.unpriced_credits) > 0 ? '（部分）' : '' }}</span>
+              <span class="cost-breakdown__credits" title="当日从用户余额或套餐中实际扣除的美元计价额度">扣费 ${{ formatCost(stats.today_actual_cost) }}</span>
               <span class="cost-breakdown__account">成本 ${{ formatCost(stats.today_account_cost) }}</span>
               <span class="cost-breakdown__standard">标准 ${{ formatCost(stats.today_cost) }}</span>
+              <router-link class="cost-breakdown__link" :to="{ path: '/admin/business-analytics', query: { start_date: formatLocalDate(new Date()), end_date: formatLocalDate(new Date()) } }">折算明细 →</router-link>
             </small>
           </article>
 
@@ -330,6 +332,7 @@ onMounted(loadDashboard)
 .hero-card strong { display:block; margin:8px 0 9px; color:var(--dashboard-ink); font-size:31px; font-weight:760; letter-spacing:-.045em; line-height:1; }
 .hero-card small { color:var(--dashboard-muted); font-size:12px; }
 .cost-breakdown { display:flex; flex-wrap:wrap; gap:4px 12px; font-variant-numeric:tabular-nums; }
+.cost-breakdown__link { color:#ccfbf1; text-decoration:underline; text-underline-offset:3px; }
 .cost-breakdown__actual { color:#bbf7d0; }
 .cost-breakdown__account { color:#fed7aa; }
 .cost-breakdown__standard { color:#e2e8f0; }

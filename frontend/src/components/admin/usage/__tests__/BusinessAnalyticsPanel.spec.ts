@@ -10,7 +10,7 @@ const report = (): BusinessOverview => ({ settings:{...settings}, start_date:'20
 const render = () => {
  const operating = Object.fromEntries(Object.entries(zh.admin.businessAnalytics.operating).map(([k,v]) => [k, () => v]))
  const messages = { zh: { admin: { businessAnalytics: { operating } } } }
- return mount(BusinessAnalyticsPanel, { global: { plugins: [createI18n({legacy:false,locale:'zh',messages})], stubs: {BusinessTrendChart:true} } })
+ return mount(BusinessAnalyticsPanel, { global: { plugins: [createI18n({legacy:false,locale:'zh',messages})], stubs: {BusinessTrendChart:true,ConsumptionRevenuePanel:true} } })
 }
 let wrappers: ReturnType<typeof render>[] = []
 const show = () => { const w=render();wrappers.push(w);return w }
