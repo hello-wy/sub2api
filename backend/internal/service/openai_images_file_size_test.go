@@ -89,11 +89,12 @@ func TestOpenAIImagesFileSizeForwardPreservesHealthAndDiagnostics(t *testing.T) 
 			c, _ := gin.CreateTestContext(rec)
 			c.Request = httptest.NewRequest("POST", "/v1/images/generations", bytes.NewReader(body))
 			c.Request.Header.Set("Content-Type", "application/json")
-			if mode == "json_keepalive" {
+			switch mode {
+			case "json_keepalive":
 				stop := StartOpenAIImagesJSONKeepalive(c, time.Hour)
 				defer stop()
 				require.True(t, openAIImagesJSONKeepaliveFromContext(c).beat())
-			} else if mode == "sse" {
+			case "sse":
 				c.Header("Content-Type", "text/event-stream")
 				_, _ = c.Writer.WriteString(": ping\n\n")
 				c.Writer.Flush()
@@ -108,8 +109,8 @@ func TestOpenAIImagesFileSizeForwardPreservesHealthAndDiagnostics(t *testing.T) 
 				account.Type = AccountTypeOAuth
 				account.Credentials["access_token"] = "test-only"
 			}
+			svc.recordOpenAIAccountModelTransientFailure(account, "gemini-3-pro-image", time.Now())
 			before := svc.recordOpenAIAccountModelTransientFailure(account, "gemini-3-pro-image", time.Now())
-			before = svc.recordOpenAIAccountModelTransientFailure(account, "gemini-3-pro-image", time.Now())
 			parsed, err := svc.ParseOpenAIImagesRequest(c, body)
 			require.NoError(t, err)
 			result, err := svc.ForwardImages(context.Background(), c, account, body, parsed, "")
