@@ -312,7 +312,7 @@ func (h *OpenAIGatewayHandler) Images(c *gin.Context) {
 					retryableServerError := service.IsOpenAIImagesRetryableUpstreamError(imageUpstreamErr)
 					if retryableServerError {
 						h.gatewayService.ReportOpenAIAccountScheduleResult(account, openAIAccountScheduleModel(c, account, requestModel, false, result), false, nil, err)
-					} else {
+					} else if imageUpstreamErr.Code != service.OpenAIImagesFileTooLargeCode {
 						h.gatewayService.ReportOpenAIAccountScheduleResult(account, openAIAccountScheduleModel(c, account, requestModel, false, result), true, nil)
 					}
 					logEvent := "openai.images.upstream_user_error"

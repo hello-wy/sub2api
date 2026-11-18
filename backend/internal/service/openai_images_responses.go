@@ -928,6 +928,9 @@ func (s *OpenAIGatewayService) handleOpenAIImagesErrorResponse(
 		upstreamDetail = truncateString(string(body), maxBytes)
 	}
 	setOpsUpstreamError(c, resp.StatusCode, upstreamMsg, upstreamDetail)
+	if inputErr := s.handleOpenAIImagesFileSizeError(c, account, resp, body); inputErr != nil {
+		return nil, inputErr
+	}
 
 	if s.cfg != nil && s.cfg.Gateway.LogUpstreamErrorBody {
 		logger.LegacyPrintf("service.openai_gateway",
@@ -1922,6 +1925,9 @@ func (s *OpenAIGatewayService) forwardOpenAIImagesOAuth(
 		respBody := s.readUpstreamErrorBody(resp)
 		_ = resp.Body.Close()
 		respBody = s.redactAgentIdentitySensitiveBody(upstreamCtx, account, respBody)
+		if inputErr := s.handleOpenAIImagesFileSizeError(c, account, resp, respBody); inputErr != nil {
+			return nil, inputErr
+		}
 		if direct && !requiresCodexDirectImages(upstreamModel) && (resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusMethodNotAllowed) {
 			return s.forwardOpenAIImagesOAuth(withOpenAIImagesForceResponses(ctx), c, account, parsed, channelMappedModel)
 		}

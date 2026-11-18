@@ -47,12 +47,13 @@ func TestParseOpenAIImagesRequest_MultipartKeepsUploadAbove20MB(t *testing.T) {
 	require.True(t, bytes.Equal(image, parsed.Uploads[0].Data))
 }
 
-func TestParseOpenAIImagesRequest_MultipartRejectsUploadAbovePartLimit(t *testing.T) {
-	body, contentType, _ := buildImagesEditMultipartBody(t, openAIImageMaxUploadPartSize+1)
+func TestParseOpenAIImagesRequest_MultipartPreservesUploadAbovePartLimit(t *testing.T) {
+	body, contentType, image := buildImagesEditMultipartBody(t, openAIImageMaxUploadPartSize+1)
 
 	parsed, err := parseImagesEditMultipart(t, body, contentType)
-	require.Nil(t, parsed)
-	require.ErrorContains(t, err, `multipart field "image" exceeds the 50 MB per-part limit`)
+	require.NoError(t, err)
+	require.Len(t, parsed.Uploads, 1)
+	require.True(t, bytes.Equal(image, parsed.Uploads[0].Data))
 }
 
 func TestParseGrokMediaRequest_MultipartKeepsUploadAbove20MB(t *testing.T) {
