@@ -2222,9 +2222,9 @@ func classifyOpsSeverity(errType string, status int) string {
 
 func classifyOpsErrorLog(c *gin.Context, errType, message, code string, status int) (phase string, isBusinessLimited bool, errorOwner string, errorSource string) {
 	phase = classifyOpsPhase(errType, message, code)
-	if service.IsOpsRequestScopedError(c) {
+	if service.IsOpsRequestScopedError(c) || code == service.OpenAIImagesFileTooLargeCode {
 		// 失败由请求内容决定：只按错误类型分类，上游错误上下文不参与归因。
-		isBusinessLimited = classifyOpsIsBusinessLimited(errType, phase, code, status, message)
+		isBusinessLimited = code == service.OpenAIImagesFileTooLargeCode || classifyOpsIsBusinessLimited(errType, phase, code, status, message)
 		return phase, isBusinessLimited, classifyOpsErrorOwner(phase, message), classifyOpsErrorSource(phase, message)
 	}
 	routingCapacityLimited := isOpsRoutingCapacityLimited(c)

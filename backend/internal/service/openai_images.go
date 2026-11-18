@@ -401,18 +401,23 @@ func parseOpenAIImagesMultipartRequest(body []byte, contentType string, req *Ope
 			continue
 		}
 
-		// Read one byte past the limit so an oversized part is rejected instead of
-		// being cut short and forwarded upstream as a corrupt image.
-		data, err := io.ReadAll(io.LimitReader(part, openAIImageMaxUploadPartSize+1))
+		fileName := strings.TrimSpace(part.FileName())
+		imageFile := fileName != "" && (name == "mask" || name == "image" || strings.HasPrefix(name, "image["))
+		// Images and masks are already bounded by the total request-body limit.
+		// Keep provider-specific file limits upstream and preserve all bytes.
+		var source io.Reader = part
+		if !imageFile {
+			source = io.LimitReader(part, openAIImageMaxUploadPartSize+1)
+		}
+		data, err := io.ReadAll(source)
 		_ = part.Close()
 		if err != nil {
 			return fmt.Errorf("read multipart field %s: %w", name, err)
 		}
-		if len(data) > openAIImageMaxUploadPartSize {
+		if !imageFile && len(data) > openAIImageMaxUploadPartSize {
 			return fmt.Errorf("multipart field %q exceeds the %d MB per-part limit", name, openAIImageMaxUploadPartSize>>20)
 		}
 
-		fileName := strings.TrimSpace(part.FileName())
 		if fileName != "" {
 			partContentType := strings.TrimSpace(part.Header.Get("Content-Type"))
 			if (name == "mask" || name == "markup") && len(data) > 0 {
@@ -781,6 +786,9 @@ func (s *OpenAIGatewayService) forwardOpenAIImagesAPIKey(
 		resp.Body = io.NopCloser(bytes.NewReader(respBody))
 		upstreamMsg := strings.TrimSpace(extractUpstreamErrorMessage(respBody))
 		upstreamMsg = sanitizeUpstreamErrorMessage(upstreamMsg)
+		if inputErr := s.handleOpenAIImagesFileSizeError(c, account, resp, respBody); inputErr != nil {
+			return nil, inputErr
+		}
 		if isOpenAIImagesInsufficientBalance(respBody) {
 			appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
 				ProxyID:            opsUpstreamProxyID(account),
