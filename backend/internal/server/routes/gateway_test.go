@@ -220,6 +220,20 @@ func TestGatewayRoutesGrokCustomVoiceCRUDPathsAreRegistered(t *testing.T) {
 	}
 }
 
+func TestGatewayRoutesOpenAISpeechAliasesAreRegistered(t *testing.T) {
+	router := newGatewayRoutesTestRouter(service.PlatformGrok)
+	registered := make(map[string]bool)
+	for _, route := range router.Routes() {
+		registered[route.Method+" "+route.Path] = true
+	}
+	for _, route := range []string{
+		"POST /v1/audio/speech",
+		"POST /audio/speech",
+	} {
+		require.True(t, registered[route], "%s should be registered", route)
+	}
+}
+
 func TestGrokCustomVoiceEndpointUsesRouteTemplateNotRawPath(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()

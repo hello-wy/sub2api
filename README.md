@@ -783,7 +783,9 @@ Sub2API supports both Grok subscription accounts through xAI OAuth and standard 
 - Media targets for Grok groups: `/v1/images/generations`, `/images/generations`, `/v1/images/edits`, `/images/edits`, `/v1/videos/generations`, `/videos/generations`, `/v1/videos/edits`, `/videos/edits`, `/v1/videos/extensions`, `/videos/extensions`, `/v1/videos/{request_id}`, and `/videos/{request_id}`. Generation, editing, and extension requests require the group image-generation permission.
 - Media models: `grok-imagine`, `grok-imagine-image-quality`, `grok-imagine-image`, `grok-imagine-image-2.0`, `grok-imagine-edit`, `grok-imagine-video`, and `grok-imagine-video-1.5`
 - JSON image-edit and video-generation requests accept image references in `image`, `images`, `reference_images`, and `mask` objects. Use `url` for xAI-compatible payloads; the legacy `image_url` field remains accepted and is normalized to `url` before forwarding.
-- Out of scope for this provider: TTS, transcription, browser automation, cookies, and Grok web scraping
+- Voice targets for Grok groups: native xAI `/v1/tts`, `/v1/stt`, `/v1/realtime`, and custom-voice routes. OpenAI-compatible clients can use `POST /v1/audio/speech`; Sub2API maps `input`, `voice`, `response_format`, and `speed` to xAI's TTS schema.
+- Voice requests require a Grok API key assigned to a Grok group. The OpenAI speech alias supports `mp3`, `wav`, `pcm`, `mulaw`, and `alaw`; unsupported formats return a clear 400 error.
+- Out of scope for this provider: browser automation, cookies, and Grok web scraping
 
 ### OAuth Configuration
 

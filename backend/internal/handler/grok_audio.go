@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -183,6 +184,47 @@ func isExpectedGrokRealtimeClose(err error) bool {
 
 // GrokVoice handles xAI Voice HTTP endpoints. endpoint is "tts", "stt", or "custom-voices".
 func (h *OpenAIGatewayHandler) GrokVoice(c *gin.Context, endpoint string) {
+	body, ok := h.readGrokVoiceBody(c, endpoint)
+	if !ok {
+		return
+	}
+	h.grokVoice(c, endpoint, body)
+}
+
+// GrokOpenAISpeech adapts the OpenAI audio speech schema to xAI's native TTS
+// schema so OpenAI-compatible clients and Cloudflare AI Gateway can use Grok.
+func (h *OpenAIGatewayHandler) GrokOpenAISpeech(c *gin.Context) {
+	body, ok := h.readGrokVoiceBody(c, "tts")
+	if !ok {
+		return
+	}
+	normalized, err := normalizeOpenAISpeechBody(body)
+	if err != nil {
+		h.errorResponse(c, http.StatusBadRequest, "invalid_request_error", err.Error())
+		return
+	}
+	h.grokVoice(c, "tts", normalized)
+}
+
+func (h *OpenAIGatewayHandler) readGrokVoiceBody(c *gin.Context, endpoint string) ([]byte, bool) {
+	body, err := readGrokVoiceGatewayBody(c)
+	if err == nil {
+		return body, true
+	}
+	if errors.Is(err, errGrokVoiceBodyRequired) {
+		h.errorResponse(c, http.StatusBadRequest, "invalid_request_error", err.Error())
+		return nil, false
+	}
+	bodyLog := requestLogger(c, "handler.openai_gateway.grok_voice", zap.String("endpoint", endpoint))
+	if handleRequestBodyReadError(c, bodyLog, err) {
+		return nil, false
+	}
+	status, message := requestBodyReadFailure(bodyLog, c.Request, err)
+	h.errorResponse(c, status, "invalid_request_error", message)
+	return nil, false
+}
+
+func (h *OpenAIGatewayHandler) grokVoice(c *gin.Context, endpoint string, body []byte) {
 	apiKey, ok := middleware2.GetAPIKeyFromContext(c)
 	if !ok || apiKey.Group == nil || apiKey.Group.Platform != service.PlatformGrok {
 		h.errorResponse(c, http.StatusNotFound, "not_found_error", "Voice API is not supported for this platform")
@@ -201,20 +243,6 @@ func (h *OpenAIGatewayHandler) GrokVoice(c *gin.Context, endpoint string) {
 		return
 	}
 
-	body, err := readGrokVoiceGatewayBody(c)
-	if err != nil {
-		if errors.Is(err, errGrokVoiceBodyRequired) {
-			h.errorResponse(c, http.StatusBadRequest, "invalid_request_error", err.Error())
-			return
-		}
-		bodyLog := requestLogger(c, "handler.openai_gateway.grok_voice", zap.String("endpoint", endpoint))
-		if handleRequestBodyReadError(c, bodyLog, err) {
-			return
-		}
-		status, message := requestBodyReadFailure(bodyLog, c.Request, err)
-		h.errorResponse(c, status, "invalid_request_error", message)
-		return
-	}
 	if endpoint == "tts" {
 		subject, _ := middleware2.GetAuthSubjectFromContext(c)
 		reqLog := requestLogger(c, "handler.openai_gateway.grok_voice", zap.String("endpoint", endpoint))
@@ -399,6 +427,53 @@ func readGrokVoiceGatewayBody(c *gin.Context) ([]byte, error) {
 		return nil, errGrokVoiceBodyRequired
 	}
 	return pkghttputil.ReadRequestBodyWithPrealloc(c.Request)
+}
+
+func normalizeOpenAISpeechBody(body []byte) ([]byte, error) {
+	var request struct {
+		Input          string   `json:"input"`
+		Voice          string   `json:"voice"`
+		ResponseFormat string   `json:"response_format"`
+		Speed          *float64 `json:"speed"`
+		Language       string   `json:"language"`
+		Instructions   string   `json:"instructions"`
+	}
+	if err := json.Unmarshal(body, &request); err != nil {
+		return nil, fmt.Errorf("invalid JSON body: %w", err)
+	}
+	if strings.TrimSpace(request.Input) == "" {
+		return nil, errors.New("input is required")
+	}
+	if strings.TrimSpace(request.Instructions) != "" {
+		return nil, errors.New("instructions is not supported by Grok TTS")
+	}
+	payload := map[string]any{
+		"text":     request.Input,
+		"language": strings.TrimSpace(request.Language),
+	}
+	if payload["language"] == "" {
+		payload["language"] = "auto"
+	}
+	if voice := strings.TrimSpace(request.Voice); voice != "" {
+		payload["voice_id"] = voice
+	}
+	if request.Speed != nil {
+		payload["speed"] = *request.Speed
+	}
+	if format := strings.ToLower(strings.TrimSpace(request.ResponseFormat)); format != "" {
+		codec, ok := map[string]string{
+			"mp3":   "mp3",
+			"wav":   "wav",
+			"pcm":   "pcm",
+			"mulaw": "mulaw",
+			"alaw":  "alaw",
+		}[format]
+		if !ok {
+			return nil, fmt.Errorf("response_format %q is not supported by Grok TTS", format)
+		}
+		payload["output_format"] = map[string]string{"codec": codec}
+	}
+	return json.Marshal(payload)
 }
 
 // extractGrokTTSInputText pulls the primary spoken text from a TTS JSON body.
