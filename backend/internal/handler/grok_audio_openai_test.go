@@ -17,7 +17,9 @@ func TestNormalizeOpenAISpeechBody(t *testing.T) {
 	require.Equal(t, "ara", payload["voice_id"])
 	require.Equal(t, "auto", payload["language"])
 	require.Equal(t, 1.2, payload["speed"])
-	require.Equal(t, "wav", payload["output_format"].(map[string]any)["codec"])
+	outputFormat, ok := payload["output_format"].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "wav", outputFormat["codec"])
 }
 
 func TestNormalizeOpenAISpeechBodyRejectsUnsupportedOptions(t *testing.T) {
