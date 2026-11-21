@@ -132,6 +132,51 @@
         </div>
       </div>
 
+      <!-- OpenAI passthrough model filtering -->
+      <div
+        v-if="allOpenAIPassthroughCapable"
+        class="border-t border-gray-200 pt-4 dark:border-dark-600"
+      >
+        <div class="mb-3 flex items-center justify-between">
+          <div class="flex-1 pr-4">
+            <label
+              id="bulk-edit-openai-passthrough-model-filter-label"
+              class="input-label mb-0"
+              for="bulk-edit-openai-passthrough-model-filter-enabled"
+            >
+              {{ t('admin.accounts.openai.passthroughModelFilter') }}
+            </label>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              {{ t('admin.accounts.openai.passthroughModelFilterDesc') }}
+            </p>
+          </div>
+          <input
+            v-model="enableOpenAIPassthroughModelFilter"
+            id="bulk-edit-openai-passthrough-model-filter-enabled"
+            type="checkbox"
+            aria-controls="bulk-edit-openai-passthrough-model-filter-body"
+            class="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+          />
+        </div>
+        <div
+          id="bulk-edit-openai-passthrough-model-filter-body"
+          :class="!enableOpenAIPassthroughModelFilter && 'pointer-events-none opacity-50'"
+          role="group"
+          aria-labelledby="bulk-edit-openai-passthrough-model-filter-label"
+        >
+          <label class="flex items-center gap-2 text-sm">
+            <input
+              v-model="openaiPassthroughModelFilterEnabled"
+              type="checkbox"
+              data-testid="bulk-openai-passthrough-model-filter"
+              :disabled="!enableOpenAIPassthroughModelFilter"
+              class="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+            />
+            {{ t('common.enabled') }}
+          </label>
+        </div>
+      </div>
+
       <!-- OpenAI Codex namespace 工具摊平（兼容开关，仅 OAuth） -->
       <div
         v-if="allOpenAIOAuthOnly"
@@ -1754,6 +1799,7 @@ const enableStatus = ref(false)
 const enableGroups = ref(false)
 const enableExcelBPS = ref(false)
 const enableOpenAIPassthrough = ref(false)
+const enableOpenAIPassthroughModelFilter = ref(false)
 const enableOpenAIFlattenNamespaces = ref(false)
 const enableOpenAILongContextBilling = ref(false)
 const enableOpenAIImageSizeTiers = ref(false)
@@ -1794,6 +1840,7 @@ const excelBPSAllModels = ref(false)
 const excelBPSModels = ref<string[]>(['gpt-6-astra'])
 const excelBPSCacheCreationAsInput = ref(false)
 const openaiPassthroughEnabled = ref(false)
+const openaiPassthroughModelFilterEnabled = ref(false)
 // Codex namespace 工具摊平兼容开关（仅 OAuth），缺省关闭即原样保留
 const openaiFlattenNamespacesEnabled = ref(false)
 const openAILongContextBillingEnabled = ref(false)
@@ -1853,7 +1900,9 @@ const isOpenAIModelRestrictionDisabled = computed(
   () =>
     allOpenAIPassthroughCapable.value &&
     enableOpenAIPassthrough.value &&
-    openaiPassthroughEnabled.value
+    openaiPassthroughEnabled.value &&
+    enableOpenAIPassthroughModelFilter.value &&
+    !openaiPassthroughModelFilterEnabled.value
 )
 
 const openAIWSModeOptions = computed(() => [
@@ -2097,6 +2146,11 @@ const buildUpdatePayload = (): Record<string, unknown> | null => {
     }
   }
 
+  // extra 按键合并；未勾选修改时省略该键，保留各账号原有的筛选设置。
+  if (enableOpenAIPassthroughModelFilter.value && allOpenAIPassthroughCapable.value) {
+    ensureExtra().openai_passthrough_model_filter = openaiPassthroughModelFilterEnabled.value
+  }
+
   // 同时校验可见性：勾选后又改了目标筛选条件时，不应把该键写到非 OAuth 账号上
   if (enableOpenAIFlattenNamespaces.value && allOpenAIOAuthOnly.value) {
     const extra = ensureExtra()
@@ -2322,6 +2376,7 @@ const handleSubmit = async () => {
     enableBaseUrl.value ||
     (enableExcelBPS.value && allOpenAIOAuthOnly.value) ||
     enableOpenAIPassthrough.value ||
+    (enableOpenAIPassthroughModelFilter.value && allOpenAIPassthroughCapable.value) ||
     enableOpenAIFlattenNamespaces.value ||
     (enableOpenAILongContextBilling.value && allOpenAIPassthroughCapable.value) ||
     (enableOpenAIImageSizeTiers.value && allOpenAIPassthroughCapable.value) ||
@@ -2486,6 +2541,7 @@ watch(
       enableGroups.value = false
       enableExcelBPS.value = false
       enableOpenAIPassthrough.value = false
+      enableOpenAIPassthroughModelFilter.value = false
       enableOpenAIFlattenNamespaces.value = false
       enableOpenAILongContextBilling.value = false
       enableOpenAIImageSizeTiers.value = false
@@ -2509,6 +2565,7 @@ watch(
       excelBPSModels.value = ['gpt-6-astra']
       excelBPSCacheCreationAsInput.value = false
       openaiPassthroughEnabled.value = false
+      openaiPassthroughModelFilterEnabled.value = false
       openaiFlattenNamespacesEnabled.value = false
       openAILongContextBillingEnabled.value = false
       openAIImageSizeTiers.value = [...OPENAI_IMAGE_SIZE_TIERS]

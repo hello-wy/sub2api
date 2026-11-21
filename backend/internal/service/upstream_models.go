@@ -717,7 +717,10 @@ func upstreamModelRegistryBaseURL(account *Account) string {
 	case account.IsGemini():
 		return account.GetGeminiBaseURL(geminicli.AIStudioBaseURL)
 	case account.IsAnthropic():
-		return account.GetBaseURL()
+		if baseURL := strings.TrimSpace(account.GetCredential("base_url")); baseURL != "" {
+			return baseURL
+		}
+		return "https://api.anthropic.com"
 	case account.Platform == PlatformAntigravity:
 		return account.GetGeminiBaseURL(geminicli.AIStudioBaseURL)
 	default:
@@ -768,6 +771,8 @@ func matchModelsDevProviderByKnownHost(registry map[string]modelsDevProvider, ac
 	}
 	providerID := ""
 	switch host {
+	case "api.anthropic.com":
+		providerID = "anthropic"
 	case "api.openai.com", "chatgpt.com":
 		providerID = "openai"
 	case "opencode.ai":
@@ -1474,10 +1479,7 @@ func buildVertexPublisherModelsURL(location, pageToken string) (string, error) {
 	if !vertexLocationPattern.MatchString(location) {
 		return "", fmt.Errorf("invalid vertex location: %s", location)
 	}
-	host := location + "-aiplatform.googleapis.com"
-	if location == "global" {
-		host = vertexGlobalHost
-	}
+	host := vertexAPIHost(location)
 	query := url.Values{"pageSize": []string{strconv.Itoa(vertexPublisherModelsPageSize)}}
 	if pageToken != "" {
 		query.Set("pageToken", pageToken)
@@ -1764,7 +1766,7 @@ func normalizeCodexInputModalities(modalities []string) []string {
 	normalized := make([]string, 0, len(modalities))
 	for _, modality := range modalities {
 		modality = strings.ToLower(strings.TrimSpace(modality))
-		if modality != "text" && modality != "image" {
+		if modality != "text" && modality != "image" && modality != "audio" {
 			continue
 		}
 		if _, exists := seen[modality]; exists {

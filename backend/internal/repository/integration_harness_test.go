@@ -36,6 +36,7 @@ const (
 
 var (
 	integrationDB        *sql.DB
+	integrationDSN       string
 	integrationEntClient *dbent.Client
 	integrationRedis     *redisclient.Client
 
@@ -84,6 +85,7 @@ func TestMain(m *testing.M) {
 		failOrSkipTestMainWithErr("failed to get postgres dsn", err)
 	}
 
+	integrationDSN = dsn
 	integrationDB, err = openSQLWithRetry(ctx, dsn, 30*time.Second)
 	if err != nil {
 		failOrSkipTestMainWithErr("failed to open sql db", err)
