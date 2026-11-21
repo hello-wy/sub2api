@@ -21,11 +21,12 @@ import (
 // batchBillingFixture 是一个用户及其计费相关的行：两个 Key（A 有额度）、两个支持额度的账号
 // （P 设总额度与日额度，Q 只设周额度）和一个订阅。
 type batchBillingFixture struct {
-	userID         int64
-	keyA, keyB     int64
-	accountP       int64
-	accountQ       int64
-	subscriptionID int64
+	userID                  int64
+	keyA, keyB              int64
+	accountP                int64
+	accountQ                int64
+	subscriptionID          int64
+	subscriptionTermVersion int64
 }
 
 func newBatchBillingFixture(t *testing.T, client *dbent.Client, balance float64) batchBillingFixture {
@@ -61,6 +62,7 @@ func newBatchBillingFixture(t *testing.T, client *dbent.Client, balance float64)
 	return batchBillingFixture{
 		userID: user.ID, keyA: keyA.ID, keyB: keyB.ID,
 		accountP: accountP.ID, accountQ: accountQ.ID, subscriptionID: subscription.ID,
+		subscriptionTermVersion: subscription.TermVersion,
 	}
 }
 
@@ -98,6 +100,7 @@ func (f batchBillingFixture) commands(prefix string, steps []batchBillingStep) [
 		if s.subscription > 0 {
 			subscriptionID := f.subscriptionID
 			cmd.SubscriptionID = &subscriptionID
+			cmd.SubscriptionTermVersion = f.subscriptionTermVersion
 			cmd.SubscriptionCost = s.subscription
 		}
 		cmds[i] = cmd
